@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-white shadow-lg rounded-lg p-6">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Daftar Pasien</h1>
+    <a href="/add" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">+ Tambah Pasien</a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-blue-50 text-left">
+          <th class="px-4 py-2 border-b">Nama</th>
+          <th class="px-4 py-2 border-b">Tanggal Lahir</th>
+          <th class="px-4 py-2 border-b">Kunjungan</th>
+          <th class="px-4 py-2 border-b">Diagnosis</th>
+          <th class="px-4 py-2 border-b">Tindakan</th>
+          <th class="px-4 py-2 border-b">Dokter</th>
+          <th class="px-4 py-2 border-b">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in patients %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2 border-b">{{ p.nama }}</td>
+          <td class="px-4 py-2 border-b">{{ p.tanggal_lahir }}</td>
+          <td class="px-4 py-2 border-b">{{ p.tanggal_kunjungan }}</td>
+          <td class="px-4 py-2 border-b">{{ p.diagnosis }}</td>
+          <td class="px-4 py-2 border-b">{{ p.tindakan }}</td>
+          <td class="px-4 py-2 border-b">{{ p.dokter }}</td>
+          <td class="px-4 py-2 border-b space-x-2">
+            <a href="/edit/{{ p.id }}" class="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit</a>
+            <a href="/delete/{{ p.id }}" class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">Delete</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-4 text-gray-500">Belum ada data pasien.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
