@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 
 # Read DB URL from environment; fallback to a sensible default for local dev
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:root@localhost:5432/patients")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create engine and session factory
 engine = create_engine(DATABASE_URL)
