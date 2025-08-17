@@ -1,3 +1,18 @@
+"""
+Module: backend.auth
+
+Contains minimal Auth0/JWT verification helpers and a small role-based
+authorization decorator. `get_current_user` reads the `id_token` cookie,
+verifies the token against Auth0 JWKS, and resolves a local `User` record.
+
+Notes:
+- JWKS fetching should be cached in production to avoid per-request network
+    latency and outages.
+- The `require_role` decorator assumes route handlers accept a `user`
+    keyword argument (FastAPI dependency injection provides it via
+    `Depends(get_current_user)`).
+"""
+
 from fastapi import Request, HTTPException, status, Depends, Form
 from functools import wraps
 from jose import jwt
@@ -14,10 +29,16 @@ def get_db():
         db.close()
 
 def get_jwk():
+    """Fetch the JWKS document from Auth0.
+
+    Returns the parsed JSON. In production this should be cached to avoid
+    network calls on every token verification.
+    """
+
     jwks_url = f"https://{config.AUTH0_DOMAIN}/.well-known/jwks.json"
     return requests.get(jwks_url).json()
 
-def verify_jwt(token: str):
+def verify_jwt(token: str) -> dict:
     try:
         jwks = get_jwk()
         header = jwt.get_unverified_header(token)
@@ -35,7 +56,12 @@ def verify_jwt(token: str):
             detail=f"Invalid token: {str(e)}"
         )
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
+    """Resolve the current logged-in user from the `id_token` cookie.
+
+    Raises HTTPException(401) when not logged in or when the user cannot be
+    found in the local database.
+    """
     token = request.cookies.get("id_token")
     if not token:
         raise HTTPException(status_code=401, detail="Login required")
@@ -48,7 +74,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 def require_role(*roles):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, user=None, **kwargs):
+        def wrapper(*args, user: models.User | None = None, **kwargs):
             if user is None:
                 raise HTTPException(status_code=401, detail="Login required")
             if user.role not in roles:

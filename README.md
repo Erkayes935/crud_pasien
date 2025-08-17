@@ -117,3 +117,29 @@ Repo owner: Erkayes935
 
 Environment file
 - Copy `.env.example` to `.env` and fill your values for local development. The app uses `python-dotenv` (loaded in `backend/config.py`).
+
+## Code reference (quick)
+
+This project embeds short module docstrings in the `backend/` modules. Quick pointers:
+
+- `backend/main.py` — HTTP routes and view rendering. Important routes:
+  - `/login`, `/callback`, `/logout` — Auth0 flows
+  - `/` — patient list (supports `filter_tanggal` query)
+  - `/add`, `/edit/{id}`, `/delete/{id}` — CRUD operations (requires `doctor` role)
+  - `/export` — returns patients.xlsx
+  - `/import` — expects JSON array upload
+
+- `backend/models.py` — ORM models:
+  - `Patient(id, nama, tanggal_lahir, tanggal_kunjungan, diagnosis, tindakan, dokter)`
+  - `User(id, auth0_sub, email, role)`
+
+- `backend/crud.py` — typed helpers:
+  - `get_patients(db) -> List[Patient]`
+  - `create_patient(db, data) -> Patient`
+  - `update_patient(db, patient_id, data) -> Optional[Patient]`
+  - `delete_patient(db, patient_id) -> bool`
+
+- `backend/database.py` — engine and `SessionLocal`. Reads `DATABASE_URL` from env.
+- `backend/auth.py` — JWT verification helpers and `require_role` decorator. `get_current_user` returns the `User` ORM object for the logged-in token.
+
+If you want more detailed inline docs for any specific function, tell me which ones and I'll expand their docstrings.

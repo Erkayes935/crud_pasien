@@ -1,3 +1,17 @@
+"""
+Module: backend.main
+
+This is the FastAPI application entrypoint. It defines route handlers that
+render Jinja2 templates, handle Auth0 login/callback, and provide CRUD
+endpoints for Patient records. The module also implements import/export
+helpers (JSON import, Excel export) using openpyxl and streams responses to
+clients. Database tables are created at startup via SQLAlchemy's
+`Base.metadata.create_all` (requires DB privileges).
+
+Keep this file focused on HTTP routing and view rendering. Business logic
+and DB operations live in `crud.py` and models are in `models.py`.
+"""
+
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -132,11 +146,11 @@ def add_patient(nama: str = Form(...), tanggal_lahir: str = Form(...),
                 db: Session = Depends(get_db), user=Depends(get_current_user)):
     crud.create_patient(db, {
         "nama": nama,
-        "tanggal_lahir": tanggal_lahir,
+        "tanggal_lahir": tanggal_lahir or None,
         "tanggal_kunjungan": tanggal_kunjungan,
-        "diagnosis": diagnosis,
-        "tindakan": tindakan,
-        "dokter": dokter
+        "diagnosis": diagnosis or None,
+        "tindakan": tindakan or None,
+        "dokter": dokter or None
     })
     return RedirectResponse("/", status_code=303)
 
@@ -155,11 +169,11 @@ def update_patient(patient_id: int,
                    db: Session = Depends(get_db), user=Depends(get_current_user)):
     crud.update_patient(db, patient_id, {
         "nama": nama,
-        "tanggal_lahir": tanggal_lahir,
+        "tanggal_lahir": tanggal_lahir or None,
         "tanggal_kunjungan": tanggal_kunjungan,
-        "diagnosis": diagnosis,
-        "tindakan": tindakan,
-        "dokter": dokter
+        "diagnosis": diagnosis or None,
+        "tindakan": tindakan or None,
+        "dokter": dokter or None
     })
     return RedirectResponse("/", status_code=303)
 
@@ -168,6 +182,8 @@ def update_patient(patient_id: int,
 def delete_patient(patient_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     crud.delete_patient(db, patient_id)
     return RedirectResponse("/", status_code=303)
+
+# Export patients to Excel
 
 @app.get("/export")
 def export_patients(db: Session = Depends(get_db)):
@@ -192,12 +208,16 @@ def export_patients(db: Session = Depends(get_db)):
     )
 
 
+# Import patients from JSON
+
 @app.post("/import")
 def import_patients(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if file.content_type != "application/json":
         raise HTTPException(status_code=400, detail="Hanya file JSON yang diizinkan")
-    
-    data = json.load(file.file)  # baca JSON
+
+    data = json.load(file.file)
+    if not isinstance(data, list):
+        raise HTTPException(status_code=400, detail="File JSON tidak valid")
     
     for item in data:
         crud.create_patient(db, {

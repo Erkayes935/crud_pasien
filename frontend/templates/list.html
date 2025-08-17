@@ -7,7 +7,7 @@
     </div>
     
     <!-- Ringkasan Angka -->
-    <div class="grid grid-cols-2 md:grid-cols-2 gap-2 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-2 gap-2 mb-6 text-center">
         <div class="bg-white p-4 shadow rounded">
             <p class="text-gray-500">Total Pasien</p>
             <p class="text-xl font-semibold">{{ total_pasien }}</p>
@@ -28,12 +28,15 @@
 
     <!-- Tabel Pasien -->
     <div class="overflow-x-auto">
+        <h2 class="text-xl font-semibold mb-4">Daftar Pasien</h2>
         <table class="min-w-full bg-white shadow rounded">
             <thead class="bg-gray-200">
                 <tr>
                     <th class="px-4 py-2">Nama</th>
+                    <th class="px-4 py-2">Tanggal Lahir</th>
                     <th class="px-4 py-2">Tanggal Kunjungan</th>
                     <th class="px-4 py-2">Diagnosis</th>
+                    <th class="px-4 py-2">Dokter</th>
                     <th class="px-4 py-2">Tindakan</th>
                     {% if user.role == 'doctor' %}
                     <th class="px-4 py-2">Aksi</th>
@@ -44,9 +47,11 @@
                 {% for p in patients %}
                 <tr class="border-b text-center">
                     <td class="px-4 py-2">{{ p.nama }}</td>
+                    <td class="px-4 py-2">{{ p.tanggal_lahir or '-' }}</td>
                     <td class="px-4 py-2">{{ p.tanggal_kunjungan }}</td>
-                    <td class="px-4 py-2">{{ p.diagnosis }}</td>
-                    <td class="px-4 py-2">{{ p.tindakan }}</td>
+                    <td class="px-4 py-2">{{ p.diagnosis or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.dokter or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.tindakan or '-' }}</td>
                     {% if user.role == 'doctor' %}
                     <td class="px-4 py-2 flex gap-2 items-center justify-center">
                         <a href="/edit/{{ p.id }}" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">Edit</a>

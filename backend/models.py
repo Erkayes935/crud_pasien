@@ -1,3 +1,15 @@
+"""
+Module: backend.models
+
+Defines the SQLAlchemy ORM models used by the application:
+- Patient: stores patient personal and visit information.
+- User: stores application users linked to Auth0 via `auth0_sub` and a role.
+
+Fields use SQLAlchemy column types (String, Date, Text). Dates are stored as
+`Date` objects; when creating patients from form data ensure strings are
+parsed into date objects where necessary.
+"""
+
 from sqlalchemy import Column, Integer, String, Date, Text
 from .database import Base
 
@@ -6,7 +18,7 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nama = Column(String(100), nullable=False)
-    tanggal_lahir = Column(Date, nullable=True)
+    tanggal_lahir = Column(Date)
     tanggal_kunjungan = Column(Date, nullable=False)
     diagnosis = Column(Text)
     tindakan = Column(Text)
