@@ -1,45 +1,80 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="bg-white shadow-lg rounded-lg p-6">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold">Daftar Pasien</h1>
-    <a href="/add" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">+ Tambah Pasien</a>
-  </div>
+<div class="p-6">
+    <div class="mb-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold">Dashboard Pasien</h1>
+        <a href="/export" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Eksport Data ke Excel</a>
+    </div>
+    
+    <!-- Ringkasan Angka -->
+    <div class="grid grid-cols-2 md:grid-cols-2 gap-2 mb-6">
+        <div class="bg-white p-4 shadow rounded">
+            <p class="text-gray-500">Total Pasien</p>
+            <p class="text-xl font-semibold">{{ total_pasien }}</p>
+        </div>
+        <div class="bg-white p-4 shadow rounded">
+            <p class="text-gray-500">Pasien Hari Ini</p>
+            <p class="text-xl font-semibold">{{ pasien_hari_ini }}</p>
+        </div>
+    </div>
 
-  <div class="overflow-x-auto">
-    <table class="w-full border-collapse">
-      <thead>
-        <tr class="bg-blue-50 text-left">
-          <th class="px-4 py-2 border-b">Nama</th>
-          <th class="px-4 py-2 border-b">Tanggal Lahir</th>
-          <th class="px-4 py-2 border-b">Kunjungan</th>
-          <th class="px-4 py-2 border-b">Diagnosis</th>
-          <th class="px-4 py-2 border-b">Tindakan</th>
-          <th class="px-4 py-2 border-b">Dokter</th>
-          <th class="px-4 py-2 border-b">Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in patients %}
-        <tr class="hover:bg-gray-50">
-          <td class="px-4 py-2 border-b">{{ p.nama }}</td>
-          <td class="px-4 py-2 border-b">{{ p.tanggal_lahir }}</td>
-          <td class="px-4 py-2 border-b">{{ p.tanggal_kunjungan }}</td>
-          <td class="px-4 py-2 border-b">{{ p.diagnosis }}</td>
-          <td class="px-4 py-2 border-b">{{ p.tindakan }}</td>
-          <td class="px-4 py-2 border-b">{{ p.dokter }}</td>
-          <td class="px-4 py-2 border-b space-x-2">
-            <a href="/edit/{{ p.id }}" class="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit</a>
-            <a href="/delete/{{ p.id }}" class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">Delete</a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="text-center py-4 text-gray-500">Belum ada data pasien.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    <!-- Filter -->
+    <form method="get" class="mb-4 flex gap-2 items-center">
+        <label for="date" class="text-gray-700">Filter Tanggal:</label>
+        <input type="date" id="date" name="filter_tanggal" value="{{ filter_tanggal }}" class="border rounded px-2 py-1"/>
+        <button type="submit" class="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-800">Filter</button>
+    </form>
+    
+
+    <!-- Tabel Pasien -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white shadow rounded">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="px-4 py-2">Nama</th>
+                    <th class="px-4 py-2">Tanggal Kunjungan</th>
+                    <th class="px-4 py-2">Diagnosis</th>
+                    <th class="px-4 py-2">Tindakan</th>
+                    {% if user.role == 'doctor' %}
+                    <th class="px-4 py-2">Aksi</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in patients %}
+                <tr class="border-b text-center">
+                    <td class="px-4 py-2">{{ p.nama }}</td>
+                    <td class="px-4 py-2">{{ p.tanggal_kunjungan }}</td>
+                    <td class="px-4 py-2">{{ p.diagnosis }}</td>
+                    <td class="px-4 py-2">{{ p.tindakan }}</td>
+                    {% if user.role == 'doctor' %}
+                    <td class="px-4 py-2 flex gap-2 items-center justify-center">
+                        <a href="/edit/{{ p.id }}" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">Edit</a>
+                        <a href="/delete/{{ p.id }}" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Hapus</a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% if not patients %}
+                <tr>
+                    <td colspan="5" class="px-4 py-2 text-center">Tidak ada data pasien</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tambah Pasien (hanya dokter) -->
+    
+    <div class="mt-6 flex justify-between items-center">
+        {% if user.role == 'doctor' %}
+        <a href="/add" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Tambah Pasien</a>
+        {% endif %}
+        <form action="/import" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" class="border-2 rounded"/>
+            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Import</button>
+        </form>
+    </div>
+        
 </div>
 {% endblock %}

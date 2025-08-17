@@ -2,21 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sistem Pasien</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Pasien</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100">
   <!-- Navbar -->
-  <nav class="bg-blue-600 text-white shadow">
-    <div class="max-w-5xl mx-auto px-6 py-3 flex justify-between items-center">
-      <a href="/" class="font-bold text-lg">🏥 Sistem Pasien</a>
-      <span class="text-sm opacity-80">Demo CRUD</span>
+  <nav class="bg-white shadow mb-6">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="text-xl font-bold text-blue-600">🏥 PasienApp</a>
+      
+      <div class="flex items-center space-x-4">
+        {% if user %}
+          <span class="text-gray-700">Halo, {{ user.role }} {{ user.name or user.email }}</span>
+          <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+        {% endif %}
+      </div>
     </div>
   </nav>
 
-  <!-- Main Content -->
-  <main class="max-w-5xl mx-auto p-6">
+  <!-- Content -->
+  <div class="container mx-auto px-4">
     {% block content %}{% endblock %}
-  </main>
+  </div>
 </body>
 </html>
