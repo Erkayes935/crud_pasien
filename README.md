@@ -115,12 +115,5 @@ This repo has no license file. Add one if you plan to publish or share the code.
 Contact / authors
 Repo owner: Erkayes935
 
-Environment file and DB check
+Environment file
 - Copy `.env.example` to `.env` and fill your values for local development. The app uses `python-dotenv` (loaded in `backend/config.py`).
-- Quick DB connectivity check (after activating venv):
-
-```powershell
-python -m backend.check_db
-```
-
-This will return exit code 0 on success, 2 on failure and print a short message.
