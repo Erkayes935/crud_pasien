@@ -15,17 +15,15 @@ and DB operations live in `crud.py` and models are in `models.py`.
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
-from .database import SessionLocal, engine, Base
 from . import models, crud, config
+from .database import SessionLocal, engine, Base
 from .auth import verify_jwt, get_current_user, require_role, get_db
-import requests
-import io
-import json
+import requests, io, json
 
 # Init DB & App
 Base.metadata.create_all(bind=engine)
