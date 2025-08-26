@@ -1,20 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manajemen Pasien</title>
+  <title>Manajemen Kesehatan</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
   <!-- Navbar -->
-  <nav class="bg-white shadow mb-6">
+  <nav class="bg-white dark:bg-gray-800 shadow mb-6 transition-colors duration-300">
     <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/" class="text-xl font-bold text-blue-600">🏥 Aplikasi Pasien</a>
+      <button id="themeToggle" class="px-2 py-1 border rounded text-sm border-gray-400 dark:border-gray-600">
+            🌙
+      </button>
+      <a href="/" class="text-xl font-bold text-blue-600 dark:text-green-400">🏥 Aplikasi Pasien</a>
+      
+      
       <div class="flex items-center space-x-4">
         {% if user %}
-          <span class="text-gray-700">Halo, {{ user.role }} {{ user.name or user.email }}</span>
-          <a href="/logout" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Logout</a>
+          <span class="flex items-center gap-2">
+            Halo,
+            <span class="px-2 py-0.5 text-xs font-semibold rounded
+              {% if current_user.role == 'superadmin' %}bg-red-500 text-white{% endif %}
+              {% if current_user.role == 'admin_rs' %}bg-green-500 text-white{% endif %}
+              {% if current_user.role == 'doctor' %}bg-blue-500 text-white{% endif %}
+              {% if current_user.role == 'coder' %}bg-yellow-500 text-black{% endif %}
+              {% if current_user.role == 'verifikator' %}bg-purple-500 text-white{% endif %}">
+              {{ user.role }}
+            </span> 
+            {{ user.name or user.email }}
+          </span>
+
+          <a href="/logout" class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">Logout</a>
+          
         {% endif %}
       </div>
     </div>
@@ -24,5 +45,28 @@
   <div class="container mx-auto px-4">
     {% block content %}{% endblock %}
   </div>
+
+  <script>
+    const toggleBtn = document.getElementById('themeToggle');
+    const htmlEl = document.documentElement;
+
+    // Cek localStorage untuk mode terakhir
+    if(localStorage.getItem('theme') === 'dark'){
+      htmlEl.classList.add('dark');
+      htmlEl.classList.remove('light');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if(htmlEl.classList.contains('dark')) {
+        htmlEl.classList.remove('dark');
+        htmlEl.classList.add('light');
+        localStorage.setItem('theme', 'light');
+      } else {
+        htmlEl.classList.add('dark');
+        htmlEl.classList.remove('light');
+        localStorage.setItem('theme', 'dark');
+      }
+    });
+  </script>
 </body>
 </html>

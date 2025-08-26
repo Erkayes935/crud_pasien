@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6">
+  <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
+    Dashboard Klaim Pasien
+  </h1>
+
+  <!-- Ringkasan -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
+    {% if user and user.role in ['doctor','coder','verifikator'] %}
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Total Pasien</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ total_pasien }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Pasien Hari Ini</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ pasien_hari_ini }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Klaim Bulan Ini</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ total_claims }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Draft</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ draft_claims }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Submitted</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ submitted_claims }}</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Verified</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ verified_claims }}</p>
+      </div>
+    {% endif %}
+
+    {% if user and user.role in ['superadmin','admin_rs'] %}
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">Total User</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ total_users }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Quick Links -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    {% if user and user.role == 'doctor' %}
+      <a href="/visits" class="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg shadow text-center">🏥 Daftar Kunjungan</a>
+      <a href="/patients" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg shadow text-center">📝 Daftar Pasien</a>
+      <a href="/claims" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg shadow text-center">📄 Semua Klaim</a>
+      <a href="/export" class="bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-lg shadow text-center">📤 Export</a>
+    {% endif %}
+
+    {% if user and user.role in ['superadmin','admin_rs'] %}
+      <a href="/users" class="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg shadow text-center">👥 User Management</a>
+      {% if user.role == 'admin_rs' %}
+        <a href="/export" class="bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-lg shadow text-center">📤 Export</a>
+      {% else %}
+        <a href="/hospitals" class="bg-teal-500 hover:bg-teal-600 text-white p-4 rounded-lg shadow text-center">🏨 Manajemen RS</a>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Klaim terbaru -->
+  {% if user and (user.role in ['doctor','coder','verifikator']) %}
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded">
+        <thead class="bg-gray-200 dark:bg-gray-700">
+          <tr class="text-center">
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">Pasien</th>
+            <th class="px-4 py-2">Tanggal</th>
+            <th class="px-4 py-2">Dokter</th>
+            <th class="px-4 py-2">Diagnosis</th>
+            <th class="px-4 py-2">Status</th>
+            <th class="px-4 py-2">Hasil</th>
+            {% if user.role == 'doctor' %}
+              <th class="px-4 py-2">Aksi</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for claim in claims %}
+            <tr class="border-b dark:border-gray-700">
+              <td class="px-4 py-2">{{ claim.id }}</td>
+              <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
+              <td class="px-4 py-2">{{ claim.tanggal_kunjungan or '-' }}</td>
+              <td class="px-4 py-2">{{ claim.dokter or '-' }}</td>
+              <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
+              <td class="px-4 py-2">{{ claim.status or '-' }}</td>
+              <td class="px-4 py-2">{{ claim.hasil or '-' }}</td>
+              {% if user.role == 'doctor' %}
+              <td class="px-4 py-2 flex justify-center gap-2">
+                <a href="{{ edit_claim_url }}/{{ claim.id }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
+                <a href="{{ delete_claim_url }}/{{ claim.id }}" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
+              </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+          {% if not claims %}
+            <tr><td colspan="8" class="px-4 py-2 text-center">Tidak ada klaim</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      {% if user.role == 'doctor' %}
+        <div class="mt-4">
+          <a href="/patients?flow=claim" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">
+            + Tambah Klaim Baru
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

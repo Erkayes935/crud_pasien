@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id" class="dark"> <!-- aktifkan dark mode -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Klaim</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+<div class="container mx-auto px-4 py-6">
+
+  <h1 class="text-3xl font-bold mb-4">Daftar Klaim</h1>
+
+  <!-- Tombol tambah klaim -->
+  {% if user and (user.role in ['doctor','coder','verifikator']) %}
+  <div class="mb-4">
+    <a href="/claims/add/start" 
+       class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
+      Tambah Klaim
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Filter -->
+  <form method="get" action="{{ list_claims_url }}" class="flex flex-wrap gap-4 mb-4 items-end">
+    <div>
+      <label class="block">Filter Status</label>
+      <select name="status" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+        <option value="">-- Semua --</option>
+        <option value="draft">Draft</option>
+        <option value="submitted">Submitted</option>
+        <option value="reviewed">Reviewed</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block">Filter Tanggal</label>
+      <input type="date" name="tanggal_kunjungan" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+    </div>
+
+    <div>
+      <button type="submit" class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
+        Filter
+      </button>
+    </div>
+  </form>
+
+  <!-- Export -->
+  <div class="mb-4">
+    <a href="{{ export_claims_url }}" 
+       class="bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-3 py-1 rounded">
+      Export Semua Klaim
+    </a>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded">
+      <thead class="bg-gray-200 dark:bg-gray-700">
+        <tr class="text-center">
+          <th class="px-4 py-2">ID Klaim</th>
+          <th class="px-4 py-2">ID Pasien</th>
+          <th class="px-4 py-2">ID Visit</th>
+          <th class="px-4 py-2">ID RS</th>
+          <th class="px-4 py-2">Nama Pasien</th>
+          <th class="px-4 py-2">Tanggal Kunjungan</th>
+          <th class="px-4 py-2">Dokter</th>
+          <th class="px-4 py-2">Diagnosis Awal</th>
+          <th class="px-4 py-2">Kode ICD</th>
+          <th class="px-4 py-2">Tindakan</th>
+          <th class="px-4 py-2">Obat</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2">Hasil</th>
+          <th class="px-4 py-2">Dibuat</th>
+          {% if user and user.role == 'doctor' %}
+          <th class="px-4 py-2">Aksi</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody class="text-center">
+        {% for claim in claims %}
+        <tr class="border-b dark:border-gray-700">
+          <td class="px-4 py-2">{{ claim.id }}</td>
+          <td class="px-4 py-2">{{ claim.patient.id if claim.patient else '-' }}</td>
+          <td class="px-4 py-2">{{ claim.visit.id if claim.visit else '-' }}</td>
+          <td class="px-4 py-2">{{ claim.hospital.id if claim.hospital else '-' }}</td>
+          <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
+          <td class="px-4 py-2">{{ claim.tanggal_kunjungan or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.dokter or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.kode_icd or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.tindakan or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.obat or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.status or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.hasil or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.created_at or '-' }}</td>
+          {% if user and user.role == 'doctor' %}
+          <td class="px-4 py-2">
+            <div class="flex justify-center gap-2">
+              <a href="{{ edit_claim_url }}/{{ claim.id }}"
+                class="bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white px-2 py-1 rounded">
+                Edit
+              </a>
+              <a href="{{ delete_claim_url }}/{{ claim.id }}"
+                class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-2 py-1 rounded">
+                Hapus
+              </a>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        {% if not claims %}
+        <tr>
+          <td colspan="15" class="px-4 py-2 text-center">Tidak ada klaim</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-4">
+    <a href="/dashboard" 
+       class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-3 py-1 rounded">
+      Kembali ke Dashboard
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

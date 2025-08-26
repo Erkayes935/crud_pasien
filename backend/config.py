@@ -16,7 +16,7 @@ clear RuntimeError listing any missing variables so the app fails fast in
 misconfigured environments.
 """
 
-import os
+import os, secrets
 from dotenv import load_dotenv
 
 # Load .env for local development (no-op if not present)
@@ -36,6 +36,10 @@ if not CLIENT_ID:
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 if not CLIENT_SECRET:
 	missing.append("CLIENT_SECRET")
+
+SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
+if not SESSION_SECRET:
+	missing.append("SESSION_SECRET")
 
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 if not REDIRECT_URI:

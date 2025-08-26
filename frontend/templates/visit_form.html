@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-lg">
+  <h1 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">
+    {{ "Tambah Kunjungan" if mode == "add" else "Edit Kunjungan" }}
+  </h1>
+
+  {% if mode == "add" %}
+    <form method="post" action="{{ url_for('add_visit') }}" class="space-y-5">
+  {% else %}
+    <form method="post" action="{{ url_for('edit_visit', visit_id=visit.id) }}" class="space-y-5">
+  {% endif %}
+
+    <!-- Tanggal Kunjungan -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tanggal Kunjungan</label>
+      <input type="date" name="tanggal_kunjungan" value="{{ visit.tanggal_kunjungan if visit else '' }}"
+             class="input-field">
+    </div>
+    
+    <!-- Jenis Kunjungan -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jenis Kunjungan</label>
+      <select name="jenis_kunjungan" class="input-field">
+        <option value="rawat_jalan" {% if visit and visit.jenis_kunjungan == 'rawat_jalan' %}selected{% endif %}>Rawat Jalan</option>
+        <option value="rawat_inap" {% if visit and visit.jenis_kunjungan == 'rawat_inap' %}selected{% endif %}>Rawat Inap</option>
+      </select>
+    </div>
+
+    <!-- Rumah Sakit -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Rumah Sakit</label>
+      <select name="hospital_id" class="input-field">
+        {% for rumah_sakit in hospitals %}
+          <option value="{{ rumah_sakit.id }}" {% if visit and visit.hospital_id == rumah_sakit.id %}selected{% endif %}>
+            {{ rumah_sakit.nama }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Dokter -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Dokter</label>
+      <input type="text" name="dokter" value="{{ visit.dokter if visit else '' }}" class="input-field">
+    </div>
+
+    <!-- ID Eksternal -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">ID Eksternal</label>
+      <input type="text" name="eksternal_id" value="{{ visit.eksternal_id if visit else '' }}" class="input-field">
+    </div>
+
+    <!-- Sumber -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Sumber</label>
+      <input type="text" name="sumber" value="{{ visit.sumber if visit else '' }}" class="input-field">
+    </div>
+
+    <!-- Poli -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Poli</label>
+      <input type="text" name="poli" value="{{ visit.poli if visit else '' }}" class="input-field">
+    </div>
+
+    <!-- Pasien -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Pasien</label>
+      <select name="patient_id" class="input-field">
+        {% for pasien in patients %}
+          <option value="{{ pasien.id }}" {% if visit and visit.patient_id == pasien.id %}selected{% endif %}>
+            {{ pasien.nama }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    
+    <!-- Buttons -->
+    <div class="flex gap-3">
+      <button type="submit"
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
+        {{ "Tambah Kunjungan" if mode == "add" else "Update Kunjungan" }}
+      </button>
+      <a href="/visits"
+         class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

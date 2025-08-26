@@ -2,84 +2,120 @@
 {% block content %}
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-2xl font-bold">Dashboard Pasien</h1>
-        <a href="/export" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Eksport Data ke Excel</a>
-    </div>
-    
-    <!-- Ringkasan Angka -->
-    <div class="grid grid-cols-2 md:grid-cols-2 gap-2 mb-6 text-center">
-        <div class="bg-white p-4 shadow rounded">
-            <p class="text-gray-500">Total Pasien</p>
-            <p class="text-xl font-semibold">{{ total_pasien }}</p>
-        </div>
-        <div class="bg-white p-4 shadow rounded">
-            <p class="text-gray-500">Pasien Hari Ini</p>
-            <p class="text-xl font-semibold">{{ pasien_hari_ini }}</p>
-        </div>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Daftar Pasien</h1>
+        <a href="/export" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
+            📤 Eksport Data ke Excel
+        </a>
     </div>
 
-    <!-- Filter -->
-    <form method="get" class="mb-4 flex gap-2 items-center">
-        <label for="date" class="text-gray-700">Filter Tanggal:</label>
-        <input type="date" id="date" name="filter_tanggal" value="{{ filter_tanggal }}" class="border rounded px-2 py-1"/>
-        <button type="submit" class="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-800">Filter</button>
-    </form>
-    
-
+    <!-- Form Cari -->
+    <div class="mb-4">
+        <form method="get" action="/patients" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input type="text" name="search" placeholder="Nama / ID Pasien"
+                   value="{{ request.get('search', '') }}" 
+                   class="border rounded px-3 py-2 w-full bg-white dark:bg-gray-800 
+                          border-gray-300 dark:border-gray-600 
+                          text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"/>
+            <div class="flex space-x-2">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Cari</button>
+                <a href="/patients" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">Reset</a>
+            </div>
+        </form>
+    </div>
+  
     <!-- Tabel Pasien -->
     <div class="overflow-x-auto">
-        <h2 class="text-xl font-semibold mb-4">Daftar Pasien</h2>
-        <table class="min-w-full bg-white shadow rounded">
-            <thead class="bg-gray-200">
+        <table class="min-w-full border-collapse bg-white dark:bg-gray-800 shadow rounded-lg">
+            <thead class="bg-gray-200 dark:bg-gray-700">
                 <tr>
-                    <th class="px-4 py-2">Nama</th>
-                    <th class="px-4 py-2">Tanggal Lahir</th>
-                    <th class="px-4 py-2">Tanggal Kunjungan</th>
-                    <th class="px-4 py-2">Diagnosis</th>
-                    <th class="px-4 py-2">Dokter</th>
-                    <th class="px-4 py-2">Tindakan</th>
-                    {% if user.role == 'doctor' %}
-                    <th class="px-4 py-2">Aksi</th>
-                    {% endif %}
+                    <th class="px-4 py-2 text-left">No. RM</th>
+                    <th class="px-4 py-2 text-left">No. KTP</th>
+                    <th class="px-4 py-2 text-left">No. BPJS</th>
+                    <th class="px-4 py-2 text-left">ID Pasien</th>
+                    <th class="px-4 py-2 text-left">ID RS</th>
+                    <th class="px-4 py-2 text-left">ID Eksternal</th>
+                    <th class="px-4 py-2 text-left">Sumber</th>
+                    <th class="px-4 py-2 text-left">Nama</th>
+                    <th class="px-4 py-2 text-left">Tanggal Lahir</th>
+                    <th class="px-4 py-2 text-left">Jenis Kelamin</th>
+                    <th class="px-4 py-2 text-left">Alamat</th>
+                    <th class="px-4 py-2 text-left">Email</th>
+                    <th class="px-4 py-2 text-left">Nomor HP</th>
+                    <th class="px-4 py-2 text-left">Dibuat</th>
+                    <th class="px-4 py-2 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in patients %}
-                <tr class="border-b text-center">
+                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
+                    <td class="px-4 py-2">{{ p.no_rm or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_ktp or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_bpjs or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.id }}</td>
+                    <td class="px-4 py-2">{{ p.hospital_id or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.eksternal_id or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.source or '-' }}</td>
                     <td class="px-4 py-2">{{ p.nama }}</td>
                     <td class="px-4 py-2">{{ p.tanggal_lahir or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.tanggal_kunjungan }}</td>
-                    <td class="px-4 py-2">{{ p.diagnosis or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.dokter or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.tindakan or '-' }}</td>
-                    {% if user.role == 'doctor' %}
-                    <td class="px-4 py-2 flex gap-2 items-center justify-center">
-                        <a href="/edit/{{ p.id }}" class="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600">Edit</a>
-                        <a href="/delete/{{ p.id }}" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Hapus</a>
-                    </td>
+                    <td class="px-4 py-2">{{ p.jenis_kelamin or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.alamat or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.email or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_hp or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.created_at or '-' }}</td>
+                    <td class="px-4 py-2 text-center">
+                    {% if flow == "claim" %}
+                        <!-- Mode wizard klaim -->
+                        <a href="/patients/{{ p.id }}/visits?flow=claim"
+                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
+                        Pilih
+                        </a>
+                    {% else %}
+                        {% if user and user.role == 'doctor' %}
+                        <div class="flex gap-2 justify-center">
+                        <a href="/patients/edit/{{ p.id }}"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
+                        <a href="/patients/delete/{{ p.id }}"
+                            class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
+                        </div>
+                        {% endif %}
                     {% endif %}
+                    </td>
+
                 </tr>
                 {% endfor %}
                 {% if not patients %}
                 <tr>
-                    <td colspan="5" class="px-4 py-2 text-center">Tidak ada data pasien</td>
+                    <td colspan="15" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                        Tidak ada data pasien
+                    </td>
                 </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
 
-    <!-- Tambah Pasien (hanya dokter) -->
-    
+    <!-- Tambah Pasien -->
     <div class="mt-6 flex justify-between items-center">
-        {% if user.role == 'doctor' %}
-        <a href="/add" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Tambah Pasien</a>
+        {% if user and user.role == 'doctor' %}
+        <a href="/patients/add" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded shadow transition">
+            ➕ Tambah Pasien
+        </a>
         {% endif %}
-        <form action="/import" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" class="border-2 rounded"/>
-            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Import</button>
+        <form action="/import" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+            <input type="file" name="file"
+                   class="border rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
+                          border-gray-300 dark:border-gray-600"/>
+            <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
+                📥 Import
+            </button>
         </form>
     </div>
-        
+
+    <div class="mt-6">
+        <a href="{{ url_for('dashboard') }}" 
+           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow transition">
+          ⬅ Kembali ke Dashboard
+        </a>
+    </div>
 </div>
 {% endblock %}

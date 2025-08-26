@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-xl mx-auto mt-10 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+  <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">
+    {{ "Tambah Pasien" if mode == "add" else "Edit Pasien" }}
+  </h2>
+
+  <!-- Notifikasi -->
+  {% if success_msg %}
+    <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded mb-4">{{ success_msg }}</div>
+  {% endif %}
+  {% if error_msg %}
+    <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded mb-4">{{ error_msg }}</div>
+  {% endif %}
+
+  {% if mode == "add" %}
+    <form method="post" action="{{ url_for('add_patient') }}" class="space-y-5">
+  {% else %}
+    <form method="post" action="{{ url_for('update_patient', patient_id=patient.id) }}" class="space-y-5">
+  {% endif %}
+
+    <!-- Nomor KTP -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor KTP</label>
+      <input type="text" name="nik" value="{{ patient.no_ktp if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- Nomor BPJS -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor BPJS</label>
+      <input type="text" name="no_bpjs" value="{{ patient.no_bpjs if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- Nomor Rekam Medis -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor Rekam Medis</label>
+      <input type="text" name="no_rekam_medis" value="{{ patient.no_rm if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- Nama -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nama</label>
+      <input type="text" name="nama" value="{{ patient.nama if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- Tanggal lahir -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tanggal Lahir</label>
+      <input type="date" name="tanggal_lahir" value="{{ patient.tanggal_lahir if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- Jenis kelamin -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jenis Kelamin</label>
+      <select name="jenis_kelamin" class="input-field">
+        <option value="L" {% if patient and patient.jenis_kelamin == 'L' %}selected{% endif %}>Laki-laki</option>
+        <option value="P" {% if patient and patient.jenis_kelamin == 'P' %}selected{% endif %}>Perempuan</option>
+      </select>
+    </div>
+
+    <!-- Alamat -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Alamat</label>
+      <textarea name="alamat" rows="3" class="input-field">{{ patient.alamat if patient else '' }}</textarea>
+    </div>
+
+    <!-- Email -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Email</label>
+      <input type="email" name="email" value="{{ patient.email if patient else '' }}" class="input-field">
+    </div>
+
+    <!-- No HP -->
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">No HP</label>
+      <input type="text" name="no_hp" value="{{ patient.no_hp if patient else '' }}" class="input-field">
+    </div>
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <!-- Buttons -->
+    <div class="flex gap-3">
+      <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition">
+        {{ "Tambah" if mode == "add" else "Update" }}
+      </button>
+      <a href="/patients" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
