@@ -1,38 +1,35 @@
-## CRUD Pasien (FastAPI + SQLAlchemy)
+# CRUD Pasien (FastAPI + SQLAlchemy)
 
-Simple patient CRUD web app using FastAPI for the backend and Jinja2 templates for the frontend.
+A small patient management web app using FastAPI (server-side rendered with
+Jinja2), SQLAlchemy ORM and Auth0 for authentication.
 
-Key features
-- Patient create / read / update / delete from a PostgreSQL database
-- Auth0-based login (id_token stored in cookie)
-- Export to Excel and import from JSON
+This README was updated to reflect recent refactors: configuration is
+environment-driven (dotenv support), inline docstrings were added to backend
+modules, and a small developer helper script was removed to keep the package
+clean.
 
-Stack
-- Python 3.10+ (project used Python 3.13 in development)
-- FastAPI
-- Uvicorn
-- SQLAlchemy (sync)
-- PostgreSQL
-- Jinja2 templates (in `frontend/templates`)
-- Auth0 for authentication
+## Quick facts
+- Python: 3.10+
+- Web framework: FastAPI
+- DB: PostgreSQL via SQLAlchemy (sync)
+- Auth: Auth0 (JWT from Auth0 stored as HttpOnly cookie)
+- Templates: Jinja2 (files in `frontend/templates`)
 
-Repository layout
-- `backend/` - FastAPI app and data models
-  - `main.py` - FastAPI app and routes
-  - `models.py` - SQLAlchemy models
-  - `crud.py` - DB helper functions
-  - `database.py` - DB connection (edit DATABASE_URL as needed)
-  - `auth.py` - Auth helper (Auth0 verification)
-  - `config.py` - Auth0 config values (replace with your values or manage securely)
-- `frontend/templates/` - Jinja2 HTML templates used by the app
 
-Prerequisites
-- PostgreSQL running and accessible. The project expects a database named `patients` by default.
-- Python 3.10+ and pip
+## Repository layout
+- `backend/` — application code
+  - `main.py` — FastAPI app & routes
+  - `models.py` — SQLAlchemy models (Patient, User)
+  - `crud.py` — typed DB helpers
+  - `database.py` — engine and `SessionLocal` (reads `DATABASE_URL`)
+  - `auth.py` — Auth0/JWT helpers and authorization decorator
+  - `config.py` — reads required Auth0 env vars and fails fast if missing
+- `frontend/templates/` — Jinja2 HTML templates
 
-Quick setup (PowerShell)
 
-1) Create a virtual environment and activate it
+## Setup (PowerShell)
+
+1) Create and activate a venv
 
 ```powershell
 python -m venv .venv
@@ -45,40 +42,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3) Configure the database
+3) Configure environment
 
-The app reads `DATABASE_URL` from the environment. Copy `.env.example` to `.env` and edit the `DATABASE_URL` line for local development. Example `.env` snippet:
+- Copy `.env.example` to `.env` and fill in values for `DATABASE_URL` and
+  Auth0 (`AUTH0_DOMAIN`, `CLIENT_ID`, `CLIENT_SECRET`, `REDIRECT_URI`,
+  `AUDIENCE`, `ALGORITHMS`). `backend/config.py` validates these at import
+  time and the app will not start if any are missing.
+
+Example .env (local dev):
 
 ```
 DATABASE_URL=postgresql://postgres:root@localhost:5432/patients
-```
-
-Either create a database and user matching that URL, or change the connection string to use your Postgres credentials.
-
-If you prefer to create the database manually, use psql (adjust to your installation):
-
-```powershell
-# CREATE DATABASE patients;
-# CREATE USER postgres WITH PASSWORD 'root';
-# -- or create a dedicated user and grant privileges
-```
-
-4) Configure Auth0
-
-Copy `.env.example` to `.env` and fill the Auth0 values there. `backend/config.py`
-will validate that the following variables are present at startup and will fail
-fast with a helpful error if any are missing:
-
-- AUTH0_DOMAIN
-- CLIENT_ID
-- CLIENT_SECRET
-- REDIRECT_URI (e.g. http://localhost:8000/callback)
-- AUDIENCE
-- ALGORITHMS (e.g. `RS256`)
-
-Example `.env` lines:
-
-```
 AUTH0_DOMAIN=dev-yourdomain.auth0.com
 CLIENT_ID=your_client_id
 CLIENT_SECRET=your_client_secret
@@ -87,59 +61,67 @@ AUDIENCE=your_audience
 ALGORITHMS=RS256
 ```
 
-5) Run the app
+4) Run the app (development)
 
 ```powershell
-# from repository root
-# start development server
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-You can then open: http://localhost:8000/welcome to begin (or `/` for the patient list page once logged in).
+Open http://localhost:8000/welcome to start.
 
-Notes & troubleshooting
-- The app uses SQLAlchemy's `Base.metadata.create_all(...)` (called in `backend/main.py`) so tables will be created automatically at startup if the DB user has the right privileges.
-- If you see connection errors, double-check `DATABASE_URL` in `backend/database.py` and confirm Postgres is running and accessible from your machine.
-- If login fails, verify the Auth0 values in `backend/config.py` and the redirect URI registered in your Auth0 application.
-- Import endpoint expects a JSON file (application/json) with an array of patient objects.
-- Export endpoint returns an Excel `.xlsx` file generated with openpyxl.
 
-Suggested next steps
-- Move secrets into environment variables and load them securely (for production). Replace hard-coded values in `backend/config.py`.
-- Add a `requirements.txt` (already added) and consider using `pip-tools` or Poetry for dependency management.
-- Add tests and CI for basic routes.
+## Code reference (summary)
 
-License
-This repo has no license file. Add one if you plan to publish or share the code.
+This project contains short module- and function-level docstrings inside the
+`backend/` modules. Quick summary:
 
-Contact / authors
-Repo owner: Erkayes935
-
-Environment file
-- Copy `.env.example` to `.env` and fill your values for local development. The app uses `python-dotenv` (loaded in `backend/config.py`).
-
-## Code reference (quick)
-
-This project embeds short module docstrings in the `backend/` modules. Quick pointers:
-
-- `backend/main.py` — HTTP routes and view rendering. Important routes:
-  - `/login`, `/callback`, `/logout` — Auth0 flows
+- `backend/main.py` — routes and view rendering
+  - `/login` `/callback` `/logout` — Auth0 flows
   - `/` — patient list (supports `filter_tanggal` query)
-  - `/add`, `/edit/{id}`, `/delete/{id}` — CRUD operations (requires `doctor` role)
-  - `/export` — returns patients.xlsx
-  - `/import` — expects JSON array upload
+  - `/add`, `/edit/{id}`, `/delete/{id}` — CRUD (requires `doctor` role)
+  - `/export` — returns `patients.xlsx`
+  - `/import` — accepts JSON array upload
 
-- `backend/models.py` — ORM models:
+- `backend/models.py` — ORM models
   - `Patient(id, nama, tanggal_lahir, tanggal_kunjungan, diagnosis, tindakan, dokter)`
   - `User(id, auth0_sub, email, role)`
 
-- `backend/crud.py` — typed helpers:
+- `backend/crud.py` — typed helpers with docstrings
   - `get_patients(db) -> List[Patient]`
   - `create_patient(db, data) -> Patient`
   - `update_patient(db, patient_id, data) -> Optional[Patient]`
   - `delete_patient(db, patient_id) -> bool`
 
-- `backend/database.py` — engine and `SessionLocal`. Reads `DATABASE_URL` from env.
-- `backend/auth.py` — JWT verification helpers and `require_role` decorator. `get_current_user` returns the `User` ORM object for the logged-in token.
+- `backend/database.py` — creates SQLAlchemy engine and `SessionLocal`; reads `DATABASE_URL` from env
+- `backend/auth.py` — `verify_jwt`, `get_current_user`, and `require_role`
 
-If you want more detailed inline docs for any specific function, tell me which ones and I'll expand their docstrings.
+
+## Important notes & troubleshooting
+
+- `backend/config.py` intentionally fails fast when required Auth0 env vars are
+  missing — this avoids running the app in a broken state.
+- The app uses `Base.metadata.create_all(...)` at startup (in
+  `backend/main.py`) — the DB user must have privileges to create tables.
+- The `import` endpoint expects JSON (`application/json`). Browser upload
+  content-types may vary; if import fails, inspect the upload content-type.
+- `auth.py` fetches Auth0 JWKS to verify tokens; network errors will fail
+  authentication. Consider caching JWKS in production.
+
+
+## Suggested improvements
+
+- Add input validation with Pydantic models for posted forms / import JSON.
+- Cache JWKS in `auth.py` to avoid network calls per request.
+- Add unit tests for CRUD operations and auth helpers.
+- Add CI workflow (GitHub Actions) that runs linters and basic tests.
+
+
+## Contact / authors
+Repo owner: Erkayes935
+
+If you'd like, I can also:
+- Add Pydantic request models and update routes to use them
+- Add JWKS caching and tests for token verification
+- Add a small PowerShell helper to initialize the DB locally
+
+Tell me which you'd like next and I will implement it.
