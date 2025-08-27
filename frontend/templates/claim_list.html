@@ -13,14 +13,20 @@
   <h1 class="text-3xl font-bold mb-4">Daftar Klaim</h1>
 
   <!-- Tombol tambah klaim -->
-  {% if user and (user.role in ['doctor','coder','verifikator']) %}
-  <div class="mb-4">
-    <a href="/claims/add/start" 
+  
+  <div class="mb-4 flex gap-2">
+    {% if user and (user.role in ['doctor','coder','verifikator']) %}
+    <a href="/patients?flow=claim" 
        class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
       Tambah Klaim
     </a>
+    {% endif %}
+    <a href="/claims/export" 
+       class="bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-3 py-1 rounded">
+      Export Semua Klaim
+    </a>
   </div>
-  {% endif %}
+  
 
   <!-- Filter -->
   <form method="get" action="{{ list_claims_url }}" class="flex flex-wrap gap-4 mb-4 items-end">
@@ -45,14 +51,6 @@
       </button>
     </div>
   </form>
-
-  <!-- Export -->
-  <div class="mb-4">
-    <a href="{{ export_claims_url }}" 
-       class="bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-3 py-1 rounded">
-      Export Semua Klaim
-    </a>
-  </div>
 
   <!-- Table -->
   <div class="overflow-x-auto">
@@ -94,21 +92,13 @@
           <td class="px-4 py-2">{{ claim.obat or '-' }}</td>
           <td class="px-4 py-2">{{ claim.status or '-' }}</td>
           <td class="px-4 py-2">{{ claim.hasil or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.created_at or '-' }}</td>
-          {% if user and user.role == 'doctor' %}
-          <td class="px-4 py-2">
-            <div class="flex justify-center gap-2">
-              <a href="{{ edit_claim_url }}/{{ claim.id }}"
-                class="bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white px-2 py-1 rounded">
-                Edit
-              </a>
-              <a href="{{ delete_claim_url }}/{{ claim.id }}"
-                class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-2 py-1 rounded">
-                Hapus
-              </a>
-            </div>
+          <td class="px-4 py-2 whitespace-nowrap">{{ claim.created_at.strftime("%Y-%m-%d %H:%M") if claim.created_at else '-' }}</td>
+          <td class="px-4 py-2 text-center whitespace-nowrap">
+            <a href="/claims/{{ claim.id }}" 
+              class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
+              🔍 Detail
+            </a>
           </td>
-          {% endif %}
         </tr>
         {% endfor %}
         {% if not claims %}

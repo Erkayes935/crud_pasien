@@ -77,11 +77,11 @@ class Claim(Base):
     kode_icd = Column(String(20))
     tindakan = Column(Text)
     obat = Column(Text)
-    status = Column(String(50), default="draft")  # contoh: draft, submitted, reviewed
+    status = Column(String(50), default="draft")
     hasil = Column(Text)
 
     # Relasi ke pasien
-    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
     patient = relationship("Patient", back_populates="claims")
 
     # Relasi ke visit

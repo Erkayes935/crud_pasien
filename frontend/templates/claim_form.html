@@ -13,9 +13,17 @@
   {% endif %}
 
     <!-- Hidden field dari wizard -->
+  {% if visit and visit.patient_id %}
     <input type="hidden" name="patient_id" value="{{ visit.patient_id }}">
+  {% elif patient %}
+    <input type="hidden" name="patient_id" value="{{ patient.id }}">
+  {% endif %}
+
+  {% if visit and visit.id %}
     <input type="hidden" name="visit_id" value="{{ visit.id }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% endif %}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
 
     <!-- Rumah Sakit (readonly dari visit) -->
     <div>

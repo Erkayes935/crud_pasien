@@ -15,7 +15,7 @@ and DB operations live in `crud.py` and models are in `models.py`.
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, or_ 
 from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 from datetime import datetime, date
@@ -181,10 +181,14 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
 
     # filter jika ada search
     if search:
-        if search.isdigit():
-            query = query.filter(models.Patient.id == int(search))
-        else:
-            query = query.filter(models.Patient.nama.ilike(f"%{search}%"))
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                func.lower(func.trim(models.Patient.nama)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_ktp)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_rm)).like(pattern.lower())
+            )
+        )
 
     patients = query.all()
     csrf_token = issue_csrf_token(request)
@@ -199,15 +203,19 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
     })
 
 
-@app.get("/patients/add")
+@app.get("/patients/add",name="add_patient")
 def add_form(request: Request, user=Depends(require_roles_session("doctor"))):
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "mode", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user})
+    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "add", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user})
 
 
-@app.post("/patients/add")
+@app.post("/patients/add",name="add_patient")
 def add_patient(
     request: Request,
+    flow: Optional[str] = None,
+    no_ktp: Optional[str] = Form(...),
+    no_bpjs: Optional[str] = Form(...),
+    no_rm: Optional[str] = Form(...),
     nama: str = Form(...),
     tanggal_lahir: Optional[str] = Form(None),
     jenis_kelamin: Optional[str] = Form(None),
@@ -220,6 +228,9 @@ def add_patient(
 ):
     try:
         crud.create_patient(db, {
+            "no_ktp": no_ktp or None,
+            "no_bpjs": no_bpjs or None,
+            "no_rm": no_rm or None,
             "nama": nama,
             "tanggal_lahir": tanggal_lahir or None,
             "jenis_kelamin": jenis_kelamin or None,
@@ -240,24 +251,31 @@ def add_patient(
                 "jenis_kelamin": jenis_kelamin,
                 "alamat": alamat,
                 "email": email,
-                "no_hp": no_hp
+                "no_hp": no_hp,
+                "no_ktp": no_ktp,
+                "no_bpjs": no_bpjs,
+                "no_rm": no_rm
             },
             "user": user,
             "current_user": user,
             "error_msg": error_msg
         })
 
-@app.get("/edit/{patient_id}")
+@app.get("/patients/edit/{patient_id}",name="edit_patient")
 def edit_form(patient_id: int, request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "edit", "patient": patient, "csrf_token": csrf_token, "user": user, "current_user": user})
 
 
-@app.post("/edit/{patient_id}")
+@app.post("/patients/edit/{patient_id}",name="update_patient")
 def update_patient(
-    request: Request,
     patient_id: int,
+    request: Request,
+    flow: Optional[str] = None,
+    no_ktp: Optional[str] = Form(...),
+    no_bpjs: Optional[str] = Form(...),
+    no_rm: Optional[str] = Form(...),
     nama: str = Form(...),
     tanggal_lahir: Optional[str] = Form(None),
     jenis_kelamin: Optional[str] = Form(None),
@@ -281,6 +299,9 @@ def update_patient(
         })
     try:
         crud.update_patient(db, patient_id, {
+            "no_ktp": no_ktp or None,
+            "no_bpjs": no_bpjs or None,
+            "no_rm": no_rm or None,
             "nama": nama,
             "tanggal_lahir": tanggal_lahir or None,
             "alamat": alamat or None,
@@ -297,6 +318,9 @@ def update_patient(
             "mode": "edit",
             "patient": {
                 "id": patient_id,
+                "no_ktp": no_ktp,
+                "no_bpjs": no_bpjs,
+                "no_rm": no_rm,
                 "nama": nama,
                 "tanggal_lahir": tanggal_lahir,
                 "jenis_kelamin": jenis_kelamin,
@@ -310,7 +334,7 @@ def update_patient(
         })
 
 
-@app.get("/delete/{patient_id}")
+@app.get("/patients/delete/{patient_id}")
 def delete_patient(patient_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
     crud.delete_patient(db, patient_id)
     csrf_token = issue_csrf_token(request)
@@ -323,9 +347,9 @@ def export_patients(db: Session = Depends(get_db), user=Depends(require_roles_se
     wb = Workbook()
     ws = wb.active
     ws.title = "Patients"
-    ws.append(["Nama", "Tanggal Lahir", "Nomor HP", "Alamat", "Email"])
+    ws.append(["Nama", "Tanggal Lahir", "Nomor HP", "Alamat", "Email", "No KTP", "No BPJS", "No Rekam Medis"])
     for p in patients:
-        ws.append([p.nama, p.tanggal_lahir, p.no_hp, p.alamat, p.email])
+        ws.append([p.nama, p.tanggal_lahir, p.no_hp, p.alamat, p.email, p.no_ktp, p.no_bpjs, p.no_rekam_medis])
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
@@ -369,7 +393,6 @@ def list_claims(
     query = db.query(models.Claim)
     # filter jika ada status
 
-
     if status:
         query = query.filter(models.Claim.status.ilike(status))  # case-insensitive
 
@@ -389,14 +412,24 @@ def list_claims(
     }
 )
 
+@app.get("/claims/{claim_id}")
+def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    return templates.TemplateResponse(
+        "claim_detail.html",
+        {"request": request, "claim": claim, "user": user, "current_user": user}
+    )
+
+
 @app.post("/claims/add")
 def add_claim(
-    csrf_token: Optional[str] = Form(...),
-    patient_id: Optional[int] = Form(...),
+    csrf_token: Optional[str] = Form(None),
+    patient_id: Optional[int] = Form(None),
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
     tanggal_kunjungan: str = Form(...),
-    jenis_kunjungan: Optional[str] = Form(None),
     dokter: Optional[str] = Form(None),
     diagnosis_awal: Optional[str] = Form(None),
     kode_icd: Optional[str] = Form(None),
@@ -434,10 +467,34 @@ def add_claim_start():
     return RedirectResponse("/patients?mode=claim")
 
 @app.get("/claims/add/form/{visit_id}")
-def claim_form(request: Request, visit_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
-    visit = db.query(models.Visit).get(visit_id)
+def claim_form(
+    request: Request,
+    visit_id: int,
+    db: Session = Depends(get_db),
+    user = Depends(require_roles_session("doctor")),
+    patient_id: int = None
+):
+    visit = db.query(models.Visit).get(visit_id) if visit_id != 0 else None
+
+    patient = None
+    if visit:  # kalau ada visit, ambil dari relasi
+        patient = visit.patient
+    elif patient_id:  # kalau wizard tanpa visit
+        patient = db.query(models.Patient).get(patient_id)
+
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("claim_form.html", {"request": request, "visit": visit, "mode": "add","claim": None, "current_user": user, "csrf_token": csrf_token})
+    return templates.TemplateResponse(
+        "claim_form.html",
+        {
+            "request": request,
+            "visit": visit,
+            "patient": patient,
+            "mode": "add",
+            "claim": None,
+            "current_user": user,
+            "csrf_token": csrf_token,
+        }
+    )
 
 @app.get("/claims/{id}/edit")
 def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","coder"))):
@@ -494,8 +551,7 @@ def update_claim(
 def delete_claim(
     id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder")),
-    _=Depends(require_csrf_dep)
+    user=Depends(require_roles_session("doctor","coder"))
 ):
     claim = db.query(models.Claim).get(id)
     if not claim:
@@ -504,7 +560,7 @@ def delete_claim(
     db.commit()
     return RedirectResponse(url="/claims", status_code=303)
 
-@app.get("/claims/export")
+@app.get("/claims/export", name="export_claims")
 def export_claims(
     status: str | None = None,
     start_date: date | None = None,
@@ -527,6 +583,7 @@ def export_claims(
         "ID Klaim",
         "Nama Pasien",
         "Tanggal Kunjungan",
+        "Jenis Kunjungan",
         "Dokter",
         "Diagnosis Awal",
         "Kode ICD",
@@ -556,7 +613,6 @@ def export_claims(
     wb.save(buffer)
     buffer.seek(0)
     filename = f"claims_{date.today().isoformat()}.xlsx"
-    csrf_token = issue_csrf_token(request)
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -662,12 +718,18 @@ def delete_user(
 # -------------------------
 
 @app.get("/visits")
-def list_visits(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
-    visits = db.query(models.Visit).all()
+def list_visits(request: Request, search: str | None = Query(None), db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
+    query = db.query(models.Visit)
+    if search:
+        query = query.filter(
+            models.Visit.dokter.ilike(f"%{search}%") |
+            models.Visit.poli.ilike(f"%{search}%")
+        )
+    visits = query.all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "visit_list.html",
-        {"request": request, "visits": visits, "user": user, "csrf_token": csrf_token, "current_user": user}
+        {"request": request, "visits": visits, "user": user, "csrf_token": csrf_token, "current_user": user, "flow": None, "patient": None}
     )
 
 @app.get("/patients/{patient_id}/visits")
@@ -675,9 +737,17 @@ def list_visit(
     request: Request, 
     patient_id: int, 
     db: Session = Depends(get_db), 
+    search: str | None = Query(None),
+    user=Depends(require_roles_session("doctor", "admin_rs")),
     flow: str = None   # <- ambil query param "flow"
 ):
-    visits = db.query(models.Visit).filter(models.Visit.patient_id == patient_id).all()
+    visits = db.query(models.Visit).filter(models.Visit.patient_id == patient_id)
+    if search:
+        visits = visits.filter(
+            models.Visit.dokter.ilike(f"%{search}%") |
+            models.Visit.poli.ilike(f"%{search}%")
+        )
+    visits = visits.all()
     patient = db.query(models.Patient).get(patient_id)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -703,6 +773,7 @@ def add_visit(
     poli: Optional[str] = Form(None),
     dokter: Optional[str] = Form(None),
     tanggal_kunjungan: Optional[date] = Form(None),
+    jenis_kunjungan: Optional[str] = Form(None),
     created_at: Optional[datetime] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor", "admin_rs")),
@@ -716,6 +787,7 @@ def add_visit(
         poli=poli or None,
         dokter=dokter or None,
         tanggal_kunjungan=tanggal_kunjungan or None,
+        jenis_kunjungan=jenis_kunjungan or None,
         created_at=created_at or datetime.utcnow(),
     )
     db.add(visit)
@@ -746,6 +818,7 @@ def edit_visit(
     poli: Optional[str] = Form(None),
     dokter: Optional[str] = Form(None),
     tanggal_kunjungan: Optional[date] = Form(None),
+    jenis_kunjungan: Optional[str] = Form(None),
     created_at: Optional[datetime] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor", "admin_rs")),
@@ -761,6 +834,7 @@ def edit_visit(
     visit.poli = poli or None
     visit.dokter = dokter or None
     visit.tanggal_kunjungan = tanggal_kunjungan or None
+    visit.jenis_kunjungan = jenis_kunjungan or None
     visit.created_at = created_at or datetime.utcnow()
     db.commit()
     db.refresh(visit)

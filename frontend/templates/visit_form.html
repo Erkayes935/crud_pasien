@@ -15,13 +15,18 @@
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tanggal Kunjungan</label>
       <input type="date" name="tanggal_kunjungan" value="{{ visit.tanggal_kunjungan if visit else '' }}"
-             class="input-field">
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
     
     <!-- Jenis Kunjungan -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jenis Kunjungan</label>
-      <select name="jenis_kunjungan" class="input-field">
+      <select name="jenis_kunjungan"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
         <option value="rawat_jalan" {% if visit and visit.jenis_kunjungan == 'rawat_jalan' %}selected{% endif %}>Rawat Jalan</option>
         <option value="rawat_inap" {% if visit and visit.jenis_kunjungan == 'rawat_inap' %}selected{% endif %}>Rawat Inap</option>
       </select>
@@ -30,43 +35,55 @@
     <!-- Rumah Sakit -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Rumah Sakit</label>
-      <select name="hospital_id" class="input-field">
-        {% for rumah_sakit in hospitals %}
-          <option value="{{ rumah_sakit.id }}" {% if visit and visit.hospital_id == rumah_sakit.id %}selected{% endif %}>
-            {{ rumah_sakit.nama }}
-          </option>
-        {% endfor %}
-      </select>
+      <input type="text" name="rumah_sakit" value="{{ visit.rumah_sakit if visit else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition" readonly>
     </div>
 
     <!-- Dokter -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Dokter</label>
-      <input type="text" name="dokter" value="{{ visit.dokter if visit else '' }}" class="input-field">
+      <input type="text" name="dokter" value="{{ visit.dokter if visit else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- ID Eksternal -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">ID Eksternal</label>
-      <input type="text" name="eksternal_id" value="{{ visit.eksternal_id if visit else '' }}" class="input-field">
+      <input type="text" name="eksternal_id" value="{{ visit.eksternal_id if visit else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Sumber -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Sumber</label>
-      <input type="text" name="sumber" value="{{ visit.sumber if visit else '' }}" class="input-field">
+      <input type="text" name="sumber" value="{{ visit.sumber if visit else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Poli -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Poli</label>
-      <input type="text" name="poli" value="{{ visit.poli if visit else '' }}" class="input-field">
+      <input type="text" name="poli" value="{{ visit.poli if visit else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Pasien -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Pasien</label>
-      <select name="patient_id" class="input-field">
+      <select name="patient_id"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
         {% for pasien in patients %}
           <option value="{{ pasien.id }}" {% if visit and visit.patient_id == pasien.id %}selected{% endif %}>
             {{ pasien.nama }}

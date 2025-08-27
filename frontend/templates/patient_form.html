@@ -7,10 +7,14 @@
 
   <!-- Notifikasi -->
   {% if success_msg %}
-    <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded mb-4">{{ success_msg }}</div>
+    <div class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded mb-4">
+      {{ success_msg }}
+    </div>
   {% endif %}
   {% if error_msg %}
-    <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded mb-4">{{ error_msg }}</div>
+    <div class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded mb-4">
+      {{ error_msg }}
+    </div>
   {% endif %}
 
   {% if mode == "add" %}
@@ -22,37 +26,55 @@
     <!-- Nomor KTP -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor KTP</label>
-      <input type="text" name="nik" value="{{ patient.no_ktp if patient else '' }}" class="input-field">
+      <input type="text" name="no_ktp" value="{{ patient.no_ktp if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Nomor BPJS -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor BPJS</label>
-      <input type="text" name="no_bpjs" value="{{ patient.no_bpjs if patient else '' }}" class="input-field">
+      <input type="text" name="no_bpjs" value="{{ patient.no_bpjs if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Nomor Rekam Medis -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nomor Rekam Medis</label>
-      <input type="text" name="no_rekam_medis" value="{{ patient.no_rm if patient else '' }}" class="input-field">
+      <input type="text" name="no_rm" value="{{ patient.no_rm if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Nama -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nama</label>
-      <input type="text" name="nama" value="{{ patient.nama if patient else '' }}" class="input-field">
+      <input type="text" name="nama" value="{{ patient.nama if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Tanggal lahir -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tanggal Lahir</label>
-      <input type="date" name="tanggal_lahir" value="{{ patient.tanggal_lahir if patient else '' }}" class="input-field">
+      <input type="date" name="tanggal_lahir" value="{{ patient.tanggal_lahir if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- Jenis kelamin -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jenis Kelamin</label>
-      <select name="jenis_kelamin" class="input-field">
+      <select name="jenis_kelamin"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
         <option value="L" {% if patient and patient.jenis_kelamin == 'L' %}selected{% endif %}>Laki-laki</option>
         <option value="P" {% if patient and patient.jenis_kelamin == 'P' %}selected{% endif %}>Perempuan</option>
       </select>
@@ -61,29 +83,40 @@
     <!-- Alamat -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Alamat</label>
-      <textarea name="alamat" rows="3" class="input-field">{{ patient.alamat if patient else '' }}</textarea>
+      <textarea name="alamat" rows="3"
+                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400 transition">{{ patient.alamat if patient else '' }}</textarea>
     </div>
 
     <!-- Email -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Email</label>
-      <input type="email" name="email" value="{{ patient.email if patient else '' }}" class="input-field">
+      <input type="email" name="email" value="{{ patient.email if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <!-- No HP -->
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">No HP</label>
-      <input type="text" name="no_hp" value="{{ patient.no_hp if patient else '' }}" class="input-field">
+      <input type="text" name="no_hp" value="{{ patient.no_hp if patient else '' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
     </div>
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
     <!-- Buttons -->
     <div class="flex gap-3">
-      <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition">
+      <button type="submit"
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition">
         {{ "Tambah" if mode == "add" else "Update" }}
       </button>
-      <a href="/patients" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
+      <a href="/patients"
+         class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
         Batal
       </a>
     </div>
