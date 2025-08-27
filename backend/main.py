@@ -136,7 +136,7 @@ def dashboard(
     total_claims = db.query(models.Claim).count()
     claims = (
         db.query(models.Claim)
-        .order_by(models.Claim.created_at.desc())   # urutkan dari yang terbaru
+        .order_by(models.Claim.id.desc())   # urutkan dari yang terbaru
         .limit(10)                           # ambil hanya 10 klaim
         .all()
     )
@@ -191,7 +191,7 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
             )
         )
 
-    patients = query.all()
+    patients = query.order_by(models.Patient.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("list.html", {
         "request": request,
@@ -406,7 +406,7 @@ def list_claims(
         models.Patient.nama.ilike(f"%{patient_name}%")
     )
 
-    claims = query.all()
+    claims = query.order_by(models.Claim.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "claim_list.html",
@@ -634,7 +634,7 @@ def export_claims(
 # -------------------------
 @app.get("/users")
 def list_users(request: Request, db: Session = Depends(get_db), current_user=Depends(require_roles_session("superadmin", "admin_rs"))):
-    users = db.query(models.User).all()
+    users = db.query(models.User).order_by(models.User.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "user_list.html",
@@ -734,7 +734,7 @@ def list_visits(request: Request, search: str | None = Query(None), db: Session 
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = query.all()
+    visits = query.order_by(models.Visit.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -756,7 +756,7 @@ def list_visit(
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = visits.all()
+    visits = visits.order_by(models.Visit.id.desc()).all()
     patient = db.query(models.Patient).get(patient_id)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -869,7 +869,7 @@ def delete_visit(
 
 @app.get("/hospitals")
 def list_hospitals(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("superadmin","admin_rs"))):
-    hospitals = db.query(models.Hospital).all()
+    hospitals = db.query(models.Hospital).order_by(models.Hospital.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "hospital_list.html",
