@@ -186,7 +186,8 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
             or_(
                 func.lower(func.trim(models.Patient.nama)).like(pattern.lower()),
                 func.lower(func.trim(models.Patient.no_ktp)).like(pattern.lower()),
-                func.lower(func.trim(models.Patient.no_rm)).like(pattern.lower())
+                func.lower(func.trim(models.Patient.no_rm)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_bpjs)).like(pattern.lower())
             )
         )
 
