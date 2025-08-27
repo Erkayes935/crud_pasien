@@ -16,7 +16,7 @@ from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPExcep
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_ 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlencode
 from datetime import datetime, date
 from openpyxl import Workbook, load_workbook
@@ -387,6 +387,7 @@ def list_claims(
     request: Request,
     status: str | None = Query(None),
     tanggal_kunjungan: str | None = Query(None),
+    patient_name: str | None = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))
 ):
@@ -399,6 +400,11 @@ def list_claims(
     if tanggal_kunjungan:
         query = query.filter(models.Claim.tanggal_kunjungan == tanggal_kunjungan)
 
+    if patient_name:
+        query = query.join(models.Patient).filter(
+        models.Patient.nama.ilike(f"%{patient_name}%")
+    )
+
     claims = query.all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
@@ -409,6 +415,8 @@ def list_claims(
         "csrf_token": csrf_token, 
         "current_user": user,
         "status": status,
+        "tanggal_kunjungan": tanggal_kunjungan,
+        "patient_name": patient_name
     }
 )
 
