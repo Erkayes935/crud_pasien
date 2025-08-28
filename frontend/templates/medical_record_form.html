@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Form Rekam Medis{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100 text-center">📝 Form Rekam Medis</h1>
+
+<form method="post" class="space-y-5 bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow-md max-w-xl mx-auto" action="{{ url_for('add_medical_record') }}">
+    <!-- Nama Pasien -->
+    <div>
+        <label for="patient_name" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Nama Pasien</label>
+        <input type="text" id="patient_name" name="patient_name"
+               class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                      bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                      focus:ring-2 focus:ring-blue-400 focus:outline-none">
+    </div>
+
+    <!-- Tanggal Kunjungan -->
+    <div>
+        <label for="visit_date" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Tanggal Kunjungan</label>
+        <input type="date" id="visit_date" name="visit_date"
+               class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                      bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                      focus:ring-2 focus:ring-blue-400 focus:outline-none">
+    </div>
+
+    <!-- Nama Dokter -->
+    <div>
+        <label for="doctor_name" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Nama Dokter</label>
+        <input type="text" id="doctor_name" name="doctor_name"
+               class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                      bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                      focus:ring-2 focus:ring-blue-400 focus:outline-none">
+    </div>
+
+    <!-- Riwayat Medis -->
+    <div>
+        <label for="medical_history" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Riwayat Medis</label>
+        <textarea id="medical_history" name="medical_history" rows="4"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                         bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                         focus:ring-2 focus:ring-blue-400 focus:outline-none"></textarea>
+    </div>
+
+    <!-- Tindakan -->
+    <div>
+        <label for="tindakan" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Tindakan</label>
+        <textarea id="tindakan" name="tindakan" rows="3"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                         bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                         focus:ring-2 focus:ring-green-400 focus:outline-none"
+                  placeholder="Contoh: Pemeriksaan fisik, CT-Scan"></textarea>
+    </div>
+
+    <!-- Obat -->
+    <div>
+        <label for="obat" class="block mb-1 font-medium text-gray-700 dark:text-gray-300">Obat</label>
+        <textarea id="obat" name="obat" rows="3"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 
+                         bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200
+                         focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                  placeholder="Contoh: Paracetamol 500mg, Amoxicillin"></textarea>
+    </div>
+
+    <!-- Tombol Simpan -->
+    <div class="pt-2">
+        <button type="submit"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm font-medium transition">
+            💾 Simpan
+        </button>
+        <a href="/medical-records"
+           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow-sm font-medium transition">
+            ❌ Batal
+        </a>
+    </div>
+</form>
+{% endblock %}

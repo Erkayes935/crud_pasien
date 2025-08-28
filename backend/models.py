@@ -9,7 +9,7 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum
 from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime
@@ -34,11 +34,11 @@ class Hospital(Base):
     admin_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # relasi
-    admin = relationship("User", back_populates="hospital_admin", foreign_keys=[admin_id])
-    patients = relationship("Patient", back_populates="hospital", cascade="all, delete-orphan")
-    visits = relationship("Visit", back_populates="hospital", cascade="all, delete-orphan")
-    claims = relationship("Claim", back_populates="hospital", cascade="all, delete-orphan")
-
+    admin = relationship("User", back_populates="admin_of_hospital", foreign_keys=[admin_id], post_update=True)
+    patients = relationship("Patient", back_populates="hospital", foreign_keys="Patient.hospital_id")
+    visits = relationship("Visit", back_populates="hospital", foreign_keys="Visit.hospital_id")
+    claims = relationship("Claim", back_populates="hospital", foreign_keys="Claim.hospital_id")
+    users = relationship("User", back_populates="hospital", foreign_keys="User.hospital_id")
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -47,7 +47,7 @@ class Patient(Base):
     no_rm = Column(String(20), unique=True, nullable=True)
     no_ktp = Column(String(20), unique=True, nullable=True)
     no_bpjs = Column(String(20), unique=True, nullable=True)
-    nama = Column(String(100), nullable=False)
+    nama = Column(String(100), nullable=True)
     tanggal_lahir = Column(Date)
     alamat = Column(Text)
     email = Column(String(120), unique=True, nullable=True)
@@ -58,12 +58,14 @@ class Patient(Base):
 
     # relasi ke hospital
     hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
-    hospital = relationship("Hospital", back_populates="patients")
+    hospital = relationship("Hospital", back_populates="patients", foreign_keys=[hospital_id])
     # Relasi: 1 pasien → banyak kunjungan
-    visits = relationship("Visit", back_populates="patient", cascade="all, delete-orphan")
+    visits = relationship("Visit", back_populates="patient", foreign_keys="Visit.patient_id")
     # Relasi: 1 pasien → banyak klaim
-    claims = relationship("Claim", back_populates="patient", cascade="all, delete-orphan")
+    claims = relationship("Claim", back_populates="patient", foreign_keys="Claim.patient_id")
     created_at = Column(DateTime, default=datetime.utcnow)
+    # relasi ke medical records
+    medical_records = relationship("MedicalRecord", back_populates="patient", foreign_keys="MedicalRecord.patient_id")
 
 
 class Claim(Base):
@@ -72,7 +74,11 @@ class Claim(Base):
     id = Column(Integer, primary_key=True, index=True)
     tanggal_kunjungan = Column(Date, nullable=True)
     tanggal_claim = Column(Date, nullable=True)
-    dokter = Column(String(100), nullable=True)
+
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)   # dokter pembuat klaim
+    doctor = relationship("User", back_populates="claims_as_doctor", foreign_keys=[doctor_id])      # relasi ke User (role=doctor)
+    doctor_name = Column(String(100), nullable=True)                      # opsional (audit)
+
     diagnosis_awal = Column(Text)
     kode_icd = Column(String(20))
     tindakan = Column(Text)
@@ -82,20 +88,19 @@ class Claim(Base):
 
     # Relasi ke pasien
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
-    patient = relationship("Patient", back_populates="claims")
+    patient = relationship("Patient", back_populates="claims", foreign_keys=[patient_id])
 
     # Relasi ke visit
     visit_id = Column(Integer, ForeignKey("visits.id"), nullable=True)
-    visit = relationship("Visit", back_populates="claims")
+    visit = relationship("Visit", back_populates="claims", foreign_keys=[visit_id])
 
     # Relasi ke rumah sakit
     hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
-    hospital = relationship("Hospital", back_populates="claims")
+    hospital = relationship("Hospital", back_populates="claims", foreign_keys=[hospital_id])
 
-    # Relasi ke user (siapa yg buat klaim)
-    created_by = Column(Integer, ForeignKey("users.id"))
+    # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
-    creator = relationship("User", back_populates="claims")
+
 
 
 class Visit(Base):
@@ -108,29 +113,84 @@ class Visit(Base):
     tanggal_kunjungan = Column(Date, nullable=True)
     jenis_kunjungan = Column(String(100), nullable=True)
     poli = Column(String(100), nullable=True)
-    dokter = Column(String(100), nullable=True)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    doctor_name = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relasi ke pasien
-    patient = relationship("Patient", back_populates="visits")
+    patient = relationship("Patient", back_populates="visits", foreign_keys=[patient_id])
     # Relasi ke rumah sakit
-    hospital = relationship("Hospital", back_populates="visits")
+    hospital = relationship("Hospital", back_populates="visits", foreign_keys=[hospital_id])
     # Relasi ke klaim
-    claims = relationship("Claim", back_populates="visit", cascade="all, delete-orphan")
+    claims = relationship("Claim", back_populates="visit", foreign_keys="Claim.visit_id")
+    # Relasi ke medical records
+    medical_records = relationship("MedicalRecord", back_populates="visit", foreign_keys="MedicalRecord.visit_id")
+    # Relasi ke dokter
+    doctor = relationship("User", back_populates="visits", foreign_keys=[doctor_id])
+
+class MedicalRecord(Base):
+    __tablename__ = "medical_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    record_type = Column(String(100), nullable=True)
+    is_final = Column(Boolean, default=False)
+    notes_date = Column(Date, nullable=True, default=datetime.utcnow)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    doctor_name = Column(String(100), nullable=True)
+    riwayat_penyakit = Column(Text, nullable=True)
+    riwayat_pengobatan = Column(Text, nullable=True)
+    riwayat_operasi = Column(Text, nullable=True)
+    alergi = Column(Text, nullable=True)
+    keluhan = Column(Text, nullable=True)
+    gejala_lain = Column(Text, nullable=True)
+    td = Column(String(100), nullable=True)
+    nadi = Column(String(100), nullable=True)
+    pernapasan = Column(String(100), nullable=True)
+    suhu = Column(String(100), nullable=True)
+    spo2 = Column(String(100), nullable=True)
+    berat_badan = Column(String(100), nullable=True)
+    tinggi_badan = Column(String(100), nullable=True)
+    hemoglobin = Column(String(100), nullable=True)
+    leukosit = Column(String(100), nullable=True)
+    trombosit = Column(String(100), nullable=True)
+    gula_darah = Column(String(100), nullable=True)
+    creatinin = Column(String(100), nullable=True)
+    rontgen_thorax = Column(Text, nullable=True)
+    ct_scan = Column(Text, nullable=True)
+    usg = Column(Text, nullable=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
+    visit_id = Column(Integer, ForeignKey("visits.id"), nullable=True)
+    diagnosis_awal = Column(Text, nullable=True)
+    komorbid = Column(Text, nullable=True)
+    komplikasi = Column(Text, nullable=True)
+    diagnosis_akhir = Column(Text, nullable=True)
+    tindakan = Column(Text, nullable=True)
+    obat = Column(Text, nullable=True)
+    validasi_fornas = Column(Text, nullable=True)
+    notes_doctor = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relasi ke pasien
+    patient = relationship("Patient", back_populates="medical_records", foreign_keys=[patient_id])
+    # Relasi ke kunjungan
+    visit = relationship("Visit", back_populates="medical_records", foreign_keys=[visit_id])
+    # Relasi ke dokter (if user.role == doctor)
+    doctor = relationship("User", back_populates="medical_records", foreign_keys=[doctor_id])
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    auth0_sub = Column(String, unique=True, index=True, nullable=True)
-    email = Column(String, unique=True, nullable=False)
-    role = Column(String, nullable=False, default="doctor")
-    password = Column(String, nullable=True)
-    jabatan = Column(String, nullable=True)
-    dokter_id = Column(String, nullable=True)
+    auth0_sub = Column(String, unique=True, index=True, nullable=True)  # sinkron ke Auth0 user_id
+    email = Column(String, unique=True, nullable=True)
+    name = Column(String, nullable=True)  # ✅ Wajib, untuk identitas user
+    role = Column(String(50), nullable=True, default="doctor")
+    jabatan = Column(String, nullable=True)   # khusus dokter/admin
+    sip_number = Column(String, nullable=True) # khusus dokter
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)  # kalau admin_rs
 
-    # kalau dia admin_rs, relasinya ke hospital
-    hospital_admin = relationship("Hospital", back_populates="admin", uselist=False, foreign_keys=[Hospital.admin_id])
-
-    # Relasi: 1 user bisa bikin banyak klaim
-    claims = relationship("Claim", back_populates="creator")
+    hospital = relationship("Hospital", back_populates="users", foreign_keys=[hospital_id])
+    admin_of_hospital = relationship("Hospital", back_populates="admin", foreign_keys=[Hospital.admin_id])
+    claims_as_doctor = relationship("Claim", back_populates="doctor", foreign_keys=[Claim.doctor_id])
+    visits = relationship("Visit", back_populates="doctor", foreign_keys=[Visit.doctor_id])
+    medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])

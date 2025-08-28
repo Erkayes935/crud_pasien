@@ -193,7 +193,7 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
 
     patients = query.order_by(models.Patient.id.desc()).all()
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("list.html", {
+    return templates.TemplateResponse("patient_list.html", {
         "request": request,
         "patients": patients,
         "user": user,
@@ -421,6 +421,65 @@ def list_claims(
     }
 )
 
+@app.get("/claims/export", name="export_claims")
+def export_claims(
+    status: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor","coder","verifikator","admin_rs","superadmin"))
+):
+    query = db.query(models.Claim).join(models.Patient)
+    if status:
+        query = query.filter(models.Claim.status == status)
+    if start_date:
+        query = query.filter(models.Claim.tanggal_kunjungan >= start_date)
+    if end_date:
+        query = query.filter(models.Claim.tanggal_kunjungan <= end_date)
+    claims = query.all()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Claims"
+    ws.append([
+        "ID Klaim",
+        "Nama Pasien",
+        "Tanggal Kunjungan",
+        "Jenis Kunjungan",
+        "Dokter",
+        "Diagnosis Awal",
+        "Kode ICD",
+        "Tindakan",
+        "Obat",
+        "Status",
+        "Hasil",
+        "Created By",
+        "Created At"
+    ])
+    for c in claims:
+        ws.append([
+            c.patient.id if c.patient else '-',
+            c.patient.nama if c.patient else '-',
+            c.tanggal_kunjungan.isoformat() if c.tanggal_kunjungan else '',
+            c.doctor_name or '',
+            c.diagnosis_awal or '',
+            c.kode_icd or '',
+            c.tindakan or '',
+            c.obat or '',
+            c.status or '',
+            c.hasil or '',
+            c.creator.email or '',
+            c.created_at.isoformat() if c.created_at else '',
+        ])
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    filename = f"claims_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @app.get("/claims/{claim_id}")
 def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))):
     claim = db.query(models.Claim).get(claim_id)
@@ -439,7 +498,8 @@ def add_claim(
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
     tanggal_kunjungan: str = Form(...),
-    dokter: Optional[str] = Form(None),
+    doctor_id: Optional[str] = Form(None),
+    doctor_name: Optional[str] = Form(None),
     diagnosis_awal: Optional[str] = Form(None),
     kode_icd: Optional[str] = Form(None),
     tindakan: Optional[str] = Form(None),
@@ -455,7 +515,8 @@ def add_claim(
         visit_id=visit_id or None,
         hospital_id=hospital_id or None,
         tanggal_kunjungan=tanggal_kunjungan,
-        dokter=dokter or None,
+        doctor_id=doctor_id or None,
+        doctor_name=doctor_name or None,
         diagnosis_awal=diagnosis_awal or None,
         kode_icd=kode_icd or None,
         tindakan=tindakan or None,
@@ -527,7 +588,8 @@ def update_claim(
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
     tanggal_kunjungan: str = Form(...),
-    dokter: Optional[str] = Form(None),
+    doctor_id: Optional[int] = Form(None),
+    doctor_name: Optional[str] = Form(None),
     diagnosis_awal: Optional[str] = Form(None),
     kode_icd: Optional[str] = Form(None),
     tindakan: Optional[str] = Form(None),
@@ -545,7 +607,8 @@ def update_claim(
     claim.visit_id = visit_id or None
     claim.hospital_id = hospital_id or None
     claim.tanggal_kunjungan = tanggal_kunjungan
-    claim.dokter = dokter or None
+    claim.doctor_id = doctor_id or None
+    claim.doctor_name = doctor_name or None
     claim.diagnosis_awal = diagnosis_awal or None
     claim.kode_icd = kode_icd or None
     claim.tindakan = tindakan or None
@@ -568,65 +631,6 @@ def delete_claim(
     db.delete(claim)
     db.commit()
     return RedirectResponse(url="/claims", status_code=303)
-
-@app.get("/claims/export", name="export_claims")
-def export_claims(
-    status: str | None = None,
-    start_date: date | None = None,
-    end_date: date | None = None,
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder","verifikator","admin_rs","superadmin"))
-):
-    query = db.query(models.Claim).join(models.Patient)
-    if status:
-        query = query.filter(models.Claim.status == status)
-    if start_date:
-        query = query.filter(models.Claim.tanggal_kunjungan >= start_date)
-    if end_date:
-        query = query.filter(models.Claim.tanggal_kunjungan <= end_date)
-    claims = query.all()
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Claims"
-    ws.append([
-        "ID Klaim",
-        "Nama Pasien",
-        "Tanggal Kunjungan",
-        "Jenis Kunjungan",
-        "Dokter",
-        "Diagnosis Awal",
-        "Kode ICD",
-        "Tindakan",
-        "Obat",
-        "Status",
-        "Hasil",
-        "Created By",
-        "Created At"
-    ])
-    for c in claims:
-        ws.append([
-            c.patient.id if c.patient else '-',
-            c.patient.nama if c.patient else '-',
-            c.tanggal_kunjungan.isoformat() if c.tanggal_kunjungan else '',
-            c.dokter or '',
-            c.diagnosis_awal or '',
-            c.kode_icd or '',
-            c.tindakan or '',
-            c.obat or '',
-            c.status or '',
-            c.hasil or '',
-            c.creator.email or '',
-            c.created_at.isoformat() if c.created_at else '',
-        ])
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    filename = f"claims_{date.today().isoformat()}.xlsx"
-    return StreamingResponse(
-        buffer,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
 
 
 # -------------------------
@@ -780,7 +784,8 @@ def add_visit(
     eksternal_id: Optional[str] = Form(None),
     sumber: Optional[str] = Form(None),
     poli: Optional[str] = Form(None),
-    dokter: Optional[str] = Form(None),
+    doctor_id: Optional[int] = Form(None),
+    doctor_name: Optional[str] = Form(None),
     tanggal_kunjungan: Optional[date] = Form(None),
     jenis_kunjungan: Optional[str] = Form(None),
     created_at: Optional[datetime] = Form(None),
@@ -794,7 +799,8 @@ def add_visit(
         eksternal_id=eksternal_id or None,
         sumber=sumber or None,
         poli=poli or None,
-        dokter=dokter or None,
+        doctor_id=doctor_id or None,
+        doctor_name=doctor_name or None,
         tanggal_kunjungan=tanggal_kunjungan or None,
         jenis_kunjungan=jenis_kunjungan or None,
         created_at=created_at or datetime.utcnow(),
@@ -825,7 +831,8 @@ def edit_visit(
     eksternal_id: Optional[str] = Form(None),
     sumber: Optional[str] = Form(None),
     poli: Optional[str] = Form(None),
-    dokter: Optional[str] = Form(None),
+    doctor_id: Optional[int] = Form(None),
+    doctor_name: Optional[str] = Form(None),
     tanggal_kunjungan: Optional[date] = Form(None),
     jenis_kunjungan: Optional[str] = Form(None),
     created_at: Optional[datetime] = Form(None),
@@ -841,7 +848,8 @@ def edit_visit(
     visit.eksternal_id = eksternal_id or None
     visit.sumber = sumber or None
     visit.poli = poli or None
-    visit.dokter = dokter or None
+    visit.doctor_id = doctor_id or None
+    visit.doctor_name = doctor_name or None
     visit.tanggal_kunjungan = tanggal_kunjungan or None
     visit.jenis_kunjungan = jenis_kunjungan or None
     visit.created_at = created_at or datetime.utcnow()
@@ -945,3 +953,106 @@ def delete_hospital(
     db.delete(hospital)
     db.commit()
     return RedirectResponse(url="/hospitals", status_code=303)
+
+#---------------------
+# End Hospital Routes
+#---------------------
+
+# Medical Record Routes
+
+@app.get("/medical-records")
+def list_medical_records(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
+    medical_records = db.query(models.MedicalRecord).order_by(models.MedicalRecord.id.desc()).all()
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse(
+        "medical_record_list.html",
+        {"request": request, "medical_records": medical_records, "user": user, "csrf_token": csrf_token, "current_user": user}
+    )
+
+
+@app.get("/medical-records/add")
+def add_medical_record_form(request: Request, user=Depends(require_roles_session("doctor", "admin_rs"))):
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse(
+        "medical_record_form.html",
+        {"request": request, "mode": "add", "user": user, "csrf_token": csrf_token, "current_user": user}
+    )
+
+
+@app.post("/medical-records/add", name="add_medical_record")
+def add_medical_record(
+    patient_name: Optional[str] = Form(...),
+    visit_date: Optional[str] = Form(...),
+    doctor_name: Optional[str] = Form(...),
+    medical_history: Optional[str] = Form(...),
+    tindakan: Optional[str] = Form(...),
+    obat: Optional[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("doctor", "admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    medical_record = models.MedicalRecord(
+        patient_name=patient_name or None,
+        visit_date=visit_date or None,
+        doctor_name=doctor_name or None,
+        medical_history=medical_history or None,
+        tindakan=tindakan or None,
+        obat=obat or None,
+        created_by=current_user.id
+    )
+    db.add(medical_record)
+    db.commit()
+    db.refresh(medical_record)
+    return RedirectResponse(url="/medical_records", status_code=303)
+
+@app.get("/medical-records/{record_id}/edit", name="edit_medical_record")
+def edit_medical_record_form(request: Request, record_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles_session("doctor", "admin_rs"))):
+    medical_record = db.query(models.MedicalRecord).get(record_id)
+    if not medical_record:
+        raise HTTPException(status_code=404, detail="Medical record not found")
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse(
+        "medical_record_form.html",
+        {"request": request, "mode": "edit", "medical_record": medical_record, "csrf_token": csrf_token, "current_user": current_user, "user": current_user}
+    )
+
+@app.post("/medical-records/{record_id}/edit", name="edit_medical_record")
+def edit_medical_record(
+    record_id: int,
+    patient_name: Optional[str] = Form(...),
+    visit_date: Optional[str] = Form(...),
+    doctor_name: Optional[str] = Form(...),
+    medical_history: Optional[str] = Form(...),
+    tindakan: Optional[str] = Form(...),
+    obat: Optional[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("doctor", "admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    medical_record = db.query(models.MedicalRecord).get(record_id)
+    if not medical_record:
+        raise HTTPException(status_code=404, detail="Medical record not found")
+    medical_record.patient_name = patient_name or None
+    medical_record.visit_date = visit_date or None
+    medical_record.doctor_name = doctor_name or None
+    medical_record.medical_history = medical_history or None
+    medical_record.tindakan = tindakan or None
+    medical_record.obat = obat or None
+    db.commit()
+    db.refresh(medical_record)
+    return RedirectResponse(url="/medical_records", status_code=303)
+
+@app.get("/medical-records/{record_id}/delete", name="delete_medical_record")
+def delete_medical_record(
+    record_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("doctor", "admin_rs"))
+):
+    medical_record = db.query(models.MedicalRecord).get(record_id)
+    if not medical_record:
+        raise HTTPException(status_code=404, detail="Medical record not found")
+    db.delete(medical_record)
+    db.commit()
+    return RedirectResponse(url="/medical_records", status_code=303)
+
+# End Medical Record Routes

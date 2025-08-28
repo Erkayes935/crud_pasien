@@ -16,50 +16,80 @@
         <p class="text-gray-500 dark:text-gray-400">Pasien Hari Ini</p>
         <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ pasien_hari_ini }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+
+      <!-- Klaim lebih menonjol dengan border warna -->
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-green-500">
         <p class="text-gray-500 dark:text-gray-400">Klaim Bulan Ini</p>
-        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ total_claims }}</p>
+        <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ total_claims }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-yellow-500">
         <p class="text-gray-500 dark:text-gray-400">Draft</p>
-        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ draft_claims }}</p>
+        <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ draft_claims }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-blue-500">
         <p class="text-gray-500 dark:text-gray-400">Submitted</p>
-        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ submitted_claims }}</p>
+        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ submitted_claims }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-purple-500">
         <p class="text-gray-500 dark:text-gray-400">Verified</p>
-        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ verified_claims }}</p>
+        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ verified_claims }}</p>
       </div>
     {% endif %}
 
     {% if user and user.role in ['superadmin','admin_rs'] %}
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
+      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-pink-500">
         <p class="text-gray-500 dark:text-gray-400">Total User</p>
-        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ total_users }}</p>
+        <p class="text-3xl font-bold text-pink-600 dark:text-pink-400">{{ total_users }}</p>
       </div>
     {% endif %}
   </div>
-
   <!-- Quick Links -->
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     {% if user and user.role == 'doctor' %}
-      <a href="/visits" class="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg shadow text-center">🏥 Daftar Kunjungan</a>
-      <a href="/patients" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg shadow text-center">📝 Daftar Pasien</a>
-      <a href="/claims" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg shadow text-center">📄 Semua Klaim</a>
-      <a href="/claims/export" class="bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-lg shadow text-center">📤 Export</a>
+      <!-- Klaim tetap menonjol -->
+      <a href="/claims" 
+        class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg shadow text-center font-medium">
+        📄 Semua Klaim
+      </a>
+
+      <!-- Yang lain jadi secondary (flat look) -->
+      <a href="/visits" 
+        class="border border-orange-300 text-orange-700 bg-white hover:bg-orange-50 p-4 rounded-lg text-center">
+        🏥 Daftar Kunjungan
+      </a>
+      <a href="/patients" 
+        class="border border-blue-300 text-blue-700 bg-white hover:bg-blue-50 p-4 rounded-lg text-center">
+        📝 Daftar Pasien
+      </a>
+      <a href="/medical-records"
+        class="border border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 p-4 rounded-lg text-center">
+        🏥 Rekam Medis
+      </a>
+      <a href="/claims/export" 
+        class="border border-yellow-300 text-yellow-700 bg-white hover:bg-yellow-50 p-4 rounded-lg text-center">
+        📤 Export
+      </a>
     {% endif %}
 
     {% if user and user.role in ['superadmin','admin_rs'] %}
-      <a href="/users" class="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg shadow text-center">👥 User Management</a>
+      <a href="/users" 
+        class="border border-purple-300 text-purple-700 bg-white hover:bg-purple-50 p-4 rounded-lg text-center">
+        👥 User Management
+      </a>
       {% if user.role == 'admin_rs' %}
-        <a href="/export" class="bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-lg shadow text-center">📤 Export</a>
+        <a href="/export" 
+          class="border border-yellow-300 text-yellow-700 bg-white hover:bg-yellow-50 p-4 rounded-lg text-center">
+          📤 Export
+        </a>
       {% else %}
-        <a href="/hospitals" class="bg-teal-500 hover:bg-teal-600 text-white p-4 rounded-lg shadow text-center">🏨 Manajemen RS</a>
+        <a href="/hospitals" 
+          class="border border-teal-300 text-teal-700 bg-white hover:bg-teal-50 p-4 rounded-lg text-center">
+          🏨 Manajemen RS
+        </a>
       {% endif %}
     {% endif %}
   </div>
+
 
   <!-- Klaim terbaru -->
   {% if user and (user.role in ['doctor','coder','verifikator']) %}
