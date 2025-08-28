@@ -1019,28 +1019,47 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
 @app.post("/medical-records/{record_id}/edit", name="edit_medical_record")
 def edit_medical_record(
     record_id: int,
-    patient_name: Optional[str] = Form(...),
-    visit_date: Optional[str] = Form(...),
-    doctor_name: Optional[str] = Form(...),
-    medical_history: Optional[str] = Form(...),
-    tindakan: Optional[str] = Form(...),
-    obat: Optional[str] = Form(...),
+    medical_history: str = Form(...),
+    tindakan: str = Form(...),
+    obat: str = Form(...),
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs")),
+    current_user=Depends(require_roles_session("doctor","admin_rs")),
     _=Depends(require_csrf_dep)
 ):
-    medical_record = db.query(models.MedicalRecord).get(record_id)
-    if not medical_record:
+    record = db.query(models.MedicalRecord).get(record_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Medical record not found")
-    medical_record.patient_name = patient_name or None
-    medical_record.visit_date = visit_date or None
-    medical_record.doctor_name = doctor_name or None
-    medical_record.medical_history = medical_history or None
-    medical_record.tindakan = tindakan or None
-    medical_record.obat = obat or None
+
+    # 1. ambil isi lama dan simpan ke logs
+    snapshot = {
+        "medical_history": record.medical_history,
+        "tindakan": record.tindakan,
+        "obat": record.obat,
+        "updated_at": record.created_at.isoformat() if record.created_at else None
+    }
+    last_version = db.query(models.MedicalRecordLog)\
+                     .filter(models.MedicalRecordLog.medical_record_id == record.id)\
+                     .order_by(models.MedicalRecordLog.version.desc())\
+                     .first()
+    next_version = (last_version.version + 1) if last_version else 1
+
+    log = models.MedicalRecordLog(
+        medical_record_id=record.id,
+        version=next_version,
+        data_snapshot=snapshot,
+        updated_by=current_user.id
+    )
+    db.add(log)
+
+    # 2. update record utama
+    record.medical_history = medical_history
+    record.tindakan = tindakan
+    record.obat = obat
+
     db.commit()
-    db.refresh(medical_record)
-    return RedirectResponse(url="/medical_records", status_code=303)
+    db.refresh(record)
+    return RedirectResponse(url=f"/medical-records/{record.id}", status_code=303)
+
 
 @app.get("/medical-records/{record_id}/delete", name="delete_medical_record")
 def delete_medical_record(
@@ -1054,5 +1073,22 @@ def delete_medical_record(
     db.delete(medical_record)
     db.commit()
     return RedirectResponse(url="/medical_records", status_code=303)
+
+@app.get("/medical-records/{record_id}/logs", name="medical_record_logs")
+def medical_record_logs(record_id: int, request: Request, db: Session = Depends(get_db)):
+    record = db.query(models.MedicalRecord).get(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Medical record not found")
+
+    logs = db.query(models.MedicalRecordLog)\
+             .filter(models.MedicalRecordLog.medical_record_id == record_id)\
+             .order_by(models.MedicalRecordLog.version.desc())\
+             .all()
+
+    return templates.TemplateResponse(
+        "medical_record_detail.html",
+        {"request": request, "record": record, "logs": logs}
+    )
+
 
 # End Medical Record Routes

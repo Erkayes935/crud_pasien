@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Detail Rekam Medis{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">🩺 Detail Rekam Medis</h1>
+
+<div x-data="{ tab: 'latest' }">
+  <!-- Tab header -->
+  <div class="border-b mb-4 flex space-x-4">
+    <button @click="tab = 'latest'"
+            :class="tab==='latest' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'"
+            class="px-4 py-2 font-medium">
+      Data Terbaru
+    </button>
+    <button @click="tab = 'logs'"
+            :class="tab==='logs' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'"
+            class="px-4 py-2 font-medium">
+      Histori
+    </button>
+  </div>
+
+  <!-- Tab content -->
+  <div x-show="tab === 'latest'" class="space-y-3">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-2">📌 Data Terbaru</h2>
+      <p><strong>Pasien:</strong> {{ medical_record.patient.nama }}</p>
+      <p><strong>Dokter:</strong> {{ medical_record.doctor.name }}</p>
+      <p><strong>Tanggal:</strong> {{ medical_record.created_at }}</p>
+      <p><strong>Riwayat Medis:</strong> {{ medical_record.medical_history }}</p>
+      <p><strong>Tindakan:</strong> {{ medical_record.tindakan }}</p>
+      <p><strong>Obat:</strong> {{ medical_record.obat }}</p>
+    </div>
+  </div>
+
+  <div x-show="tab === 'logs'" class="space-y-3">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-2">📜 Histori</h2>
+      <table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700 rounded">
+        <thead class="bg-gray-100 dark:bg-gray-700">
+          <tr>
+            <th class="px-3 py-2">Versi</th>
+            <th class="px-3 py-2">Tanggal Update</th>
+            <th class="px-3 py-2">Updated By</th>
+            <th class="px-3 py-2">Snapshot</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+          {% for log in logs %}
+          <tr>
+            <td class="px-3 py-2">{{ log.version }}</td>
+            <td class="px-3 py-2">{{ log.updated_at }}</td>
+            <td class="px-3 py-2">{{ log.user.name if log.user else '-' }}</td>
+            <td class="px-3 py-2">
+              <pre class="text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded">{{ log.data_snapshot | tojson(indent=2) }}</pre>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

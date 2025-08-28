@@ -10,6 +10,7 @@ Defines the SQLAlchemy ORM models used by the application:
 """
 
 from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime
@@ -176,6 +177,9 @@ class MedicalRecord(Base):
     visit = relationship("Visit", back_populates="medical_records", foreign_keys=[visit_id])
     # Relasi ke dokter (if user.role == doctor)
     doctor = relationship("User", back_populates="medical_records", foreign_keys=[doctor_id])
+    # Relasi ke log perubahan
+    logs = relationship("MedicalRecordLog", back_populates="medical_record", foreign_keys="MedicalRecordLog.medical_record_id")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -194,3 +198,16 @@ class User(Base):
     claims_as_doctor = relationship("Claim", back_populates="doctor", foreign_keys=[Claim.doctor_id])
     visits = relationship("Visit", back_populates="doctor", foreign_keys=[Visit.doctor_id])
     medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])
+
+class MedicalRecordLog(Base):
+    __tablename__ = "medical_record_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    medical_record_id = Column(Integer, ForeignKey("medical_records.id"))
+    version = Column(Integer, nullable=True)
+    data_snapshot = Column(JSONB, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_by = Column(Integer, ForeignKey("users.id"))
+
+    medical_record = relationship("MedicalRecord", back_populates="logs")
+    user = relationship("User")
