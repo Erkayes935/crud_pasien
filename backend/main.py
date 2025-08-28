@@ -445,14 +445,13 @@ def export_claims(
         "Nama Pasien",
         "Tanggal Kunjungan",
         "Jenis Kunjungan",
-        "Dokter",
+        "Nama Dokter",
         "Diagnosis Awal",
         "Kode ICD",
         "Tindakan",
         "Obat",
         "Status",
         "Hasil",
-        "Created By",
         "Created At"
     ])
     for c in claims:
@@ -467,7 +466,6 @@ def export_claims(
             c.obat or '',
             c.status or '',
             c.hasil or '',
-            c.creator.email or '',
             c.created_at.isoformat() if c.created_at else '',
         ])
     buffer = io.BytesIO()
