@@ -582,10 +582,10 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
 @app.post("/claims/{id}/edit", name="update_claim")
 def update_claim(
     id: int,
-    patient_id: int = Form(...),
+    patient_id: Optional[int] = Form(None),
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
-    tanggal_kunjungan: str = Form(...),
+    tanggal_kunjungan: Optional[str] = Form(None),
     doctor_id: Optional[int] = Form(None),
     doctor_name: Optional[str] = Form(None),
     diagnosis_awal: Optional[str] = Form(None),
@@ -601,10 +601,10 @@ def update_claim(
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    claim.patient_id = patient_id
+    claim.patient_id = patient_id or None
     claim.visit_id = visit_id or None
     claim.hospital_id = hospital_id or None
-    claim.tanggal_kunjungan = tanggal_kunjungan
+    claim.tanggal_kunjungan = tanggal_kunjungan or None
     claim.doctor_id = doctor_id or None
     claim.doctor_name = doctor_name or None
     claim.diagnosis_awal = diagnosis_awal or None

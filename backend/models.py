@@ -205,7 +205,7 @@ class MedicalRecordLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     medical_record_id = Column(Integer, ForeignKey("medical_records.id"))
     version = Column(Integer, nullable=True)
-    data_snapshot = Column(JSONB, nullable=False)
+    data_snapshot = Column(JSONB, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
     updated_by = Column(Integer, ForeignKey("users.id"))
 
