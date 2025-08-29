@@ -46,7 +46,7 @@
         <tr class="border-b dark:border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
           <td class="px-4 py-2">{{ v.id }}</td>
           <td class="px-4 py-2">{{ v.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ v.dokter or '-' }}</td>
+          <td class="px-4 py-2">{{ v.doctor_name or '-' }}</td>
           <td class="px-4 py-2">{{ v.poli or '-' }}</td>
           <td class="px-4 py-2">{{ v.sumber or '-' }}</td>
           <td class="px-4 py-2">{{ v.eksternal_id or '-' }}</td>
@@ -54,9 +54,9 @@
           <td class="px-4 py-2 text-center">
             {% if flow == "claim" %}
               <!-- Mode wizard klaim -->
-              <a href="/claims/add/form/{{ v.id }}"
-                 class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
-                 Pilih
+              <a href="{{ url_for('wizard_medical_records', patient_id=patient.id, visit_id=v.id) }}?flow=claim"
+                class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
+                Pilih
               </a>
             {% else %}
               {% if user and user.role == 'doctor' %}
@@ -94,10 +94,6 @@
 
         {% if flow == "claim" and not visits %}
         <!-- wizard klaim tanpa kunjungan -->
-        <a href="/claims/add/form/0?patient_id={{ patient.id }}"
-            class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
-            ➡️ Lanjut Isi Klaim Tanpa Kunjungan
-        </a>
         <a href="/visits/add" 
             class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded shadow transition">
             ➕ Tambah Kunjungan

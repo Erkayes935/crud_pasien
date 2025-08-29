@@ -1,0 +1,77 @@
+{# _form_renderer.html #}
+{% if not field.roles or current_user.role in field.roles %}
+
+  {% if field.type == "hidden" %}
+    <input type="hidden" name="{{ field.name }}"
+           value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
+
+  {% elif field.type in ["text","email","date","number"] %}
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+      <input type="{{ field.type }}" name="{{ field.name }}"
+             value="{{ field.get('value') or (record|attr(field.name) if record else '') }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+             {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}>
+    </div>
+
+  {% elif field.type == "textarea" %}
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+      <textarea name="{{ field.name }}" rows="3"
+                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+                {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}>{{ field.get('value') or (record|attr(field.name) if record else '') }}</textarea>
+    </div>
+
+  {% elif field.type == "select" %}
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+      <select id="{{ field.name }}" name="{{ field.name }}"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 bg-white dark:bg-gray-800">
+        <option value="" disabled {% if not (field.get('value') or (record|attr(field.name) if record else '')) %}selected{% endif %}>
+          -- Pilih {{ field.label or field.name }} --
+        </option>
+        {% for val, label in field.options %}
+        <option value="{{ val }}"
+                {% if (field.get('value') or (record|attr(field.name) if record else '')) == val %}
+                selected
+                {% endif %}>
+          {{ label }}
+        </option>
+        {% endfor %}
+      </select>
+
+      {% if current_user.role in field.get("readonly_roles", []) %}
+        <input type="hidden" name="{{ field.name }}" 
+               value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
+      {% endif %}
+    </div>
+
+  {% elif field.type == "readonly" %}
+    <div>
+        <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+        <input type="text" value="{{ field.value }}"
+             readonly
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+              bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
+              font-semibold cursor-not-allowed">
+        {% if field.hidden_name %}
+            <input type="hidden" name="{{ field.hidden_name }}" value="{{ field.hidden_value }}">
+        {% endif %}
+    </div>
+
+  {% elif field.type == "checkbox" %}
+    <div class="flex items-center space-x-2">
+      <input type="checkbox" name="{{ field.name }}" value="true"
+             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+             {% if field.get('value') or (record|attr(field.name) if record else False) %}checked{% endif %}>
+      <label class="text-sm text-gray-700 dark:text-gray-200">
+        {{ field.label or field.name }}
+      </label>
+    </div>
+  {% endif %}
+
+{% endif %}

@@ -4,7 +4,7 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">🩺 Detail Rekam Medis</h1>
 
-<div x-data="{ tab: 'latest' }">
+<div x-data="{ tab: 'latest' }" class="space-y-4">
   <!-- Tab header -->
   <div class="border-b mb-4 flex space-x-4">
     <button @click="tab = 'latest'"
@@ -19,45 +19,119 @@
     </button>
   </div>
 
-  <!-- Tab content -->
-  <div x-show="tab === 'latest'" class="space-y-3">
+  <!-- Data Terbaru -->
+  <div x-show="tab === 'latest'" class="space-y-6">
     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-      <h2 class="text-lg font-semibold mb-2">📌 Data Terbaru</h2>
-      <p><strong>Pasien:</strong> {{ medical_record.patient.nama }}</p>
-      <p><strong>Dokter:</strong> {{ medical_record.doctor.name }}</p>
-      <p><strong>Tanggal:</strong> {{ medical_record.created_at }}</p>
-      <p><strong>Riwayat Medis:</strong> {{ medical_record.medical_history }}</p>
-      <p><strong>Tindakan:</strong> {{ medical_record.tindakan }}</p>
-      <p><strong>Obat:</strong> {{ medical_record.obat }}</p>
+      <h2 class="text-lg font-semibold mb-3">📌 Info Umum</h2>
+      <p><strong>Pasien:</strong> {{ record.patient.nama if record.patient else '-' }}</p>
+      <p><strong>Dokter:</strong> {{ record.doctor_name or '-' }}</p>
+      <p><strong>Tanggal:</strong> {{ record.notes_date or record.created_at }}</p>
+      <p><strong>Status:</strong> {{ 'Final' if record.is_final else 'Draft' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-3">📝 Riwayat</h2>
+      <p><strong>Penyakit:</strong> {{ record.riwayat_penyakit or '-' }}</p>
+      <p><strong>Pengobatan:</strong> {{ record.riwayat_pengobatan or '-' }}</p>
+      <p><strong>Operasi:</strong> {{ record.riwayat_operasi or '-' }}</p>
+      <p><strong>Alergi:</strong> {{ record.alergi or '-' }}</p>
+      <p><strong>Keluhan:</strong> {{ record.keluhan or '-' }}</p>
+      <p><strong>Gejala Lain:</strong> {{ record.gejala_lain or '-' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-3">💓 Pemeriksaan Fisik</h2>
+      <p><strong>TD:</strong> {{ record.td or '-' }}</p>
+      <p><strong>Nadi:</strong> {{ record.nadi or '-' }}</p>
+      <p><strong>Pernapasan:</strong> {{ record.pernapasan or '-' }}</p>
+      <p><strong>Suhu:</strong> {{ record.suhu or '-' }}</p>
+      <p><strong>SpO₂:</strong> {{ record.spo2 or '-' }}</p>
+      <p><strong>Berat Badan:</strong> {{ record.berat_badan or '-' }}</p>
+      <p><strong>Tinggi Badan:</strong> {{ record.tinggi_badan or '-' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-3">🔬 Lab & Penunjang</h2>
+      <p><strong>Hb:</strong> {{ record.hemoglobin or '-' }}</p>
+      <p><strong>Leukosit:</strong> {{ record.leukosit or '-' }}</p>
+      <p><strong>Trombosit:</strong> {{ record.trombosit or '-' }}</p>
+      <p><strong>Gula Darah:</strong> {{ record.gula_darah or '-' }}</p>
+      <p><strong>Kreatinin:</strong> {{ record.creatinin or '-' }}</p>
+      <p><strong>Rontgen:</strong> {{ record.rontgen_thorax or '-' }}</p>
+      <p><strong>CT Scan:</strong> {{ record.ct_scan or '-' }}</p>
+      <p><strong>USG:</strong> {{ record.usg or '-' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-3">🩺 Diagnosis & Tindakan</h2>
+      <p><strong>Diagnosis Awal:</strong> {{ record.diagnosis_awal or '-' }}</p>
+      <p><strong>Komorbid:</strong> {{ record.komorbid or '-' }}</p>
+      <p><strong>Komplikasi:</strong> {{ record.komplikasi or '-' }}</p>
+      <p><strong>Diagnosis Akhir:</strong> {{ record.diagnosis_akhir or '-' }}</p>
+      <p><strong>Tindakan:</strong> {{ record.tindakan or '-' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h2 class="text-lg font-semibold mb-3">💊 Obat & Validasi</h2>
+      <p><strong>Obat:</strong> {{ record.obat or '-' }}</p>
+      <p><strong>Validasi Fornas:</strong> {{ record.validasi_fornas or '-' }}</p>
+      <p><strong>Catatan Dokter:</strong> {{ record.notes_doctor or '-' }}</p>
     </div>
   </div>
 
-  <div x-show="tab === 'logs'" class="space-y-3">
+  <!-- Histori -->
+  <div x-show="tab === 'logs'" class="space-y-4">
     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-      <h2 class="text-lg font-semibold mb-2">📜 Histori</h2>
-      <table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700 rounded">
-        <thead class="bg-gray-100 dark:bg-gray-700">
-          <tr>
-            <th class="px-3 py-2">Versi</th>
-            <th class="px-3 py-2">Tanggal Update</th>
-            <th class="px-3 py-2">Updated By</th>
-            <th class="px-3 py-2">Snapshot</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
-          {% for log in logs %}
-          <tr>
-            <td class="px-3 py-2">{{ log.version }}</td>
-            <td class="px-3 py-2">{{ log.updated_at }}</td>
-            <td class="px-3 py-2">{{ log.user.name if log.user else '-' }}</td>
-            <td class="px-3 py-2">
-              <pre class="text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded">{{ log.data_snapshot | tojson(indent=2) }}</pre>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <h2 class="text-lg font-semibold mb-3">📜 Histori</h2>
+      {% if logs %}
+        <table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded">
+          <thead class="bg-gray-100 dark:bg-gray-700">
+            <tr>
+              <th class="px-3 py-2">Versi</th>
+              <th class="px-3 py-2">Tanggal Update</th>
+              <th class="px-3 py-2">Updated By</th>
+              <th class="px-3 py-2">Snapshot</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+            {% for log in logs %}
+              <tr>
+                <td class="px-3 py-2">{{ log.version }}</td>
+                <td class="px-3 py-2">{{ log.updated_at }}</td>
+                <td class="px-3 py-2">{{ log.user.name if log.user else '-' }}</td>
+                <td class="px-3 py-2">
+                  <details>
+                    <summary class="cursor-pointer text-blue-600">Lihat Detail</summary>
+                    <ul class="list-disc ml-5 text-xs">
+                      {% for k,v in log.data_snapshot.items() %}
+                        <li><strong>{{ k }}:</strong> {{ v }}</li>
+                      {% endfor %}
+                    </ul>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="text-gray-500">Belum ada histori perubahan.</p>
+      {% endif %}
     </div>
   </div>
+</div>
+<div class="p-4 flex gap-3">
+  <a href="{{ url_for('edit_medical_record', record_id=record.id) }}" class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg shadow">
+    ✏️ Edit
+  </a>
+  <a href="{{ url_for('delete_medical_record', record_id=record.id) }}" class="inline-block bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg shadow" onclick="return confirm('Yakin hapus data ini?')">
+    🗑️ Hapus
+  </a>
+</div>
+<div>
+  <a href="{{ url_for('list_medical_records') }}"
+   class="inline-block bg-blue-500 hover:bg-blue-600 text-white 
+          font-medium px-4 py-2 rounded-lg shadow">
+  ⬅ Kembali ke Daftar Rekam Medis
+  </a>
 </div>
 {% endblock %}

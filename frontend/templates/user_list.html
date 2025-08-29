@@ -19,7 +19,9 @@
       <thead class="bg-gray-100 dark:bg-gray-700">
         <tr>
           <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">ID</th>
+          <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">Nama</th>
           <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">Email</th>
+          <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">RS</th>
           <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">Role</th>
           <th class="px-4 py-2 text-left border-b dark:border-gray-700 text-gray-700 dark:text-gray-200">Aksi</th>
         </tr>
@@ -28,7 +30,9 @@
         {% for u in users %}
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
           <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.id }}</td>
+          <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.name or '-' }}</td>
           <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.email }}</td>
+          <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.hospital.nama if u.hospital else '-' }}</td>
           <td class="px-4 py-2 border-b dark:border-gray-700 capitalize text-gray-800 dark:text-gray-100">{{ u.role }}</td>
           <td class="px-4 py-2 border-b dark:border-gray-700 space-x-2">
             <a href="/users/{{ u.id }}/edit" 
@@ -43,7 +47,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="px-4 py-2 text-center text-gray-500 dark:text-gray-400">
+          <td colspan="6" class="px-4 py-2 text-center text-gray-500 dark:text-gray-400">
             Belum ada user
           </td>
         </tr>

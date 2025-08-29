@@ -5,119 +5,25 @@
     {{ "Tambah Rumah Sakit" if mode == "add" else "Edit Rumah Sakit" }}
   </h1>
 
-  <form method="post" class="space-y-5"
-        action="{{ url_for('add_hospital') if mode == 'add' else url_for('edit_hospital', hospital_id=hospital.id) }}">
+  <form method="post" 
+        action="{{ url_for('add_hospital') if mode=='add' else url_for('edit_hospital', hospital_id=record.id) }}" 
+        class="space-y-5">
     
+    <!-- CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <!-- Kode RS -->
-     <div>
-       <label for="kode_rs" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Kode RS</label>
-       <input id="kode_rs" type="text" name="kode_rs" placeholder="Masukkan kode rumah sakit"
-              value="{{ hospital.kode_rs if hospital else '' }}"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
+    <!-- Fields -->
+    {% for field in fields %}
+      {% include "_form_renderer.html" with context %}
+    {% endfor %}
 
-    <!-- Nama RS -->
-    <div>
-      <label for="nama" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Nama Rumah Sakit</label>
-      <input id="nama" type="text" name="nama" placeholder="Masukkan nama rumah sakit"
-             value="{{ hospital.nama if hospital else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Tipe RS -->
-     <div>
-      <label for="tipe_rs" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tipe RS</label>
-      <input id="tipe_rs" type="text" name="tipe_rs" placeholder="Masukkan tipe rumah sakit"
-             value="{{ hospital.tipe_rs if hospital else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Jenis RS -->
-     <div>
-        <label for="jenis_rs" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jenis RS</label>
-        <input id="jenis_rs" type="text" name="jenis_rs" placeholder="Masukkan jenis rumah sakit"
-               value="{{ hospital.jenis_rs if hospital else '' }}"
-               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                      focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Alamat -->
-    <div>
-      <label for="alamat" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Alamat</label>
-      <input id="alamat" type="text" name="alamat" placeholder="Masukkan alamat"
-             value="{{ hospital.alamat if hospital else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Telepon -->
-     <div>
-       <label for="telepon" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Telepon</label>
-       <input id="telepon" type="text" name="telepon" placeholder="Masukkan telepon"
-              value="{{ hospital.telepon if hospital else '' }}"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Email -->
-     <div>
-        <label for="email" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Email</label>
-        <input id="email" type="email" name="email" placeholder="Masukkan email"
-               value="{{ hospital.email if hospital else '' }}"
-               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                      focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Status Akreditasi -->
-     <div>
-       <label for="status_akreditasi" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Status Akreditasi</label>
-       <input id="status_akreditasi" type="text" name="status_akreditasi" placeholder="Masukkan status akreditasi"
-              value="{{ hospital.status_akreditasi if hospital else '' }}"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Status Bridging -->
-     <div>
-       <label for="status_bridging" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Status Bridging</label>
-       <input id="status_bridging" type="text" name="status_bridging" placeholder="Masukkan status bridging"
-              value="{{ hospital.status_bridging if hospital else '' }}"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-    <!-- Jumlah Tempat Tidur -->
-     <div>
-       <label for="jumlah_tempat_tidur" class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Jumlah Tempat Tidur</label>
-       <input id="jumlah_tempat_tidur" type="number" name="jumlah_tempat_tidur" placeholder="Masukkan jumlah tempat tidur"
-              value="{{ hospital.jumlah_tempat_tidur if hospital else '' }}"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-     </div>
-
-     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-    <!-- Buttons -->
-    <div class="flex gap-3">
-      <button type="submit"
+    <!-- Action Buttons -->
+    <div class="flex gap-3 pt-4">
+      <button type="submit" 
               class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
         {{ "Tambah" if mode == "add" else "Simpan Perubahan" }}
       </button>
-      <a href="/hospitals"
+      <a href="/hospitals" 
          class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
         Batal
       </a>

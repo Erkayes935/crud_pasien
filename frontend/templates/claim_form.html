@@ -1,115 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-lg mx-auto mt-6">
-
+<div class="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md mt-10">
   <h2 class="text-2xl font-bold mb-4 text-center text-gray-800 dark:text-gray-100">
     {{ "Tambah Klaim" if mode == "add" else "Edit Klaim" }}
   </h2>
 
-  {% if mode == "add" %}
-    <form method="post" action="{{ url_for('add_claim') }}" class="space-y-5">
-  {% else %}
-    <form method="post" action="{{ url_for('update_claim', id=claim.id) }}" class="space-y-5">
-  {% endif %}
-
-    <!-- Hidden field dari wizard -->
-  {% if visit and visit.patient_id %}
-    <input type="hidden" name="patient_id" value="{{ visit.patient_id }}">
-  {% elif patient %}
-    <input type="hidden" name="patient_id" value="{{ patient.id }}">
-  {% endif %}
-
-  {% if visit and visit.id %}
-    <input type="hidden" name="visit_id" value="{{ visit.id }}">
-  {% endif %}
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-
-    <!-- Rumah Sakit (readonly dari visit) -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Rumah Sakit</label>
-      <input type="text" name="hospital"
-             value="{{ visit.hospital.nama if visit and visit.hospital else (claim.hospital if claim else '') }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition" readonly>
+  <form method="post" action="{{ url_for('add_claim') if mode=='add' else url_for('update_claim', id=record.id) }}" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for field in fields %}
+        {% include "_form_renderer.html" %}
+      {% endfor %}
     </div>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <!-- Obat -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Obat</label>
-      <input type="text" name="obat" value="{{ claim.obat if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Diagnosis Awal -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Diagnosis Awal</label>
-      <input type="text" name="diagnosis_awal" value="{{ claim.diagnosis_awal if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Tanggal Kunjungan -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tanggal Kunjungan</label>
-      <input type="date" name="tanggal_kunjungan" value="{{ claim.tanggal_kunjungan if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Tindakan -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Tindakan</label>
-      <input type="text" name="tindakan" value="{{ claim.tindakan if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Kode ICD -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Kode ICD</label>
-      <input type="text" name="kode_icd" value="{{ claim.kode_icd if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Status -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Status</label>
-      <select name="status"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-        <option value="draft" {% if claim and claim.status|lower == "draft" %}selected{% endif %}>Draft</option>
-        <option value="verified" {% if claim and claim.status|lower == "verified" %}selected{% endif %}>Verified</option>
-        <option value="submitted" {% if claim and claim.status|lower == "submitted" %}selected{% endif %}>Submitted</option>
-      </select>
-    </div>
-
-    <!-- Hasil -->
-    <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">Hasil</label>
-      <input type="text" name="hasil" value="{{ claim.hasil if claim else '' }}"
-             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
-    </div>
-
-    <!-- Buttons -->
     <div class="flex gap-3">
-      <button type="submit"
-              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+      <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
         {{ "Tambah" if mode == "add" else "Update" }}
       </button>
-      <a href="/claims"
-         class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
+      <a href="/claims" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
         Batal
       </a>
     </div>
