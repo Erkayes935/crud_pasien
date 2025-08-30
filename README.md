@@ -95,6 +95,28 @@ This project contains short module- and function-level docstrings inside the
 - `backend/database.py` — creates SQLAlchemy engine and `SessionLocal`; reads `DATABASE_URL` from env
 - `backend/auth.py` — `verify_jwt`, `get_current_user`, and `require_role`
 
+### Auth / Security (recent changes)
+
+- JWKS caching and async verification: `auth.py` now includes a cached JWKS
+  client (`_JWKSCache`) and `verify_jwt_secure` which performs async token
+  verification against Auth0. This reduces network calls and improves
+  reliability.
+- Two auth styles supported:
+  - Token-based: endpoints can accept JWT via `id_token` HttpOnly cookie or
+    `Authorization: Bearer ...` header. Use `get_token_from_request` and
+    `get_current_user_secure` for async verification.
+  - Session-based: the app contains session helpers (`current_user_session`,
+    `require_roles_session`) for apps that maintain a server-side session.
+- CSRF helpers: `issue_csrf_token` and `require_csrf_dep` provide a simple
+  server-side CSRF token flow for form POSTs when using session-based auth.
+
+### Migrations / Alembic
+
+- The `alembic/` directory is present and `alembic/env.py` uses
+  `DATABASE_URL` from the environment when running migrations. To run
+  migrations, ensure `DATABASE_URL` is set and use `alembic` CLI normally.
+
+
 
 ## Important notes & troubleshooting
 
