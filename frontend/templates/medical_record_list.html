@@ -4,212 +4,70 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">📋 Daftar Rekam Medis</h1>
 
-<!-- Filter/Search -->
-<!-- Filter/Search -->
 <form method="get" 
       class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-  
   <div>
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cari Pasien</label>
     <input type="text" name="q" value="{{ q or '' }}"
-           class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm
-                  bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                  focus:outline-none focus:ring-2 focus:ring-blue-500">
+           class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
   </div>
-  
   <div>
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal</label>
     <input type="date" name="date" value="{{ date or '' }}"
-           class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm
-                  bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                  focus:outline-none focus:ring-2 focus:ring-blue-500">
+           class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
   </div>
-  
   <div>
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-    <select name="status"
-            class="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                   focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <select name="status" class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
       <option value="">Semua</option>
       <option value="final" {% if status=='final' %}selected{% endif %}>Final</option>
       <option value="draft" {% if status=='draft' %}selected{% endif %}>Draft</option>
     </select>
   </div>
-
   <div class="flex items-end">
-    <button type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
       🔍 Filter
     </button>
   </div>
 </form>
 
-
-<div x-data="{ tab: 'ringkasan' }" class="space-y-4">
-  <!-- Tab header -->
-  <div class="border-b mb-4 flex space-x-4">
-    <button @click="tab='ringkasan'" :class="tab==='ringkasan' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'" class="px-4 py-2 font-medium">Ringkasan</button>
-    <button @click="tab='riwayat'" :class="tab==='riwayat' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'" class="px-4 py-2 font-medium">Riwayat</button>
-    <button @click="tab='fisik'" :class="tab==='fisik' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'" class="px-4 py-2 font-medium">Pemeriksaan</button>
-    <button @click="tab='lab'" :class="tab==='lab' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'" class="px-4 py-2 font-medium">Lab</button>
-    <button @click="tab='diagnosis'" :class="tab==='diagnosis' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500'" class="px-4 py-2 font-medium">Diagnosis & Obat</button>
-  </div>
-
-  <!-- Ringkasan -->
-  <div x-show="tab==='ringkasan'" class="overflow-x-auto rounded-lg shadow">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-4 py-3">ID</th>
-          <th class="px-4 py-3">Pasien</th>
-          <th class="px-4 py-3">Tanggal</th>
-          <th class="px-4 py-3">Dokter</th>
-          <th class="px-4 py-3">Diagnosis Awal</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3 text-center">Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in medical_records %}
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-          <td class="px-4 py-2">{{ record.id }}</td>
-          <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ record.notes_date.strftime('%d %b %Y') if record.notes_date else '-' }}</td>
-          <td class="px-4 py-2">{{ record.doctor_name or '-' }}</td>
-          <td class="px-4 py-2">{{ record.diagnosis_awal or '-' }}</td>
-          <td class="px-4 py-2">
-            {% if record.is_final %}
-              <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">Final</span>
-            {% else %}
-              <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700">Draft</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-2 text-center space-x-1">
-            <a href="{{ url_for('medical_record_logs', record_id=record.id) }}" class="text-blue-600 hover:underline">🔍</a>
-            {% if record.visit_id and flow == "claim" %}
-            <a href="{{ url_for('claim_form', visit_id=record.visit_id) }}" class="text-green-600 hover:underline">📑</a>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Riwayat -->
-  <div x-show="tab==='riwayat'" class="overflow-x-auto rounded-lg shadow">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-4 py-3">Pasien</th>
-          <th class="px-4 py-3">Riwayat Penyakit</th>
-          <th class="px-4 py-3">Keluhan</th>
-          <th class="px-4 py-3">Alergi</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in medical_records %}
-        <tr>
-          <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ record.riwayat_penyakit or '-' }}</td>
-          <td class="px-4 py-2">{{ record.keluhan or '-' }}</td>
-          <td class="px-4 py-2">{{ record.alergi or '-' }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Pemeriksaan -->
-  <div x-show="tab==='fisik'" class="overflow-x-auto rounded-lg shadow">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-4 py-3">Pasien</th>
-          <th class="px-4 py-3">TD</th>
-          <th class="px-4 py-3">Nadi</th>
-          <th class="px-4 py-3">Suhu</th>
-          <th class="px-4 py-3">SpO₂</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in medical_records %}
-        <tr>
-          <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ record.td or '-' }}</td>
-          <td class="px-4 py-2">{{ record.nadi or '-' }}</td>
-          <td class="px-4 py-2">{{ record.suhu or '-' }}</td>
-          <td class="px-4 py-2">{{ record.spo2 or '-' }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Lab -->
-  <div x-show="tab==='lab'" class="overflow-x-auto rounded-lg shadow">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-4 py-3">Pasien</th>
-          <th class="px-4 py-3">Hb</th>
-          <th class="px-4 py-3">Leukosit</th>
-          <th class="px-4 py-3">Trombosit</th>
-          <th class="px-4 py-3">Gula Darah</th>
-          <th class="px-4 py-3">Creatinin</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in medical_records %}
-        <tr>
-          <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ record.hemoglobin or '-' }}</td>
-          <td class="px-4 py-2">{{ record.leukosit or '-' }}</td>
-          <td class="px-4 py-2">{{ record.trombosit or '-' }}</td>
-          <td class="px-4 py-2">{{ record.gula_darah or '-' }}</td>
-          <td class="px-4 py-2">{{ record.creatinin or '-' }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Diagnosis & Obat -->
-  <div x-show="tab==='diagnosis'" class="overflow-x-auto rounded-lg shadow">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-4 py-3">Pasien</th>
-          <th class="px-4 py-3">Diagnosis Awal</th>
-          <th class="px-4 py-3">Diagnosis Akhir</th>
-          <th class="px-4 py-3">Tindakan</th>
-          <th class="px-4 py-3">Obat</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in medical_records %}
-        <tr>
-          <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ (record.diagnosis_awal or '-') }}</td>
-          <td class="px-4 py-2">{{ (record.diagnosis_akhir or '-') }}</td>
-          <td class="px-4 py-2">{{ (record.tindakan or '-') }}</td>
-          <td class="px-4 py-2">{{ (record.obat or '-') }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<div class="overflow-x-auto rounded-lg shadow">
+  <table class="w-full text-sm text-center">
+    <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
+      <tr>
+        <th class="px-4 py-3">ID</th>
+        <th class="px-4 py-3">Pasien</th>
+        <th class="px-4 py-3">Tanggal</th>
+        <th class="px-4 py-3">Dokter</th>
+        <th class="px-4 py-3">Diagnosis Awal</th>
+        <th class="px-4 py-3">Status</th>
+        <th class="px-4 py-3">Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in medical_records %}
+      <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+        <td class="px-4 py-2">{{ record.id }}</td>
+        <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
+        <td class="px-4 py-2">{{ record.notes_date.strftime('%d %b %Y') if record.notes_date else '-' }}</td>
+        <td class="px-4 py-2">{{ record.doctor_name or '-' }}</td>
+        <td class="px-4 py-2">{{ record.diagnosis_awal or '-' }}</td>
+        <td class="px-4 py-2">
+          {% if record.is_final %}
+            <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">Final</span>
+          {% else %}
+            <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700">Draft</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 text-center">
+          <a href="{{ url_for('medical_record_detail', record_id=record.id) }}" class="text-blue-600 hover:underline">🔍</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
 <div class="p-4 flex gap-3">
@@ -218,13 +76,9 @@
     class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow">
     ➕ Tambah Rekam Medis
     </a>
-
   {% endif %}
-
-  <a href="{{ url_for('dashboard') }}"
-     class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
-     ← Kembali
+  <a href="{{ url_for('dashboard') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+    ← Kembali
   </a>
 </div>
-
 {% endblock %}

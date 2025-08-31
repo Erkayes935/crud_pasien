@@ -19,20 +19,6 @@ patient_fields = [
 ]
 
 # ------------------------
-# Claim
-# ------------------------
-claim_fields = [
-    {"name": "obat", "label": "Obat", "type": "text"},
-    {"name": "diagnosis_awal", "label": "Diagnosis Awal", "type": "text"},
-    {"name": "tanggal_kunjungan", "label": "Tanggal Kunjungan", "type": "date"},
-    {"name": "tindakan", "label": "Tindakan", "type": "text"},
-    {"name": "kode_icd", "label": "Kode ICD", "type": "text"},
-    {"name": "status", "label": "Status", "type": "select",
-     "options": [("draft", "Draft"), ("verified", "Verified"), ("submitted", "Submitted")]},
-    {"name": "hasil", "label": "Hasil", "type": "text"},
-]
-
-# ------------------------
 # Hospital
 # ------------------------
 hospital_fields = [
@@ -68,60 +54,55 @@ visit_fields = [
 ]
 
 # ------------------------
-# Medical Record
+# Claim + Medical Record (gabungan)
 # ------------------------
-medical_record_fields = {
-    "Umum": [
-        {"name": "record_type", "label": "Tipe Rekam Medis", "type": "select",
-         "options": [
-            ("admission", "Admission Note"),
-            ("daily", "Progress / Daily Note"),
-            ("discharge", "Discharge Summary"),
-        ]},
-        {"name": "notes_date", "label": "Tanggal Catatan", "type": "date"},
-        {"name": "doctor_name", "label": "Nama Dokter", "type": "text"},
-        {"name": "is_final", "label": "Sudah Final", "type": "checkbox"},
-    ],
-    "Riwayat": [
-        {"name": "riwayat_penyakit", "label": "Riwayat Penyakit", "type": "textarea"},
-        {"name": "riwayat_pengobatan", "label": "Riwayat Pengobatan", "type": "textarea"},
-        {"name": "riwayat_operasi", "label": "Riwayat Operasi", "type": "textarea"},
-        {"name": "alergi", "label": "Alergi", "type": "textarea"},
-        {"name": "keluhan", "label": "Keluhan", "type": "textarea"},
-        {"name": "gejala_lain", "label": "Gejala Lain", "type": "textarea"},
-    ],
-    "Pemeriksaan": [
-        {"name": "td", "label": "Tekanan Darah", "type": "text"},
-        {"name": "nadi", "label": "Nadi", "type": "text"},
-        {"name": "pernapasan", "label": "Pernapasan", "type": "text"},
-        {"name": "suhu", "label": "Suhu", "type": "text"},
-        {"name": "spo2", "label": "Saturasi O2", "type": "text"},
-        {"name": "berat_badan", "label": "Berat Badan", "type": "text"},
-        {"name": "tinggi_badan", "label": "Tinggi Badan", "type": "text"},
-    ],
-    "Lab & Penunjang": [
-        {"name": "hemoglobin", "label": "Hemoglobin", "type": "text"},
-        {"name": "leukosit", "label": "Leukosit", "type": "text"},
-        {"name": "trombosit", "label": "Trombosit", "type": "text"},
-        {"name": "gula_darah", "label": "Gula Darah", "type": "text"},
-        {"name": "creatinin", "label": "Creatinin", "type": "text"},
-        {"name": "rontgen_thorax", "label": "Rontgen Thorax", "type": "textarea"},
-        {"name": "ct_scan", "label": "CT Scan", "type": "textarea"},
-        {"name": "usg", "label": "USG", "type": "textarea"},
-    ],
-    "Diagnosis & Tindakan": [
-        {"name": "diagnosis_awal", "label": "Diagnosis Awal", "type": "textarea"},
-        {"name": "komorbid", "label": "Komorbid", "type": "textarea"},
-        {"name": "komplikasi", "label": "Komplikasi", "type": "textarea"},
-        {"name": "diagnosis_akhir", "label": "Diagnosis Akhir", "type": "textarea"},
-        {"name": "tindakan", "label": "Tindakan", "type": "textarea"},
-    ],
-    "Obat & Validasi": [
-        {"name": "obat", "label": "Obat", "type": "textarea"},
-        {"name": "validasi_fornas", "label": "Validasi Fornas", "type": "textarea"},
-        {"name": "notes_doctor", "label": "Catatan Dokter", "type": "textarea"},
-    ],
-}
+claim_medical_record_fields = [
+    # --- Data Klaim (administratif) ---
+    {"name": "claim_date", "label": "Tanggal Klaim", "type": "date"},
+    {"name": "is_final", "label": "Sudah Final", "type": "checkbox"},
+
+    # --- Info Umum Rekam Medis ---
+    {"name": "notes_date", "label": "Tanggal Catatan", "type": "date"},
+
+    # --- Riwayat ---
+    {"name": "riwayat_penyakit", "label": "Riwayat Penyakit", "type": "textarea"},
+    {"name": "riwayat_pengobatan", "label": "Riwayat Pengobatan", "type": "textarea"},
+    {"name": "riwayat_operasi", "label": "Riwayat Operasi", "type": "textarea"},
+    {"name": "alergi", "label": "Alergi", "type": "textarea"},
+    {"name": "keluhan", "label": "Keluhan", "type": "textarea"},
+    {"name": "gejala_lain", "label": "Gejala Lain", "type": "textarea"},
+
+    # --- Pemeriksaan Fisik ---
+    {"name": "td", "label": "Tekanan Darah", "type": "text"},
+    {"name": "nadi", "label": "Nadi", "type": "text"},
+    {"name": "pernapasan", "label": "Pernapasan", "type": "text"},
+    {"name": "suhu", "label": "Suhu", "type": "text"},
+    {"name": "spo2", "label": "SpO₂", "type": "text"},
+    {"name": "berat_badan", "label": "Berat Badan", "type": "text"},
+    {"name": "tinggi_badan", "label": "Tinggi Badan", "type": "text"},
+
+    # --- Lab & Penunjang ---
+    {"name": "hemoglobin", "label": "Hemoglobin", "type": "text"},
+    {"name": "leukosit", "label": "Leukosit", "type": "text"},
+    {"name": "trombosit", "label": "Trombosit", "type": "text"},
+    {"name": "gula_darah", "label": "Gula Darah", "type": "text"},
+    {"name": "creatinin", "label": "Kreatinin", "type": "text"},
+    {"name": "rontgen_thorax", "label": "Rontgen Thorax", "type": "text"},
+    {"name": "ct_scan", "label": "CT Scan", "type": "text"},
+    {"name": "usg", "label": "USG", "type": "text"},
+
+    # --- Diagnosis & Tindakan ---
+    {"name": "diagnosis_awal", "label": "Diagnosis Awal", "type": "textarea"},
+    {"name": "komorbid", "label": "Komorbid", "type": "textarea"},
+    {"name": "komplikasi", "label": "Komplikasi", "type": "textarea"},
+    {"name": "diagnosis_akhir", "label": "Diagnosis Akhir", "type": "textarea"},
+    {"name": "tindakan", "label": "Tindakan", "type": "textarea"},
+
+    # --- Obat & Validasi ---
+    {"name": "obat", "label": "Obat", "type": "textarea"},
+    {"name": "validasi_fornas", "label": "Validasi Fornas", "type": "text"},
+    {"name": "notes_doctor", "label": "Catatan Dokter", "type": "textarea"},
+]
 
 
 # ------------------------
@@ -157,9 +138,8 @@ user_fields = [
 # ------------------------
 form_configs = {
     "patient": patient_fields,
-    "claim": claim_fields,
     "hospital": hospital_fields,
     "visit": visit_fields,
-    "medical_record": medical_record_fields,
+    "claim_medical_record": claim_medical_record_fields,
     "user": user_fields,
 }

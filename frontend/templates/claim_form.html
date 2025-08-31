@@ -1,26 +1,301 @@
 {% extends "base.html" %}
+{% block title %}Form Klaim{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md mt-10">
-  <h2 class="text-2xl font-bold mb-4 text-center text-gray-800 dark:text-gray-100">
-    {{ "Tambah Klaim" if mode == "add" else "Edit Klaim" }}
-  </h2>
+<div x-data="{ 
+       modalOpen: false, 
+       modalTitle: '', 
+       modalContent: '', 
+       diagnosisCount: 0,
+       komorbidCount: 0,
+       komplikasiCount: 0
+     }"
+     @update-count.window="
+       diagnosisCount = $event.detail.diagnosis;
+       komorbidCount = $event.detail.komorbid;
+       komplikasiCount = $event.detail.komplikasi
+     "
+     @open-modal.window="modalOpen = true; modalTitle=$event.detail.title; modalContent=$event.detail.content"
+     class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
 
-  <form method="post" action="{{ url_for('add_claim') if mode=='add' else url_for('update_claim', id=record.id) }}" class="space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {% for field in fields %}
-        {% include "_form_renderer.html" %}
-      {% endfor %}
-    </div>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <!-- ========== LEFT PANEL ========== -->
+  <div class="lg:col-span-2 space-y-4">
 
-    <div class="flex gap-3">
-      <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
-        {{ "Tambah" if mode == "add" else "Update" }}
+    <!-- Tombol Global Generate AI -->
+    <div class="flex justify-end">
+      <button type="button"
+              onclick="generateDummyAI()"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm shadow">
+        ⚡ Generate AI
       </button>
-      <a href="/claims" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
-        Batal
-      </a>
     </div>
-  </form>
+
+    <!-- Accordion Template -->
+    {% set accs = [
+      {'id':'diagnosis','icon':'🩺','label':'Diagnosis'},
+      {'id':'komorbid','icon':'➕','label':'Komorbid'},
+      {'id':'komplikasi','icon':'⚠️','label':'Komplikasi'}
+    ] %}
+    {% for acc in accs %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden" 
+         x-data="{ openAcc: {{ 'true' if acc.id == 'diagnosis' else 'false' }} }">
+      <button @click="openAcc = !openAcc"
+              class="w-full flex justify-between items-center px-4 py-3 font-semibold text-left bg-gray-300 dark:bg-gray-700">
+        <span>{{ acc.icon }} {{ acc.label }}</span>
+        <span class="ml-2 text-xs bg-blue-600 text-white rounded-full px-2 py-0.5"
+              x-text="{{ acc.id }}Count"></span>
+        <div class="ml-auto">
+          <span x-show="!openAcc">⬇️</span><span x-show="openAcc">⬆️</span>
+        </div>
+      </button>
+      <div class="p-4 space-y-2" x-show="openAcc">
+        <table class="w-full text-sm border rounded overflow-hidden">
+          <thead class="bg-gray-200 dark:bg-gray-700">
+            <tr>
+              <th class="p-2">{{ acc.label }}</th>
+              <th class="p-2">Klinis</th>
+              <th class="p-2">ICD</th>
+              <th class="p-2">Tindakan</th>
+              <th class="p-2">Score</th>
+              <th class="p-2">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="{{ acc.id }}-tbody" class="divide-y divide-gray-200 dark:divide-gray-600">
+            <tr><td colspan="6" class="text-center text-gray-500 italic p-2">Belum ada {{ acc.label|lower }}.</td></tr>
+          </tbody>
+          <tfoot>
+            <tr class="bg-gray-50 dark:bg-gray-700">
+              <td class="p-2"><input type="text" placeholder="{{ acc.label }} manual" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700"></td>
+              <td class="p-2"><input type="text" placeholder="Klinis" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700"></td>
+              <td class="p-2"><input type="text" placeholder="ICD" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700"></td>
+              <td class="p-2"><input type="text" placeholder="Tindakan" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700"></td>
+              <td class="p-2"><input type="number" placeholder="Score" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700"></td>
+              <td class="p-2 text-center space-x-2 p-2 whitespace-nowrap">
+                <button class="px-2 py-1 bg-green-600 text-white rounded text-xs">Utama</button>
+                <button class="px-2 py-1 bg-yellow-600 text-white rounded text-xs">Sekunder</button>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Accordion Rekam Medis -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden" x-data="{ openRM: false }">
+      <button @click="openRM = !openRM"
+              class="w-full flex justify-between items-center px-4 py-3 font-semibold text-left bg-gray-300 dark:bg-gray-700">
+        📋 Rekam Medis
+        <span x-show="!openRM">⬇️</span><span x-show="openRM">⬆️</span>
+      </button>
+      <div x-show="openRM" class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for field in claim_medical_record_fields %}
+          {% include "_form_renderer.html" %}
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========== RIGHT PANEL (Simulasi) ========== -->
+  <div class="lg:col-span-1">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-3">
+      <h2 class="text-lg font-bold mb-3">📊 Simulasi Klaim</h2>
+      <div>
+        <label class="font-semibold">Diagnosis Utama</label>
+        <input type="text" id="simulasi-dx-utama" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700" readonly>
+      </div>
+      <div>
+        <label class="font-semibold">Diagnosis Sekunder</label>
+        <input type="text" id="simulasi-dx-sekunder" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700" readonly>
+      </div>
+      <div>
+        <label class="font-semibold">Tindakan Utama</label>
+        <input type="text" id="simulasi-tindakan-utama" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700" readonly>
+      </div>
+      <div>
+        <label class="font-semibold">Tindakan Sekunder</label>
+        <input type="text" id="simulasi-tindakan-sekunder" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700" readonly>
+      </div>
+      <div>
+        <label class="font-semibold">Estimasi Tarif INA-CBGs</label>
+        <input type="text" id="simulasi-tarif" class="w-full border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700" readonly>
+      </div>
+
+      <div class="mt-4 text-center">
+        <button type="button" onclick="runAnalisis()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          🔍 Analisis
+        </button>
+      </div>
+
+      <!-- Hasil Analisis Dummy -->
+      <div id="analisis-result" class="hidden bg-gray-50 dark:bg-gray-700 rounded p-3 space-y-2 text-sm">
+        <p><strong>Saran 1:</strong> Gunakan kode ICD sesuai CP terbaru.</p>
+        <p><strong>Saran 2:</strong> Validasi Fornas obat pendukung.</p>
+        <p><strong>Saran 3:</strong> Pertimbangkan perpanjangan rawat inap.</p>
+        <div class="text-center mt-3">
+          <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">💾 Simpan sebagai Final</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL DETAIL ========== -->
+  <div x-show="modalOpen" x-cloak x-transition
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+       @click.self="modalOpen=false">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-4xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
+      <button @click="modalOpen=false" type="button"
+              class="absolute top-3 right-3 text-gray-500">✖</button>
+      <h3 class="text-lg font-bold mb-4" x-text="modalTitle"></h3>
+      <div class="space-y-4 text-sm" x-html="modalContent"></div>
+    </div>
+  </div>
+
 </div>
+
+<!-- ===================== SCRIPT ===================== -->
+<script>
+function generateDummyAI() {
+  const dx = [
+    {kategori:"Demam Berdarah Dengue", klinis:"Demam 5 hari", icd:"A91", tindakan:"Periksa lab", score:92, child:false},
+    {kategori:"→ Tanpa warning sign", klinis:"Demam ringan", icd:"A91.0", tindakan:"Observasi", score:80, child:true},
+    {kategori:"→ Dengan warning sign", klinis:"Perdarahan, nyeri perut", icd:"A91.1", tindakan:"Hospitalisasi", score:70, child:true}
+  ];
+  const kom = [
+    {kategori:"Diabetes Mellitus (E11)", klinis:"Riwayat DM lama", icd:"E11", tindakan:"Kontrol gula darah", score:75, child:false},
+    {kategori:"→ DM tanpa komplikasi", klinis:"Gula darah terkontrol", icd:"E11.9", tindakan:"Monitoring", score:70, child:true}
+  ];
+  const komp = [
+    {kategori:"Sepsis (A41)", klinis:"Demam tinggi, infeksi sistemik", icd:"A41", tindakan:"Antibiotik IV", score:70, child:false},
+    {kategori:"→ Sepsis gram negatif", klinis:"Kultur E.coli positif", icd:"A41.5", tindakan:"Ceftriaxone", score:68, child:true}
+  ];
+
+  renderTable("diagnosis-tbody", dx, "diagnosis");
+  renderTable("komorbid-tbody", kom, "komorbid");
+  renderTable("komplikasi-tbody", komp, "komplikasi");
+
+  // dispatch count update
+  window.dispatchEvent(new CustomEvent('update-count', {
+    detail: {
+      diagnosis: dx.length,
+      komorbid: kom.length,
+      komplikasi: komp.length
+    }
+  }));
+}
+
+function renderTable(containerId, items, type) {
+  const tbody = document.getElementById(containerId);
+  tbody.innerHTML = "";
+  items.forEach(item => {
+    let badge = `<span class='px-2 py-1 rounded text-white text-xs ${
+      item.score>=80?'bg-green-600':item.score>=60?'bg-yellow-500':'bg-red-600'
+    }'>${item.score}%</span>`;
+    tbody.innerHTML += `
+      <tr class="odd:bg-gray-50 dark:odd:bg-gray-900">
+        <td class="p-2 ${item.child?'pl-6':''} cursor-pointer text-blue-600 underline"
+            @click="$dispatch('open-modal',{title:'${item.kategori}', content: getDetailContent('${type}','${item.kategori}','${item.klinis}','${item.icd}','${item.tindakan}','${item.score}')})">${item.kategori}</td>
+        <td class="p-2">${item.klinis}</td>
+        <td class="p-2">${item.icd}</td>
+        <td class="p-2">${item.tindakan}</td>
+        <td class="p-2 text-center">${badge}</td>
+        <td class="p-2 text-center space-x-1">
+          <button onclick="selectToSimulasi('${type}','utama','${item.kategori}')" 
+                  class="px-2 py-1 bg-green-600 text-white rounded text-xs">Utama</button>
+          <button onclick="selectToSimulasi('${type}','sekunder','${item.kategori}')" 
+                  class="px-2 py-1 bg-yellow-600 text-white rounded text-xs">Sekunder</button>
+        </td>
+      </tr>`;
+  });
+}
+
+function getDetailContent(type,kategori,klinis,icd,tindakan,score) {
+  const tindakanList = [
+    {nama:"Appendektomi", syarat:"Nyeri perut kanan bawah", wajib:"Wajib", jenis:"Mayor", regulasi:"Permenkes 2020", inacbgs:"C-4-10", score:88},
+    {nama:"Transfusi darah", syarat:"Hb <7", wajib:"Opsional", jenis:"Minor", regulasi:"Kepmenkes 2019", inacbgs:"B-2-03", score:75},
+    {nama:"Hemodialisis", syarat:"Gagal ginjal kronik", wajib:"Wajib", jenis:"Mayor", regulasi:"JKN 2021", inacbgs:"N-3-05", score:82}
+  ];
+
+  let tindakanRows = tindakanList.map(t=>`
+    <tr>
+      <td class="p-2">${t.nama}</td>
+      <td class="p-2">${t.syarat}</td>
+      <td class="p-2">${t.wajib}</td>
+      <td class="p-2">${t.jenis}</td>
+      <td class="p-2">${t.regulasi}</td>
+      <td class="p-2">${t.inacbgs}</td>
+      <td class="p-2 text-center">
+        <button onclick="selectToSimulasi('tindakan','utama','${t.nama}')" 
+                class="px-2 py-1 bg-green-600 text-white rounded text-xs">Utama</button>
+        <button onclick="selectToSimulasi('tindakan','sekunder','${t.nama}')" 
+                class="px-2 py-1 bg-yellow-600 text-white rounded text-xs">Sekunder</button>
+      </td>
+    </tr>`).join('');
+
+  return `
+    <h4 class='font-semibold'>Aspek Klinis</h4>
+    <p>Justifikasi: ${klinis}</p>
+    <p>Bukti: Hasil lab pendukung</p>
+    <p>Syarat: Minimal 2 gejala khas</p>
+    <hr class='my-2'>
+    <h4 class='font-semibold'>ICD-10</h4>
+    <p>Struktur kode: ${icd}</p>
+    <p>Kode ganda: -</p>
+    <p>Z-code: -</p>
+    <p>Kode BPJS khusus: -</p>
+    <hr class='my-2'>
+    <h4 class='font-semibold'>Tindakan</h4>
+    <table class="w-full text-xs border mb-2">
+      <thead class="bg-gray-200 dark:bg-gray-700">
+        <tr>
+          <th class="p-2">Nama</th>
+          <th class="p-2">Syarat</th>
+          <th class="p-2">Wajib?</th>
+          <th class="p-2">Jenis</th>
+          <th class="p-2">Regulasi</th>
+          <th class="p-2">INA-CBGs</th>
+          <th class="p-2">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>${tindakanRows}</tbody>
+    </table>
+    <hr class='my-2'>
+    <h4 class='font-semibold'>Rawat Inap</h4>
+    <p>Indikasi: ${klinis}</p>
+    <p>Lama rawat: 3-5 hari</p>
+    <p>Perpanjangan: bila komplikasi</p>
+    <hr class='my-2'>
+    <h4 class='font-semibold'>Faskes</h4>
+    <p>Kesesuaian: RS Tipe C ke atas</p>
+    <hr class='my-2'>
+    <h4 class='font-semibold'>Rujukan</h4>
+    <p>Syarat: ICU tersedia</p>
+    <p>Kelayakan: Sesuai regulasi</p>
+  `;
+}
+
+function selectToSimulasi(type, kategori, value) {
+  if(type === "diagnosis") {
+    if(kategori === "utama") document.getElementById("simulasi-dx-utama").value = value;
+    if(kategori === "sekunder") document.getElementById("simulasi-dx-sekunder").value = value;
+  }
+  if(type === "komorbid" || type === "komplikasi") {
+    if(kategori === "utama" || kategori === "sekunder") {
+      let field = document.getElementById("simulasi-dx-sekunder");
+      field.value += (field.value ? ", " : "") + value;
+    }
+  }
+  if(type === "tindakan") {
+    if(kategori === "utama") document.getElementById("simulasi-tindakan-utama").value = value;
+    if(kategori === "sekunder") document.getElementById("simulasi-tindakan-sekunder").value = value;
+  }
+}
+
+function runAnalisis() {
+  document.getElementById("simulasi-tarif").value = "Rp 5.500.000";
+  document.getElementById("analisis-result").classList.remove("hidden");
+}
+</script>
 {% endblock %}

@@ -12,8 +12,8 @@ Keep this file focused on HTTP routing and view rendering. Business logic
 and DB operations live in `crud.py` and models are in `models.py`.
 """
 
-from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter
-from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
+from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter, Body
+from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_ 
 from sqlalchemy.orm import Session, joinedload
@@ -145,7 +145,7 @@ def dashboard(
     # hitung umum
     total_pasien = db.query(models.Patient).count()
     pasien_hari_ini = db.query(models.Claim).filter(
-        func.date(models.Claim.tanggal_kunjungan) == datetime.today().date()
+        func.date(models.Claim.claim_date) == datetime.today().date()
     ).count()
     total_claims = db.query(models.Claim).count()
     claims = (
@@ -154,9 +154,11 @@ def dashboard(
         .limit(10)                           # ambil hanya 10 klaim
         .all()
     )
-    draft_claims = db.query(models.Claim).filter(models.Claim.status == "draft").count()
-    verified_claims = db.query(models.Claim).filter(models.Claim.status == "verified").count()
-    submitted_claims = db.query(models.Claim).filter(models.Claim.status == "submitted").count()
+    # draft_claims
+    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False).count()
+
+    # final_claims
+    final_claims = db.query(models.Claim).filter(models.Claim.is_final == True).count()
 
     # role check
     if current_user.role in ["doctor", "coder", "verifikator"]:
@@ -178,8 +180,7 @@ def dashboard(
         "total_claims": total_claims,
         "claims": claims,
         "draft_claims": draft_claims,
-        "verified_claims": verified_claims,
-        "submitted_claims": submitted_claims,
+        "final_claims": final_claims,
         "total_users": total_users,
         "pasien_list": pasien_list,
         "csrf_token": csrf_token
@@ -519,44 +520,105 @@ def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db),
     )
 
 
-@app.post("/claims/add")
+@app.post("/claims/add", name="add_claim")
 def add_claim(
     request: Request,
-    csrf_token: Optional[str] = Form(None),
-    patient_id: Optional[int] = Form(None),
-    visit_id: Optional[int] = Form(None),
-    hospital_id: Optional[int] = Form(None),
-    tanggal_kunjungan: str = Form(...),
-    doctor_id: Optional[str] = Form(None),
-    doctor_name: Optional[str] = Form(None),
-    diagnosis_awal: Optional[str] = Form(None),
-    kode_icd: Optional[str] = Form(None),
-    tindakan: Optional[str] = Form(None),
-    obat: Optional[str] = Form(None),
-    status: Optional[str] = Form("draft"),
-    hasil: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder")),
-    _=Depends(require_csrf_dep)
+    patient_id: int = Form(...),
+    visit_id: int = Form(...),
+    hospital_id: int = Form(...),
+    doctor_id: int = Form(...),
+    doctor_name: str = Form(...),
+    claim_date: datetime = Form(datetime.utcnow()),
+    is_final: bool = Form(False),
+    # Rekam medis
+    riwayat_penyakit: str = Form(None),
+    riwayat_pengobatan: str = Form(None),
+    riwayat_operasi: str = Form(None),
+    alergi: str = Form(None),
+    keluhan: str = Form(None),
+    gejala_lain: str = Form(None),
+    td: str = Form(None),
+    nadi: str = Form(None),
+    pernapasan: str = Form(None),
+    suhu: str = Form(None),
+    spo2: str = Form(None),
+    berat_badan: str = Form(None),
+    tinggi_badan: str = Form(None),
+    hemoglobin: str = Form(None),
+    leukosit: str = Form(None),
+    trombosit: str = Form(None),
+    gula_darah: str = Form(None),
+    creatinin: str = Form(None),
+    rontgen_thorax: str = Form(None),
+    ct_scan: str = Form(None),
+    usg: str = Form(None),
+    diagnosis_awal: str = Form(None),
+    komorbid: str = Form(None),
+    komplikasi: str = Form(None),
+    diagnosis_akhir: str = Form(None),
+    tindakan: str = Form(None),
+    obat: str = Form(None),
+    validasi_fornas: str = Form(None),
+    notes_doctor: str = Form(None),
 ):
-    claim = models.Claim(
-        patient_id=patient_id or None,
-        visit_id=visit_id or None,
-        hospital_id=hospital_id or None,
-        tanggal_kunjungan=tanggal_kunjungan,
-        doctor_id=doctor_id or None,
-        doctor_name=doctor_name or None,
-        diagnosis_awal=diagnosis_awal or None,
-        kode_icd=kode_icd or None,
-        tindakan=tindakan or None,
-        obat=obat or None,
-        status=status or "draft",
-        hasil=hasil or None,
+    # 1. Buat rekam medis baru
+    mr = MedicalRecord(
+        patient_id=patient_id,
+        visit_id=visit_id,
+        doctor_id=doctor_id,
+        doctor_name=doctor_name,
+        is_final=is_final,
+        notes_date=datetime.utcnow(),
+        riwayat_penyakit=riwayat_penyakit,
+        riwayat_pengobatan=riwayat_pengobatan,
+        riwayat_operasi=riwayat_operasi,
+        alergi=alergi,
+        keluhan=keluhan,
+        gejala_lain=gejala_lain,
+        td=td,
+        nadi=nadi,
+        pernapasan=pernapasan,
+        suhu=suhu,
+        spo2=spo2,
+        berat_badan=berat_badan,
+        tinggi_badan=tinggi_badan,
+        hemoglobin=hemoglobin,
+        leukosit=leukosit,
+        trombosit=trombosit,
+        gula_darah=gula_darah,
+        creatinin=creatinin,
+        rontgen_thorax=rontgen_thorax,
+        ct_scan=ct_scan,
+        usg=usg,
+        diagnosis_awal=diagnosis_awal,
+        komorbid=komorbid,
+        komplikasi=komplikasi,
+        diagnosis_akhir=diagnosis_akhir,
+        tindakan=tindakan,
+        obat=obat,
+        validasi_fornas=validasi_fornas,
+        notes_doctor=notes_doctor,
+    )
+    db.add(mr)
+    db.commit()
+    db.refresh(mr)
+
+    # 2. Buat klaim baru link ke rekam medis
+    claim = Claim(
+        claim_date=claim_date,
+        patient_id=patient_id,
+        visit_id=visit_id,
+        hospital_id=hospital_id,
+        doctor_id=doctor_id,
+        doctor_name=doctor_name,
+        medical_record_id=mr.id,
+        is_final=is_final,
     )
     db.add(claim)
     db.commit()
-    db.refresh(claim)
-    flash(request, "Klaim berhasil ditambahkan!", "success")
+
+    flash(request, "✅ Klaim berhasil ditambahkan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
@@ -566,52 +628,71 @@ def add_claim_start(request: Request, user=Depends(require_roles_session("doctor
     flash(request, "Redirecting to patient list...", "info")
     return RedirectResponse("/patients?mode=claim")
 
-@app.get("/claims/add/form/{visit_id}")
+@app.get("/claims/add/form/{visit_id}", response_class=HTMLResponse, name="form_add_claim")
 def claim_form(
     request: Request,
     visit_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor"))
+    user=Depends(require_roles_session("doctor"))  # cuma dokter yg bisa klaim
 ):
-    visit = db.query(models.Visit).get(visit_id) if visit_id != 0 else None
-    patient = visit.patient if visit else None
-
-    # fallback kalau tidak ada visit, ambil dari query param
-    if not patient and request.query_params.get("patient_id"):
-        patient = db.query(models.Patient).get(int(request.query_params["patient_id"]))
+    visit = db.query(models.Visit).get(visit_id)
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit tidak ditemukan")
+    patient = visit.patient
 
     csrf_token = issue_csrf_token(request)
-    fields = form_configs["claim"].copy()
 
-    fields.insert(0, {
-        "name": "patient_id",
-        "type": "hidden",
-        "value": patient.id if patient else None
-    })
-    fields.insert(1, {
-        "name": "visit_id",
-        "type": "hidden",
-        "value": visit.id if visit else None
-    })
-    if visit and visit.hospital:
-        fields.insert(2, {
-            "name": "hospital",
-            "label": "Rumah Sakit",
-            "type": "text",
-            "value": visit.hospital.nama,
-            "readonly_roles": ["*"]
+    # Ambil field netral dari config
+    fields = form_configs["claim_medical_record"].copy()
+
+    # Inject hospital (auto dari akun dokter)
+    if user.hospital:
+        fields.insert(0, {"name": "hospital_id", "type": "hidden", "value": user.hospital.id})
+        fields.insert(1, {
+            "name": "hospital_name", "label": "Rumah Sakit",
+            "type": "readonly", "value": user.hospital.nama
         })
 
-    return templates.TemplateResponse("claim_form.html", {
-        "request": request,
-        "visit": visit,
-        "patient": patient,
-        "mode": "add",
-        "claim": None,
-        "current_user": user,
-        "csrf_token": csrf_token,
-        "fields": fields
-    })
+    # Inject patient & visit (selalu hidden karena datang dari wizard)
+    fields.insert(0, {"name": "patient_id", "type": "hidden", "value": patient.id})
+    fields.insert(1, {"name": "visit_id", "type": "hidden", "value": visit.id})
+
+    # Inject dokter (auto dari akun login)
+    if user.role == "doctor":
+        fields.insert(2, {
+            "name": "doctor_name",
+            "label": "Dokter",
+            "type": "readonly",
+            "value": user.name
+        })
+        fields.insert(3, {
+            "name": "doctor_id",
+            "type": "hidden",
+            "value": user.id
+        })
+    else:
+        doctors = db.query(models.User).filter(models.User.role == "doctor").all()
+        fields.insert(2, {
+            "name": "doctor_id",
+            "label": "Dokter",
+            "type": "select",
+            "options": [{"value": d.id, "label": d.name} for d in doctors]
+        })
+
+
+    return templates.TemplateResponse(
+        "claim_form.html",
+        {
+            "request": request,
+            "visit": visit,
+            "patient": patient,
+            "mode": "add",
+            "current_user": user,
+            "user": user,
+            "csrf_token": csrf_token,
+            "claim_medical_record_fields": fields,
+        },
+    )
 
 
 
@@ -651,41 +732,36 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
 def update_claim(
     id: int,
     request: Request,
-    patient_id: Optional[int] = Form(None),
-    visit_id: Optional[int] = Form(None),
-    hospital_id: Optional[int] = Form(None),
-    tanggal_kunjungan: Optional[str] = Form(None),
-    doctor_id: Optional[int] = Form(None),
-    doctor_name: Optional[str] = Form(None),
-    diagnosis_awal: Optional[str] = Form(None),
-    kode_icd: Optional[str] = Form(None),
-    tindakan: Optional[str] = Form(None),
-    obat: Optional[str] = Form(None),
-    status: Optional[str] = Form("draft"),
-    hasil: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder")),
-    _=Depends(require_csrf_dep)
+    claim_date: datetime = Form(datetime.utcnow()),
+    is_final: bool = Form(False),
+    diagnosis_awal: str = Form(None),
+    diagnosis_akhir: str = Form(None),
+    tindakan: str = Form(None),
+    obat: str = Form(None),
+    notes_doctor: str = Form(None),
 ):
-    claim = db.query(models.Claim).get(id)
+    claim = db.query(Claim).filter(Claim.id == id).first()
     if not claim:
-        raise HTTPException(status_code=404, detail="Claim not found")
-    claim.patient_id = patient_id or None
-    claim.visit_id = visit_id or None
-    claim.hospital_id = hospital_id or None
-    claim.tanggal_kunjungan = tanggal_kunjungan or None
-    claim.doctor_id = doctor_id or None
-    claim.doctor_name = doctor_name or None
-    claim.diagnosis_awal = diagnosis_awal or None
-    claim.kode_icd = kode_icd or None
-    claim.tindakan = tindakan or None
-    claim.obat = obat or None
-    claim.status = status or None
-    claim.hasil = hasil or None
+        flash(request, "❌ Klaim tidak ditemukan", "error")
+        return RedirectResponse(url="/claims", status_code=303)
+
+    # Update klaim
+    claim.claim_date = claim_date
+    claim.is_final = is_final
+
+    # Update rekam medis terkait
+    if claim.medical_record:
+        claim.medical_record.is_final = is_final
+        claim.medical_record.diagnosis_awal = diagnosis_awal
+        claim.medical_record.diagnosis_akhir = diagnosis_akhir
+        claim.medical_record.tindakan = tindakan
+        claim.medical_record.obat = obat
+        claim.medical_record.notes_doctor = notes_doctor
+
     db.commit()
-    db.refresh(claim)
-    flash(request, "Klaim berhasil diperbarui!", "success")
-    return RedirectResponse(url="/claims", status_code=303)
+    flash(request, "✅ Klaim berhasil diperbarui!", "success")
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 @app.get("/claims/{id}/delete")
 def delete_claim(
@@ -700,6 +776,28 @@ def delete_claim(
     db.commit()
     flash(request, "Klaim berhasil dihapus!", "success")
     return RedirectResponse(url="/claims", status_code=303)
+
+
+@app.post("/claims/{claim_id}/generate-ai", name="generate_ai")
+def generate_ai(claim_id: int, db: Session = Depends(get_db)):
+    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+    if not claim:
+        return JSONResponse({"error": "Claim not found"}, status_code=404)
+
+    # dummy data (nanti diganti AI perusahaan)
+    response = {
+        "diagnoses": [
+            {"text": "Demam Berdarah Dengue", "icd10": "A91", "confidence": 0.92},
+            {"text": "Gastroenteritis", "icd10": "A09", "confidence": 0.76},
+        ],
+        "komorbid": [
+            {"text": "Hipertensi", "icd10": "I10", "confidence": 0.65},
+        ],
+        "komplikasi": [
+            {"text": "Syok Dengue", "icd10": "A91.1", "confidence": 0.55},
+        ]
+    }
+    return JSONResponse(response)
 
 
 # -------------------------
@@ -958,7 +1056,7 @@ def list_visit(
     patient = db.query(models.Patient).get(patient_id)
     return templates.TemplateResponse(
         "visit_list.html",
-        {"request": request, "visits": visits, "patient": patient, "flow": flow}
+        {"request": request, "visits": visits, "patient": patient, "flow": flow, "user": user, "current_user": user, "csrf_token": issue_csrf_token(request)}
     )
 
 @app.get("/visits/add")
@@ -1287,179 +1385,6 @@ def list_medical_records(
         "current_user": user
     })
 
-
-@app.get("/patients/{patient_id}/visits/{visit_id}/medical-records", name="wizard_medical_records")
-def wizard_medical_records(
-    request: Request,
-    patient_id: int,
-    visit_id: int,
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","admin_rs")),
-    flow: str = Query(None)
-):
-    patient = db.query(models.Patient).get(patient_id)
-    visit = db.query(models.Visit).get(visit_id)
-
-    records = db.query(models.MedicalRecord).filter(
-        models.MedicalRecord.patient_id == patient_id,
-        models.MedicalRecord.visit_id == visit_id
-    ).all()
-
-    return templates.TemplateResponse("medical_record_list.html", {
-        "request": request,
-        "patient": patient,   # 👈 wajib
-        "visit": visit,       # 👈 wajib
-        "medical_records": records,
-        "flow": flow,
-        "current_user": user
-    })
-
-
-@app.get("/patient/{patient_id}/visit/{visit_id}/medical-records/add", name="wizard_add_medical_record")
-def wizard_add_medical_record(
-    patient_id: int,
-    visit_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","admin_rs")),
-    flow: str = Query(None)
-):
-    csrf_token = issue_csrf_token(request)
-    fields = form_configs["medical_record"]
-
-    # inject hidden fields
-    for tab_name, tab_fields in fields.items():
-        tab_fields.insert(0, {"name": "patient_id", "type": "hidden", "value": patient_id})
-        tab_fields.insert(1, {"name": "visit_id", "type": "hidden", "value": visit_id})
-
-    return templates.TemplateResponse("medical_record_form.html", {
-        "request": request,
-        "mode": "add",
-        "record": None,
-        "fields": fields,
-        "csrf_token": csrf_token,
-        "current_user": user,
-        "flow": flow   # 👈 pass ke template
-    })
-
-@app.get("/medical-records/add")
-def add_medical_record_form(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
-    patients = db.query(models.Patient).all()
-    csrf_token = issue_csrf_token(request)
-
-    fields = form_configs["medical_record"].copy()
-    for tab_name, tab_fields in fields.items():
-        for f in tab_fields:
-            if f["name"] == "patient_id":
-                f["options"] = [(p.id, p.nama) for p in patients]
-                f["type"] = "select"
-
-    return templates.TemplateResponse("medical_record_form.html", {
-        "request": request,
-        "mode": "add",
-        "record": None,
-        "user": user,
-        "csrf_token": csrf_token,
-        "current_user": user,
-        "fields": fields  # dynamic
-    })
-
-@app.post("/medical-records/add", name="add_medical_record")
-def add_medical_record(
-    request: Request,
-    patient_id: Optional[int] = Form(None),
-    visit_id: Optional[int] = Form(None),
-    record_type: Optional[str] = Form(None),
-    is_final: Optional[bool] = Form(False),
-    notes_date: Optional[str] = Form(None),
-    doctor_id: Optional[int] = Form(None),
-    doctor_name: Optional[str] = Form(None),
-    riwayat_penyakit: Optional[str] = Form(None),
-    riwayat_pengobatan: Optional[str] = Form(None),
-    riwayat_operasi: Optional[str] = Form(None),
-    alergi: Optional[str] = Form(None),
-    keluhan: Optional[str] = Form(None),
-    gejala_lain: Optional[str] = Form(None),
-    td: Optional[str] = Form(None),
-    nadi: Optional[str] = Form(None),
-    pernapasan: Optional[str] = Form(None),
-    suhu: Optional[str] = Form(None),
-    spo2: Optional[str] = Form(None),
-    berat_badan: Optional[str] = Form(None),
-    tinggi_badan: Optional[str] = Form(None),
-    hemoglobin: Optional[str] = Form(None),
-    leukosit: Optional[str] = Form(None),
-    trombosit: Optional[str] = Form(None),
-    gula_darah: Optional[str] = Form(None),
-    creatinin: Optional[str] = Form(None),
-    rontgen_thorax: Optional[str] = Form(None),
-    ct_scan: Optional[str] = Form(None),
-    usg: Optional[str] = Form(None),
-    diagnosis_awal: Optional[str] = Form(None),
-    komorbid: Optional[str] = Form(None),
-    komplikasi: Optional[str] = Form(None),
-    diagnosis_akhir: Optional[str] = Form(None),
-    tindakan: Optional[str] = Form(None),
-    obat: Optional[str] = Form(None),
-    validasi_fornas: Optional[str] = Form(None),
-    notes_doctor: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs")),
-    flow: str = Query(None),
-    _=Depends(require_csrf_dep)
-):
-    medical_record = models.MedicalRecord(
-        patient_id=patient_id,
-        visit_id=visit_id,
-        record_type=record_type,
-        is_final=is_final,
-        notes_date=datetime.strptime(notes_date, "%Y-%m-%d") if notes_date else None,
-        doctor_id=doctor_id,
-        doctor_name=doctor_name,
-        riwayat_penyakit=riwayat_penyakit,
-        riwayat_pengobatan=riwayat_pengobatan,
-        riwayat_operasi=riwayat_operasi,
-        alergi=alergi,
-        keluhan=keluhan,
-        gejala_lain=gejala_lain,
-        td=td,
-        nadi=nadi,
-        pernapasan=pernapasan,
-        suhu=suhu,
-        spo2=spo2,
-        berat_badan=berat_badan,
-        tinggi_badan=tinggi_badan,
-        hemoglobin=hemoglobin,
-        leukosit=leukosit,
-        trombosit=trombosit,
-        gula_darah=gula_darah,
-        creatinin=creatinin,
-        rontgen_thorax=rontgen_thorax,
-        ct_scan=ct_scan,
-        usg=usg,
-        diagnosis_awal=diagnosis_awal,
-        komorbid=komorbid,
-        komplikasi=komplikasi,
-        diagnosis_akhir=diagnosis_akhir,
-        tindakan=tindakan,
-        obat=obat,
-        validasi_fornas=validasi_fornas,
-        notes_doctor=notes_doctor,
-    )
-    db.add(medical_record)
-    db.commit()
-    db.refresh(medical_record)
-
-    flash(request, "Rekam medis berhasil ditambahkan!", "success")
-    if flow == "claim":
-        return RedirectResponse(
-            url=f"/patients/{patient_id}/visits/{visit_id}/medical-records?flow=claim",
-            status_code=303
-        )
-    else:
-        return RedirectResponse(url="/medical-records", status_code=303)
-
-
 @app.get("/medical-records/{record_id}/edit", name="edit_medical_record")
 def edit_medical_record_form(request: Request, record_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles_session("doctor", "admin_rs"))):
     medical_record = db.query(models.MedicalRecord).get(record_id)
@@ -1487,93 +1412,48 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
 @app.post("/medical-records/{record_id}/edit", name="update_medical_record")
 def update_medical_record(
     request: Request,
-    record_id: int,
-    patient_id: Optional[int] = Form(None),
-    visit_id: Optional[int] = Form(None),
-    record_type: Optional[str] = Form(None),
-    is_final: Optional[bool] = Form(False),
-    notes_date: Optional[str] = Form(None),
-    doctor_id: Optional[int] = Form(None),
-    doctor_name: Optional[str] = Form(None),
-    riwayat_penyakit: Optional[str] = Form(None),
-    riwayat_pengobatan: Optional[str] = Form(None),
-    riwayat_operasi: Optional[str] = Form(None),
-    alergi: Optional[str] = Form(None),
-    keluhan: Optional[str] = Form(None),
-    gejala_lain: Optional[str] = Form(None),
-    td: Optional[str] = Form(None),
-    nadi: Optional[str] = Form(None),
-    pernapasan: Optional[str] = Form(None),
-    suhu: Optional[str] = Form(None),
-    spo2: Optional[str] = Form(None),
-    berat_badan: Optional[str] = Form(None),
-    tinggi_badan: Optional[str] = Form(None),
-    hemoglobin: Optional[str] = Form(None),
-    leukosit: Optional[str] = Form(None),
-    trombosit: Optional[str] = Form(None),
-    gula_darah: Optional[str] = Form(None),
-    creatinin: Optional[str] = Form(None),
-    rontgen_thorax: Optional[str] = Form(None),
-    ct_scan: Optional[str] = Form(None),
-    usg: Optional[str] = Form(None),
-    diagnosis_awal: Optional[str] = Form(None),
-    komorbid: Optional[str] = Form(None),
-    komplikasi: Optional[str] = Form(None),
-    diagnosis_akhir: Optional[str] = Form(None),
-    tindakan: Optional[str] = Form(None),
-    obat: Optional[str] = Form(None),
-    validasi_fornas: Optional[str] = Form(None),
-    notes_doctor: Optional[str] = Form(None),
+    record_id: int,   # path param dulu
+    update_data: dict = Body(...),
+    user_id: int = Form(...),  # kalau dari form, atau Depends(get_current_user_id) kalau dari session
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs")),
-    _=Depends(require_csrf_dep)
+    current_user = Depends(require_roles_session("doctor", "admin_rs"))
 ):
-    medical_record = db.query(models.MedicalRecord).get(record_id)
-    if not medical_record:
-        raise HTTPException(status_code=404, detail="Medical record not found")
+    # Validasi dan ambil data rekam medis
+    record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+    if not record:
+        return None
 
-    medical_record.patient_id = patient_id
-    medical_record.visit_id = visit_id
-    medical_record.record_type = record_type
-    medical_record.is_final = is_final
-    medical_record.notes_date = datetime.strptime(notes_date, "%Y-%m-%d") if notes_date else None
-    medical_record.doctor_id = doctor_id
-    medical_record.doctor_name = doctor_name
-    medical_record.riwayat_penyakit = riwayat_penyakit
-    medical_record.riwayat_pengobatan = riwayat_pengobatan
-    medical_record.riwayat_operasi = riwayat_operasi
-    medical_record.alergi = alergi
-    medical_record.keluhan = keluhan
-    medical_record.gejala_lain = gejala_lain
-    medical_record.td = td
-    medical_record.nadi = nadi
-    medical_record.pernapasan = pernapasan
-    medical_record.suhu = suhu
-    medical_record.spo2 = spo2
-    medical_record.berat_badan = berat_badan
-    medical_record.tinggi_badan = tinggi_badan
-    medical_record.hemoglobin = hemoglobin
-    medical_record.leukosit = leukosit
-    medical_record.trombosit = trombosit
-    medical_record.gula_darah = gula_darah
-    medical_record.creatinin = creatinin
-    medical_record.rontgen_thorax = rontgen_thorax
-    medical_record.ct_scan = ct_scan
-    medical_record.usg = usg
-    medical_record.diagnosis_awal = diagnosis_awal
-    medical_record.komorbid = komorbid
-    medical_record.komplikasi = komplikasi
-    medical_record.diagnosis_akhir = diagnosis_akhir
-    medical_record.tindakan = tindakan
-    medical_record.obat = obat
-    medical_record.validasi_fornas = validasi_fornas
-    medical_record.notes_doctor = notes_doctor
+    # Ambil versi terakhir
+    last_version = (
+        db.query(MedicalRecordLog.version)
+        .filter(MedicalRecordLog.medical_record_id == record.id)
+        .order_by(MedicalRecordLog.version.desc())
+        .first()
+    )
+    new_version = (last_version[0] + 1) if last_version else 1
+
+    # Simpan snapshot lama ke log
+    snapshot = {col.name: getattr(record, col.name) for col in record.__table__.columns}
+
+    log = MedicalRecordLog(
+        medical_record_id=record.id,
+        version=new_version,
+        data_snapshot=snapshot,
+        updated_by=user_id
+    )
+    db.add(log)
+
+    # Update data baru
+    for key, value in update_data.items():
+        setattr(record, key, value)
 
     db.commit()
-    db.refresh(medical_record)
-
+    db.refresh(record)
     flash(request, "Rekam medis berhasil diperbarui!", "success")
-    return RedirectResponse(url="/medical-records", status_code=303)
+    return templates.TemplateResponse(
+        "medical_record_detail.html",
+        {"request": request, "record": record, "logs": record.logs}
+)
 
 
 @app.get("/medical-records/{record_id}/delete", name="delete_medical_record")

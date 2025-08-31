@@ -6,7 +6,7 @@
   </h1>
 
   <!-- Ringkasan -->
-  <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 text-center">
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5 text-center">
     {% if user and user.role in ['doctor','coder','verifikator'] %}
       <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg">
         <p class="text-gray-500 dark:text-gray-400">Total Pasien</p>
@@ -27,12 +27,8 @@
         <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ draft_claims }}</p>
       </div>
       <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-blue-500">
-        <p class="text-gray-500 dark:text-gray-400">Submitted</p>
-        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ submitted_claims }}</p>
-      </div>
-      <div class="bg-white dark:bg-gray-800 p-4 shadow rounded-lg border-l-4 border-purple-500">
-        <p class="text-gray-500 dark:text-gray-400">Verified</p>
-        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ verified_claims }}</p>
+        <p class="text-gray-500 dark:text-gray-400">Final</p>
+        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ final_claims }}</p>
       </div>
     {% endif %}
 
