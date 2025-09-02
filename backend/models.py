@@ -255,6 +255,8 @@ class MedicalRecord(Base):
     __tablename__ = "medical_records"
 
     id = Column(Integer, primary_key=True, index=True)
+    record_type = Column(String(50), nullable=True)  # admission / daily / discharge
+    
 
     # Status rekam medis → sinkron dengan klaim
     is_final = Column(Boolean, default=False)
