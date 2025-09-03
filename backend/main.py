@@ -15,6 +15,8 @@ and DB operations live in `crud.py` and models are in `models.py`.
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter, Body
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, or_ 
 from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlencode
@@ -56,9 +58,17 @@ def get_flashed_messages(request: Request):
 # Init DB & App
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="frontend/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 app.add_middleware(SessionMiddleware, secret_key=config.SESSION_SECRET, same_site="lax", https_only=False)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # untuk dev: izinkan semua
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 ISSUER = lambda: f"https://{config.AUTH0_DOMAIN}/"
 ALGS = ["RS256"]
 
@@ -414,6 +424,152 @@ def import_patients(file: UploadFile = File(...), db: Session = Depends(get_db),
 # -------------------------
 # CLAIM ROUTES
 # -------------------------
+
+# Rekomendasi AI untuk Klaim
+
+def make_group(prefix, icd_prefix):
+    """3 penyakit utama + 2 turunan per penyakit"""
+    def make_modal(icd):
+        return {
+            "aspek_klinis": {
+                "justifikasi": "GFR 15-29",
+                "bukti": "Belum ada bukti",
+                "syarat": "Belum ditentukan"
+            },
+            "icd10": {
+                "struktur_kode": icd,
+                "kode_ganda": "Tidak",
+                "z_code": "-",
+                "kode_bpjs_khusus": "-"
+            },
+            "tindakan": [
+                {"nama": "Operasi Apendektomi"},
+                {"nama": "CT Scan Abdomen"},
+                {"nama": "Pemeriksaan Laboratorium"},
+                {"nama": "USG Abdomen"},
+                {"nama": "MRI Kepala"},
+                {"nama": "Pemasangan Infus"},
+                {"nama": "Pemberian Oksigen"},
+                {"nama": "Terapi Nebulizer"},
+                {"nama": "Transfusi Darah"},
+            ],
+            "rawat_inap": {
+                "indikasi": "Tidak ada indikasi khusus",
+                "lama_rawat": "3 hari",
+                "perpanjangan": "Tidak"
+            },
+            "faskes": {"kesesuaian_rs": "Tipe C"},
+            "rujukan": {"syarat": "Tidak ada", "kelayakan": "Layak"}
+        }
+
+    return [
+        {"kategori": f"{prefix} 1", "klinis": f"{prefix} deskripsi 1",
+         "icd": f"{icd_prefix}1", "tindakan": "Observasi", "score": 90,
+         "child": False, "modal_detail": make_modal(f"{icd_prefix}1")},
+        {"kategori": f"→ {prefix} 1a", "klinis": f"{prefix} child a",
+         "icd": f"{icd_prefix}1a", "tindakan": "Rawat Inap", "score": 80,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}1a")},
+        {"kategori": f"→ {prefix} 1b", "klinis": f"{prefix} child b",
+         "icd": f"{icd_prefix}1b", "tindakan": "ICU", "score": 70,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}1b")},
+
+        {"kategori": f"{prefix} 2", "klinis": f"{prefix} deskripsi 2",
+         "icd": f"{icd_prefix}2", "tindakan": "Antibiotik IV", "score": 88,
+         "child": False, "modal_detail": make_modal(f"{icd_prefix}2")},
+        {"kategori": f"→ {prefix} 2a", "klinis": f"{prefix} child a",
+         "icd": f"{icd_prefix}2a", "tindakan": "Observasi", "score": 78,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}2a")},
+        {"kategori": f"→ {prefix} 2b", "klinis": f"{prefix} child b",
+         "icd": f"{icd_prefix}2b", "tindakan": "Rawat Inap", "score": 68,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}2b")},
+
+        {"kategori": f"{prefix} 3", "klinis": f"{prefix} deskripsi 3",
+         "icd": f"{icd_prefix}3", "tindakan": "Ventilasi Mekanik", "score": 85,
+         "child": False, "modal_detail": make_modal(f"{icd_prefix}3")},
+        {"kategori": f"→ {prefix} 3a", "klinis": f"{prefix} child a",
+         "icd": f"{icd_prefix}3a", "tindakan": "Oksigen Nasal", "score": 75,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}3a")},
+        {"kategori": f"→ {prefix} 3b", "klinis": f"{prefix} child b",
+         "icd": f"{icd_prefix}3b", "tindakan": "Intubasi", "score": 65,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}3b")},
+    ]
+
+
+
+def make_dummy(tab):
+    return {
+        "diagnosis": make_group("Diagnosis", f"{tab.upper()}DX"),
+        "komorbid": make_group("Komorbid", f"{tab.upper()}KM"),
+        "komplikasi": make_group("Komplikasi", f"{tab.upper()}KP"),
+        "tindakan": [
+            {"kategori": "Operasi Apendektomi", "klinis": "Prosedur usus buntu", "icd": "", "tindakan": "47.0", "score": 88, "child": False},
+            {"kategori": "CT Scan Abdomen", "klinis": "Imaging perut", "icd": "", "tindakan": "88.01", "score": 77, "child": False},
+            {"kategori": "Lab Darah Lengkap", "klinis": "Pemeriksaan darah", "icd": "", "tindakan": "90.0", "score": 72, "child": False},
+        ],
+        "simulasi": {
+            "utama": None,
+            "sekunder": [],
+            "tindakanUtama": None,
+            "tindakanSekunder": [],
+            "tarifDraft": f"Rp 15.000.000"
+        },
+        "summary": {
+            "klinis": [
+                {"status": "valid", "message": "Diagnosis sesuai klinis", "confidence": 0.9, "target": ["Diagnosis Utama", "Observasi"]},
+                {"status": "warning", "message": "Komorbid perlu cek", "confidence": 0.7, "target": ["Hipertensi", "Rawat Inap"]},
+                {"status": "invalid", "message": "Komplikasi tidak sesuai", "confidence": 0.5, "target": ["Syok Dengue", "Ventilasi Mekanik"]},
+            ],
+            "regulasi": [
+                {"status": "valid", "message": "Sesuai PNPK", "confidence": 0.85, "target": ["Diagnosis", "PNPK"]},
+                {"status": "warning", "message": "Butuh cek Fornas", "confidence": 0.65, "target": ["Komorbid", "Fornas"]},
+                {"status": "invalid", "message": "Tidak sesuai Permenkes", "confidence": 0.4, "target": ["Komplikasi", "Permenkes"]},
+            ],
+            "tarif": [
+                {"status":"valid", "message":"Rp 5.000.000", "confidence":0.9, "target":["Operasi Apendektomi"]},
+                {"status":"warning", "message":"Rp 2.500.000", "confidence":0.6, "target":["CT Scan Abdomen"]},
+                {"status":"invalid", "message":"Rp 1.000.000", "confidence":0.3, "target":["Lab Darah Lengkap"]}
+            ]
+
+        }
+    }
+
+
+@app.post("/ai/recommendation")
+def ai_recommendation(payload: dict = Body(...)):
+    return {
+        "admission": make_dummy("admission"),
+        "daily": make_dummy("daily"),
+        "discharge": make_dummy("discharge"),
+    }
+
+# End Rekomendasi AI untuk Klaim
+
+@app.post("/claims/{claim_id}/finalize")
+def finalize_claim(
+    claim_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("verifikator"))
+):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    claim.is_final = True
+    claim.status = "submitted"
+
+    # simpan summary AI ke tabel summary
+    summary = ClaimAIRecommendationsSummary(
+        claim_id=claim_id,
+        klinis=payload.get("summary", {}).get("klinis"),
+        regulasi=payload.get("summary", {}).get("regulasi"),
+        tarif=payload.get("summary", {}).get("tarif")
+    )
+    db.add(summary)
+    db.commit()
+    flash("Claim finalized successfully", "success")
+    return RedirectResponse(url="/dashboard", status_code=303)
+
 @app.get("/claims")
 def list_claims(
     request: Request,
@@ -524,43 +680,44 @@ def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db),
 def add_claim(
     request: Request,
     db: Session = Depends(get_db),
-    patient_id: int = Form(...),
-    visit_id: int = Form(...),
-    hospital_id: int = Form(...),
-    doctor_id: int = Form(...),
-    doctor_name: str = Form(...),
-    claim_date: datetime = Form(datetime.utcnow()),
-    is_final: bool = Form(False),
+    user=Depends(require_roles_session("doctor")),
+    patient_id: Optional[int] = Form(None),
+    visit_id: Optional[int] = Form(None),
+    hospital_id: Optional[int] = Form(None),
+    doctor_id: Optional[int] = Form(None),
+    doctor_name: Optional[str] = Form(None),
+    claim_date: Optional[datetime] = Form(datetime.utcnow()),
+    #is_final: bool = Form(False),
     # Rekam medis
-    riwayat_penyakit: str = Form(None),
-    riwayat_pengobatan: str = Form(None),
-    riwayat_operasi: str = Form(None),
-    alergi: str = Form(None),
-    keluhan: str = Form(None),
-    gejala_lain: str = Form(None),
-    td: str = Form(None),
-    nadi: str = Form(None),
-    pernapasan: str = Form(None),
-    suhu: str = Form(None),
-    spo2: str = Form(None),
-    berat_badan: str = Form(None),
-    tinggi_badan: str = Form(None),
-    hemoglobin: str = Form(None),
-    leukosit: str = Form(None),
-    trombosit: str = Form(None),
-    gula_darah: str = Form(None),
-    creatinin: str = Form(None),
-    rontgen_thorax: str = Form(None),
-    ct_scan: str = Form(None),
-    usg: str = Form(None),
-    diagnosis_awal: str = Form(None),
-    komorbid: str = Form(None),
-    komplikasi: str = Form(None),
-    diagnosis_akhir: str = Form(None),
-    tindakan: str = Form(None),
-    obat: str = Form(None),
-    validasi_fornas: str = Form(None),
-    notes_doctor: str = Form(None),
+    riwayat_penyakit: Optional[str] = Form(None),
+    riwayat_pengobatan: Optional[str] = Form(None),
+    riwayat_operasi: Optional[str] = Form(None),
+    alergi: Optional[str] = Form(None),
+    keluhan: Optional[str] = Form(None),
+    gejala_lain: Optional[str] = Form(None),
+    td: Optional[str] = Form(None),
+    nadi: Optional[str] = Form(None),
+    pernapasan: Optional[str] = Form(None),
+    suhu: Optional[str] = Form(None),
+    spo2: Optional[str] = Form(None),
+    berat_badan: Optional[str] = Form(None),
+    tinggi_badan: Optional[str] = Form(None),
+    hemoglobin: Optional[str] = Form(None),
+    leukosit: Optional[str] = Form(None),
+    trombosit: Optional[str] = Form(None),
+    gula_darah: Optional[str] = Form(None),
+    creatinin: Optional[str] = Form(None),
+    rontgen_thorax: Optional[str] = Form(None),
+    ct_scan: Optional[str] = Form(None),
+    usg: Optional[str] = Form(None),
+    diagnosis_awal: Optional[str] = Form(None),
+    komorbid: Optional[str] = Form(None),
+    komplikasi: Optional[str] = Form(None),
+    diagnosis_akhir: Optional[str] = Form(None),
+    tindakan: Optional[str] = Form(None),
+    obat: Optional[str] = Form(None),
+    validasi_fornas: Optional[str] = Form(None),
+    notes_doctor: Optional[str] = Form(None),
 ):
     # 1. Buat rekam medis baru
     mr = MedicalRecord(
@@ -613,12 +770,13 @@ def add_claim(
         doctor_id=doctor_id,
         doctor_name=doctor_name,
         medical_record_id=mr.id,
-        is_final=is_final,
+        is_final=False,       # klaim baru otomatis Draft
+        status="draft" 
     )
     db.add(claim)
     db.commit()
 
-    flash(request, "✅ Klaim berhasil ditambahkan!", "success")
+    flash(request, "✅ Klaim berhasil ditambahkan (Draft)!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
@@ -689,6 +847,9 @@ def claim_form(
             "mode": "add",
             "current_user": user,
             "user": user,
+            "role": user.role[0] if user.role else "",
+            "isDoctor": "doctor" in user.role,
+            "isVerifikator": "verifikator" in user.role,
             "csrf_token": csrf_token,
             "claim_medical_record_fields": fields,
         },
@@ -697,7 +858,7 @@ def claim_form(
 
 
 @app.get("/claims/{id}/edit")
-def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","coder"))):
+def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("verifikator","coder"))):
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -723,6 +884,10 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
         "record": claim,
         "csrf_token": csrf_token,
         "current_user": user,
+        "user": user,
+        "user_role": user.role[0] if user.role else "",
+        "isDoctor": "doctor" in user.role,
+        "isVerifikator": "verifikator" in user.role,
         "fields": fields  # dynamic
     })
 
@@ -733,6 +898,7 @@ def update_claim(
     id: int,
     request: Request,
     db: Session = Depends(get_db),
+    user=Depends(require_roles_session("verifikator","coder","doctor")),
     claim_date: datetime = Form(datetime.utcnow()),
     is_final: bool = Form(False),
     diagnosis_awal: str = Form(None),
@@ -1488,3 +1654,4 @@ def medical_record_logs(record_id: int, request: Request, db: Session = Depends(
 
 
 # End Medical Record Routes
+

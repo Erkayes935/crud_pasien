@@ -9,7 +9,7 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -246,6 +246,24 @@ class ClaimLog(Base):
 
     claim = relationship("Claim", back_populates="logs")
     user = relationship("User")
+
+# ===========================
+# Rekomendasi AI untuk Klaim
+# ===========================
+class ClaimAIRecommendationSummary(Base):
+    __tablename__ = "claim_ai_recommendations_summary"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+
+    category = Column(Enum("medis","regulasi","tarif", name="recommendation_category"))
+    target = Column(JSONB, nullable=True)   # contoh: ["Sepsis","ARDS"]
+    status = Column(Enum("valid","warning","invalid", name="recommendation_status"))
+    message = Column(Text, nullable=True)
+    confidence = Column(Float, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 # =========================================
 # Medical Record
