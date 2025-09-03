@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+  <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">
+    {{ "Tambah User" if mode == "add" else "Edit User" }}
+  </h2>
+
+  <form method="post" action="{{ url_for('add_user') if mode=='add' else url_for('edit_user', user_id=record.id) }}" class="space-y-4">
+    {% for field in fields %}
+      {% include "_form_renderer.html" %}
+    {% endfor %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="flex justify-center gap-3">
+      <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+        {{ "Tambah" if mode == "add" else "Update" }}
+      </button>
+      <a href="/users" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Daftar Rumah Sakit</h1>
+
+    <div class="mb-4">
+        <a href="/hospitals/add"
+           class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition duration-200">
+            Tambah Rumah Sakit
+        </a>
+    </div>
+
+    <div class="overflow-x-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">No</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Nama Rumah Sakit</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Kode Rumah Sakit</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Tipe Rumah Sakit</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Jenis Rumah Sakit</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Alamat</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Telepon</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Email</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Status Akreditasi</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Status Bridging</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Jumlah Tempat Tidur</th>
+                    <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 dark:text-gray-200">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {% if not hospitals %}
+                    <tr>
+                        <td colspan="4"
+                            class="py-4 px-4 text-center text-gray-500 dark:text-gray-400">
+                            Tidak ada data rumah sakit
+                        </td>
+                    </tr>
+                {% else %}
+                    {% for hospital in hospitals %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="py-2 px-4 text-gray-800 dark:text-gray-100">{{ loop.index }}</td>
+                            <td class="py-2 px-4 font-medium text-gray-900 dark:text-gray-100">{{ hospital.nama }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.kode_hospital or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.tipe_hospital or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.jenis_hospital or '-' }}</td> 
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.alamat or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.telepon or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.email or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.status_akreditasi or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.status_bridging or '-' }}</td>
+                            <td class="py-2 px-4 text-gray-700 dark:text-gray-300">{{ hospital.jumlah_tempat_tidur or '-' }}</td>
+                            <td class="py-2 px-4 space-x-1 whitespace-nowrap">
+                                <a href="/hospitals/{{ hospital.id }}/edit"
+                                   class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition duration-200">
+                                    Edit
+                                </a>
+                                <a href="/hospitals/{{ hospital.id }}/delete"
+                                   class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition duration-200">
+                                    Hapus
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6">
+        <a href="{{ url_for('dashboard') }}"
+           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition duration-200">
+            Kembali ke Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

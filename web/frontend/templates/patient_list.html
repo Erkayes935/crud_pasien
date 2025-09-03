@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6">
+    <div class="mb-6 flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Daftar Pasien</h1>
+        <a href="/export" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
+            📤 Eksport Data ke Excel
+        </a>
+    </div>
+
+    <!-- Form Cari -->
+    <div class="mb-4">
+        <form method="get" action="/patients" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <input type="text" name="search" placeholder="Nama / No. KTP / No. RM / No. BPJS"
+                   value="{{ request.get('search', '') }}" 
+                   class="border rounded px-3 py-2 w-full bg-white dark:bg-gray-800 
+                          border-gray-300 dark:border-gray-600 
+                          text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"/>
+            <div class="flex space-x-2">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Cari</button>
+                <a href="/patients" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">Reset</a>
+            </div>
+        </form>
+    </div>
+  
+    <!-- Tabel Pasien -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full border-collapse bg-white dark:bg-gray-800 shadow rounded-lg">
+            <thead class="bg-gray-200 dark:bg-gray-700">
+                <tr>
+                    <th class="px-4 py-2 text-left">No. RM</th>
+                    <th class="px-4 py-2 text-left">No. KTP</th>
+                    <th class="px-4 py-2 text-left">No. BPJS</th>
+                    <th class="px-4 py-2 text-left">ID Pasien</th>
+                    <th class="px-4 py-2 text-left">ID RS</th>
+                    <th class="px-4 py-2 text-left">ID Eksternal</th>
+                    <th class="px-4 py-2 text-left">Sumber</th>
+                    <th class="px-4 py-2 text-left">Nama</th>
+                    <th class="px-4 py-2 text-left">Tanggal Lahir</th>
+                    <th class="px-4 py-2 text-left">Jenis Kelamin</th>
+                    <th class="px-4 py-2 text-left">Alamat</th>
+                    <th class="px-4 py-2 text-left">Email</th>
+                    <th class="px-4 py-2 text-left">Nomor HP</th>
+                    <th class="px-4 py-2 text-left">Dibuat</th>
+                    <th class="px-4 py-2 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in patients %}
+                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
+                    <td class="px-4 py-2">{{ p.no_rm or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_ktp or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_bpjs or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.id }}</td>
+                    <td class="px-4 py-2">{{ p.hospital_id or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.eksternal_id or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.source or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.nama }}</td>
+                    <td class="px-4 py-2">{{ p.tanggal_lahir or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.jenis_kelamin or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.alamat or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.email or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.no_hp or '-' }}</td>
+                    <td class="px-4 py-2">{{ p.created_at or '-' }}</td>
+                    <td class="px-4 py-2 text-center">
+                    {% if flow == "claim" %}
+                        <!-- Mode wizard klaim -->
+                        <a href="/patients/{{ p.id }}/visits?flow=claim"
+                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
+                        Pilih
+                        </a>
+                    {% else %}
+                        {% if user and user.role == 'doctor' %}
+                        <div class="flex gap-2 justify-center">
+                        <a href="/claims?patient_name={{ p.nama | urlencode }}"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded whitespace-nowrap">
+                            📑 View Klaim
+                        </a>
+                        <a href="/patients/edit/{{ p.id }}"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
+                        <a href="/patients/delete/{{ p.id }}"
+                            class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    </td>
+
+                </tr>
+                {% endfor %}
+                {% if not patients %}
+                <tr>
+                    <td colspan="15" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
+                        Tidak ada data pasien
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tambah Pasien -->
+    <div class="mt-6 flex justify-between items-center">
+        {% if user and user.role == 'doctor' %}
+        <a href="/patients/add" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded shadow transition">
+            ➕ Tambah Pasien
+        </a>
+        {% endif %}
+        <form action="/import" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+            <input type="file" name="file"
+                   class="border rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
+                          border-gray-300 dark:border-gray-600"/>
+            <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
+                📥 Import
+            </button>
+        </form>
+    </div>
+
+    <div class="mt-6">
+        <a href="{{ url_for('dashboard') }}" 
+           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow transition">
+          ⬅ Kembali ke Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

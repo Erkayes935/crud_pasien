@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-lg">
+  <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
+    {{ "Tambah Rumah Sakit" if mode == "add" else "Edit Rumah Sakit" }}
+  </h1>
+
+  <form method="post" 
+        action="{{ url_for('add_hospital') if mode=='add' else url_for('edit_hospital', hospital_id=record.id) }}" 
+        class="space-y-5">
+    
+    <!-- CSRF -->
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <!-- Fields -->
+    {% for field in fields %}
+      {% include "_form_renderer.html" with context %}
+    {% endfor %}
+
+    <!-- Action Buttons -->
+    <div class="flex gap-3 pt-4">
+      <button type="submit" 
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
+        {{ "Tambah" if mode == "add" else "Simpan Perubahan" }}
+      </button>
+      <a href="/hospitals" 
+         class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-center py-2 rounded-lg transition">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

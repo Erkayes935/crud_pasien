@@ -9,7 +9,7 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -130,9 +130,6 @@ class Claim(Base):
     medical_record_id = Column(Integer, ForeignKey("medical_records.id"), nullable=False, unique=True)
     medical_record = relationship("MedicalRecord", back_populates="claim", uselist=False)
 
-    simulasi_draft = Column(JSON, nullable=True)
-    summary_draft = Column(JSON, nullable=True)
-    status = Column(String, default="draft")
     # Status boolean → sinkron dengan rekam medis
     is_final = Column(Boolean, default=False)
 
@@ -250,24 +247,6 @@ class ClaimLog(Base):
     claim = relationship("Claim", back_populates="logs")
     user = relationship("User")
 
-# ===========================
-# Rekomendasi AI untuk Klaim
-# ===========================
-class ClaimAIRecommendationSummary(Base):
-    __tablename__ = "claim_ai_recommendations_summary"
-
-    id = Column(Integer, primary_key=True, index=True)
-    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
-
-    category = Column(Enum("medis","regulasi","tarif", name="recommendation_category"))
-    target = Column(JSONB, nullable=True)   # contoh: ["Sepsis","ARDS"]
-    status = Column(Enum("valid","warning","invalid", name="recommendation_status"))
-    message = Column(Text, nullable=True)
-    confidence = Column(Float, nullable=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
 # =========================================
 # Medical Record
 # =========================================
@@ -384,3 +363,49 @@ class User(Base):
     visits = relationship("Visit", back_populates="doctor", foreign_keys=[Visit.doctor_id])
     medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])
     medical_record_logs = relationship("MedicalRecordLog", back_populates="user", foreign_keys=[MedicalRecordLog.updated_by])
+
+
+# =========================================
+# UUID Mapping System for AI Anonymization
+# =========================================
+
+class PatientMapping(Base):
+    """Maps patient_id to UUID for anonymization when sending to AI Cloud"""
+    __tablename__ = "patient_mapping"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    uuid = Column(String(36), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    patient = relationship("Patient")
+
+
+class VisitMapping(Base):
+    """Maps visit/claim to UUID for AI processing"""
+    __tablename__ = "visit_mapping"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+    visit_uuid = Column(String(36), unique=True, nullable=False, index=True)
+    patient_uuid = Column(String(36), nullable=False)  # reference to PatientMapping.uuid
+    ai_status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    submitted_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    
+    claim = relationship("Claim")
+
+
+# =========================================
+# UUID Generator Utilities
+# =========================================
+
+import uuid
+
+def generate_patient_uuid():
+    """Generate UUID for patient anonymization"""
+    return str(uuid.uuid4())
+
+def generate_visit_uuid():
+    """Generate UUID for visit/claim anonymization"""
+    return str(uuid.uuid4())
