@@ -2,11 +2,15 @@
 {% block title %}Draft Klaim{% endblock %}
 
 {% block content %}
-<div 
+<div id="claimRoot"
   x-data="{ 
     tab:'admission',
     modalOpen:false, modalTitle:'', modalContent:'',
-    simulasi:{ utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' },
+    simulasi: {
+      admission: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' },
+      daily: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' },
+      discharge: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' }
+    },
     recommendations:{ medis:[], regulasi:[], tarif:[] },
     init(){
       window.addEventListener('update-rekom', e => {
@@ -53,21 +57,32 @@
         <div x-show="tab==='admission'" class="space-y-2">
           {% for acc in accs %}
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open" class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-              {{ acc }} <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            <button @click="open=!open" 
+                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+              <span>
+                {{ acc }}
+                {% if acc!='Form Rekam Medis' %}
+                  <span id="count-{{ acc|lower }}-admission"
+                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                {% endif %}
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="p-2">
               {% if acc!='Form Rekam Medis' %}
               <table class="w-full text-xs border">
                 <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr>
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
                 </thead>
                 <tbody id="{{ acc|lower }}-admission"></tbody>
               </table>
               {% else %}
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
-                    {% include "_form_renderer.html" %}
+                  {% include "_form_renderer.html" %}
                 {% endfor %}
               </div>
               {% endif %}
@@ -76,31 +91,45 @@
           {% endfor %}
         </div>
 
+
         <!-- Daily -->
         <div x-show="tab==='daily'" class="space-y-4">
           {% for day in ['2025-09-01','2025-09-02'] %}
           <div class="bg-gray-100 dark:bg-gray-700 rounded p-2" x-data="{open:false}">
-            <button @click="open=!open" class="w-full flex justify-between px-2 py-1 bg-gray-200 dark:bg-gray-600 font-semibold">
-              🗓️ {{ day }} <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            <button @click="open=!open" 
+                    class="w-full flex justify-between px-2 py-1 bg-gray-200 dark:bg-gray-600 font-semibold">
+              🗓️ {{ day }}
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="space-y-2 mt-2">
               {% for acc in accs %}
               <div class="bg-white dark:bg-gray-800 rounded shadow-sm" x-data="{open:true}">
-                <button @click="open=!open" class="w-full flex justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 font-semibold">
-                  {{ acc }} <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+                <button @click="open=!open" 
+                        class="w-full flex justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 font-semibold">
+                  <span>
+                    {{ acc }}
+                    {% if acc!='Form Rekam Medis' %}
+                      <span id="count-{{ acc|lower }}-{{ day }}"
+                            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                    {% endif %}
+                  </span>
+                  <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
                 </button>
                 <div x-show="open" class="p-2">
                   {% if acc!='Form Rekam Medis' %}
                   <table class="w-full text-xs border">
                     <thead class="bg-gray-100 dark:bg-gray-800">
-                      <tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr>
+                      <tr>
+                        <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                        <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                      </tr>
                     </thead>
                     <tbody id="{{ acc|lower }}-{{ day }}"></tbody>
                   </table>
                   {% else %}
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                        {% include "_form_renderer.html" %}
+                      {% include "_form_renderer.html" %}
                     {% endfor %}
                   </div>
                   {% endif %}
@@ -112,25 +141,37 @@
           {% endfor %}
         </div>
 
+
         <!-- Discharge -->
         <div x-show="tab==='discharge'" class="space-y-2">
           {% for acc in accs %}
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open" class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-              {{ acc }} <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            <button @click="open=!open" 
+                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+              <span>
+                {{ acc }}
+                {% if acc!='Form Rekam Medis' %}
+                  <span id="count-{{ acc|lower }}-discharge"
+                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                {% endif %}
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="p-2">
               {% if acc!='Form Rekam Medis' %}
               <table class="w-full text-xs border">
                 <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr>
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
                 </thead>
                 <tbody id="{{ acc|lower }}-discharge"></tbody>
               </table>
               {% else %}
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
-                    {% include "_form_renderer.html" %}
+                  {% include "_form_renderer.html" %}
                 {% endfor %}
               </div>
               {% endif %}
@@ -142,25 +183,77 @@
     </div>
   </div>
 
-  <!-- ========== RIGHT PANEL (Simulasi) ========== -->
 <!-- ========== RIGHT PANEL (Simulasi) ========== -->
 <div class="lg:col-span-1">
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-4">
     <h2 class="text-lg font-bold mb-3">📊 Simulasi Klaim</h2>
 
     <!-- Field atas -->
-    {% for fld in ['Diagnosis Utama','Diagnosis Sekunder','Tindakan Utama','Tindakan Sekunder'] %}
-    <div>
-      <label class="font-semibold">{{ fld }}</label>
-      <div class="flex gap-2">
-        <input readonly class="flex-1 border rounded px-2 py-1 bg-gray-50 dark:bg-gray-700">
-        <select class="border rounded px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm">
-          <option>Primary Claim</option>
-          <option>Secondary Claim</option>
-        </select>
-      </div>
+    <!-- Primary Claim -->
+<template x-if="simulasi[tab].utama">
+  <div class="flex items-center gap-2 mt-1">
+    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+      <span x-text="simulasi[tab].utama.name + ' [' + simulasi[tab].utama.label + ']'"></span>
     </div>
-    {% endfor %}
+    <select @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+      <option value="Primary" selected>Primary</option>
+      <option value="Secondary">Secondary</option>
+      <option value="None">None</option>
+    </select>
+  </div>
+</template>
+
+
+<!-- Secondary Claims -->
+<template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
+  <div class="flex items-center gap-2 mt-1">
+    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+      <span x-text="dx.name + ' [' + dx.label + ']'"></span>
+    </div>
+    <select
+      @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+      <option value="Secondary" selected>Secondary</option>
+      <option value="Primary">Primary</option>
+      <option value="None">None</option>
+    </select>
+  </div>
+</template>
+
+
+
+  <!-- Tindakan Utama -->
+  <template x-if="simulasi[tab].tindakanUtama">
+  <div class="flex items-center gap-2 mt-1">
+    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+      <span x-text="simulasi[tab].tindakanUtama"></span>
+    </div>
+    <select @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+      <option value="Primary" selected>Primary</option>
+      <option value="Secondary">Secondary</option>
+      <option value="None">None</option>
+    </select>
+  </div>
+</template>
+
+
+  <!-- Tindakan Sekunder -->
+  <template x-for="(tdk,i) in simulasi[tab].tindakanSekunder" :key="i">
+  <div class="flex items-center gap-2 mt-1">
+    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+      <span x-text="tdk"></span>
+    </div>
+    <select @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+      <option value="Secondary" selected>Secondary</option>
+      <option value="Primary">Primary</option>
+      <option value="None">None</option>
+    </select>
+  </div>
+</template>
+
 
     <!-- Rekomendasi AI -->
     <div class="space-y-2">
@@ -190,6 +283,7 @@
       <p class="text-lg font-bold text-green-700" x-text="simulasi.tarifDraft"></p>
     </div>
 
+
     <!-- Footer -->
     <div class="flex gap-2 mt-2">
       <button class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
@@ -197,8 +291,6 @@
     </div>
   </div>
 </div>
-
-
 
   <!-- Modal Detail -->
   <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" @click.self="modalOpen=false">
@@ -250,11 +342,18 @@ function generateDummyAI(){
     {kategori:"→ ARDS Berat",klinis:"PaO2/FiO2 <100",icd:"J80.3",tindakan:"Intubasi",score:58,child:true}
   ];
 
+  const mapTab = (sfx)=>{
+    if(sfx==="admission") return "admission"
+    if(sfx==="discharge") return "discharge"
+    return "daily"
+  }
+
   ["admission","2025-09-01","2025-09-02","discharge"].forEach(sfx=>{
-    renderTable(`diagnosis-${sfx}`,dx,"diagnosis");
-    renderTable(`komorbid-${sfx}`,kom,"komorbid");
-    renderTable(`komplikasi-${sfx}`,komp,"komplikasi");
-  });
+    const tab = mapTab(sfx)
+    renderTable(`diagnosis-${sfx}`,dx,"diagnosis",tab)
+    renderTable(`komorbid-${sfx}`,kom,"komorbid",tab)
+    renderTable(`komplikasi-${sfx}`,komp,"komplikasi",tab)
+  })
 
   window.dispatchEvent(new CustomEvent('update-rekom', {
     detail: {
@@ -275,15 +374,26 @@ function generateDummyAI(){
       ]
     }
   }))
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  state.simulasi.tarifDraft = "Rp 15.000.000"
 }
 
-function renderTable(id,items,type){
-  const tb=document.getElementById(id)
+function renderTable(id, items, type,tab){
+  const tb = document.getElementById(id)
   if(!tb) return
+
+  // mapping type -> label
+  const sourceMap = {
+    diagnosis: "Utama Klinis",
+    komorbid: "Komorbid",
+    komplikasi: "Komplikasi"
+  }
+  const sourceLabel = sourceMap[type] || type
+
   tb.innerHTML = items.map(it=>`
-    <tr class="hover:bg-gray-100 dark:hover:bg-gray-600">
-      <td class="${it.child?'pl-6':''}" 
-          data-item='${JSON.stringify(it).replace(/"/g,"&quot;")}' 
+    <tr>
+      <td class="${it.child ? 'pl-6' : ''}"
+          data-item='${JSON.stringify(it).replace(/"/g,"&quot;")}'
           onclick="openModalFromAttr(this)">
         ${it.kategori}
       </td>
@@ -292,17 +402,22 @@ function renderTable(id,items,type){
       <td>${it.tindakan}</td>
       <td>${confidenceBadge(it.score)}</td>
       <td>
-        <select onchange="updateSimulasi('${type}',this.value,'${it.kategori}')" 
-                class='border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700'>
-          <option>Pilih Prioritas</option>
-          <option>Diagnosis Utama</option>
-          <option>Komorbid</option>
-          <option>Komplikasi</option>
-          <option>None</option>
+        <select onchange="updateSimulasi('diagnosis',this.value,{name:'${it.kategori}',label:'${sourceLabel}'},'${sourceLabel}','${tab}')"
+        class='border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700'>
+          <option selected>Pilih</option>
+          <option value="Primary">Diagnosis Utama</option>
+          <option value="Secondary-Komorbid">Komorbid</option>
+          <option value="Secondary-Komplikasi">Komplikasi</option>
+          <option value="None">None</option>
         </select>
       </td>
     </tr>`).join('')
+
+  // update badge jumlah
+  const countEl = document.getElementById("count-" + id)
+  if(countEl) countEl.textContent = items.length
 }
+
 
 function openModalFromAttr(el){
   const it = JSON.parse(el.dataset.item)
@@ -314,127 +429,173 @@ function buildModalContent(it){
     <div class="space-y-4 text-sm">
 
       <!-- Aspek Klinis -->
-      <div>
-        <h4 class="font-semibold text-blue-600">Aspek Klinis</h4>
-        <ul class="list-disc list-inside">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Aspek Klinis</h4>
+        <ul class="list-disc list-inside space-y-1">
           <li><b>Justifikasi:</b> ${it.klinis || 'Tidak ada justifikasi'}</li>
           <li><b>Bukti:</b> ${it.bukti || 'Belum ada bukti'}</li>
           <li><b>Syarat:</b> ${it.syarat || 'Belum ditentukan'}</li>
         </ul>
-      </div>
+      </section>
 
       <!-- ICD-10 -->
-      <div>
-        <h4 class="font-semibold text-blue-600">ICD-10</h4>
-        <ul class="list-disc list-inside">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">ICD-10</h4>
+        <ul class="list-disc list-inside space-y-1">
           <li><b>Struktur Kode:</b> ${it.icd || '-'}</li>
           <li><b>Kode Ganda:</b> ${it.kode_ganda || 'Tidak'}</li>
           <li><b>Z-Code:</b> ${it.zcode || '-'}</li>
           <li><b>Kode BPJS Khusus:</b> ${it.kode_bpjs || '-'}</li>
         </ul>
-      </div>
+      </section>
 
       <!-- Tindakan -->
-      <div>
-        <h4 class="font-semibold text-blue-600">Tindakan</h4>
-        <ul class="list-disc list-inside">
-          <li><b>Nama:</b> ${it.tindakan || '-'}</li>
-          <li><b>Syarat:</b> ${it.syarat_tindakan || 'Belum ditentukan'}</li>
-          <li><b>Wajib/Tidak:</b> ${it.wajib || 'Tidak'}</li>
-          <li><b>Minor/Besar:</b> ${it.level || 'Minor'}</li>
-          <li><b>Regulasi:</b> ${it.regulasi || 'Permenkes XXX/2020'}</li>
-          <li><b>INA-CBGs:</b> ${it.cbgs || 'Belum mapping'}</li>
-        </ul>
-
-        <!-- Dummy 3 tindakan -->
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Tindakan</h4>
         <div class="mt-2 space-y-1">
           <div class="flex justify-between items-center border p-2 rounded">
             <span>Operasi Apendektomi</span>
             <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','Operasi Apendektomi')" 
+              <button onclick="updateSimulasi('tindakan','Utama','Operasi Apendektomi')"
                       class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','Operasi Apendektomi')" 
+              <button onclick="updateSimulasi('tindakan','Sekunder','Operasi Apendektomi')"
                       class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
             </div>
           </div>
+
           <div class="flex justify-between items-center border p-2 rounded">
             <span>CT Scan Abdomen</span>
             <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','CT Scan Abdomen')" 
+              <button onclick="updateSimulasi('tindakan','Utama','CT Scan Abdomen')"
                       class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','CT Scan Abdomen')" 
+              <button onclick="updateSimulasi('tindakan','Sekunder','CT Scan Abdomen')"
                       class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
             </div>
           </div>
+
           <div class="flex justify-between items-center border p-2 rounded">
             <span>Pemeriksaan Laboratorium</span>
             <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','Operasi Apendektomi')" 
+              <button onclick="updateSimulasi('tindakan','Utama','Pemeriksaan Laboratorium')"
                       class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','Operasi Apendektomi')" 
+              <button onclick="updateSimulasi('tindakan','Sekunder','Pemeriksaan Laboratorium')"
                       class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
             </div>
           </div>
+
         </div>
-      </div>
+      </section>
+        
 
       <!-- Rawat Inap -->
-      <div>
-        <h4 class="font-semibold text-blue-600">Rawat Inap</h4>
-        <ul class="list-disc list-inside">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Rawat Inap</h4>
+        <ul class="list-disc list-inside space-y-1">
           <li><b>Indikasi:</b> ${it.indikasi || 'Tidak ada indikasi khusus'}</li>
           <li><b>Lama Rawat:</b> ${it.lama_rawat || '3 hari'}</li>
           <li><b>Perpanjangan:</b> ${it.perpanjangan || 'Tidak'}</li>
         </ul>
-      </div>
+      </section>
 
       <!-- Faskes -->
-      <div>
-        <h4 class="font-semibold text-blue-600">Faskes</h4>
-        <ul class="list-disc list-inside">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Faskes</h4>
+        <ul class="list-disc list-inside space-y-1">
           <li><b>Kesesuaian RS:</b> ${it.rs || 'Tipe C'}</li>
         </ul>
-      </div>
+      </section>
 
       <!-- Rujukan -->
-      <div>
-        <h4 class="font-semibold text-blue-600">Rujukan</h4>
-        <ul class="list-disc list-inside">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Rujukan</h4>
+        <ul class="list-disc list-inside space-y-1">
           <li><b>Syarat:</b> ${it.rujukan_syarat || 'Tidak ada'}</li>
           <li><b>Kelayakan:</b> ${it.rujukan_kelayakan || 'Layak'}</li>
         </ul>
-      </div>
+      </section>
 
     </div>
   `
 }
 
+function normalizeOpt(opt){
+  if(opt==="Diagnosis Utama" || opt==="Utama" || opt==="Primary Claim" || opt==="Primary") return "Primary"
+  if(opt==="Komorbid" || opt==="Secondary-Komorbid") return "Secondary-Komorbid"
+  if(opt==="Komplikasi" || opt==="Secondary-Komplikasi") return "Secondary-Komplikasi"
+  if(opt==="Sekunder" || opt==="Secondary Claim" || opt==="Secondary") return "Secondary"
+  if(opt==="None") return "None"
+  return opt
+}
 
 
-function updateSimulasi(type,opt,value){
-  const root = document.querySelector('[x-data]')
-  const state = Alpine.$data(root)
+function updateSimulasi(type, opt, value, source, tab) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  if (!tab) tab = 'admission'
+  opt = normalizeOpt(opt)
+  const sim = state.simulasi[tab]
 
-  if(type === 'diagnosis'){
-    if(opt === "Diagnosis Utama"){
-      state.simulasi.utama = value
-    } else if(opt === "Komorbid" || opt === "Komplikasi"){
-      if(!state.simulasi.sekunder.includes(value)){
-        state.simulasi.sekunder.push(value)
+  // pastikan object {name,label}
+  const item = (typeof value === 'string')
+    ? { name: value.split(' [')[0], label: '' }
+    : { name: value.name, label: value.label || '' }
+
+  // mapping label berdasar dropdown mapping (accordion kiri)
+  if (source) {
+    if (opt === "Primary") item.label = "Utama Klinis"
+    else if (opt === "Secondary-Komorbid") item.label = "Komorbid"
+    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi"
+  }
+  // kalau cuma Secondary dari panel kanan → label dipertahankan
+
+  // ========== DIAGNOSIS ==========
+  if (type === 'diagnosis') {
+    if (opt === "Primary") {
+      const oldPrimary = sim.utama
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
+      sim.utama = item
+      if (oldPrimary && oldPrimary.name !== item.name) {
+        sim.sekunder.unshift(oldPrimary)
       }
+    }
+
+    else if (opt === "Secondary" || opt === "Secondary-Komorbid" || opt === "Secondary-Komplikasi") {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null
+      const idx = sim.sekunder.findIndex(dx => dx.name === item.name)
+      if (idx === -1) sim.sekunder.push(item)
+      else sim.sekunder[idx] = item
+    }
+
+    else if (opt === "None") {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
     }
   }
 
-  if(type === 'tindakan'){
-    if(opt === "Utama"){
-      state.simulasi.tindakanUtama = value
-    } else if(opt === "Sekunder"){
-      if(!state.simulasi.tindakanSekunder.includes(value)){
-        state.simulasi.tindakanSekunder.push(value)
+  // ========== TINDAKAN ==========
+  if (type === 'tindakan') {
+    if (opt === "Primary") {
+      const oldPrimary = sim.tindakanUtama
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
+      sim.tindakanUtama = item.name
+      if (oldPrimary && oldPrimary !== item.name) {
+        sim.tindakanSekunder.unshift(oldPrimary)
       }
+    }
+
+    else if (opt === "Secondary") {
+      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
+      if (!sim.tindakanSekunder.includes(item.name)) {
+        sim.tindakanSekunder.push(item.name)
+      }
+    }
+
+    else if (opt === "None") {
+      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
     }
   }
 }
+
 
 
 function openModal(title,content){
