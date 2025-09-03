@@ -130,6 +130,9 @@ class Claim(Base):
     medical_record_id = Column(Integer, ForeignKey("medical_records.id"), nullable=False, unique=True)
     medical_record = relationship("MedicalRecord", back_populates="claim", uselist=False)
 
+    simulasi_draft = Column(JSON, nullable=True)
+    summary_draft = Column(JSON, nullable=True)
+    status = Column(String, default="draft")
     # Status boolean → sinkron dengan rekam medis
     is_final = Column(Boolean, default=False)
 

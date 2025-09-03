@@ -56,10 +56,17 @@
           <td class="px-4 py-2 text-center">
             {% if flow == "claim" %}
               <!-- Mode wizard klaim -->
-              <a href="{{ url_for('form_add_claim', visit_id=v.id) }}"
-                class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
-                Pilih
-              </a>
+              <form action="{{ url_for('add_claim') }}" method="post" class="inline">
+                <input type="hidden" name="patient_id" value="{{ v.patient.id }}">
+                <input type="hidden" name="visit_id" value="{{ v.id }}">
+                <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id }}">
+                <input type="hidden" name="doctor_id" value="{{ current_user.id }}">
+                <input type="hidden" name="doctor_name" value="{{ current_user.name }}">
+                <button type="submit"
+                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
+                  Buat Klaim
+                </button>
+              </form>
             {% else %}
               {% if user and user.role == 'doctor' %}
               <div class="flex gap-2 justify-center">

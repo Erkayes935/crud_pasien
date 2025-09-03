@@ -109,12 +109,6 @@ function openModalFromAttr(el) {
   openModal(it.kategori, buildModalContent(it))
 }
 
-function openModal(title, content) {
-  window.dispatchEvent(new CustomEvent('open-modal', {
-    detail: { title, content }
-  }))
-}
-
 function buildModalContent(it) {
   const d = it.modal_detail || {}
   if (it.tindakan && !d.tindakan) {
@@ -267,18 +261,6 @@ function updateSimulasi(type, opt, value, source, tab) {
 }
 
 // ==================== Helpers ====================
-function statusIcon(s) {
-  if (s === "valid") return "✅"
-  if (s === "warning") return "⚠️"
-  if (s === "invalid") return "❌"
-  return ""
-}
-
-function confidenceBadge(val) {
-  val = parseInt(val)
-  let c = val >= 80 ? 'bg-green-600' : val >= 60 ? 'bg-yellow-500' : 'bg-red-600'
-  return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
-}
 
 async function simpanFinal() {
   const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -308,5 +290,66 @@ async function simpanFinal() {
   } catch (e) {
     console.error(e)
     alert("Error simpan final")
+  }
+}
+
+async function saveDraft() {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const claimId = state.currentClaimId || document.getElementById("claimRoot").dataset.claimId
+
+  const payload = {
+    simulasi: state.simulasi,
+    summary: state.summary
+  }
+
+  try {
+    const res = await fetch(`/claims/${claimId}/update-draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    if (res.ok) {
+      alert("✅ Draft klaim berhasil disimpan")
+    } else {
+      const err = await res.json()
+      alert("❌ Gagal simpan draft: " + (err.detail || "Unknown error"))
+    }
+  } catch (e) {
+    console.error("Save Draft error:", e)
+    alert("❌ Error koneksi")
+  }
+}
+
+function claimData(init) {
+  return {
+    role: init.role,
+    tab: 'admission',
+    simulasi: init.simulasi,
+    summary: init.summary,
+    recommendations: { medis:[], regulasi:[], tarif:[] },
+    modalOpen: false,
+    modalTitle: '',
+    modalContent: '',
+    init(){
+      window.addEventListener('update-rekom', e => {
+        this.recommendations = e.detail
+      })
+    },
+    openModal(e){
+      this.modalOpen = true
+      this.modalTitle = e.detail.title
+      this.modalContent = e.detail.content
+    },
+    statusIcon(s){
+      if(s==='valid') return "✅"
+      if(s==='warning') return "⚠️"
+      if(s==='invalid') return "❌"
+      return ""
+    },
+    confidenceBadge(val){
+      val=parseInt(val)
+      let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
+      return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
+    }
   }
 }

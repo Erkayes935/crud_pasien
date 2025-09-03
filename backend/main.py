@@ -158,27 +158,43 @@ def dashboard(
         func.date(models.Claim.claim_date) == datetime.today().date()
     ).count()
     total_claims = db.query(models.Claim).count()
+
+    # klaim terbaru
     claims = (
         db.query(models.Claim)
-        .order_by(models.Claim.id.desc())   # urutkan dari yang terbaru
-        .limit(10)                           # ambil hanya 10 klaim
+        .options(joinedload(models.Claim.patient))
+        .order_by(models.Claim.id.desc())
+        .limit(10)
         .all()
     )
-    # draft_claims
-    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False).count()
 
-    # final_claims
+    # klaim draft & final
+    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False).count()
     final_claims = db.query(models.Claim).filter(models.Claim.is_final == True).count()
+    draft_claims_list = []
+    if current_user.role == "verifikator":
+        draft_claims_list = (
+            db.query(models.Claim)
+            .filter(models.Claim.is_final == False)
+            .options(joinedload(models.Claim.patient))
+            .order_by(models.Claim.id.desc())
+            .all()
+        )
+    final_claims_list = (
+        db.query(models.Claim)
+        .filter(models.Claim.is_final == True)
+        .options(joinedload(models.Claim.patient))
+        .order_by(models.Claim.id.desc())
+        .all()
+    )
 
     # role check
     if current_user.role in ["doctor", "coder", "verifikator"]:
         pasien_list = db.query(models.Patient).all()
     else:
-        pasien_list = []   # superadmin/admin_rs tidak melihat pasien
+        pasien_list = []
 
-    # total users hanya untuk superadmin/admin_rs
     total_users = db.query(models.User).count() if current_user.role in ["superadmin","admin_rs"] else None
-
     csrf_token = issue_csrf_token(request)
 
     return templates.TemplateResponse("dashboard.html", {
@@ -191,10 +207,13 @@ def dashboard(
         "claims": claims,
         "draft_claims": draft_claims,
         "final_claims": final_claims,
+        "draft_claims_list": draft_claims_list,
+        "final_claims_list": final_claims_list,
         "total_users": total_users,
         "pasien_list": pasien_list,
         "csrf_token": csrf_token
     })
+
 
 @app.get("/")
 def root_redirect(request: Request, user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))):
@@ -687,7 +706,7 @@ def add_claim(
     doctor_id: Optional[int] = Form(None),
     doctor_name: Optional[str] = Form(None),
     claim_date: Optional[datetime] = Form(datetime.utcnow()),
-    #is_final: bool = Form(False),
+    is_final: Optional[bool] = Form(False),
     # Rekam medis
     riwayat_penyakit: Optional[str] = Form(None),
     riwayat_pengobatan: Optional[str] = Form(None),
@@ -720,7 +739,7 @@ def add_claim(
     notes_doctor: Optional[str] = Form(None),
 ):
     # 1. Buat rekam medis baru
-    mr = MedicalRecord(
+    mr = models.MedicalRecord(
         patient_id=patient_id,
         visit_id=visit_id,
         doctor_id=doctor_id,
@@ -762,7 +781,7 @@ def add_claim(
     db.refresh(mr)
 
     # 2. Buat klaim baru link ke rekam medis
-    claim = Claim(
+    claim = models.Claim(
         claim_date=claim_date,
         patient_id=patient_id,
         visit_id=visit_id,
@@ -776,8 +795,8 @@ def add_claim(
     db.add(claim)
     db.commit()
 
-    flash(request, "✅ Klaim berhasil ditambahkan (Draft)!", "success")
-    return RedirectResponse(url="/dashboard", status_code=303)
+    flash(request, "✅ Klaim berhasil diubah!", "success")
+    return RedirectResponse(url=f"/claims/{claim.id}/edit", status_code=303)
 
 
 @app.get("/claims/add/start")
@@ -847,18 +866,39 @@ def claim_form(
             "mode": "add",
             "current_user": user,
             "user": user,
-            "role": user.role[0] if user.role else "",
-            "isDoctor": "doctor" in user.role,
-            "isVerifikator": "verifikator" in user.role,
+            "role": user.role if isinstance(user.role, str) else user.role[0],
+            "isDoctor": user.role == "doctor" or ("doctor" in user.role),
+            "isVerifikator": user.role == "verifikator" or ("verifikator" in user.role),
             "csrf_token": csrf_token,
             "claim_medical_record_fields": fields,
         },
     )
 
+@app.post("/claims/{claim_id}/update-draft")
+def update_claim_draft(
+    claim_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor"))  # hanya dokter yang bisa save draft
+):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    # simpan hasil simulasi/summary ke kolom JSON (pastikan model Claim ada field simulasi_draft & summary_draft tipe JSON)
+    claim.simulasi_draft = payload.get("simulasi")
+    claim.summary_draft = payload.get("summary")
+    claim.is_final = False
+    claim.status = "draft"
+
+    db.commit()
+    db.refresh(claim)
+
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 @app.get("/claims/{id}/edit")
-def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("verifikator","coder"))):
+def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("verifikator","coder","doctor"))):
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -868,7 +908,7 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
     hospitals = db.query(models.Hospital).all()
     csrf_token = issue_csrf_token(request)
 
-    fields = form_configs["claim"].copy()
+    fields = form_configs["claim_medical_record"].copy()
     # inject select options
     for f in fields:
         if f["name"] == "patient_id":
@@ -885,10 +925,20 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
         "csrf_token": csrf_token,
         "current_user": user,
         "user": user,
-        "user_role": user.role[0] if user.role else "",
-        "isDoctor": "doctor" in user.role,
-        "isVerifikator": "verifikator" in user.role,
-        "fields": fields  # dynamic
+        "role": user.role if isinstance(user.role, str) else user.role[0],
+        "isDoctor": user.role == "doctor" or ("doctor" in user.role),
+        "isVerifikator": user.role == "verifikator" or ("verifikator" in user.role),
+        "fields": fields,  # dynamic
+        "saved_simulasi": claim.simulasi_draft or {
+            "admission": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""},
+            "daily": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""},
+            "discharge": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""}
+        },
+        "saved_summary": claim.summary_draft or {
+            "admission": {"klinis":{}, "regulasi":{}, "tarif":{}},
+            "daily": {"klinis":{}, "regulasi":{}, "tarif":{}},
+            "discharge": {"klinis":{}, "regulasi":{}, "tarif":{}}
+        }
     })
 
 
@@ -942,29 +992,6 @@ def delete_claim(
     db.commit()
     flash(request, "Klaim berhasil dihapus!", "success")
     return RedirectResponse(url="/claims", status_code=303)
-
-
-@app.post("/claims/{claim_id}/generate-ai", name="generate_ai")
-def generate_ai(claim_id: int, db: Session = Depends(get_db)):
-    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
-    if not claim:
-        return JSONResponse({"error": "Claim not found"}, status_code=404)
-
-    # dummy data (nanti diganti AI perusahaan)
-    response = {
-        "diagnoses": [
-            {"text": "Demam Berdarah Dengue", "icd10": "A91", "confidence": 0.92},
-            {"text": "Gastroenteritis", "icd10": "A09", "confidence": 0.76},
-        ],
-        "komorbid": [
-            {"text": "Hipertensi", "icd10": "I10", "confidence": 0.65},
-        ],
-        "komplikasi": [
-            {"text": "Syok Dengue", "icd10": "A91.1", "confidence": 0.55},
-        ]
-    }
-    return JSONResponse(response)
-
 
 # -------------------------
 # USER MANAGEMENT ROUTES (NEW)
