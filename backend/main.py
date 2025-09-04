@@ -26,6 +26,7 @@ from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import RedirectResponse
 from jose import jwt, JWTError
+from copy import deepcopy
 from .form_configs import form_configs
 from . import models, crud, config
 from .database import SessionLocal, engine, Base
@@ -558,8 +559,8 @@ def ai_recommendation(payload: dict = Body(...)):
     return {
         "admission": make_dummy("admission"),
         "daily": [
-            { "tanggal": "2025-09-01", **make_dummy("daily") },
-            { "tanggal": "2025-09-02", **make_dummy("daily2") }
+            { "tanggal": "2025-09-01", **make_dummy("daily"),"tarifDraft": "Rp 17.500.000" },
+            { "tanggal": "2025-09-02", **make_dummy("daily2"),"tarifDraft": "Rp 27.500.000" },
         ],
         "discharge": make_dummy("discharge"),
     }
@@ -568,6 +569,7 @@ def ai_recommendation(payload: dict = Body(...)):
 
 @app.post("/claims/{claim_id}/finalize")
 def finalize_claim(
+    request: Request,
     claim_id: int,
     payload: dict = Body(...),
     db: Session = Depends(get_db),
@@ -577,20 +579,31 @@ def finalize_claim(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
+    # update status klaim
     claim.is_final = True
     claim.status = "submitted"
 
-    # simpan summary AI ke tabel summary
-    summary = ClaimAIRecommendationsSummary(
-        claim_id=claim_id,
-        klinis=payload.get("summary", {}).get("klinis"),
-        regulasi=payload.get("summary", {}).get("regulasi"),
-        tarif=payload.get("summary", {}).get("tarif")
-    )
-    db.add(summary)
+    # hapus summary lama biar nggak dobel
+    db.query(models.ClaimAIRecommendationSummary).filter_by(claim_id=claim_id).delete()
+
+    # simpan semua item summary AI ke tabel summary
+    for stage, stage_data in (payload.get("summary") or {}).items():
+        for category, items in stage_data.items():
+            for item in items:
+                summary = models.ClaimAIRecommendationSummary(
+                    claim_id=claim_id,
+                    category="medis" if category == "klinis" else category,  # map klinis -> medis
+                    target=item.get("target"),
+                    status=item.get("status"),
+                    message=item.get("message"),
+                    confidence=item.get("confidence"),
+                )
+                db.add(summary)
+
     db.commit()
-    flash("Claim finalized successfully", "success")
+    flash(request,"Claim finalized successfully", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.get("/claims")
 def list_claims(
@@ -899,6 +912,24 @@ def update_claim_draft(
 
     return RedirectResponse(url="/dashboard", status_code=303)
 
+default_sim = {
+    "admission": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": None},
+    "daily": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": None},
+    "discharge": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": None}
+}
+
+def merge_dict(default, data):
+    result = deepcopy(default)
+    if data and isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, dict) and isinstance(result.get(k), dict):
+                result[k] = merge_dict(result[k], v)
+            elif v is None:
+                continue
+            else:
+                result[k] = v
+    return result
+
 @app.get("/claims/{id}/edit")
 def edit_claim_form(
     request: Request,
@@ -961,8 +992,8 @@ def edit_claim_form(
         "discharge": {"klinis": [], "regulasi": [], "tarif": []}
     }
 
-    sim = sim or default_sim
-    summ = summ or default_summary
+    sim = merge_dict(default_sim, sim)
+    summ = merge_dict(default_summary, summ)
 
     fields = form_configs["claim_medical_record"].copy()
     for f in fields:
@@ -984,8 +1015,8 @@ def edit_claim_form(
         "isDoctor": "doctor" in user.role,
         "isVerifikator": "verifikator" in user.role,
         "fields": fields,
-        "saved_simulasi": sim,
-        "saved_summary": summ,
+        "sim": sim,
+        "summ": summ,
         "claim_medical_record_fields": fields,
     })
 

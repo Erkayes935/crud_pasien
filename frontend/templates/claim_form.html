@@ -4,11 +4,11 @@
 {% block content %}
 <div id="claimRoot"
      data-claim-id="{{ record.id if record else '' }}"
-     x-data="claimData({ 
-        role: 'doctor',
-        simulasi: { admission:{}, daily:{}, discharge:{} },
-        summary: { admission:{}, daily:{}, discharge:{} }
-     })"
+     x-data='claimData({
+       role: {{ role|tojson }},
+       sim: {{ sim|tojson }},
+       summ: {{ summ|tojson }}
+     })'
      @open-modal.window="openModal($event)"
      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
 

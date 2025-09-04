@@ -3,12 +3,12 @@ function claimData(init) {
   return {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
-    simulasi: init.simulasi || {
+    simulasi: init.sim || {
       admission: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
       daily: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
       discharge: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
     },
-    summary: init.summary || {
+    summary: init.summ || {
       admission: { klinis:[], regulasi:[], tarif:[] },
       daily: { klinis:[], regulasi:[], tarif:[] },
       discharge: { klinis:[], regulasi:[], tarif:[] }
@@ -112,8 +112,19 @@ dailyContainer.insertAdjacentHTML("beforeend", `
       renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
       renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
     }
-    state.simulasi.daily = data.daily?.simulasi || {}
-    state.summary.daily = data.daily?.summary || {}
+    state.simulasi.daily = {
+      utama: (data.daily[0] && data.daily[0].utama) || null,
+      sekunder: data.daily.flatMap(d => d.sekunder || []),
+      tindakanUtama: (data.daily[0] && data.daily[0].tindakanUtama) || null,
+      tindakanSekunder: data.daily.flatMap(d => d.tindakanSekunder || []),
+      tarifDraft: null
+    }
+    state.summary.daily = {
+      klinis: data.daily.flatMap(d => d.summary?.klinis || []),
+      regulasi: data.daily.flatMap(d => d.summary?.regulasi || []),
+      tarif: data.daily.flatMap(d => d.summary?.tarif || [])
+    }
+
 
     // === Discharge ===
     renderTable("diagnosis-discharge", data.discharge?.diagnosis || [], "diagnosis", "discharge")
