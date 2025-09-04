@@ -1,4 +1,35 @@
 // ==================== Generate AI ====================
+function claimData(init) {
+  return {
+    role: init.role || 'doctor', // doctor, verifikator, coder
+    tab: init.tab || 'admission',
+    simulasi: init.simulasi || {
+      admission: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      daily: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      discharge: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
+    },
+    summary: init.summary || {
+      admission: { klinis:[], regulasi:[], tarif:[] },
+      daily: { klinis:[], regulasi:[], tarif:[] },
+      discharge: { klinis:[], regulasi:[], tarif:[] }
+    },
+    recommendations: { medis:[], regulasi:[], tarif:[] },
+    modalOpen: false,
+    modalTitle: '',
+    modalContent: '',
+    init(){
+      window.addEventListener('update-rekom', e => {
+        this.recommendations = e.detail
+      })
+    },
+    statusIcon(s){
+      if(s==='valid') return "✅"
+      if(s==='warning') return "⚠️"
+      if(s==='invalid') return "❌"
+      return ""
+    },
+  }
+}
 async function generateAI() {
   const payload = {
     patient_id: 1,
@@ -16,94 +47,155 @@ async function generateAI() {
     const data = await res.json()
     const state = Alpine.$data(document.getElementById('claimRoot'))
 
-    // Admission
+    // === Admission ===
     renderTable("diagnosis-admission", data.admission?.diagnosis || [], "diagnosis", "admission")
     renderTable("komorbid-admission", data.admission?.komorbid || [], "komorbid", "admission")
     renderTable("komplikasi-admission", data.admission?.komplikasi || [], "komplikasi", "admission")
-    renderTable("tindakan-admission", data.admission?.tindakan || [], "tindakan", "admission")
     state.simulasi.admission = data.admission?.simulasi || {}
     state.summary.admission = data.admission?.summary || {}
 
-    // Daily
-    renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
-    renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
-    renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
+    // === Daily ===
+    if (Array.isArray(data.daily)) {
+  const dailyContainer = document.getElementById("daily-accordion")
+  dailyContainer.innerHTML = ""  // reset
+
+  data.daily.forEach((hari, idx) => {
+    const dayId = `daily-${idx}`
+
+    // bikin accordion section baru
+dailyContainer.insertAdjacentHTML("beforeend", `
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+    <button @click="open=!open"
+            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+    </button>
+    <div x-show="open" class="p-2 space-y-2">
+
+      ${['Diagnosis','Komorbid','Komplikasi'].map(acc => `
+        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+          <button @click="open=!open"
+                  class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+            <span>${acc}</span>
+            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+          </button>
+          <div x-show="open" class="p-2">
+            <table class="w-full text-xs border">
+              <thead class="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                  <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                </tr>
+              </thead>
+              <tbody id="${acc.toLowerCase()}-${dayId}"></tbody>
+            </table>
+          </div>
+        </div>
+      `).join('')}
+
+    </div>
+  </div>
+`)
+    const tmpl = document.getElementById("daily-form-template")
+    if (tmpl) {
+      const clone = tmpl.content.cloneNode(true)
+      dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
+    }
+    // render tabel per bagian
+    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily")
+    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily")
+    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", "daily")
+      })
+    } else {
+      // fallback lama kalau backend masih kirim 1 blok
+      renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
+      renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
+      renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
+    }
     state.simulasi.daily = data.daily?.simulasi || {}
     state.summary.daily = data.daily?.summary || {}
 
-    // Discharge
+    // === Discharge ===
     renderTable("diagnosis-discharge", data.discharge?.diagnosis || [], "diagnosis", "discharge")
     renderTable("komorbid-discharge", data.discharge?.komorbid || [], "komorbid", "discharge")
     renderTable("komplikasi-discharge", data.discharge?.komplikasi || [], "komplikasi", "discharge")
-    renderTable("tindakan-discharge", data.discharge?.tindakan || [], "tindakan", "discharge")
     state.simulasi.discharge = data.discharge?.simulasi || {}
     state.summary.discharge = data.discharge?.summary || {}
 
-    // kirim rekomendasi ke Alpine (panel kanan)
+    // === Panel kanan (SARAN SIMULASI) ===
     window.dispatchEvent(new CustomEvent('update-rekom', {
-  detail: {
-    medis: [
-      ...(data.discharge?.summary?.klinis || [])
-    ],
-    regulasi: [
-      ...(data.discharge?.summary?.regulasi || [])
-    ],
-    tarif: [
-      ...(data.discharge?.summary?.tarif || [])
-    ]
-  }
-}))
+      detail: {
+        medis: [
+          ...(data.discharge?.summary?.klinis || [])
+        ],
+        regulasi: [
+          ...(data.discharge?.summary?.regulasi || [])
+        ],
+        tarif: [
+          ...(data.discharge?.summary?.tarif || [])
+        ]
+      }
+    }))
+
   } catch (err) {
     console.error("Error generate AI:", err)
     alert("Gagal generate AI")
   }
 }
 
+
 // ==================== Render Table ====================
-function renderTable(id, items, type, tab) {
-  const tb = document.getElementById(id)
-  if (!tb) return
-  if (!items || !Array.isArray(items)) items = []
+function renderTable(targetId, data, type, tab) {
+  const target = document.getElementById(targetId)
+  if (!target) return
 
-  const sourceMap = {
-    diagnosis: "Utama Klinis",
-    komorbid: "Komorbid",
-    komplikasi: "Komplikasi",
-    tindakan: "Tindakan"
-  }
-  const sourceLabel = sourceMap[type] || type
+  // ambil role dari Alpine
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const role = state.role
 
-  tb.innerHTML = items.map(it => `
-    <tr>
-      <td class="${it.child ? 'pl-6' : ''}"
-          data-item='${JSON.stringify({ ...it, tab }).replace(/"/g,"&quot;")}'
-          onclick="openModalFromAttr(this)">
-        ${it.kategori || "-"}
-      </td>
-      <td>${it.klinis || "-"}</td>
-      <td>${it.icd || "-"}</td>
-      <td>${it.tindakan || "-"}</td>
-      <td>${it.score != null ? confidenceBadge(it.score) : "-"}</td>
-      <td>
-        ${type !== "tindakan" ? `
-        <select x-bind:disabled="role === 'verifikator'"onchange="updateSimulasi('diagnosis',this.value,{name:'${it.kategori}',label:'${sourceLabel}'},'${sourceLabel}','${tab}')"
-                class='border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700'>
-          <option selected>Pilih</option>
-          <option value="Primary">Diagnosis Utama</option>
-          <option value="Secondary-Komorbid">Komorbid</option>
-          <option value="Secondary-Komplikasi">Komplikasi</option>
-          <option value="None">None</option>
-        </select>` : "-"}
-      </td>
-    </tr>
-  `).join('')
+  // amanin data supaya array
+  const rows = (data || []).map(it => {
+    const sourceLabel = type.charAt(0).toUpperCase() + type.slice(1)
+    return `
+      <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600">
+        <td ${ (type === "diagnosis" || type === "komorbid" || type === "komplikasi")
+      ? `data-item='${JSON.stringify({...it, tab})}' onclick="openModalFromAttr(this)" class="text-blue-600 underline cursor-pointer"`
+      : "" }>${it.kategori || "-"}</td>
+        <td>${it.klinis || "-"}</td>
+        <td>${it.icd || "-"}</td>
+        <td>${it.tindakan || "-"}</td>
+        <td>${it.score ?? "-"}</td>
+        <td>
+          <select ${role === 'doctor' ? '' : 'disabled'}
+                  onchange="updateSimulasi('${type}', this.value, {name:'${it.kategori}', label:'${sourceLabel}'}, '${sourceLabel}', '${tab}')"
+                  class="border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700">
+            <option value="">Pilih</option>
+            <option value="Diagnosis Utama">Diagnosis Utama</option>
+            <option value="Komorbid">Komorbid</option>
+            <option value="Komplikasi">Komplikasi</option>
+            <option value="None">None</option>
+          </select>
+        </td>
+      </tr>
+    `
+  }).join("")
+
+  target.innerHTML = rows
 
   // update badge jumlah
-  const countEl = document.getElementById("count-" + id)
-  if (countEl) countEl.textContent = items.length
+  const countEl = document.getElementById("count-" + targetId)
+  if (countEl) countEl.textContent = (data || []).length
 }
 
 // ==================== Modal ====================
+
+function openModal(title, content) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  state.modalOpen = true
+  state.modalTitle = title
+  state.modalContent = content
+}
+
 function openModalFromAttr(el) {
   const it = JSON.parse(el.dataset.item)
   openModal(it.kategori, buildModalContent(it))
@@ -199,10 +291,21 @@ function normalizeOpt(opt) {
 
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
+  const role = state.role
   if (!tab) tab = 'admission'
   opt = normalizeOpt(opt)
-  const sim = state.simulasi[tab]
+  console.log("updateSimulasi", { type, opt, tab, current: state.simulasi[tab] })
+  let sim = state.simulasi[tab]
+  if (!sim || typeof sim !== 'object' || Array.isArray(sim)) {
+    sim = { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
+    state.simulasi[tab] = sim
+  }
 
+  if (!Array.isArray(sim.sekunder)) sim.sekunder = []
+  if (!('utama' in sim)) sim.utama = null
+  if (!('tindakanUtama' in sim)) sim.tindakanUtama = null
+  if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = []
+  if (!('tarifDraft' in sim)) sim.tarifDraft = null
   // pastikan object {name,label}
   const item = (typeof value === 'string')
     ? { name: value.split(' [')[0], label: '' }
@@ -216,7 +319,8 @@ function updateSimulasi(type, opt, value, source, tab) {
   }
 
   // ========== DIAGNOSIS ==========
-  if (type === 'diagnosis') {
+  if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') {
+  const sim = state.simulasi[tab]  // admission / daily / discharge
     if (opt === "Primary") {
       const oldPrimary = sim.utama
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
@@ -262,11 +366,17 @@ function updateSimulasi(type, opt, value, source, tab) {
 
 // ==================== Helpers ====================
 
+function confidenceBadge(val){
+  val=parseInt(val)
+  let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
+  return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
+}
+
 async function simpanFinal() {
   const state = Alpine.$data(document.getElementById('claimRoot'))
 
   // TODO: ganti claimId sesuai klaim aktif (misalnya ambil dari hidden input / URL)
-  const claimId = state.currentClaimId || 1234  
+  const claimId = state.currentClaimId || document.getElementById("claimRoot").dataset.claimId  
 
   const payload = {
     simulasi: state.simulasi,
@@ -317,39 +427,5 @@ async function saveDraft() {
   } catch (e) {
     console.error("Save Draft error:", e)
     alert("❌ Error koneksi")
-  }
-}
-
-function claimData(init) {
-  return {
-    role: init.role,
-    tab: 'admission',
-    simulasi: init.simulasi,
-    summary: init.summary,
-    recommendations: { medis:[], regulasi:[], tarif:[] },
-    modalOpen: false,
-    modalTitle: '',
-    modalContent: '',
-    init(){
-      window.addEventListener('update-rekom', e => {
-        this.recommendations = e.detail
-      })
-    },
-    openModal(e){
-      this.modalOpen = true
-      this.modalTitle = e.detail.title
-      this.modalContent = e.detail.content
-    },
-    statusIcon(s){
-      if(s==='valid') return "✅"
-      if(s==='warning') return "⚠️"
-      if(s==='invalid') return "❌"
-      return ""
-    },
-    confidenceBadge(val){
-      val=parseInt(val)
-      let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
-      return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
-    }
   }
 }

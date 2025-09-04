@@ -557,7 +557,10 @@ def make_dummy(tab):
 def ai_recommendation(payload: dict = Body(...)):
     return {
         "admission": make_dummy("admission"),
-        "daily": make_dummy("daily"),
+        "daily": [
+            { "tanggal": "2025-09-01", **make_dummy("daily") },
+            { "tanggal": "2025-09-02", **make_dummy("daily2") }
+        ],
         "discharge": make_dummy("discharge"),
     }
 
@@ -896,9 +899,13 @@ def update_claim_draft(
 
     return RedirectResponse(url="/dashboard", status_code=303)
 
-
 @app.get("/claims/{id}/edit")
-def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("verifikator","coder","doctor"))):
+def edit_claim_form(
+    request: Request,
+    id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("verifikator","coder","doctor"))
+):
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -908,8 +915,56 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
     hospitals = db.query(models.Hospital).all()
     csrf_token = issue_csrf_token(request)
 
+    # --- Parse simpanan JSON dari DB ---
+    sim = claim.simulasi_draft
+    if isinstance(sim, str):
+        try:
+            sim = json.loads(sim)
+        except Exception:
+            sim = None
+
+    summ = claim.summary_draft
+    if isinstance(summ, str):
+        try:
+            summ = json.loads(summ)
+        except Exception:
+            summ = None
+
+    # --- Default struktur lengkap biar Alpine aman ---
+    default_sim = {
+        "admission": {
+            "utama": None,
+            "sekunder": [],
+            "tindakanUtama": None,
+            "tindakanSekunder": [],
+            "tarifDraft": ""
+        },
+        "daily": {
+            "utama": None,
+            "sekunder": [],
+            "tindakanUtama": None,
+            "tindakanSekunder": [],
+            "tarifDraft": ""
+        },
+        "discharge": {
+            "utama": None,
+            "sekunder": [],
+            "tindakanUtama": None,
+            "tindakanSekunder": [],
+            "tarifDraft": ""
+        }
+    }
+
+    default_summary = {
+        "admission": {"klinis": [], "regulasi": [], "tarif": []},
+        "daily": {"klinis": [], "regulasi": [], "tarif": []},
+        "discharge": {"klinis": [], "regulasi": [], "tarif": []}
+    }
+
+    sim = sim or default_sim
+    summ = summ or default_summary
+
     fields = form_configs["claim_medical_record"].copy()
-    # inject select options
     for f in fields:
         if f["name"] == "patient_id":
             f["options"] = [(p.id, p.nama) for p in patients]
@@ -926,20 +981,14 @@ def edit_claim_form(request: Request, id: int, db: Session = Depends(get_db), us
         "current_user": user,
         "user": user,
         "role": user.role if isinstance(user.role, str) else user.role[0],
-        "isDoctor": user.role == "doctor" or ("doctor" in user.role),
-        "isVerifikator": user.role == "verifikator" or ("verifikator" in user.role),
-        "fields": fields,  # dynamic
-        "saved_simulasi": claim.simulasi_draft or {
-            "admission": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""},
-            "daily": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""},
-            "discharge": {"utama":"", "sekunder":[], "tindakanUtama":"", "tindakanSekunder":[], "tarifDraft":""}
-        },
-        "saved_summary": claim.summary_draft or {
-            "admission": {"klinis":{}, "regulasi":{}, "tarif":{}},
-            "daily": {"klinis":{}, "regulasi":{}, "tarif":{}},
-            "discharge": {"klinis":{}, "regulasi":{}, "tarif":{}}
-        }
+        "isDoctor": "doctor" in user.role,
+        "isVerifikator": "verifikator" in user.role,
+        "fields": fields,
+        "saved_simulasi": sim,
+        "saved_summary": summ,
+        "claim_medical_record_fields": fields,
     })
+
 
 
 

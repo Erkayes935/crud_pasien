@@ -5,9 +5,9 @@
 <div id="claimRoot"
      data-claim-id="{{ record.id if record else '' }}"
      x-data="claimData({ 
-       role: '{{ role }}', 
-       simulasi: {{ saved_simulasi | tojson | safe }}, 
-       summary: {{ saved_summary | tojson | safe }} 
+        role: 'doctor',
+        simulasi: { admission:{}, daily:{}, discharge:{} },
+        summary: { admission:{}, daily:{}, discharge:{} }
      })"
      @open-modal.window="openModal($event)"
      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
@@ -73,44 +73,30 @@
 
         <!-- Daily -->
         <div x-show="tab==='daily'" class="space-y-2">
-          {% for acc in accs %}
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
-                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-              <span>
-                {{ acc }}
-                {% if acc!='Form Rekam Medis' %}
-                  <span id="count-{{ acc|lower }}-daily"
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                {% endif %}
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              {% if acc!='Form Rekam Medis' %}
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                  </tr>
-                </thead>
-                <tbody id="{{ acc|lower }}-daily"></tbody>
-              </table>
-              {% else %}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
-              </div>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
+
+  <!-- container kosong buat accordion harian -->
+  <div id="daily-accordion"></div>
+
+  <!-- form rekam medis tetap ada -->
+  <template id="daily-form-template">
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+    <button @click="open=!open"
+            class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+      <span>Form Rekam Medis</span>
+      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+    </button>
+    <div x-show="open" class="p-2">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+          {% include "_form_renderer.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</template>
 
 
-
+</div>
         <!-- Discharge -->
         <div x-show="tab==='discharge'" class="space-y-2">
           {% for acc in accs %}
@@ -170,7 +156,7 @@
               <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
                 <span x-text="simulasi[tab].utama.name + ' [' + simulasi[tab].utama.label + ']'"></span>
               </div>
-              <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+              <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)" @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
                       class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
                 <option value="Primary" selected>Primary</option>
                 <option value="Secondary">Secondary</option>
@@ -200,7 +186,7 @@
           </select>
         </div>
       </template>
-      <template x-if="!simulasi[tab].sekunder.length">
+      <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
         <div class="italic text-gray-400 mt-1">Belum ada Secondary Claim</div>
       </template>
     </div>
@@ -249,7 +235,7 @@
           </select>
         </div>
       </template>
-      <template x-if="!simulasi[tab].tindakanSekunder.length">
+      <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
         <div class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</div>
       </template>
     </div>
