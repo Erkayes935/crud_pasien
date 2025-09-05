@@ -81,55 +81,57 @@ def welcome(request: Request):
     return templates.TemplateResponse("welcome.html", {"request": request})
 
 @app.get("/login")
-def login_get(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/auth/login")
-async def login_post(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    token_url = f"https://{config.AUTH0_DOMAIN}/oauth/token"
-    data = {
-        "grant_type": "http://auth0.com/oauth/grant-type/password-realm",
-        "username": email,
-        "password": password,
-        "audience": config.AUDIENCE,
+def login():
+    params = {
+        "client_id": config.CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": config.REDIRECT_URI,
         "scope": "openid profile email",
+        "audience": config.AUDIENCE,  # boleh hapus kalau gak pakai audience
+    }
+    url = f"https://{config.AUTH0_DOMAIN}/authorize?{urlencode(params)}"
+    return RedirectResponse(url)
+
+
+# ---------------------
+# /callback → Auth0 balikin "code", kita tukar jadi token
+# ---------------------
+@app.get("/callback")
+async def callback(request: Request):
+    code = request.query_params.get("code")
+
+    if not code:
+        return JSONResponse({"error": "Missing code"}, status_code=400)
+
+    token_url = f"https://{config.AUTH0_DOMAIN}/oauth/token"
+    headers = {"content-type": "application/x-www-form-urlencoded"}
+    data = {
+        "grant_type": "authorization_code",
         "client_id": config.CLIENT_ID,
         "client_secret": config.CLIENT_SECRET,
-        "realm": "Username-Password-Authentication"
+        "code": code,
+        "redirect_uri": config.REDIRECT_URI,
     }
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        res = await client.post(token_url, data=data)
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(token_url, data=data, headers=headers)
+        token_json = token_res.json()
 
-    if res.status_code != 200:
-        raise HTTPException(status_code=401, detail=f"Login failed: {res.text}")
-
-    tokens = res.json()
-    id_token = tokens.get("id_token")
+    # Decode ID Token (JWT)
+    id_token = token_json.get("id_token")
     if not id_token:
-        raise HTTPException(status_code=401, detail="No id_token returned")
+        return JSONResponse({"error": "No id_token in response", "detail": token_json}, status_code=400)
 
-    payload = verify_jwt(id_token, expected_aud=config.CLIENT_ID)
+    payload = jwt.get_unverified_claims(id_token)
 
-    sub = payload["sub"]
-    email = payload.get("email") or email
+    # Coba ambil info user
+    userinfo = {
+        "sub": payload.get("sub"),
+        "email": payload.get("email"),
+        "name": payload.get("name"),
+    }
 
-    user = db.query(models.User).filter_by(auth0_sub=sub).first()
-    if not user:
-        user = models.User(auth0_sub=sub, email=email, role="doctor")
-        db.add(user); db.commit(); db.refresh(user)
-
-    request.session["user_id"] = user.id
-    request.session["sub"] = sub
-    request.session["email"] = email
-    request.session["roles"] = [user.role]
-    flash(request, "Login successful!", "success")
-    return RedirectResponse(url="/dashboard", status_code=302)
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 @app.get("/logout")
 def logout():
@@ -1061,6 +1063,7 @@ def update_claim(
 
 @app.get("/claims/{id}/delete")
 def delete_claim(
+    request: Request,
     id: int,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor","coder"))
