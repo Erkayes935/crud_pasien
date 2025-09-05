@@ -97,9 +97,8 @@ def login():
 # /callback → Auth0 balikin "code", kita tukar jadi token
 # ---------------------
 @app.get("/callback")
-async def callback(request: Request):
+async def callback(request: Request, db: Session = Depends(get_db)):
     code = request.query_params.get("code")
-
     if not code:
         return JSONResponse({"error": "Missing code"}, status_code=400)
 
@@ -115,21 +114,44 @@ async def callback(request: Request):
 
     async with httpx.AsyncClient() as client:
         token_res = await client.post(token_url, data=data, headers=headers)
+        if token_res.status_code != 200:
+            return JSONResponse(token_res.json(), status_code=token_res.status_code)
+
         token_json = token_res.json()
+        access_token = token_json.get("access_token")
+        if not access_token:
+            return JSONResponse({"error": "No access_token in response", "detail": token_json}, status_code=400)
 
-    # Decode ID Token (JWT)
-    id_token = token_json.get("id_token")
-    if not id_token:
-        return JSONResponse({"error": "No id_token in response", "detail": token_json}, status_code=400)
+        # Ambil data user dari Auth0
+        userinfo_res = await client.get(
+            f"https://{config.AUTH0_DOMAIN}/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        if userinfo_res.status_code != 200:
+            return JSONResponse(userinfo_res.json(), status_code=userinfo_res.status_code)
 
-    payload = jwt.get_unverified_claims(id_token)
+        userinfo = userinfo_res.json()
 
-    # Coba ambil info user
-    userinfo = {
-        "sub": payload.get("sub"),
-        "email": payload.get("email"),
-        "name": payload.get("name"),
-    }
+    # Cari user di DB berdasarkan auth0_sub
+    user = db.query(models.User).filter_by(auth0_sub=userinfo["sub"]).first()
+
+    if not user:
+        # Buat user baru kalau belum ada
+        user = models.User(
+            auth0_sub=userinfo["sub"],
+            email=userinfo.get("email"),
+            name=userinfo.get("name"),
+            role="doctor",  # default role → bisa kamu ubah sesuai kebutuhan
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Simpan user_id (integer lokal) ke session
+    request.session["user_id"] = user.id
+    request.session["email"] = user.email
+    request.session["name"] = user.name
+    request.session["role"] = user.role
 
     return RedirectResponse(url="/dashboard", status_code=303)
 
