@@ -3,44 +3,40 @@
 
 {% block content %}
 <div id="claimRoot"
-  x-data="{ 
-    tab:'admission',
-    modalOpen:false, modalTitle:'', modalContent:'',
-    simulasi: {
-      admission: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' },
-      daily: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' },
-      discharge: { utama:'', sekunder:[], tindakanUtama:'', tindakanSekunder:[], tarifDraft:'' }
-    },
-    recommendations:{ medis:[], regulasi:[], tarif:[] },
-    init(){
-      window.addEventListener('update-rekom', e => {
-        this.recommendations = e.detail
-      })
-    },
-    statusIcon(s){
-      if(s==='valid') return '<span class=\'text-green-600\'>✔️</span>'
-      if(s==='warning') return '<span class=\'text-yellow-600\'>⚠️</span>'
-      if(s==='invalid') return '<span class=\'text-red-600\'>❌</span>'
-      return ''
-    },
-    confidenceBadge(val){
-      val=parseInt(val)
-      let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
-      return `<span class='px-2 py-0.5 rounded text-white text-xs ${c}'>${val}%</span>`
-    }
-  }"
-  @open-modal.window="modalOpen=true; modalTitle=$event.detail.title; modalContent=$event.detail.content"
-  class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm"
->
+     data-claim-id="{{ record.id if record else '' }}"
+     x-data='claimData({
+       role: {{ role|tojson }},
+       sim: {{ sim|tojson }},
+       summ: {{ summ|tojson }}
+     })'
+     @open-modal.window="openModal($event)"
+     class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
+
 
   <!-- ========== LEFT PANEL ========== -->
   <div class="lg:col-span-2 space-y-4">
+    <!-- Rumah Sakit (hospital_id) -->
+    <div class="mb-4">
+      <label for="hospital_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Rumah Sakit</label>
+      {% if current_user and current_user.hospital_id %}
+        <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id }}">
+        <input type="text" name="hospital_name" value="{{ current_user.hospital.nama }}" readonly class="mt-1 block w-full rounded border-gray-300 dark:bg-gray-800 dark:text-gray-100">
+      {% else %}
+        <select name="hospital_id" id="hospital_id" required class="mt-1 block w-full rounded border-gray-300 dark:bg-gray-800 dark:text-gray-100">
+          <option value="1" selected>Pilih Rumah Sakit</option>
+          <option value="1">RS A</option>
+          <option value="2">RS B</option>
+          <option value="3">RS C</option>
+          <!-- Tambahkan opsi lain sesuai data rumah sakit -->
+        </select>
+      {% endif %}
+    </div>
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold">📝 Draft Klaim</h1>
     </div>
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-semibold">Rekomendasi Klaim</h3>
-      <button onclick="generateDummyAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
+      <button onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
     </div>
     <!-- Tabs -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
@@ -91,57 +87,32 @@
           {% endfor %}
         </div>
 
-
         <!-- Daily -->
-        <div x-show="tab==='daily'" class="space-y-4">
-          {% for day in ['2025-09-01','2025-09-02'] %}
-          <div class="bg-gray-100 dark:bg-gray-700 rounded p-2" x-data="{open:false}">
-            <button @click="open=!open" 
-                    class="w-full flex justify-between px-2 py-1 bg-gray-200 dark:bg-gray-600 font-semibold">
-              🗓️ {{ day }}
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="space-y-2 mt-2">
-              {% for acc in accs %}
-              <div class="bg-white dark:bg-gray-800 rounded shadow-sm" x-data="{open:true}">
-                <button @click="open=!open" 
-                        class="w-full flex justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 font-semibold">
-                  <span>
-                    {{ acc }}
-                    {% if acc!='Form Rekam Medis' %}
-                      <span id="count-{{ acc|lower }}-{{ day }}"
-                            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                    {% endif %}
-                  </span>
-                  <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-                </button>
-                <div x-show="open" class="p-2">
-                  {% if acc!='Form Rekam Medis' %}
-                  <table class="w-full text-xs border">
-                    <thead class="bg-gray-100 dark:bg-gray-800">
-                      <tr>
-                        <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                        <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                      </tr>
-                    </thead>
-                    <tbody id="{{ acc|lower }}-{{ day }}"></tbody>
-                  </table>
-                  {% else %}
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                      {% include "_form_renderer.html" %}
-                    {% endfor %}
-                  </div>
-                  {% endif %}
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
+        <div x-show="tab==='daily'" class="space-y-2">
+
+  <!-- container kosong buat accordion harian -->
+  <div id="daily-accordion"></div>
+
+  <!-- form rekam medis tetap ada -->
+  <template id="daily-form-template">
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+    <button @click="open=!open"
+            class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+      <span>Form Rekam Medis</span>
+      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+    </button>
+    <div x-show="open" class="p-2">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+          {% include "_form_renderer.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</template>
 
 
+</div>
         <!-- Discharge -->
         <div x-show="tab==='discharge'" class="space-y-2">
           {% for acc in accs %}
@@ -186,74 +157,105 @@
 <!-- ========== RIGHT PANEL (Simulasi) ========== -->
 <div class="lg:col-span-1">
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-4">
-    <h2 class="text-lg font-bold mb-3">📊 Simulasi Klaim</h2>
+    <h2 class="text-lg font-bold mb-3">Simulasi Klaim</h2>
 
-    <!-- Field atas -->
-    <!-- Primary Claim -->
-<template x-if="simulasi[tab].utama">
-  <div class="flex items-center gap-2 mt-1">
-    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-      <span x-text="simulasi[tab].utama.name + ' [' + simulasi[tab].utama.label + ']'"></span>
+    <div class="space-y-6">
+
+  <!-- Diagnosis Section -->
+      <div>
+        <h3 class="font-bold text-lg mb-3">Diagnosis</h3>
+        <div class="mb-2">
+        <!-- Primary Claim -->   
+          <label class="text-sm font-medium">Primary Claim</label>   
+          <template x-if="simulasi[tab].utama">
+            <div class="flex items-center gap-2 mt-1">
+              <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+                <span x-text="simulasi[tab].utama.name + ' [' + simulasi[tab].utama.label + ']'"></span>
+              </div>
+              <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)" @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+                      class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                <option value="Primary" selected>Primary</option>
+                <option value="Secondary">Secondary</option>
+                <option value="None">None</option>
+              </select>
+            </div>
+          </template>
+          <template x-if="!simulasi[tab].utama">
+            <div class="italic text-gray-400 mt-1">Belum ada Primary Claim</div>
+          </template>
+        </div>
+
+
+  <!-- Secondary Claims -->
+   <div>
+      <label class="text-sm font-medium">Secondary Claims</label>
+      <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
+        <div class="flex items-center gap-2 mt-1">
+          <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+            <span x-text="dx.name + ' [' + dx.label + ']'"></span>
+          </div>
+          <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+            <option value="Secondary" selected>Secondary</option>
+            <option value="Primary">Primary</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+      </template>
+      <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
+        <div class="italic text-gray-400 mt-1">Belum ada Secondary Claim</div>
+      </template>
     </div>
-    <select @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
-            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-      <option value="Primary" selected>Primary</option>
-      <option value="Secondary">Secondary</option>
-      <option value="None">None</option>
-    </select>
-  </div>
-</template>
+  </div>  
 
 
-<!-- Secondary Claims -->
-<template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
-  <div class="flex items-center gap-2 mt-1">
-    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-      <span x-text="dx.name + ' [' + dx.label + ']'"></span>
+  <div>
+      <h3 class="font-bold text-lg mb-3">Tindakan</h3>
+
+      <!-- Primary -->
+      <div class="mb-2">
+        <label class="text-sm font-medium">Primary Action</label>
+    <!-- Tindakan Utama -->
+        <template x-if="simulasi[tab].tindakanUtama">
+        <div class="flex items-center gap-2 mt-1">
+          <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+            <span x-text="simulasi[tab].tindakanUtama"></span>
+          </div>
+          <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+            <option value="Primary" selected>Primary</option>
+            <option value="Secondary">Secondary</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+      </template>
+      <template x-if="!simulasi[tab].tindakanUtama">
+        <div class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</div>
+      </template>
     </div>
-    <select
-      @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
-            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-      <option value="Secondary" selected>Secondary</option>
-      <option value="Primary">Primary</option>
-      <option value="None">None</option>
-    </select>
-  </div>
-</template>
 
 
-
-  <!-- Tindakan Utama -->
-  <template x-if="simulasi[tab].tindakanUtama">
-  <div class="flex items-center gap-2 mt-1">
-    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-      <span x-text="simulasi[tab].tindakanUtama"></span>
+    <!-- Tindakan Sekunder -->
+     <div>
+      <label class="text-sm font-medium">Secondary Actions</label>
+      <template x-for="(tdk,i) in simulasi[tab].tindakanSekunder" :key="i">
+        <div class="flex items-center gap-2 mt-1">
+          <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+            <span x-text="tdk"></span>
+          </div>
+          <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+            <option value="Secondary" selected>Secondary</option>
+            <option value="Primary">Primary</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+      </template>
+      <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+        <div class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</div>
+      </template>
     </div>
-    <select @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
-            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-      <option value="Primary" selected>Primary</option>
-      <option value="Secondary">Secondary</option>
-      <option value="None">None</option>
-    </select>
   </div>
-</template>
-
-
-  <!-- Tindakan Sekunder -->
-  <template x-for="(tdk,i) in simulasi[tab].tindakanSekunder" :key="i">
-  <div class="flex items-center gap-2 mt-1">
-    <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-      <span x-text="tdk"></span>
-    </div>
-    <select @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
-            class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-      <option value="Secondary" selected>Secondary</option>
-      <option value="Primary">Primary</option>
-      <option value="None">None</option>
-    </select>
-  </div>
-</template>
-
 
     <!-- Rekomendasi AI -->
     <div class="space-y-2">
@@ -263,10 +265,10 @@
           <h4 class="font-semibold bg-blue-500 text-white px-2 py-1 rounded" x-text="cat.toUpperCase()"></h4>
           <table class="w-full text-xs border">
             <tbody>
-              <template x-for="rec in items" :key="rec.message">
+              <template x-for="(rec, i) in items" :key="rec.message + '-' + i">
                 <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
                   <td class="p-2" x-html="statusIcon(rec.status)"></td>
-                  <td class="p-2" x-text="rec.target.join(' + ')"></td>
+                  <td class="p-2" x-text="(rec.target || []).join(' + ')"></td>
                   <td class="p-2" x-text="rec.message"></td>
                   <td class="p-2 text-right" x-html="confidenceBadge((rec.confidence*100).toFixed(0))"></td>
                 </tr>
@@ -275,19 +277,30 @@
           </table>
         </div>
       </template>
+  <div id="total-tarif-simulasi" class="mt-2 text-lg font-bold text-green-700"></div>
     </div>
 
     <!-- Tarif Draft (muncul setelah generate AI) -->
-    <div x-show="simulasi.tarifDraft" class="pt-3 border-t">
+    <div x-show="simulasi[tab].tarifDraft" class="pt-3 border-t">
       <label class="font-semibold">Tarif Draft</label>
-      <p class="text-lg font-bold text-green-700" x-text="simulasi.tarifDraft"></p>
+      <p class="text-lg font-bold text-green-700" x-text="simulasi[tab].tarifDraft"></p>
     </div>
 
 
     <!-- Footer -->
     <div class="flex gap-2 mt-2">
-      <button class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
-      <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">Simpan Final</button>
+      <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
+      {% if record and record.id %}
+        <button x-show="role==='doctor'" onclick="saveDraft()" 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
+          Save Draft
+        </button>
+      {% endif %}
+      <button x-show="role==='verifikator'" 
+          onclick="simpanFinal()" 
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
+        Simpan Final
+      </button>
     </div>
   </div>
 </div>
@@ -301,308 +314,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<!-- SCRIPT -->
-<script>
-function generateDummyAI(){
-  // Diagnosis (3 umum x 3 turunan)
-  const dx=[
-    {kategori:"Demam Berdarah",klinis:"Demam 5 hari",icd:"A91",tindakan:"Observasi",score:92,child:false},
-    {kategori:"→ DBD Warning Sign",klinis:"Perdarahan",icd:"A91.1",tindakan:"Hospitalisasi",score:80,child:true},
-    {kategori:"→ DBD Shock",klinis:"Syok",icd:"A91.2",tindakan:"ICU",score:70,child:true},
-    {kategori:"Pneumonia",klinis:"Batuk demam",icd:"J18",tindakan:"Antibiotik",score:85,child:false},
-    {kategori:"→ Pneumonia Berat",klinis:"Sesak",icd:"J18.1",tindakan:"Rawat inap",score:72,child:true},
-    {kategori:"→ Pneumonia Sepsis",klinis:"Sepsis",icd:"J18.2",tindakan:"ICU",score:60,child:true},
-    {kategori:"Gastritis",klinis:"Nyeri ulu hati",icd:"K29",tindakan:"PPI",score:88,child:false},
-    {kategori:"→ Gastritis Kronik",klinis:"Lama",icd:"K29.3",tindakan:"Diet",score:74,child:true},
-    {kategori:"→ Gastritis Hemoragik",klinis:"Perdarahan",icd:"K29.4",tindakan:"Endoskopi",score:66,child:true}
-  ];
-  // Komorbid
-  const kom=[
-    {kategori:"Diabetes Mellitus",klinis:"DM lama",icd:"E11",tindakan:"Kontrol gula",score:75,child:false},
-    {kategori:"→ DM Nefropati",klinis:"Proteinuria",icd:"E11.2",tindakan:"Terapi ginjal",score:65,child:true},
-    {kategori:"→ DM Retinopati",klinis:"Gangguan mata",icd:"E11.3",tindakan:"Laser retina",score:60,child:true},
-    {kategori:"Hipertensi",klinis:"TD tinggi",icd:"I10",tindakan:"Obat antihipertensi",score:82,child:false},
-    {kategori:"→ Hipertensi Stadium 2",klinis:"TD >160/100",icd:"I10.1",tindakan:"Obat kombinasi",score:70,child:true},
-    {kategori:"→ Hipertensi Krisis",klinis:"Hipertensi emergensi",icd:"I10.2",tindakan:"ICU monitoring",score:62,child:true},
-    {kategori:"CKD",klinis:"GFR <60",icd:"N18",tindakan:"HD rutin",score:80,child:false},
-    {kategori:"→ CKD Stage 4",klinis:"GFR 15-29",icd:"N18.4",tindakan:"Diet protein rendah",score:68,child:true},
-    {kategori:"→ CKD Stage 5",klinis:"GFR <15",icd:"N18.5",tindakan:"Transplantasi",score:55,child:true}
-  ];
-  // Komplikasi
-  const komp=[
-    {kategori:"Sepsis",klinis:"Infeksi sistemik",icd:"A41",tindakan:"Antibiotik IV",score:70,child:false},
-    {kategori:"→ Gram Negatif",klinis:"E.coli",icd:"A41.5",tindakan:"Ceftriaxone",score:68,child:true},
-    {kategori:"→ Gram Positif",klinis:"Staph aureus",icd:"A41.0",tindakan:"Vancomycin",score:65,child:true},
-    {kategori:"Syok",klinis:"Hipotensi",icd:"R57",tindakan:"Resusitasi cairan",score:74,child:false},
-    {kategori:"→ Syok Septik",klinis:"Sepsis + hipotensi",icd:"R57.2",tindakan:"Vasopressor",score:66,child:true},
-    {kategori:"→ Syok Anafilaksis",klinis:"Reaksi alergi berat",icd:"R57.0",tindakan:"Epinefrin",score:60,child:true},
-    {kategori:"ARDS",klinis:"PaO2/FiO2 rendah",icd:"J80",tindakan:"Ventilasi mekanik",score:78,child:false},
-    {kategori:"→ ARDS Ringan",klinis:"PaO2/FiO2 200–300",icd:"J80.1",tindakan:"Oksigen nasal",score:65,child:true},
-    {kategori:"→ ARDS Berat",klinis:"PaO2/FiO2 <100",icd:"J80.3",tindakan:"Intubasi",score:58,child:true}
-  ];
-
-  const mapTab = (sfx)=>{
-    if(sfx==="admission") return "admission"
-    if(sfx==="discharge") return "discharge"
-    return "daily"
-  }
-
-  ["admission","2025-09-01","2025-09-02","discharge"].forEach(sfx=>{
-    const tab = mapTab(sfx)
-    renderTable(`diagnosis-${sfx}`,dx,"diagnosis",tab)
-    renderTable(`komorbid-${sfx}`,kom,"komorbid",tab)
-    renderTable(`komplikasi-${sfx}`,komp,"komplikasi",tab)
-  })
-
-  window.dispatchEvent(new CustomEvent('update-rekom', {
-    detail: {
-      medis:[
-        {status:"valid",target:["Sepsis","ARDS"],message:"Kombinasi valid sesuai pola klinis",confidence:0.87},
-        {status:"warning",target:["DM","Sepsis"],message:"Butuh catatan HbA1c terbaru",confidence:0.65},
-        {status:"invalid",target:["Pneumonia","Appendicitis"],message:"Tidak lazim, perlu justifikasi",confidence:0.42}
-      ],
-      regulasi:[
-        {status:"valid",target:["Sepsis"],message:"Sesuai Permenkes 2020",confidence:0.90},
-        {status:"warning",target:["Hipertensi","CKD"],message:"Perlu cross-check aturan BPJS",confidence:0.72},
-        {status:"invalid",target:["Gastritis","ARDS"],message:"Tidak tercakup regulasi",confidence:0.55}
-      ],
-      tarif:[
-        {status:"valid",target:["Sepsis","Ventilasi Mekanik"],message:"Rp 15.000.000",confidence:0.92},
-        {status:"warning",target:["DM","Sepsis"],message:"Rp 10.000.000",confidence:0.67},
-        {status:"invalid",target:["PPOK","Pneumonia"],message:"Rp 5.000.000",confidence:0.58}
-      ]
-    }
-  }))
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  state.simulasi.tarifDraft = "Rp 15.000.000"
-}
-
-function renderTable(id, items, type,tab){
-  const tb = document.getElementById(id)
-  if(!tb) return
-
-  // mapping type -> label
-  const sourceMap = {
-    diagnosis: "Utama Klinis",
-    komorbid: "Komorbid",
-    komplikasi: "Komplikasi"
-  }
-  const sourceLabel = sourceMap[type] || type
-
-  tb.innerHTML = items.map(it=>`
-    <tr>
-      <td class="${it.child ? 'pl-6' : ''}"
-          data-item='${JSON.stringify(it).replace(/"/g,"&quot;")}'
-          onclick="openModalFromAttr(this)">
-        ${it.kategori}
-      </td>
-      <td>${it.klinis}</td>
-      <td>${it.icd}</td>
-      <td>${it.tindakan}</td>
-      <td>${confidenceBadge(it.score)}</td>
-      <td>
-        <select onchange="updateSimulasi('diagnosis',this.value,{name:'${it.kategori}',label:'${sourceLabel}'},'${sourceLabel}','${tab}')"
-        class='border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700'>
-          <option selected>Pilih</option>
-          <option value="Primary">Diagnosis Utama</option>
-          <option value="Secondary-Komorbid">Komorbid</option>
-          <option value="Secondary-Komplikasi">Komplikasi</option>
-          <option value="None">None</option>
-        </select>
-      </td>
-    </tr>`).join('')
-
-  // update badge jumlah
-  const countEl = document.getElementById("count-" + id)
-  if(countEl) countEl.textContent = items.length
-}
-
-
-function openModalFromAttr(el){
-  const it = JSON.parse(el.dataset.item)
-  openModal(it.kategori, buildModalContent(it))
-}
-
-function buildModalContent(it){
-  return `
-    <div class="space-y-4 text-sm">
-
-      <!-- Aspek Klinis -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Aspek Klinis</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Justifikasi:</b> ${it.klinis || 'Tidak ada justifikasi'}</li>
-          <li><b>Bukti:</b> ${it.bukti || 'Belum ada bukti'}</li>
-          <li><b>Syarat:</b> ${it.syarat || 'Belum ditentukan'}</li>
-        </ul>
-      </section>
-
-      <!-- ICD-10 -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">ICD-10</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Struktur Kode:</b> ${it.icd || '-'}</li>
-          <li><b>Kode Ganda:</b> ${it.kode_ganda || 'Tidak'}</li>
-          <li><b>Z-Code:</b> ${it.zcode || '-'}</li>
-          <li><b>Kode BPJS Khusus:</b> ${it.kode_bpjs || '-'}</li>
-        </ul>
-      </section>
-
-      <!-- Tindakan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Tindakan</h4>
-        <div class="mt-2 space-y-1">
-          <div class="flex justify-between items-center border p-2 rounded">
-            <span>Operasi Apendektomi</span>
-            <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','Operasi Apendektomi')"
-                      class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','Operasi Apendektomi')"
-                      class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center border p-2 rounded">
-            <span>CT Scan Abdomen</span>
-            <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','CT Scan Abdomen')"
-                      class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','CT Scan Abdomen')"
-                      class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center border p-2 rounded">
-            <span>Pemeriksaan Laboratorium</span>
-            <div class="space-x-1">
-              <button onclick="updateSimulasi('tindakan','Utama','Pemeriksaan Laboratorium')"
-                      class="bg-green-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-              <button onclick="updateSimulasi('tindakan','Sekunder','Pemeriksaan Laboratorium')"
-                      class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
-            </div>
-          </div>
-
-        </div>
-      </section>
-        
-
-      <!-- Rawat Inap -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Rawat Inap</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Indikasi:</b> ${it.indikasi || 'Tidak ada indikasi khusus'}</li>
-          <li><b>Lama Rawat:</b> ${it.lama_rawat || '3 hari'}</li>
-          <li><b>Perpanjangan:</b> ${it.perpanjangan || 'Tidak'}</li>
-        </ul>
-      </section>
-
-      <!-- Faskes -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Faskes</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Kesesuaian RS:</b> ${it.rs || 'Tipe C'}</li>
-        </ul>
-      </section>
-
-      <!-- Rujukan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">Rujukan</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Syarat:</b> ${it.rujukan_syarat || 'Tidak ada'}</li>
-          <li><b>Kelayakan:</b> ${it.rujukan_kelayakan || 'Layak'}</li>
-        </ul>
-      </section>
-
-    </div>
-  `
-}
-
-function normalizeOpt(opt){
-  if(opt==="Diagnosis Utama" || opt==="Utama" || opt==="Primary Claim" || opt==="Primary") return "Primary"
-  if(opt==="Komorbid" || opt==="Secondary-Komorbid") return "Secondary-Komorbid"
-  if(opt==="Komplikasi" || opt==="Secondary-Komplikasi") return "Secondary-Komplikasi"
-  if(opt==="Sekunder" || opt==="Secondary Claim" || opt==="Secondary") return "Secondary"
-  if(opt==="None") return "None"
-  return opt
-}
-
-
-function updateSimulasi(type, opt, value, source, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  if (!tab) tab = 'admission'
-  opt = normalizeOpt(opt)
-  const sim = state.simulasi[tab]
-
-  // pastikan object {name,label}
-  const item = (typeof value === 'string')
-    ? { name: value.split(' [')[0], label: '' }
-    : { name: value.name, label: value.label || '' }
-
-  // mapping label berdasar dropdown mapping (accordion kiri)
-  if (source) {
-    if (opt === "Primary") item.label = "Utama Klinis"
-    else if (opt === "Secondary-Komorbid") item.label = "Komorbid"
-    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi"
-  }
-  // kalau cuma Secondary dari panel kanan → label dipertahankan
-
-  // ========== DIAGNOSIS ==========
-  if (type === 'diagnosis') {
-    if (opt === "Primary") {
-      const oldPrimary = sim.utama
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
-      sim.utama = item
-      if (oldPrimary && oldPrimary.name !== item.name) {
-        sim.sekunder.unshift(oldPrimary)
-      }
-    }
-
-    else if (opt === "Secondary" || opt === "Secondary-Komorbid" || opt === "Secondary-Komplikasi") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      const idx = sim.sekunder.findIndex(dx => dx.name === item.name)
-      if (idx === -1) sim.sekunder.push(item)
-      else sim.sekunder[idx] = item
-    }
-
-    else if (opt === "None") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
-    }
-  }
-
-  // ========== TINDAKAN ==========
-  if (type === 'tindakan') {
-    if (opt === "Primary") {
-      const oldPrimary = sim.tindakanUtama
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
-      sim.tindakanUtama = item.name
-      if (oldPrimary && oldPrimary !== item.name) {
-        sim.tindakanSekunder.unshift(oldPrimary)
-      }
-    }
-
-    else if (opt === "Secondary") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      if (!sim.tindakanSekunder.includes(item.name)) {
-        sim.tindakanSekunder.push(item.name)
-      }
-    }
-
-    else if (opt === "None") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
-    }
-  }
-}
-
-
-
-function openModal(title,content){
-  window.dispatchEvent(new CustomEvent('open-modal',{detail:{title,content}}));
-}
-function statusIcon(s){if(s==="valid")return"✅";if(s==="warning")return"⚠️";if(s==="invalid")return"❌";return"";}
-function confidenceBadge(val){val=parseInt(val);let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600';
- return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`;}
-</script>
+{% block scripts %}
+<script src="{{ url_for('static', path='js/claim.js') }}"></script>
 {% endblock %}

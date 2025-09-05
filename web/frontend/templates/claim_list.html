@@ -116,12 +116,7 @@
         {% endfor %}
         {% if not claims %}
         <tr>
-          <td colspan="15" class="px-4 py-2 text-center">
-            Tidak ada klaim<br>
-            {% if request and request.query_params.get('visit_id') %}
-              <a href="/claims/add/form/{{ request.query_params.get('visit_id') }}" class="mt-3 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">➕ Tambah Klaim untuk Kunjungan Ini</a>
-            {% endif %}
-          </td>
+          <td colspan="15" class="px-4 py-2 text-center">Tidak ada klaim</td>
         </tr>
         {% endif %}
       </tbody>

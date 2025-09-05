@@ -143,6 +143,5 @@ form_configs = {
     "hospital": hospital_fields,
     "visit": visit_fields,
     "claim_medical_record": claim_medical_record_fields,
-    "claim": claim_medical_record_fields,  # Tambahkan key 'claim' agar form klaim tidak error
     "user": user_fields,
 }

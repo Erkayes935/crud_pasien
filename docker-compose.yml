@@ -6,32 +6,18 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DATABASE_URL=postgresql://postgres:user@0.tcp.ap.ngrok.io:10765/postgres
-      - AI_DATABASE_URL=postgresql://ai_processor:ai_secret@postgres_cloud:5432/ai_claim_anonymized
-      - AUTH0_DOMAIN=dev-k21e0ztbc5nhftjz.us.auth0.com
-      - CLIENT_ID=F18qMQE0qfR5INDu8ClN0LeF2T6l6GQo
-      - CLIENT_SECRET=XLeapUyrjRXeJrhITZezoLL9YfmVLE8PQj1xftQCnYDWXgYYcK1JMim3wgdZJ_f6
-      - REDIRECT_URI=http://27.112.78.243:8001/callback
-      - AUDIENCE=https://crud-pasien-api
-      - ALGORITHMS=RS256
-      - SESSION_SECRET=superrahasia123!@#
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+      DATABASE_URL: postgresql://postgres:user@0.tcp.ap.ngrok.io:13909/postgres
+      CORE_ENGINE_URL: http://core_engine:8002
+    env_file:
+      - .env
+    working_dir: /app/web
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8001
     depends_on:
-      - postgres_cloud
+      - core_engine
 
-  postgres_cloud:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=ai_processor
-      - POSTGRES_PASSWORD=ai_secret
-      - POSTGRES_DB=ai_claim_anonymized
+  core_engine:
+    build: ./core_engine
     ports:
-      - "5433:5432"
-    volumes:
-      - postgres_cloud_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_cloud_data:
+      - "8002:8002"
+    working_dir: /app
+    command: uvicorn main:app --host 0.0.0.0 --port 8002

@@ -85,11 +85,8 @@
        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow transition">
       ⬅ Kembali ke Daftar Klaim
     </a>
-    
+    {% if user and user.role == 'doctor' %}
     <div class="flex gap-2">
-  {# Tombol AI Analysis & View AI Results dihapus #}
-      
-      {% if user and user.role == 'doctor' %}
       <a href="/claims/{{ claim.id }}/edit"
          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
         ✏️ Edit
@@ -98,8 +95,8 @@
          class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
         🗑 Hapus
       </a>
-      {% endif %}
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

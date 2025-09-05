@@ -1,3 +1,4 @@
+python-dotenv
 fastapi
 uvicorn
 psycopg2-binary
@@ -9,8 +10,8 @@ pydantic
 requests
 jinja2
 python-multipart
-httpx
-python-dotenv
-starlette
 openpyxl
+httpx
 itsdangerous
+openpyxl
+python-multipart
