@@ -286,6 +286,10 @@
       <p class="text-lg font-bold text-green-700" x-text="simulasi[tab].tarifDraft"></p>
     </div>
 
+  <!-- Tombol Download PDF -->
+  <button id="download-pdf" class="bg-purple-600 text-white px-4 py-2 rounded mt-4 w-full">Download PDF</button>
+
+
 
     <!-- Footer -->
     <div class="flex gap-2 mt-2">
@@ -317,5 +321,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="{{ url_for('static', path='js/claim.js') }}"></script>
 {% endblock %}

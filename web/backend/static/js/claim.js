@@ -1,4 +1,23 @@
 // ==================== Generate AI ====================
+// Export hasil simulasi ke PDF
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('download-pdf');
+  if (btn) {
+    btn.addEventListener('click', function() {
+      // Pilih panel hasil simulasi (kanan)
+      var element = document.querySelector('.bg-white.rounded-xl.shadow-sm.p-4.sticky.top-6');
+      if (element) {
+        html2pdf().set({
+          margin: 0.5,
+          filename: 'claim_simulasi.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        }).from(element).save();
+      }
+    });
+  }
+});
 function claimData(init) {
   return {
     role: init.role || 'doctor', // doctor, verifikator, coder
@@ -188,9 +207,20 @@ function openModal(title, content) {
   state.modalContent = content
 }
 
-function openModalFromAttr(el) {
+async function openModalFromAttr(el) {
   const it = JSON.parse(el.dataset.item)
-  openModal(it.kategori, buildModalContent(it))
+  // Request detail ke backend
+  try {
+    const res = await fetch("http://localhost:8002/analyze_diagnosis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ diagnosis_text: it.klinis })
+    })
+    const detail = await res.json()
+    openModal(it.kategori, buildModalContent({ ...it, modal_detail: detail }))
+  } catch (err) {
+    openModal(it.kategori, '<div class="text-red-500">Gagal mengambil detail diagnosis</div>')
+  }
 }
 
 function buildModalContent(it) {
@@ -357,6 +387,42 @@ function updateSimulasi(type, opt, value, source, tab) {
 }
 
 // ==================== Helpers ====================
+
+// Export hasil simulasi ke PDF
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('download-pdf');
+  if (btn) {
+    btn.addEventListener('click', function() {
+      // Pilih parent container panel kanan (simulasi klaim)
+      var panel = btn.closest('.lg\:col-span-1');
+      if (!panel) {
+        panel = document.querySelector('.bg-white.rounded-xl.shadow-sm.p-4.sticky.top-6');
+      }
+      if (!panel) {
+        alert('Panel hasil simulasi tidak ditemukan!');
+        return;
+      }
+      // Clone panel agar dropdown/select tidak ikut
+      var clone = panel.cloneNode(true);
+      clone.querySelectorAll('select').forEach(function(sel){ sel.style.display='none'; });
+      clone.querySelectorAll('button').forEach(function(b){ b.style.display='none'; });
+      var tempDiv = document.createElement('div');
+      tempDiv.style.position = 'fixed';
+      tempDiv.style.left = '-9999px';
+      tempDiv.appendChild(clone);
+      document.body.appendChild(tempDiv);
+      html2pdf().set({
+        margin: 0.5,
+        filename: 'claim_simulasi.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      }).from(clone).save().then(function(){
+        document.body.removeChild(tempDiv);
+      });
+    });
+  }
+});
 
 function confidenceBadge(val){
   val=parseInt(val)
