@@ -177,6 +177,24 @@ def dashboard(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator")),
 ):
+    users_dashboard = db.query(models.User).options(joinedload(models.User.hospital)).order_by(models.User.id.desc()).limit(10).all()
+    if current_user.role == "superadmin":
+        users_dashboard = db.query(models.User).filter(models.User.role == "admin_rs").order_by(models.User.id.desc()).limit(10).all()
+    
+    # Admin RS hanya boleh lihat user RS yang sama, selain dirinya
+    elif current_user.role == "admin_rs":
+        users_dashboard = (
+            db.query(models.User)
+              .filter(
+                  models.User.hospital_id == current_user.hospital_id,
+                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"])
+              )
+              .order_by(models.User.id.desc())
+              .limit(10)
+              .all()
+        )
+    else:
+        users_dashboard = []  # fallback (nggak boleh lihat)
     # hitung umum
     total_pasien = db.query(models.Patient).count()
     pasien_hari_ini = db.query(models.Claim).filter(
@@ -236,6 +254,7 @@ def dashboard(
         "final_claims_list": final_claims_list,
         "total_users": total_users,
         "pasien_list": pasien_list,
+        "users": users_dashboard,
         "csrf_token": csrf_token
     })
 
@@ -591,7 +610,7 @@ def ai_recommendation(payload: dict = Body(...)):
 
 # End Rekomendasi AI untuk Klaim
 
-@app.post("/claims/{claim_id}/finalize")
+@app.post("/claims/{claim_id}/finalize", name="finalize_claim")
 def finalize_claim(
     request: Request,
     claim_id: int,
@@ -623,7 +642,31 @@ def finalize_claim(
                     confidence=item.get("confidence"),
                 )
                 db.add(summary)
+    log = models.ClaimLog(
+    claim_id=claim.id,
+    action="FINALIZED",
+    description="Klaim difinalisasi verifikator",
+    updated_by=user.id,
+    updated_at=datetime.utcnow()
+    )
+    db.add(log)
+    if claim.medical_record:
+        claim.medical_record.is_final = True
 
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
+                           .scalar() or 0
+
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=claim.medical_record.id,
+            action="FINALIZED",
+            description=f"Rekam medis {claim.medical_record.id} difinalisasi (klaim {claim.id})",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(claim.medical_record.to_dict(), ensure_ascii=False)
+        )
+        db.add(log_mr)
     db.commit()
     flash(request,"Claim finalized successfully", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
@@ -687,32 +730,29 @@ def export_claims(
     ws = wb.active
     ws.title = "Claims"
     ws.append([
-        "ID Klaim",
+        "Tanggal Klaim",
         "Nama Pasien",
-        "Tanggal Kunjungan",
-        "Jenis Kunjungan",
-        "Nama Dokter",
-        "Diagnosis Awal",
-        "Kode ICD",
-        "Tindakan",
-        "Obat",
         "Status",
-        "Hasil",
-        "Created At"
+        "Nama Dokter",
+        "Simulasi Draft",
+        "Ringkasan Draft",
+        "Final",
+        "Simulasi Final",
+        "Ringkasan Final",
+        "Created At",
     ])
     for c in claims:
         ws.append([
-            c.patient.id if c.patient else '-',
-            c.patient.nama if c.patient else '-',
-            c.tanggal_kunjungan.isoformat() if c.tanggal_kunjungan else '',
-            c.doctor_name or '',
-            c.diagnosis_awal or '',
-            c.kode_icd or '',
-            c.tindakan or '',
-            c.obat or '',
-            c.status or '',
-            c.hasil or '',
-            c.created_at.isoformat() if c.created_at else '',
+            c.claim_date,
+            c.patient.nama if c.patient else "N/A",
+            c.status,
+            c.doctor_name,
+            json.dumps(c.simulasi_draft) if not c.is_final else "N/A",
+            json.dumps(c.summary_draft) if not c.is_final else "N/A",
+            "Ya" if c.is_final else "Tidak",
+            json.dumps(c.simulasi_draft) if c.is_final else "N/A",
+            json.dumps(c.summary_draft) if c.is_final else "N/A",
+            c.created_at,
         ])
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -820,6 +860,23 @@ def add_claim(
     db.commit()
     db.refresh(mr)
 
+    latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                   .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
+                   .scalar() or 0
+
+    log = models.MedicalRecordLog(
+        medical_record_id=mr.id,
+        action="CREATED",
+        description=f"Rekam medis {mr.id} dibuat oleh {user.name}",
+        version=latest_version + 1,
+        data_snapshot=json.dumps(mr.to_dict(), ensure_ascii=False),
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+    )
+
+    db.add(log)
+    db.commit()
+
     # 2. Buat klaim baru link ke rekam medis
     claim = models.Claim(
         claim_date=claim_date,
@@ -834,8 +891,18 @@ def add_claim(
     )
     db.add(claim)
     db.commit()
+    db.refresh(claim)
+    log = models.ClaimLog(
+        claim_id=claim.id,
+        action="CREATED",
+        description=f"Klaim {claim.id} dibuat oleh {user.name}",
+        updated_by=user.id,
+        updated_at=datetime.utcnow()
+    )
+    db.add(log)
+    db.commit()
 
-    flash(request, "✅ Klaim berhasil diubah!", "success")
+    flash(request, "✅ Klaim berhasil dibuat!", "success")
     return RedirectResponse(url=f"/claims/{claim.id}/edit", status_code=303)
 
 
@@ -914,7 +981,7 @@ def claim_form(
         },
     )
 
-@app.post("/claims/{claim_id}/update-draft")
+@app.post("/claims/{claim_id}/update-draft", name="save_draft")
 def update_claim_draft(
     claim_id: int,
     payload: dict = Body(...),
@@ -930,7 +997,29 @@ def update_claim_draft(
     claim.summary_draft = payload.get("summary")
     claim.is_final = False
     claim.status = "draft"
+    log = models.ClaimLog(
+        claim_id=claim.id,
+        action="UPDATED",
+        description="Draft klaim diperbarui",
+        updated_by=user.id,
+        updated_at=datetime.utcnow()
+    )
+    db.add(log)
+    if claim.medical_record:
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
+                           .scalar() or 0
 
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=claim.medical_record.id,
+            action="UPDATED",
+            description="Rekam medis (via draft klaim) diperbarui",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(claim.medical_record.to_dict(), ensure_ascii=False)
+        )
+        db.add(log_mr)
     db.commit()
     db.refresh(claim)
 
@@ -1047,6 +1136,8 @@ def edit_claim_form(
 
 
 
+from sqlalchemy import func
+
 @app.post("/claims/{id}/edit", name="update_claim")
 def update_claim(
     id: int,
@@ -1069,8 +1160,19 @@ def update_claim(
     # Update klaim
     claim.claim_date = claim_date
     claim.is_final = is_final
+    claim.status = "final" if is_final else "draft"
 
-    # Update rekam medis terkait
+    # 🔹 Claim log
+    log_claim = models.ClaimLog(
+        claim_id=claim.id,
+        action="UPDATED",
+        description="Klaim diperbarui",
+        updated_by=user.id,
+        updated_at=datetime.utcnow()
+    )
+    db.add(log_claim)
+
+    # Update rekam medis
     if claim.medical_record:
         claim.medical_record.is_final = is_final
         claim.medical_record.diagnosis_awal = diagnosis_awal
@@ -1078,10 +1180,28 @@ def update_claim(
         claim.medical_record.tindakan = tindakan
         claim.medical_record.obat = obat
         claim.medical_record.notes_doctor = notes_doctor
+        claim.medical_record.notes_date = datetime.utcnow()
+
+        # 🔹 Medical record log
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
+                           .scalar() or 0
+
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=claim.medical_record.id,
+            action="UPDATED",
+            description="Rekam medis diperbarui",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(claim.medical_record.to_dict(), ensure_ascii=False)
+        )
+        db.add(log_mr)
 
     db.commit()
     flash(request, "✅ Klaim berhasil diperbarui!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @app.get("/claims/{id}/delete")
 def delete_claim(
@@ -1691,13 +1811,13 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
     patients = db.query(models.Patient).all()
     csrf_token = issue_csrf_token(request)
 
-    fields = form_configs["medical_record"].copy()
+    fields = form_configs["claim_medical_record"].copy()
     for f in fields:
         if f["name"] == "patient_id":
             f["options"] = [(p.id, p.nama) for p in patients]
             f["type"] = "select"
 
-    return templates.TemplateResponse("medical_record_form.html", {
+    return templates.TemplateResponse("claim_form.html", {
         "request": request,
         "mode": "edit",
         "record": medical_record,
@@ -1733,13 +1853,16 @@ def update_medical_record(
     # Simpan snapshot lama ke log
     snapshot = {col.name: getattr(record, col.name) for col in record.__table__.columns}
 
-    log = MedicalRecordLog(
-        medical_record_id=record.id,
-        version=new_version,
-        data_snapshot=snapshot,
-        updated_by=user_id
+    log = models.MedicalRecordLog(
+    medical_record_id=record.id,
+    action="UPDATED",
+    description="Rekam medis diperbarui",
+    updated_by=user.id,
+    updated_at=datetime.utcnow(),
+    data_snapshot=snapshot   # optional: json.dumps(record.to_dict())
     )
     db.add(log)
+
 
     # Update data baru
     for key, value in update_data.items():

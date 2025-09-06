@@ -60,7 +60,7 @@
           {% endif %}
         </td>
         <td class="px-4 py-2 text-center">
-          <a href="{{ url_for('medical_record_detail', record_id=record.id) }}" class="text-blue-600 hover:underline">🔍</a>
+          <a href="{{ url_for('medical_record_logs', record_id=record.id) }}" class="text-blue-600 hover:underline">🔍</a>
         </td>
       </tr>
       {% else %}

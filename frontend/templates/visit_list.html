@@ -57,11 +57,11 @@
             {% if flow == "claim" %}
               <!-- Mode wizard klaim -->
               <form action="{{ url_for('add_claim') }}" method="post" class="inline">
-                <input type="hidden" name="patient_id" value="{{ v.patient.id }}">
-                <input type="hidden" name="visit_id" value="{{ v.id }}">
-                <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id }}">
-                <input type="hidden" name="doctor_id" value="{{ current_user.id }}">
-                <input type="hidden" name="doctor_name" value="{{ current_user.name }}">
+                <input type="hidden" name="patient_id" value="{{ v.patient.id or '' }}">
+                <input type="hidden" name="visit_id" value="{{ v.id or '' }}">
+                <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id or '' }}">
+                <input type="hidden" name="doctor_id" value="{{ current_user.id or '' }}">
+                <input type="hidden" name="doctor_name" value="{{ current_user.name or '' }}">
                 <button type="submit"
                         class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
                   Buat Klaim

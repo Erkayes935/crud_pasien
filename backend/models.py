@@ -344,6 +344,18 @@ class MedicalRecord(Base):
     logs = relationship("MedicalRecordLog", back_populates="medical_record", foreign_keys="MedicalRecordLog.medical_record_id")
 
     created_at = Column(DateTime, default=datetime.utcnow)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "doctor_id": self.doctor_id,
+            "diagnosis_awal": self.diagnosis_awal or "",
+            "komorbid": self.komorbid or "",
+            "komplikasi": self.komplikasi or "",
+            "tindakan": self.tindakan or "",
+            "is_final": self.is_final,
+            "notes_date": self.notes_date.isoformat() if self.notes_date else None,
+        }
 
 # =========================================
 # Medical Record Logs (Audit Trail)
@@ -356,6 +368,8 @@ class MedicalRecordLog(Base):
     medical_record_id = Column(Integer, ForeignKey("medical_records.id"), nullable=False)
     version = Column(Integer, nullable=False, default=1)
     data_snapshot = Column(JSONB, nullable=True)
+    action = Column(String(50), nullable=False)   # created / updated / finalized / rejected / recalculated
+    description = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
     updated_by = Column(Integer, ForeignKey("users.id"))
 

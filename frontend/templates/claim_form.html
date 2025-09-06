@@ -274,16 +274,19 @@
     <div class="flex gap-2 mt-2">
       <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
       {% if record and record.id %}
-        <button x-show="role==='doctor'" onclick="saveDraft()" 
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
-          Save Draft
-        </button>
+        <form method="post" action="/claims/{{ record.id }}/update-draft">
+          <button type="submit"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
+            Save Draft
+          </button>
+        </form>
       {% endif %}
-      <button x-show="role==='verifikator'" 
-          onclick="simpanFinal()" 
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
-        Simpan Final
-      </button>
+      <form method="post" action="/claims/{{ record.id }}/finalize">
+        <button type="submit"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
+          Simpan Final
+        </button>
+      </form>
     </div>
   </div>
 </div>
