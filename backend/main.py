@@ -785,7 +785,7 @@ def add_claim(
     hospital_id: Optional[int] = Form(None),
     doctor_id: Optional[int] = Form(None),
     doctor_name: Optional[str] = Form(None),
-    claim_date: Optional[datetime] = Form(datetime.utcnow()),
+    claim_date: Optional[datetime] = Form(datetime.utcnow() if not visit_id else None),
     is_final: Optional[bool] = Form(False),
     # Rekam medis
     riwayat_penyakit: Optional[str] = Form(None),
