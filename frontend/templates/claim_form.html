@@ -273,20 +273,33 @@
     <!-- Footer -->
     <div class="flex gap-2 mt-2">
       <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
-      {% if record and record.id %}
-        <form method="post" action="/claims/{{ record.id }}/update-draft">
-          <button type="submit"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
-            Save Draft
-          </button>
-        </form>
+      {% if role and role == 'doctor' %}
+      <form method="post" action="/claims/{{ record.id }}/update-draft">
+        <!-- Hidden inputs supaya ikut terkirim -->
+        <input type="hidden" name="simulasi" :value="JSON.stringify(simulasi)">
+        <input type="hidden" name="summary" :value="JSON.stringify(summary)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <button type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
+          Save Draft
+        </button>
+      </form>
       {% endif %}
+
+      {% if role and role == 'verifikator' and record and record.status == 'draft' %}
       <form method="post" action="/claims/{{ record.id }}/finalize">
+        <!-- Hidden input summary juga ikut -->
+        <input type="hidden" name="summary" :value="JSON.stringify(summary)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
         <button type="submit"
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
           Simpan Final
         </button>
       </form>
+      {% endif %}
+
     </div>
   </div>
 </div>

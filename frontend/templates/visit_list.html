@@ -47,8 +47,8 @@
         <tr class="border-b dark:border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
           <td class="px-4 py-2">{{ v.id }}</td>
           <td class="px-4 py-2">{{ v.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ v.patient_name or '-' }}</td>
-          <td class="px-4 py-2">{{ v.doctor_name or '-' }}</td>
+          <td class="px-4 py-2">{{ v.patient.nama or '-' }}</td>
+          <td class="px-4 py-2">{{ user.name or '-' }}</td>
           <td class="px-4 py-2">{{ v.poli or '-' }}</td>
           <td class="px-4 py-2">{{ v.sumber or '-' }}</td>
           <td class="px-4 py-2">{{ v.eksternal_id or '-' }}</td>
@@ -62,6 +62,7 @@
                 <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id or '' }}">
                 <input type="hidden" name="doctor_id" value="{{ current_user.id or '' }}">
                 <input type="hidden" name="doctor_name" value="{{ current_user.name or '' }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
                   Buat Klaim

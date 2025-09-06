@@ -31,8 +31,7 @@
                     <th class="px-4 py-2 text-left">No. RM</th>
                     <th class="px-4 py-2 text-left">No. KTP</th>
                     <th class="px-4 py-2 text-left">No. BPJS</th>
-                    <th class="px-4 py-2 text-left">ID Pasien</th>
-                    <th class="px-4 py-2 text-left">ID RS</th>
+                    <th class="px-4 py-2 text-left">Nama RS</th>
                     <th class="px-4 py-2 text-left">ID Eksternal</th>
                     <th class="px-4 py-2 text-left">Sumber</th>
                     <th class="px-4 py-2 text-left">Nama</th>
@@ -51,8 +50,7 @@
                     <td class="px-4 py-2">{{ p.no_rm or '-' }}</td>
                     <td class="px-4 py-2">{{ p.no_ktp or '-' }}</td>
                     <td class="px-4 py-2">{{ p.no_bpjs or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.id }}</td>
-                    <td class="px-4 py-2">{{ p.hospital_id or '-' }}</td>
+                    <td class="px-4 py-2">{{ user.hospital.nama or '-' }}</td>
                     <td class="px-4 py-2">{{ p.eksternal_id or '-' }}</td>
                     <td class="px-4 py-2">{{ p.source or '-' }}</td>
                     <td class="px-4 py-2">{{ p.nama }}</td>

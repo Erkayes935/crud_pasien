@@ -280,12 +280,13 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
             )
         )
 
-    patients = query.order_by(models.Patient.id.desc()).all()
+    patients = query.order_by(models.Patient.id.desc()).options(joinedload(models.Patient.hospital)).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("patient_list.html", {
         "request": request,
         "patients": patients,
         "user": user,
+        "search": search,
         "mode": mode,
         "flow": flow,
         "current_user": user,
@@ -294,9 +295,9 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
 
 
 @app.get("/patients/add",name="add_patient", response_class=HTMLResponse)
-def add_form(request: Request, user=Depends(require_roles_session("doctor"))):
+def add_form(request: Request, user=Depends(require_roles_session("doctor")), db: Session = Depends(get_db)):
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "add", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user, "fields": form_configs["patient"]})
+    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "add", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user, "fields": form_configs["patient"], "patients": None})
 
 
 @app.post("/patients/add",name="add_patient")
@@ -596,17 +597,120 @@ def make_dummy(tab):
         }
     }
 
+def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage: str):
+    """
+    Simpan rekomendasi AI (dummy atau real) ke tabel ClaimAIRecommendation.
+    stage: admission, daily1, daily2, discharge, dll
+    """
+
+    # Diagnosis utama
+    for item in dummy_data.get("diagnosis", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_diagnosis",
+            text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs=None
+        ))
+
+    # Komorbid
+    for item in dummy_data.get("komorbid", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_komorbid",
+            text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs=None
+        ))
+
+    # Komplikasi
+    for item in dummy_data.get("komplikasi", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_komplikasi",
+            text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs=None
+        ))
+
+    # Prosedur / Tindakan
+    for item in dummy_data.get("tindakan", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="procedure",
+            category=f"{stage}_tindakan",
+            text=item.get("kategori"),
+            icd9_code=item.get("tindakan"),
+            confidence_score=item.get("score"),
+            regulation_refs=None
+        ))
+
+    db.commit()
 
 @app.post("/ai/recommendation")
-def ai_recommendation(payload: dict = Body(...)):
+def ai_recommendation(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+    _=Depends(require_csrf_dep)
+):
+    claim_id = payload.get("claim_id") or 0
+
+    # generate dummy
+    admission = make_dummy("admission")
+    daily = [make_dummy("daily1"), make_dummy("daily2")]
+    discharge = make_dummy("discharge")
+
+    # simpan ke DB kalau ada claim_id valid
+    if claim_id:
+        store_ai_recommendations(db, claim_id, admission, "admission")
+        for idx, day in enumerate(daily):
+            store_ai_recommendations(db, claim_id, day, f"daily{idx+1}")
+        store_ai_recommendations(db, claim_id, discharge, "discharge")
+
+    # tetap return dummy → FE jalan terus
     return {
-        "admission": make_dummy("admission"),
-        "daily": [
-            { "tanggal": "2025-09-01", **make_dummy("daily"),"tarifDraft": "Rp 17.500.000" },
-            { "tanggal": "2025-09-02", **make_dummy("daily2"),"tarifDraft": "Rp 27.500.000" },
-        ],
-        "discharge": make_dummy("discharge"),
+        "admission": admission,
+        "daily": daily,
+        "discharge": discharge,
     }
+
+
+
+@app.get("/claims/{claim_id}/recommendations")
+def get_claim_recommendations(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor","verifikator","coder"))
+):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    recs = db.query(models.ClaimAIRecommendation)\
+             .filter(models.ClaimAIRecommendation.claim_id == claim_id)\
+             .all()
+
+    return [
+        {
+            "id": r.id,
+            "type": r.type,              # diagnosis / procedure
+            "category": r.category,      # admission_diagnosis, daily1_komorbid, discharge_tindakan, dst.
+            "text": r.text,
+            "icd10_code": r.icd10_code,
+            "icd9_code": r.icd9_code,
+            "confidence_score": r.confidence_score,
+            "regulation_refs": r.regulation_refs,
+        }
+        for r in recs
+    ]
+
 
 # End Rekomendasi AI untuk Klaim
 
@@ -614,42 +718,48 @@ def ai_recommendation(payload: dict = Body(...)):
 def finalize_claim(
     request: Request,
     claim_id: int,
-    payload: dict = Body(...),
+    summary: str = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("verifikator"))
+    user=Depends(require_roles_session("verifikator")),   # hanya verifikator yang bisa finalize
+    _=Depends(require_csrf_dep)
 ):
+    # Cari klaim
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # update status klaim
+    # Update status klaim
     claim.is_final = True
-    claim.status = "submitted"
+    claim.status = "final"
 
-    # hapus summary lama biar nggak dobel
+    # Hapus summary lama dan simpan yang baru
     db.query(models.ClaimAIRecommendationSummary).filter_by(claim_id=claim_id).delete()
 
-    # simpan semua item summary AI ke tabel summary
-    for stage, stage_data in (payload.get("summary") or {}).items():
+    summary_data = json.loads(summary) if summary else {}
+    for stage, stage_data in summary_data.items():
         for category, items in stage_data.items():
             for item in items:
-                summary = models.ClaimAIRecommendationSummary(
+                summary_row = models.ClaimAIRecommendationSummary(
                     claim_id=claim_id,
-                    category="medis" if category == "klinis" else category,  # map klinis -> medis
+                    category="medis" if category == "klinis" else category,
                     target=item.get("target"),
                     status=item.get("status"),
                     message=item.get("message"),
                     confidence=item.get("confidence"),
                 )
-                db.add(summary)
-    log = models.ClaimLog(
-    claim_id=claim.id,
-    action="FINALIZED",
-    description="Klaim difinalisasi verifikator",
-    updated_by=user.id,
-    updated_at=datetime.utcnow()
+                db.add(summary_row)
+
+    # Log klaim
+    log_claim = models.ClaimLog(
+        claim_id=claim.id,
+        action="FINALIZED",
+        description=f"Klaim {claim.id} difinalisasi oleh {user.name}",
+        updated_by=user.id,
+        updated_at=datetime.utcnow()
     )
-    db.add(log)
+    db.add(log_claim)
+
+    # Log rekam medis terkait (jika ada)
     if claim.medical_record:
         claim.medical_record.is_final = True
 
@@ -664,12 +774,21 @@ def finalize_claim(
             updated_by=user.id,
             updated_at=datetime.utcnow(),
             version=latest_version + 1,
-            data_snapshot=json.dumps(claim.medical_record.to_dict(), ensure_ascii=False)
+            data_snapshot=json.dumps(
+                claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {},
+                ensure_ascii=False
+            )
         )
         db.add(log_mr)
+
+    # Commit semua perubahan
     db.commit()
-    flash(request,"Claim finalized successfully", "success")
+    db.refresh(claim)
+
+    # Redirect ke dashboard
+    flash(request, "✅ Klaim berhasil difinalisasi!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 
 @app.get("/claims")
@@ -785,7 +904,7 @@ def add_claim(
     hospital_id: Optional[int] = Form(None),
     doctor_id: Optional[int] = Form(None),
     doctor_name: Optional[str] = Form(None),
-    claim_date: Optional[datetime] = Form(datetime.utcnow() if not visit_id else None),
+    claim_date: Optional[datetime] = Form(None),
     is_final: Optional[bool] = Form(False),
     # Rekam medis
     riwayat_penyakit: Optional[str] = Form(None),
@@ -817,7 +936,16 @@ def add_claim(
     obat: Optional[str] = Form(None),
     validasi_fornas: Optional[str] = Form(None),
     notes_doctor: Optional[str] = Form(None),
+    summary_draft: Optional[str] = Form(None),
+    simulasi_draft: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    _=Depends(require_csrf_dep)
 ):
+    if claim_date is None:
+        if visit_id:
+            claim_date = None   # atau pakai tanggal visit kalau ada di DB
+        else:
+            claim_date = datetime.utcnow()
     # 1. Buat rekam medis baru
     mr = models.MedicalRecord(
         patient_id=patient_id,
@@ -902,7 +1030,7 @@ def add_claim(
     db.add(log)
     db.commit()
 
-    flash(request, "✅ Klaim berhasil dibuat!", "success")
+    flash(request, "✅ ID Klaim berhasil didapatkan!", "success")
     return RedirectResponse(url=f"/claims/{claim.id}/edit", status_code=303)
 
 
@@ -981,30 +1109,40 @@ def claim_form(
         },
     )
 
+from fastapi import Form
+
 @app.post("/claims/{claim_id}/update-draft", name="save_draft")
 def update_claim_draft(
+    request: Request,
     claim_id: int,
-    payload: dict = Body(...),
+    simulasi: str = Form(None),
+    summary: str = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor"))  # hanya dokter yang bisa save draft
+    user=Depends(require_roles_session("doctor")),   # hanya dokter yang bisa save draft
+    _=Depends(require_csrf_dep)
 ):
+    # Cari klaim
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # simpan hasil simulasi/summary ke kolom JSON (pastikan model Claim ada field simulasi_draft & summary_draft tipe JSON)
-    claim.simulasi_draft = payload.get("simulasi")
-    claim.summary_draft = payload.get("summary")
+    # Update draft klaim
+    claim.simulasi_draft = json.loads(simulasi) if simulasi else {}
+    claim.summary_draft = json.loads(summary) if summary else {}
     claim.is_final = False
     claim.status = "draft"
-    log = models.ClaimLog(
+
+    # Log klaim
+    log_claim = models.ClaimLog(
         claim_id=claim.id,
         action="UPDATED",
         description="Draft klaim diperbarui",
         updated_by=user.id,
         updated_at=datetime.utcnow()
     )
-    db.add(log)
+    db.add(log_claim)
+
+    # Log rekam medis (jika ada)
     if claim.medical_record:
         latest_version = db.query(func.max(models.MedicalRecordLog.version))\
                            .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
@@ -1017,13 +1155,22 @@ def update_claim_draft(
             updated_by=user.id,
             updated_at=datetime.utcnow(),
             version=latest_version + 1,
-            data_snapshot=json.dumps(claim.medical_record.to_dict(), ensure_ascii=False)
+            data_snapshot=json.dumps(
+                claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {},
+                ensure_ascii=False
+            )
         )
         db.add(log_mr)
+
+    # Commit semua perubahan
     db.commit()
     db.refresh(claim)
 
+    # Redirect ke dashboard
+    flash(request, "✅ Draft klaim berhasil disimpan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
 
 default_sim = {
     "admission": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": None},
@@ -1479,6 +1626,8 @@ def list_visit(
 
 @app.get("/visits/add")
 def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
+    patient_id = request.query_params.get("patient_id")
+    patient = db.query(models.Patient).get(patient_id) if patient_id else None
     patients = db.query(models.Patient).all()
     hospitals = db.query(models.Hospital).all()
     csrf_token = issue_csrf_token(request)
@@ -1497,11 +1646,19 @@ def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends
             f["value"] = user.name
             f["hidden_name"] = "doctor_id"
             f["hidden_value"] = user.id
-
+    # Patient (jika ada patient_id di query param)       
+        if f["name"] == "patient_id":
+            f["options"] = [(p.id, p.nama) for p in patients]
     return templates.TemplateResponse("visit_form.html", {
         "request": request,
         "mode": "add",
         "user": user,
+        "visit": None,
+        "flow": None,
+        "hospitals": hospitals,
+        "patient": patient,
+        "patient_id": patient_id,
+        "patients" : patients,
         "csrf_token": csrf_token,
         "current_user": user,
         "fields": fields   # dynamic
@@ -1566,6 +1723,9 @@ def edit_visit_form(request: Request, visit_id: int, db: Session = Depends(get_d
         "csrf_token": csrf_token,
         "current_user": user,
         "user": user,
+        "flow": None,
+        "hospitals": hospitals,
+        "patients": patients,
         "fields": fields  # dynamic
     })
 
