@@ -12,7 +12,7 @@
      @open-modal.window="openModal($event)"
      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
 
-
+     <input type="hidden" id="claimIdHidden" value="{{ record.id if record else '' }}">
   <!-- ========== LEFT PANEL ========== -->
   <div class="lg:col-span-2 space-y-4">
     <div class="flex justify-between items-center">
@@ -317,4 +317,14 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', path='js/claim.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId
+  const role = "{{ role }}"
+  if (role === "verifikator" && claimId) {
+    loadRecommendations(claimId)
+  }
+})
+</script>
+
 {% endblock %}

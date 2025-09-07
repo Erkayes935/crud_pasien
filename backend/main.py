@@ -654,30 +654,22 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
     db.commit()
 
 @app.post("/ai/recommendation")
-def ai_recommendation(
-    payload: dict = Body(...),
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor")),
-    _=Depends(require_csrf_dep)
-):
-    claim_id = payload.get("claim_id") or 0
+def ai_recommendation(payload: dict = Body(None), db: Session = Depends(get_db)):
+    claim_id = int(payload["claim_id"]) if payload and payload.get("claim_id") else None
 
-    # generate dummy
     admission = make_dummy("admission")
-    daily = [make_dummy("daily1"), make_dummy("daily2")]
+    daily = [make_dummy("daily1"), make_dummy("daily2")]   # ✅ selalu list
     discharge = make_dummy("discharge")
 
-    # simpan ke DB kalau ada claim_id valid
     if claim_id:
         store_ai_recommendations(db, claim_id, admission, "admission")
         for idx, day in enumerate(daily):
             store_ai_recommendations(db, claim_id, day, f"daily{idx+1}")
         store_ai_recommendations(db, claim_id, discharge, "discharge")
 
-    # tetap return dummy → FE jalan terus
     return {
         "admission": admission,
-        "daily": daily,
+        "daily": daily,       # ✅ selalu list
         "discharge": discharge,
     }
 

@@ -31,12 +31,26 @@ function claimData(init) {
   }
 }
 async function generateAI() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId
+               || document.getElementById("claimIdHidden")?.value
+
+  console.log("✅ claimId terdeteksi:", claimId)
+
+  if (!claimId) {
+    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.")
+    return
+  }
+
   const payload = {
+    claim_id: claimId,
     patient_id: 1,
     visit_id: 10,
     context: "all",
     notes: "dummy generate"
   }
+
+  console.log("📦 Payload yg dikirim:", payload)
+
 
   try {
     const res = await fetch("/ai/recommendation", {
@@ -45,6 +59,12 @@ async function generateAI() {
       body: JSON.stringify(payload)
     })
     const data = await res.json()
+    console.log("📥 Data dari BE:", data)
+
+    // ✅ pastikan daily selalu array
+    if (!Array.isArray(data.daily)) {
+      data.daily = data.daily ? [data.daily] : []
+    }
     const state = Alpine.$data(document.getElementById('claimRoot'))
 
     // === Admission ===
@@ -60,6 +80,8 @@ async function generateAI() {
   dailyContainer.innerHTML = ""  // reset
 
   data.daily.forEach((hari, idx) => {
+    // unique id per hari
+    hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
     const dayId = `daily-${idx}`
 
     // bikin accordion section baru
@@ -382,3 +404,99 @@ function confidenceBadge(val){
   let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
   return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
 }
+
+async function loadRecommendations(claimId) {
+  try {
+    const res = await fetch(`/claims/${claimId}/recommendations`)
+    if (!res.ok) {
+      console.error("❌ Gagal load rekomendasi dari DB")
+      return
+    }
+    const recs = await res.json()
+    console.log("📥 Data rekomendasi dari DB:", recs)
+
+    // Grouping per stage & category
+    const grouped = { admission: {}, discharge: {}, daily: {} }
+    recs.forEach(r => {
+      const parts = r.category.split("_", 2)
+      const stage = parts[0]
+      const cat = parts[1] || "unknown"
+
+      if (stage === "admission") {
+        grouped.admission[cat] = grouped.admission[cat] || []
+        grouped.admission[cat].push(r)
+      } else if (stage === "discharge") {
+        grouped.discharge[cat] = grouped.discharge[cat] || []
+        grouped.discharge[cat].push(r)
+      } else if (stage.startsWith("daily")) {
+        grouped.daily[stage] = grouped.daily[stage] || { diagnosis: [], komorbid: [], komplikasi: [] }
+        grouped.daily[stage][cat] = grouped.daily[stage][cat] || []
+        grouped.daily[stage][cat].push(r)
+      }
+    })
+
+    // === Admission ===
+    renderTable("diagnosis-admission", (grouped.admission.diagnosis || []).map(mapRecommendation), "diagnosis", "admission")
+    renderTable("komorbid-admission", (grouped.admission.komorbid || []).map(mapRecommendation), "komorbid", "admission")
+    renderTable("komplikasi-admission", (grouped.admission.komplikasi || []).map(mapRecommendation), "komplikasi", "admission")
+
+    // === Daily ===
+    const dailyContainer = document.getElementById("daily-accordion")
+    dailyContainer.innerHTML = ""
+
+    Object.keys(grouped.daily).forEach((stage, idx) => {
+      const hari = grouped.daily[stage]
+      hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
+      const dayId = `daily-${idx}`
+
+      dailyContainer.insertAdjacentHTML("beforeend", `
+        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+          <button @click="open=!open"
+                  class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+            <span>Hari ${idx+1} (${hari.tanggal})</span>
+            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+          </button>
+          <div x-show="open" class="p-2 space-y-2">
+            <table class="w-full text-xs border">
+              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
+              <tbody id="diagnosis-${dayId}"></tbody>
+            </table>
+            <table class="w-full text-xs border">
+              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
+              <tbody id="komorbid-${dayId}"></tbody>
+            </table>
+            <table class="w-full text-xs border">
+              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
+              <tbody id="komplikasi-${dayId}"></tbody>
+            </table>
+          </div>
+        </div>
+      `)
+
+      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", "daily")
+      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", "daily")
+      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", "daily")
+    })
+
+    // === Discharge ===
+    renderTable("diagnosis-discharge", (grouped.discharge.diagnosis || []).map(mapRecommendation), "diagnosis", "discharge")
+    renderTable("komorbid-discharge", (grouped.discharge.komorbid || []).map(mapRecommendation), "komorbid", "discharge")
+    renderTable("komplikasi-discharge", (grouped.discharge.komplikasi || []).map(mapRecommendation), "komplikasi", "discharge")
+
+  } catch (err) {
+    console.error("❌ Error loadRecommendations:", err)
+  }
+}
+
+function mapRecommendation(r) {
+  return {
+    kategori: r.text || "-",
+    klinis: r.text || "-",   // sementara isi sama dgn text
+    icd: r.icd10_code || r.icd9_code || "-",
+    tindakan: r.icd9_code || "-",  // kalau prosedur
+    score: r.confidence_score || 0,
+    child: false,
+    modal_detail: r.regulation_refs || {}
+  }
+}
+
