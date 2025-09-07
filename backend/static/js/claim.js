@@ -28,6 +28,36 @@ function claimData(init) {
       if(s==='invalid') return "❌"
       return ""
     },
+    manualInput: { kategori:"", klinis:"", icd:"", tindakan:"" },
+    addManual(type, stage) {
+      const newRow = {
+        kategori: this.manualInput.kategori || "Manual",
+        klinis: this.manualInput.klinis || "-",
+        icd: this.manualInput.icd || "-",
+        tindakan: this.manualInput.tindakan || "-",
+        score: 50,
+        child: false,
+        modal_detail: {
+          aspek_klinis: { justifikasi:"-", bukti:"-", syarat:"-" },
+          icd10: { struktur_kode:this.manualInput.icd||"-", kode_ganda:"Tidak", z_code:"-", kode_bpjs_khusus:"-" },
+          tindakan: [{ nama:this.manualInput.tindakan||"-" }],
+          rawat_inap: { indikasi:"-", lama_rawat:"-", perpanjangan:"-" },
+          faskes: { kesesuaian_rs:"-" },
+          rujukan: { syarat:"-", kelayakan:"-" }
+        }
+      }
+
+      if (!this.simulasi[stage][type]) this.simulasi[stage][type] = []
+      this.simulasi[stage][type].push(newRow)
+
+      // render row baru ke tabel (append=true)
+      const tbodyId = `${type}-${stage}`
+      renderTable(tbodyId, [newRow], type, stage, true)
+
+      // reset input
+      this.manualInput = { kategori:"", klinis:"", icd:"", tindakan:"" }
+    }
+
   }
 }
 async function generateAI() {
@@ -94,30 +124,130 @@ dailyContainer.insertAdjacentHTML("beforeend", `
     </button>
     <div x-show="open" class="p-2 space-y-2">
 
-      ${['Diagnosis','Komorbid','Komplikasi'].map(acc => `
-        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-          <button @click="open=!open"
-                  class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-            <span>${acc}</span>
-            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-          </button>
-          <div x-show="open" class="p-2">
-            <table class="w-full text-xs border">
-              <thead class="bg-gray-100 dark:bg-gray-800">
-                <tr>
-                  <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                  <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                </tr>
-              </thead>
-              <tbody id="${acc.toLowerCase()}-${dayId}"></tbody>
-            </table>
+      <!-- Diagnosis -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Diagnosis
+            <span id="count-diagnosis-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="diagnosis-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Diagnosis -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Diagnosis Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('diagnosis','${dayId}')">➕ Tambah</button>
           </div>
         </div>
-      `).join('')}
+      </div>
+
+      <!-- Komorbid -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komorbid
+            <span id="count-komorbid-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komorbid-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Komorbid -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Komorbid Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('komorbid','${dayId}')">➕ Tambah</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Komplikasi -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komplikasi
+            <span id="count-komplikasi-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komplikasi-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Komplikasi -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Komplikasi Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('komplikasi','${dayId}')">➕ Tambah</button>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
 `)
+
     const tmpl = document.getElementById("daily-form-template")
     if (tmpl) {
       const clone = tmpl.content.cloneNode(true)
@@ -178,22 +308,23 @@ dailyContainer.insertAdjacentHTML("beforeend", `
 
 
 // ==================== Render Table ====================
-function renderTable(targetId, data, type, tab) {
+function renderTable(targetId, data, type, tab, append=false) {
   const target = document.getElementById(targetId)
   if (!target) return
 
-  // ambil role dari Alpine
   const state = Alpine.$data(document.getElementById('claimRoot'))
   const role = state.role
 
-  // amanin data supaya array
+  if (!append) target.innerHTML = ""
+
+  // === render baris data AI / manual existing ===
   const rows = (data || []).map(it => {
     const sourceLabel = type.charAt(0).toUpperCase() + type.slice(1)
     return `
       <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600">
-        <td ${ (type === "diagnosis" || type === "komorbid" || type === "komplikasi")
-      ? `data-item='${JSON.stringify({...it, tab})}' onclick="openModalFromAttr(this)" class="text-blue-600 underline cursor-pointer"`
-      : "" }>${it.kategori || "-"}</td>
+        <td ${(type === "diagnosis" || type === "komorbid" || type === "komplikasi")
+          ? `data-item='${JSON.stringify({...it, tab})}' onclick="openModalFromAttr(this)" class="text-blue-600 underline cursor-pointer"`
+          : ""}>${it.kategori || "-"}</td>
         <td>${it.klinis || "-"}</td>
         <td>${it.icd || "-"}</td>
         <td>${it.tindakan || "-"}</td>
@@ -213,12 +344,54 @@ function renderTable(targetId, data, type, tab) {
     `
   }).join("")
 
-  target.innerHTML = rows
+  if (append) {
+    target.insertAdjacentHTML("beforeend", rows)
+  } else {
+    target.innerHTML = rows
+  }
 
-  // update badge jumlah
+  // === tambahin baris input manual di akhir tabel (selalu muncul) ===
+  if (["diagnosis", "komorbid", "komplikasi"].includes(type)) {
+    target.insertAdjacentHTML("beforeend", `
+      <tr class="bg-gray-50 dark:bg-gray-800">
+        <td><input type="text" x-model="manualInput.kategori" placeholder="Kategori"
+                  class="w-full border rounded px-2 py-1 text-xs bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"></td>
+        <td><input type="text" x-model="manualInput.klinis" placeholder="Klinis"
+                  class="w-full border rounded px-2 py-1 text-xs bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"></td>
+        <td><input type="text" x-model="manualInput.icd" placeholder="ICD"
+                  class="w-full border rounded px-2 py-1 text-xs bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"></td>
+        <td><input type="text" x-model="manualInput.tindakan" placeholder="Tindakan"
+                  class="w-full border rounded px-2 py-1 text-xs bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"></td>
+        <td>
+          <button type="button"
+                  class="bg-green-600 text-white px-3 py-1 rounded text-xs"
+                  @click="addManual('${type}','${tab}')">➕</button>
+        </td>
+        <td>
+          <select
+            onchange="updateSimulasi('${type}', this.value, {name: manualInput.kategori || 'Manual', label: '${type}'}, '${type}', '${tab}')"
+            class="border rounded px-1 text-xs bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+            <option value="">Pilih</option>
+            <option value="Diagnosis Utama">Diagnosis Utama</option>
+            <option value="Komorbid">Komorbid</option>
+            <option value="Komplikasi">Komplikasi</option>
+            <option value="None">None</option>
+          </select>
+        </td>
+      </tr>
+
+    `)
+  }
+
+  // === update badge jumlah (hitung hanya baris data, exclude baris input manual) ===
   const countEl = document.getElementById("count-" + targetId)
-  if (countEl) countEl.textContent = (data || []).length
+  if (countEl) {
+    const rowCount = target.querySelectorAll("tr").length
+    countEl.textContent = (data || []).length  // bukan total row (supaya input manual nggak dihitung)
+  }
 }
+
+
 
 // ==================== Modal ====================
 
@@ -450,28 +623,137 @@ async function loadRecommendations(claimId) {
       const dayId = `daily-${idx}`
 
       dailyContainer.insertAdjacentHTML("beforeend", `
-        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-          <button @click="open=!open"
-                  class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-            <span>Hari ${idx+1} (${hari.tanggal})</span>
-            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-          </button>
-          <div x-show="open" class="p-2 space-y-2">
-            <table class="w-full text-xs border">
-              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
-              <tbody id="diagnosis-${dayId}"></tbody>
-            </table>
-            <table class="w-full text-xs border">
-              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
-              <tbody id="komorbid-${dayId}"></tbody>
-            </table>
-            <table class="w-full text-xs border">
-              <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th><th>Tindakan</th><th>Score</th><th>Mapping</th></tr></thead>
-              <tbody id="komplikasi-${dayId}"></tbody>
-            </table>
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+    <button @click="open=!open"
+            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+    </button>
+    <div x-show="open" class="p-2 space-y-2">
+
+      <!-- Diagnosis -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Diagnosis
+            <span id="count-diagnosis-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="diagnosis-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Diagnosis -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Diagnosis Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('diagnosis','${dayId}')">➕ Tambah</button>
           </div>
         </div>
-      `)
+      </div>
+
+      <!-- Komorbid -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komorbid
+            <span id="count-komorbid-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komorbid-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Komorbid -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Komorbid Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('komorbid','${dayId}')">➕ Tambah</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Komplikasi -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komplikasi
+            <span id="count-komplikasi-${dayId}"
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komplikasi-${dayId}"></tbody>
+          </table>
+
+          <!-- Input manual Komplikasi -->
+          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+            <label class="block text-sm font-semibold mb-1">Tambah Komplikasi Manual</label>
+            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.kategori">
+            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.klinis">
+            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.icd">
+            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                   x-model="manualInput.tindakan">
+            <button type="button"
+                    class="bg-green-600 text-white px-3 py-1 rounded"
+                    @click="addManual('komplikasi','${dayId}')">➕ Tambah</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+`)
 
       renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", "daily")
       renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", "daily")

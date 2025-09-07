@@ -74,29 +74,29 @@
         <!-- Daily -->
         <div x-show="tab==='daily'" class="space-y-2">
 
-  <!-- container kosong buat accordion harian -->
-  <div id="daily-accordion"></div>
+        <!-- container kosong buat accordion harian -->
+        <div id="daily-accordion"></div>
 
-  <!-- form rekam medis tetap ada -->
-  <template id="daily-form-template">
-  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-    <button @click="open=!open"
-            class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-      <span>Form Rekam Medis</span>
-      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-    </button>
-    <div x-show="open" class="p-2">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-          {% include "_form_renderer.html" %}
-        {% endfor %}
+        <!-- form rekam medis tetap ada -->
+        <template id="daily-form-template">
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>Form Rekam Medis</span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+                  {% include "_form_renderer.html" %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </template>
+
+
       </div>
-    </div>
-  </div>
-</template>
-
-
-</div>
         <!-- Discharge -->
         <div x-show="tab==='discharge'" class="space-y-2">
           {% for acc in accs %}
@@ -196,10 +196,9 @@
   <div>
       <h3 class="font-bold text-lg mb-3">Tindakan</h3>
 
-      <!-- Primary -->
+       <!-- Tindakan Utama -->
       <div class="mb-2">
         <label class="text-sm font-medium">Primary Action</label>
-    <!-- Tindakan Utama -->
         <template x-if="simulasi[tab].tindakanUtama">
         <div class="flex items-center gap-2 mt-1">
           <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">

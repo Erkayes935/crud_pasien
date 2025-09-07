@@ -177,9 +177,9 @@ def dashboard(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator")),
 ):
-    users_dashboard = db.query(models.User).options(joinedload(models.User.hospital)).order_by(models.User.id.desc()).limit(10).all()
+    users_dashboard = []
     if current_user.role == "superadmin":
-        users_dashboard = db.query(models.User).filter(models.User.role == "admin_rs").order_by(models.User.id.desc()).limit(10).all()
+        users_dashboard = db.query(models.User).filter(models.User.role == "admin_rs", models.User.is_deleted == False).order_by(models.User.id.desc()).limit(10).all()
     
     # Admin RS hanya boleh lihat user RS yang sama, selain dirinya
     elif current_user.role == "admin_rs":
@@ -187,7 +187,8 @@ def dashboard(
             db.query(models.User)
               .filter(
                   models.User.hospital_id == current_user.hospital_id,
-                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"])
+                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"]),
+                  models.User.is_deleted == False
               )
               .order_by(models.User.id.desc())
               .limit(10)
@@ -219,22 +220,22 @@ def dashboard(
     if current_user.role == "verifikator":
         draft_claims_list = (
             db.query(models.Claim)
-            .filter(models.Claim.is_final == False)
             .options(joinedload(models.Claim.patient))
+            .filter(models.Claim.is_final == False, models.Claim.is_deleted == False)
             .order_by(models.Claim.id.desc())
             .all()
         )
     final_claims_list = (
         db.query(models.Claim)
-        .filter(models.Claim.is_final == True)
         .options(joinedload(models.Claim.patient))
+        .filter(models.Claim.is_final == True, models.Claim.is_deleted == False)
         .order_by(models.Claim.id.desc())
         .all()
     )
 
     # role check
     if current_user.role in ["doctor", "coder", "verifikator"]:
-        pasien_list = db.query(models.Patient).all()
+        pasien_list = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     else:
         pasien_list = []
 
@@ -281,7 +282,7 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
             )
         )
 
-    patients = query.order_by(models.Patient.id.desc()).options(joinedload(models.Patient.hospital)).all()
+    patients = query.filter(models.Patient.is_deleted == False).order_by(models.Patient.id.desc()).options(joinedload(models.Patient.hospital)).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("patient_list.html", {
         "request": request,
@@ -357,7 +358,7 @@ def add_patient(
 
 @app.get("/patients/edit/{patient_id}", name="edit_patient")
 def edit_form(patient_id: int, request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id, models.Patient.is_deleted == False).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan")
     csrf_token = issue_csrf_token(request)
@@ -389,7 +390,7 @@ def update_patient(
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep)
 ):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id, models.Patient.is_deleted == False).first()
     if not patient:
         error_msg = "Pasien tidak ditemukan"
         return templates.TemplateResponse("patient_form.html", {
@@ -463,7 +464,7 @@ def delete_patient(
 
 @app.get("/export")
 def export_patients(db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))):
-    patients = db.query(models.Patient).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Patients"
@@ -550,6 +551,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 1b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}1b", "tindakan": "ICU", "score": 70,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}1b")},
+        {"kategori": f"→ {prefix} 1c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}1c", "tindakan": "ICU", "score": 60,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}1c")},
 
         {"kategori": f"{prefix} 2", "klinis": f"{prefix} deskripsi 2",
          "icd": f"{icd_prefix}2", "tindakan": "Antibiotik IV", "score": 88,
@@ -560,6 +564,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 2b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}2b", "tindakan": "Rawat Inap", "score": 68,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}2b")},
+        {"kategori": f"→ {prefix} 2c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}2c", "tindakan": "ICU", "score": 58,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}2c")},
 
         {"kategori": f"{prefix} 3", "klinis": f"{prefix} deskripsi 3",
          "icd": f"{icd_prefix}3", "tindakan": "Ventilasi Mekanik", "score": 85,
@@ -570,6 +577,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 3b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}3b", "tindakan": "Intubasi", "score": 65,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}3b")},
+        {"kategori": f"→ {prefix} 3c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}3c", "tindakan": "ICU", "score": 55,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}3c")},
     ]
 
 
@@ -701,6 +711,7 @@ def get_claim_recommendations(
 
     recs = db.query(models.ClaimAIRecommendation)\
              .filter(models.ClaimAIRecommendation.claim_id == claim_id)\
+             .filter(models.ClaimAIRecommendation.is_deleted == False)\
              .all()
 
     return [
@@ -896,7 +907,7 @@ def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Claim not found")
     return templates.TemplateResponse(
         "claim_detail.html",
-        {"request": request, "claim": claim, "user": user, "current_user": user}
+        {"request": request, "claim": claim, "user": user, "current_user": user, "csrf_token": issue_csrf_token(request)}
     )
 
 
@@ -1089,7 +1100,7 @@ def claim_form(
             "value": user.id
         })
     else:
-        doctors = db.query(models.User).filter(models.User.role == "doctor").all()
+        doctors = db.query(models.User).filter(models.User.role == "doctor").filter(models.User.is_deleted == False).all()
         fields.insert(2, {
             "name": "doctor_id",
             "label": "Dokter",
@@ -1207,9 +1218,9 @@ def edit_claim_form(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    patients = db.query(models.Patient).all()
-    visits = db.query(models.Visit).all()
-    hospitals = db.query(models.Hospital).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    visits = db.query(models.Visit).filter(models.Visit.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     # --- Parse simpanan JSON dari DB ---
@@ -1357,13 +1368,15 @@ def update_claim(
 
 
 @app.post("/claims/delete/{id}", name="delete_claim")
-def delete_claim(
+async def delete_claim(
     id: int,
+    request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "verifikator")),
-    request: Request = None,
     _=Depends(require_csrf_dep)
 ):
+    form = await request.form()
+    print("Form data:", form)
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -1386,7 +1399,7 @@ def list_users(
 ):
     # Superadmin hanya boleh lihat user dengan role admin_rs
     if current_user.role == "superadmin":
-        users = db.query(models.User).filter(models.User.role == "admin_rs").order_by(models.User.id.desc()).all()
+        users = db.query(models.User).filter(models.User.role == "admin_rs", models.User.is_deleted == False).order_by(models.User.id.desc()).all()
     
     # Admin RS hanya boleh lihat user RS yang sama, selain dirinya
     elif current_user.role == "admin_rs":
@@ -1394,7 +1407,8 @@ def list_users(
             db.query(models.User)
               .filter(
                   models.User.hospital_id == current_user.hospital_id,
-                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"])
+                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"]),
+                  models.User.is_deleted == False,
               )
               .order_by(models.User.id.desc())
               .all()
@@ -1445,7 +1459,7 @@ def add_user_form(
         # 🔹 Hospital
         if f["name"] == "hospital_id":
             if current_user.role == "superadmin":
-                hospitals = db.query(models.Hospital).all()
+                hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
 
@@ -1530,7 +1544,7 @@ def edit_user_form(
         # 🔹 Hospital
         if f["name"] == "hospital_id":
             if current_user.role == "superadmin":
-                hospitals = db.query(models.Hospital).all()
+                hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
 
@@ -1605,7 +1619,7 @@ def list_visits(request: Request, search: str | None = Query(None), db: Session 
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = query.order_by(models.Visit.id.desc()).all()
+    visits = query.order_by(models.Visit.id.desc()).filter(models.Visit.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -1627,7 +1641,7 @@ def list_visit(
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = visits.order_by(models.Visit.id.desc()).all()
+    visits = visits.order_by(models.Visit.id.desc()).filter(models.Visit.is_deleted == False).all()
     patient = db.query(models.Patient).get(patient_id)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -1638,8 +1652,8 @@ def list_visit(
 def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
     patient_id = request.query_params.get("patient_id")
     patient = db.query(models.Patient).get(patient_id) if patient_id else None
-    patients = db.query(models.Patient).all()
-    hospitals = db.query(models.Hospital).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     fields = form_configs["visit"].copy()
@@ -1715,8 +1729,8 @@ def edit_visit_form(request: Request, visit_id: int, db: Session = Depends(get_d
     visit = db.query(models.Visit).get(visit_id)
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
-    patients = db.query(models.Patient).all()
-    hospitals = db.query(models.Hospital).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     fields = form_configs["visit"].copy()
@@ -1801,7 +1815,7 @@ def delete_visit(
 
 @app.get("/hospitals")
 def list_hospitals(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("superadmin","admin_rs"))):
-    hospitals = db.query(models.Hospital).order_by(models.Hospital.id.desc()).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).order_by(models.Hospital.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "hospital_list.html",
@@ -1963,6 +1977,7 @@ def list_medical_records(
         query.order_by(models.MedicalRecord.id.desc())
              .offset((page-1)*page_size)
              .limit(page_size)
+             .filter(models.MedicalRecord.is_deleted == False)
              .all()
     )
     total_pages = (total + page_size - 1) // page_size
@@ -1986,7 +2001,7 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
     medical_record = db.query(models.MedicalRecord).get(record_id)
     if not medical_record:
         raise HTTPException(status_code=404, detail="Medical record not found")
-    patients = db.query(models.Patient).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     fields = form_configs["claim_medical_record"].copy()
@@ -2082,7 +2097,7 @@ def medical_record_logs(record_id: int, request: Request, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Medical record not found")
 
     logs = db.query(models.MedicalRecordLog)\
-             .filter(models.MedicalRecordLog.medical_record_id == record_id)\
+             .filter(models.MedicalRecordLog.medical_record_id == record_id, models.MedicalRecordLog.is_deleted == False)\
              .order_by(models.MedicalRecordLog.version.desc())\
              .all()
 
