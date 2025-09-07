@@ -91,10 +91,13 @@
          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
         ✏️ Edit
       </a>
-      <a href="/claims/{{ claim.id }}/delete"
-         class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
-        🗑 Hapus
-      </a>
+      <div>
+        <form method="post" action="/claims/delete/{{ claim.id }}" onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
+            🗑 Hapus
+          </button>
+        </form>
     </div>
     {% endif %}
   </div>

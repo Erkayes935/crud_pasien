@@ -76,9 +76,10 @@
                         </a>
                         <a href="/patients/edit/{{ p.id }}"
                             class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
-                        <a href="/patients/delete/{{ p.id }}"
-                            class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
-                        </div>
+                        <form method="post" action="/patients/delete/{{ p.id }}" onsubmit="return confirm('Yakin ingin menghapus pasien ini?');" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded">Hapus</button>
+                        </form>
                         {% endif %}
                     {% endif %}
                     </td>

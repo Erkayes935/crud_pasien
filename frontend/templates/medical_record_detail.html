@@ -179,9 +179,14 @@
   <a href="{{ url_for('edit_medical_record', record_id=record.id) }}" class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg shadow">
     ✏️ Edit
   </a>
-  <a href="{{ url_for('delete_medical_record', record_id=record.id) }}" class="inline-block bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg shadow" onclick="return confirm('Yakin hapus data ini?')">
-    🗑️ Hapus
-  </a>
+  <div>
+    <form method="post" action="/medical_records/delete/{{ record.id }}" onsubmit="return confirm('Yakin ingin menghapus rekam medis ini?');" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow">
+        🗑 Hapus
+      </button>
+    </form>
+  </div>
 </div>
 <div>
   <a href="{{ url_for('list_medical_records') }}"

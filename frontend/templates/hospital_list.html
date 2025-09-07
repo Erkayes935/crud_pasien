@@ -56,10 +56,10 @@
                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition duration-200">
                                     Edit
                                 </a>
-                                <a href="/hospitals/{{ hospital.id }}/delete"
-                                   class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition duration-200">
-                                    Hapus
-                                </a>
+                                <form method="post" action="/hospitals/{{ hospital.id }}/delete" onsubmit="return confirm('Yakin ingin menghapus rumah sakit ini?');" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded">Hapus</button>
+                                </form>
                             </td>
                         </tr>
                     {% endfor %}

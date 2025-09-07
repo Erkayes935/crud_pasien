@@ -24,31 +24,31 @@
     </a>
     {% else %}
       {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
-      <a href="/patients?flow=claim" 
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
-        + Klaim Baru
-      </a>
+        <a href="/patients?flow=claim" 
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
+          + Klaim Baru
+        </a>
+        <a href="/patients" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          👤 Pasien
+        </a>
+        <a href="/medical-records" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          📝 Rekam Medis
+        </a>
+        <a href="/visits" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          🏥 Kunjungan
+        </a>
+        <a href="/claims" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          📝 Klaim
+        </a>
+        <a href="/claims/export" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          ⬇️ Ekspor Klaim
+        </a>
       {% endif %}
-    <a href="/patients" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       👤 Pasien
-    </a>
-    <a href="/medical-records" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       📝 Rekam Medis
-    </a>
-    <a href="/visits" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       🏥 Kunjungan
-    </a>
-    <a href="/claims" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       📝 Klaim
-    </a>
-    <a href="/claims/export" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       ⬇️ Ekspor Klaim
-    </a>
     {% endif %}
   </div>
 
@@ -56,7 +56,7 @@
   {% if current_user.role in ['superadmin', 'admin_rs'] %}
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
       <h2 class="text-lg font-semibold mb-3">User Terbaru</h2>
-      <table class="w-full text-sm border">
+      <table class="w-full text-sm border text-center">
         <thead class="bg-gray-100 dark:bg-gray-700">
           <tr>
             <th class="p-2 border">ID</th>
@@ -70,7 +70,7 @@
         </thead>
         <tbody>
           {% for user in users %}
-          <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-100">
+          <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
             <td class="p-2 border">{{ user.id }}</td>
             <td class="p-2 border">{{ user.email }}</td>
             <td class="p-2 border">{{ user.name }}</td>
@@ -107,7 +107,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
       <h2 class="text-lg font-semibold mb-3">Klaim Draft</h2>
       <div class="space-y-2">
-        <table class="w-full text-sm border">
+        <table class="w-full text-sm border text-center">
           <thead class="bg-gray-100 dark:bg-gray-700">
             <tr>
               <th class="p-2 border">ID</th>
@@ -119,15 +119,21 @@
           <tbody>
           {% for claim in claims %}
               {% if claim and claim.status == 'draft' %}
-                  <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-100">
+                  <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="p-2 border">{{ claim.id }}</td>
                     <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
                     <td class="p-2 border">
                       <span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs">Draft</span>
                     </td>
                     <td class="p-2 border text-center">
-                      <a href="/claims/{{ claim.id }}/edit" 
+                      {% if user and user.role in ['doctor', 'coder'] %}
+                        <a href="/claims/{{ claim.id }}/edit" 
                         class="text-blue-600 hover:underline">Edit</a>
+                      {% endif %}
+                      {% if user and user.role == 'verifikator' %}
+                        <a href="/claims/{{ claim.id }}/edit" 
+                        class="text-blue-600 hover:underline">Review</a>
+                      {% endif %}
                     </td>
                   </tr>
               {% endif %}
@@ -142,7 +148,7 @@
     <!-- Daftar Klaim Final -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
       <h2 class="text-lg font-semibold mb-3">Klaim Final</h2>
-      <table class="w-full text-sm border">
+      <table class="w-full text-sm border text-center">
         <thead class="bg-gray-100 dark:bg-gray-700">
           <tr>
             <th class="p-2 border">ID</th>
@@ -157,7 +163,7 @@
         <tbody>
           {% for claim in claims %}
             {% if claim and claim.status == 'final' %}
-              <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-100">
+              <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
                 <td class="p-2 border">{{ claim.id }}</td>
                 <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
                 <td class="p-2 border">{{ claim.doctor_name or '-' }}</td>

@@ -206,6 +206,7 @@ def dashboard(
     claims = (
         db.query(models.Claim)
         .options(joinedload(models.Claim.patient))
+        .filter(models.Claim.is_deleted == False)
         .order_by(models.Claim.id.desc())
         .limit(10)
         .all()
@@ -412,7 +413,7 @@ def update_patient(
             "email": email or None,
             "no_hp": no_hp or None
         })
-        flash(request, success_msg, "success")
+        flash(request, "Pasien berhasil diperbarui!", "success")
         return RedirectResponse(url="/patients", status_code=303)
     except Exception as e:
         error_msg = f"Gagal memperbarui pasien: {str(e)}"
@@ -439,12 +440,25 @@ def update_patient(
         })
 
 
-@app.get("/patients/delete/{patient_id}")
-def delete_patient(patient_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
-    crud.delete_patient(db, patient_id)
-    csrf_token = issue_csrf_token(request)
+@app.post("/patients/delete/{patient_id}")
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)  # ✅ token dicek
+):
+    patient = db.query(models.Patient).get(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # soft delete, bukan delete beneran
+    patient.is_deleted = True
+    db.commit()
+
     flash(request, "Pasien berhasil dihapus!", "success")
     return RedirectResponse("/patients", status_code=303)
+
 
 
 @app.get("/export")
@@ -806,7 +820,7 @@ def list_claims(
         models.Patient.nama.ilike(f"%{patient_name}%")
     )
 
-    claims = query.order_by(models.Claim.id.desc()).all()
+    claims = query.order_by(models.Claim.id.desc()).filter(models.Claim.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "claim_list.html",
@@ -836,7 +850,7 @@ def export_claims(
         query = query.filter(models.Claim.tanggal_kunjungan >= start_date)
     if end_date:
         query = query.filter(models.Claim.tanggal_kunjungan <= end_date)
-    claims = query.all()
+    claims = query.filter(models.Claim.is_deleted == False).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Claims"
@@ -1342,20 +1356,24 @@ def update_claim(
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
-@app.get("/claims/{id}/delete")
+@app.post("/claims/delete/{id}", name="delete_claim")
 def delete_claim(
-    request: Request,
     id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder"))
+    user=Depends(require_roles_session("doctor", "verifikator")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)
 ):
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    db.delete(claim)
+
+    claim.is_deleted = True
     db.commit()
-    flash(request, "Klaim berhasil dihapus!", "success")
-    return RedirectResponse(url="/claims", status_code=303)
+
+    flash(request, "Klaim berhasil dihapus !", "success")
+    return RedirectResponse("/claims", status_code=303)
+
 
 # -------------------------
 # USER MANAGEMENT ROUTES (NEW)
@@ -1757,20 +1775,24 @@ def edit_visit(
     flash(request, "Kunjungan berhasil diperbarui!", "success")
     return RedirectResponse(url="/visits", status_code=303)
 
-@app.get("/visits/delete/{visit_id}", name="delete_visit")
+@app.post("/visits/delete/{visit_id}")
 def delete_visit(
-    request: Request,
     visit_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs"))
+    user=Depends(require_roles_session("doctor")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)
 ):
     visit = db.query(models.Visit).get(visit_id)
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
-    db.delete(visit)
+
+    visit.is_deleted = True
     db.commit()
-    flash(request, "Kunjungan berhasil dihapus!", "success")
-    return RedirectResponse(url="/visits", status_code=303)
+
+    flash(request, "Visit berhasil dihapus !", "success")
+    return RedirectResponse("/visits", status_code=303)
+
 
 # -------------------------
 # VISIT ROUTES (END)
@@ -1882,20 +1904,24 @@ def edit_hospital(
     flash(request, "Hospital berhasil diperbarui!", "success")
     return RedirectResponse(url="/hospitals", status_code=303)
 
-@app.get("/hospitals/{hospital_id}/delete", name='delete_hospital')
+@app.post("/hospitals/delete/{hospital_id}")
 def delete_hospital(
-    request: Request,
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("superadmin","admin_rs"))
+    user=Depends(require_roles_session("admin_rs", "superadmin")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)
 ):
     hospital = db.query(models.Hospital).get(hospital_id)
     if not hospital:
         raise HTTPException(status_code=404, detail="Hospital not found")
-    db.delete(hospital)
+
+    hospital.is_deleted = True
     db.commit()
-    flash(request, "Hospital berhasil dihapus!", "success")
-    return RedirectResponse(url="/hospitals", status_code=303)
+
+    flash(request, "Rumah sakit berhasil dihapus !", "success")
+    return RedirectResponse("/hospitals", status_code=303)
+
 
 #---------------------
 # End Hospital Routes
@@ -2029,19 +2055,25 @@ def update_medical_record(
 )
 
 
-@app.get("/medical-records/{record_id}/delete", name="delete_medical_record")
+@app.post("/medical-records/{record_id}/delete", name="delete_medical_record")
 def delete_medical_record(
     record_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs"))
+    request: Request = None,
+    current_user=Depends(require_roles_session("doctor", "admin_rs")),
+    _=Depends(require_csrf_dep)  # ✅ cek token
 ):
     medical_record = db.query(models.MedicalRecord).get(record_id)
     if not medical_record:
         raise HTTPException(status_code=404, detail="Medical record not found")
-    db.delete(medical_record)
+
+    # Soft delete, jangan hard delete
+    medical_record.is_deleted = True
     db.commit()
-    flash(request, "Medical record berhasil dihapus!", "success")
+
+    flash(request, "Medical record berhasil dihapus !", "success")
     return RedirectResponse(url="/medical_records", status_code=303)
+
 
 @app.get("/medical-records/{record_id}/logs", name="medical_record_logs")
 def medical_record_logs(record_id: int, request: Request, db: Session = Depends(get_db)):

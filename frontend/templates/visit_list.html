@@ -73,8 +73,10 @@
               <div class="flex gap-2 justify-center">
                 <a href="/visits/edit/{{ v.id }}"
                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
-                <a href="/visits/delete/{{ v.id }}"
-                   class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
+                <form method="post" action="/visits/delete/{{ v.id }}" onsubmit="return confirm('Yakin ingin menghapus kunjungan ini?');" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded">Hapus</button>
+                </form>
               </div>
               {% endif %}
             {% endif %}
