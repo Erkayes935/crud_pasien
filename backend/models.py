@@ -9,7 +9,7 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -24,7 +24,7 @@ class Hospital(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     kode_hospital = Column(String(20), unique=True, nullable=True)
-    nama = Column(String(150), nullable=True)
+    nama = Column(String(150), nullable=False)
     tipe_hospital = Column(String(50), nullable=True)
     jenis_hospital = Column(String(50), nullable=True)
     alamat = Column(Text)
@@ -43,8 +43,8 @@ class Hospital(Base):
     visits = relationship("Visit", back_populates="hospital", foreign_keys="Visit.hospital_id")
     claims = relationship("Claim", back_populates="hospital", foreign_keys="Claim.hospital_id")
     users = relationship("User", back_populates="hospital", foreign_keys="User.hospital_id")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # =========================================
 # Patient
@@ -57,7 +57,7 @@ class Patient(Base):
     no_rm = Column(String(20), unique=True, nullable=True)
     no_ktp = Column(String(20), unique=True, nullable=True)
     no_bpjs = Column(String(20), unique=True, nullable=True)
-    nama = Column(String(100), nullable=True)
+    nama = Column(String(100), nullable=False)
     tanggal_lahir = Column(Date)
     alamat = Column(Text)
     email = Column(String(120), unique=True, nullable=True)
@@ -73,11 +73,14 @@ class Patient(Base):
     visits = relationship("Visit", back_populates="patient", foreign_keys="Visit.patient_id")
     # Relasi: 1 pasien → banyak klaim
     claims = relationship("Claim", back_populates="patient", foreign_keys="Claim.patient_id")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+    def __repr__(self):
+        return f"<Patient(id={self.id}, nama={self.nama}, no_rm={self.no_rm})>"
     # relasi ke medical records
     medical_records = relationship("MedicalRecord", back_populates="patient", foreign_keys="MedicalRecord.patient_id")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # =========================================
 # Visit
@@ -86,16 +89,17 @@ class Patient(Base):
 class Visit(Base):
     __tablename__ = "visits"
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=False)
     eksternal_id = Column(String(100), nullable=True)
     sumber = Column(String(100), nullable=True)
-    tanggal_kunjungan = Column(Date, nullable=True)
+    tanggal_kunjungan = Column(Date, nullable=False)
     jenis_kunjungan = Column(String(100), nullable=True)
     poli = Column(String(100), nullable=True)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     doctor_name = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     # Relasi ke pasien
     patient = relationship("Patient", back_populates="visits", foreign_keys=[patient_id])
@@ -107,8 +111,8 @@ class Visit(Base):
     medical_records = relationship("MedicalRecord", back_populates="visit", foreign_keys="MedicalRecord.visit_id")
     # Relasi ke dokter
     doctor = relationship("User", back_populates="visits", foreign_keys=[doctor_id])
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # =========================================
 # Claim
@@ -138,17 +142,18 @@ class Claim(Base):
 
     simulasi_draft = Column(JSONB, nullable=True)
     summary_draft = Column(JSONB, nullable=True)
-    status = Column(String, default="draft")
+    status = Column(String, nullable=False, default="draft")
     # Status boolean → sinkron dengan rekam medis
-    is_final = Column(Boolean, default=False)
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_final = Column(Boolean, nullable=False, server_default=text("false"))
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
     # Dokter yang membuat klaim (opsional)
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     doctor = relationship("User", back_populates="claims_as_doctor", foreign_keys=[doctor_id])
     doctor_name = Column(String(100), nullable=True)  # audit trail
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
     ai_recommendations = relationship("ClaimAIRecommendation", back_populates="claim", cascade="all, delete-orphan")
     diagnoses = relationship("ClaimDiagnosis", back_populates="claim", cascade="all, delete-orphan")
     procedures = relationship("ClaimProcedure", back_populates="claim", cascade="all, delete-orphan")
@@ -168,19 +173,19 @@ class ClaimAIRecommendation(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
     type = Column(String(50), nullable=False)   # diagnosis / procedure
-    category = Column(String(50), nullable=True) # ddx / komorbid / komplikasi / pretindakan
+    category = Column(String(50), nullable=False) # ddx / komorbid / komplikasi / pretindakan
     text = Column(Text, nullable=False)          # nama diagnosis/tindakan
     icd10_code = Column(String(20), nullable=True)
     icd9_code = Column(String(20), nullable=True)
     confidence_score = Column(Integer, nullable=True)
     regulation_refs = Column(JSONB, nullable=True)  # CP, PNPK, Fornas, Permenkes
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     claim = relationship("Claim", back_populates="ai_recommendations")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 
 # =========================================
@@ -197,12 +202,12 @@ class ClaimDiagnosis(Base):
     diagnosis_text = Column(Text, nullable=False)
     icd10_code = Column(String(20), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     claim = relationship("Claim", back_populates="diagnoses")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 
 # =========================================
@@ -217,14 +222,14 @@ class ClaimProcedure(Base):
     procedure_type = Column(String(50), nullable=False)  # utama / sekunder
     procedure_text = Column(Text, nullable=False)
     icd9_code = Column(String(20), nullable=True)
-    requirement_flag = Column(Boolean, default=False)    # wajib/tidak
+    requirement_flag = Column(Boolean, nullable=False, server_default=False)    # wajib/tidak
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     claim = relationship("Claim", back_populates="procedures")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 
 # =========================================
@@ -240,12 +245,12 @@ class ClaimTariff(Base):
     tariff_amount = Column(Integer, nullable=True)
     status = Column(String(20), default="draft")   # draft / final
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     claim = relationship("Claim", back_populates="tariffs")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 
 # =========================================
@@ -264,8 +269,8 @@ class ClaimLog(Base):
 
     claim = relationship("Claim", back_populates="logs")
     user = relationship("User")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # ===========================
 # Rekomendasi AI untuk Klaim
@@ -276,15 +281,18 @@ class ClaimAIRecommendationSummary(Base):
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
-    category = Column(Enum("medis","regulasi","tarif", name="recommendation_category"))
+    category = Column(Enum("medis","regulasi","tarif", name="recommendation_category"), nullable=False)
     target = Column(JSONB, nullable=True)   # contoh: ["Sepsis","ARDS"]
-    status = Column(Enum("valid","warning","invalid", name="recommendation_status"))
+    status = Column(Enum("valid","warning","invalid", name="recommendation_status"), nullable=False)
     message = Column(Text, nullable=True)
     confidence = Column(Float, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, default=text("now()"), onupdate=text("now()"))
+
+    claim = relationship("Claim", back_populates="ai_recommendations_summary")
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 
 # =========================================
@@ -295,16 +303,16 @@ class MedicalRecord(Base):
     __tablename__ = "medical_records"
 
     id = Column(Integer, primary_key=True, index=True)
-    record_type = Column(String(50), nullable=True)  # admission / daily / discharge
+    record_type = Column(String(50), nullable=False)  # admission / daily / discharge
     
 
     # Status rekam medis → sinkron dengan klaim
     is_final = Column(Boolean, default=False)
 
-    notes_date = Column(Date, nullable=True, default=datetime.utcnow)
+    notes_date = Column(Date, nullable=False, default=datetime.utcnow)
 
-    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    doctor_name = Column(String(100), nullable=True)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_name = Column(String(100), nullable=False)
 
     # Bagian Riwayat
     riwayat_penyakit = Column(Text, nullable=True)
@@ -362,7 +370,9 @@ class MedicalRecord(Base):
     # Relasi ke log perubahan
     logs = relationship("MedicalRecordLog", back_populates="medical_record", foreign_keys="MedicalRecordLog.medical_record_id")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -375,8 +385,8 @@ class MedicalRecord(Base):
             "is_final": self.is_final,
             "notes_date": self.notes_date.isoformat() if self.notes_date else None,
         }
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # =========================================
 # Medical Record Logs (Audit Trail)
@@ -396,8 +406,8 @@ class MedicalRecordLog(Base):
 
     medical_record = relationship("MedicalRecord", back_populates="logs")
     user = relationship("User", back_populates="medical_record_logs")
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data    
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
 
 # =========================================
 # User Management
@@ -421,5 +431,5 @@ class User(Base):
     visits = relationship("Visit", back_populates="doctor", foreign_keys=[Visit.doctor_id])
     medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])
     medical_record_logs = relationship("MedicalRecordLog", back_populates="user", foreign_keys=[MedicalRecordLog.updated_by])
-    is_deleted = Column(Boolean, default=False)   # soft delete flag
-    is_dummy = Column(Boolean, default=False)     # tandai dummy data
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data

@@ -1368,15 +1368,13 @@ def update_claim(
 
 
 @app.post("/claims/delete/{id}", name="delete_claim")
-async def delete_claim(
+def delete_claim(
     id: int,
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "verifikator")),
     _=Depends(require_csrf_dep)
 ):
-    form = await request.form()
-    print("Form data:", form)
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
