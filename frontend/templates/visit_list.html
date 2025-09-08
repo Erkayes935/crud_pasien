@@ -62,6 +62,11 @@
                 <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id or '' }}">
                 <input type="hidden" name="doctor_id" value="{{ current_user.id or '' }}">
                 <input type="hidden" name="doctor_name" value="{{ current_user.name or '' }}">
+                <input type="hidden" name="created_at" value="{{ v.created_at or '' }}">
+                <input type="hidden" name="updated_at" value="{{ v.updated_at or '' }}">
+                <input type="hidden" name="record_type" value="{{ v.record_type or '' }}">
+                <input type="hidden" name="is_deleted" value="{{ v.is_deleted or '' }}">
+                <input type="hidden" name="is_dummy" value="{{ v.is_dummy or '' }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">

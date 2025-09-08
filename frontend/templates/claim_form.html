@@ -56,7 +56,7 @@
                 <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
                     <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}</th>
                   </tr>
                 </thead>
                 <tbody id="{{ acc|lower }}-admission"></tbody>
@@ -120,7 +120,7 @@
                 <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
                     <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}</th>
                   </tr>
                 </thead>
                 <tbody id="{{ acc|lower }}-discharge"></tbody>

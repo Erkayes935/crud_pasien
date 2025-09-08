@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, or_ 
 from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlencode
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from openpyxl import Workbook, load_workbook
 from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware
@@ -201,7 +201,7 @@ def dashboard(
     pasien_hari_ini = db.query(models.Claim).filter(
         func.date(models.Claim.claim_date) == datetime.today().date()
     ).count()
-    total_claims = db.query(models.Claim).count()
+    total_claims = db.query(models.Claim).filter(models.Claim.is_deleted == False).count()
 
     # klaim terbaru
     claims = (
@@ -214,8 +214,8 @@ def dashboard(
     )
 
     # klaim draft & final
-    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False).count()
-    final_claims = db.query(models.Claim).filter(models.Claim.is_final == True).count()
+    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False, models.Claim.is_deleted == False).count()
+    final_claims = db.query(models.Claim).filter(models.Claim.is_final == True, models.Claim.is_deleted == False).count()
     draft_claims_list = []
     if current_user.role == "verifikator":
         draft_claims_list = (
@@ -617,7 +617,6 @@ def make_dummy(tab):
                 {"status":"warning", "message":"Rp 2.500.000", "confidence":0.6, "target":["CT Scan Abdomen"]},
                 {"status":"invalid", "message":"Rp 1.000.000", "confidence":0.3, "target":["Lab Darah Lengkap"]}
             ]
-
         }
     }
 
@@ -627,16 +626,25 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
     stage: admission, daily1, daily2, discharge, dll
     """
 
-    # Diagnosis utama
+    # Diagnosis
     for item in dummy_data.get("diagnosis", []):
         db.add(models.ClaimAIRecommendation(
             claim_id=claim_id,
             type="diagnosis",
             category=f"{stage}_diagnosis",
-            text=item.get("kategori"),
+            sim_text=item.get("kategori"),
             icd10_code=item.get("icd"),
             confidence_score=item.get("score"),
-            regulation_refs=None
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
         ))
 
     # Komorbid
@@ -645,10 +653,19 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
             claim_id=claim_id,
             type="diagnosis",
             category=f"{stage}_komorbid",
-            text=item.get("kategori"),
+            sim_text=item.get("kategori"),
             icd10_code=item.get("icd"),
             confidence_score=item.get("score"),
-            regulation_refs=None
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
         ))
 
     # Komplikasi
@@ -657,10 +674,19 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
             claim_id=claim_id,
             type="diagnosis",
             category=f"{stage}_komplikasi",
-            text=item.get("kategori"),
+            sim_text=item.get("kategori"),
             icd10_code=item.get("icd"),
             confidence_score=item.get("score"),
-            regulation_refs=None
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
         ))
 
     # Prosedur / Tindakan
@@ -669,13 +695,21 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
             claim_id=claim_id,
             type="procedure",
             category=f"{stage}_tindakan",
-            text=item.get("kategori"),
+            sim_text=item.get("kategori"),
             icd9_code=item.get("tindakan"),
             confidence_score=item.get("score"),
-            regulation_refs=None
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "child": item.get("child"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
         ))
 
     db.commit()
+
 
 @app.post("/ai/recommendation")
 def ai_recommendation(payload: dict = Body(None), db: Session = Depends(get_db)):
@@ -916,6 +950,8 @@ def add_claim(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
+    record_type: Optional[str] = Form("admission"),  # inpatient / outpatient
+    # Klaim
     patient_id: Optional[int] = Form(None),
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
@@ -956,6 +992,10 @@ def add_claim(
     summary_draft: Optional[str] = Form(None),
     simulasi_draft: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
+    created_at: Optional[datetime] = Form(None),
+    updated_at: Optional[datetime] = Form(None),
+    is_deleted: Optional[bool] = Form(False),
+    is_dummy: Optional[bool] = Form(False),
     _=Depends(require_csrf_dep)
 ):
     if claim_date is None:
@@ -965,6 +1005,7 @@ def add_claim(
             claim_date = datetime.utcnow()
     # 1. Buat rekam medis baru
     mr = models.MedicalRecord(
+        record_type=record_type,
         patient_id=patient_id,
         visit_id=visit_id,
         doctor_id=doctor_id,
@@ -1000,6 +1041,10 @@ def add_claim(
         obat=obat,
         validasi_fornas=validasi_fornas,
         notes_doctor=notes_doctor,
+        created_at=datetime.utcnow()-timedelta(days=5),
+        updated_at=datetime.utcnow(),
+        is_deleted=is_deleted,
+        is_dummy=is_dummy
     )
     db.add(mr)
     db.commit()
@@ -1017,6 +1062,8 @@ def add_claim(
         data_snapshot=json.dumps(mr.to_dict(), ensure_ascii=False),
         updated_by=user.id,
         updated_at=datetime.utcnow(),
+        is_deleted=is_deleted,
+        is_dummy=is_dummy
     )
 
     db.add(log)
@@ -1032,7 +1079,11 @@ def add_claim(
         doctor_name=doctor_name,
         medical_record_id=mr.id,
         is_final=False,       # klaim baru otomatis Draft
-        status="draft" 
+        status="draft",
+        created_at=datetime.utcnow()-timedelta(days=5),
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=is_dummy, 
     )
     db.add(claim)
     db.commit()
@@ -1042,7 +1093,9 @@ def add_claim(
         action="CREATED",
         description=f"Klaim {claim.id} dibuat oleh {user.name}",
         updated_by=user.id,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=is_dummy
     )
     db.add(log)
     db.commit()
@@ -1155,7 +1208,9 @@ def update_claim_draft(
         action="UPDATED",
         description="Draft klaim diperbarui",
         updated_by=user.id,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
     )
     db.add(log_claim)
 
@@ -1175,7 +1230,9 @@ def update_claim_draft(
             data_snapshot=json.dumps(
                 claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {},
                 ensure_ascii=False
-            )
+            ),
+            is_deleted=False,
+            is_dummy=True
         )
         db.add(log_mr)
 
