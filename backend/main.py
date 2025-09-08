@@ -719,7 +719,7 @@ def get_claim_recommendations(
             "id": r.id,
             "type": r.type,              # diagnosis / procedure
             "category": r.category,      # admission_diagnosis, daily1_komorbid, discharge_tindakan, dst.
-            "text": r.text,
+            "sim_text": r.sim_text,
             "icd10_code": r.icd10_code,
             "icd9_code": r.icd9_code,
             "confidence_score": r.confidence_score,

@@ -21,6 +21,12 @@ function claimData(init) {
       window.addEventListener('update-rekom', e => {
         this.recommendations = e.detail
       })
+      const role = this.role
+      const claimId = document.getElementById("claimRoot")?.dataset.claimId
+
+      if (role === 'verifikator' && claimId) {
+        loadRecommendations(claimId)   // otomatis load dari DB
+      }
     },
     statusIcon(s){
       if(s==='valid') return "✅"
@@ -115,139 +121,139 @@ async function generateAI() {
     const dayId = `daily-${idx}`
 
     // bikin accordion section baru
-dailyContainer.insertAdjacentHTML("beforeend", `
-  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-    <button @click="open=!open"
-            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
-      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-    </button>
-    <div x-show="open" class="p-2 space-y-2">
-
-      <!-- Diagnosis -->
+    dailyContainer.insertAdjacentHTML("beforeend", `
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
         <button @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Diagnosis
-            <span id="count-diagnosis-${dayId}"
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </span>
+                class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+          <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="diagnosis-${dayId}"></tbody>
-          </table>
+        <div x-show="open" class="p-2 space-y-2">
 
-          <!-- Input manual Diagnosis -->
-          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
-            <label class="block text-sm font-semibold mb-1">Tambah Diagnosis Manual</label>
-            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.kategori">
-            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.klinis">
-            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.icd">
-            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.tindakan">
-            <button type="button"
-                    class="bg-green-600 text-white px-3 py-1 rounded"
-                    @click="addManual('diagnosis','${dayId}')">➕ Tambah</button>
+          <!-- Diagnosis -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Diagnosis
+                <span id="count-diagnosis-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="diagnosis-${dayId}"></tbody>
+              </table>
+
+              <!-- Input manual Diagnosis -->
+              <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+                <label class="block text-sm font-semibold mb-1">Tambah Diagnosis Manual</label>
+                <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.kategori">
+                <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.klinis">
+                <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.icd">
+                <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.tindakan">
+                <button type="button"
+                        class="bg-green-600 text-white px-3 py-1 rounded"
+                        @click="addManual('diagnosis','${dayId}')">➕ Tambah</button>
+              </div>
+            </div>
           </div>
+
+          <!-- Komorbid -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Komorbid
+                <span id="count-komorbid-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="komorbid-${dayId}"></tbody>
+              </table>
+
+              <!-- Input manual Komorbid -->
+              <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+                <label class="block text-sm font-semibold mb-1">Tambah Komorbid Manual</label>
+                <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.kategori">
+                <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.klinis">
+                <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.icd">
+                <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.tindakan">
+                <button type="button"
+                        class="bg-green-600 text-white px-3 py-1 rounded"
+                        @click="addManual('komorbid','${dayId}')">➕ Tambah</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Komplikasi -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Komplikasi
+                <span id="count-komplikasi-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="komplikasi-${dayId}"></tbody>
+              </table>
+
+              <!-- Input manual Komplikasi -->
+              <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
+                <label class="block text-sm font-semibold mb-1">Tambah Komplikasi Manual</label>
+                <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.kategori">
+                <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.klinis">
+                <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.icd">
+                <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
+                      x-model="manualInput.tindakan">
+                <button type="button"
+                        class="bg-green-600 text-white px-3 py-1 rounded"
+                        @click="addManual('komplikasi','${dayId}')">➕ Tambah</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <!-- Komorbid -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komorbid
-            <span id="count-komorbid-${dayId}"
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="komorbid-${dayId}"></tbody>
-          </table>
-
-          <!-- Input manual Komorbid -->
-          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
-            <label class="block text-sm font-semibold mb-1">Tambah Komorbid Manual</label>
-            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.kategori">
-            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.klinis">
-            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.icd">
-            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.tindakan">
-            <button type="button"
-                    class="bg-green-600 text-white px-3 py-1 rounded"
-                    @click="addManual('komorbid','${dayId}')">➕ Tambah</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Komplikasi -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komplikasi
-            <span id="count-komplikasi-${dayId}"
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="komplikasi-${dayId}"></tbody>
-          </table>
-
-          <!-- Input manual Komplikasi -->
-          <div class="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-700">
-            <label class="block text-sm font-semibold mb-1">Tambah Komplikasi Manual</label>
-            <input type="text" placeholder="Kategori" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.kategori">
-            <input type="text" placeholder="Klinis" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.klinis">
-            <input type="text" placeholder="ICD" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.icd">
-            <input type="text" placeholder="Tindakan" class="border px-2 py-1 rounded w-full mb-1"
-                   x-model="manualInput.tindakan">
-            <button type="button"
-                    class="bg-green-600 text-white px-3 py-1 rounded"
-                    @click="addManual('komplikasi','${dayId}')">➕ Tambah</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-`)
-
+    `)
+    console.log("✅ accordion harusnya dibuat, cek DOM:", document.getElementById("daily-accordion").innerHTML)
     const tmpl = document.getElementById("daily-form-template")
     if (tmpl) {
       const clone = tmpl.content.cloneNode(true)

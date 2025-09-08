@@ -158,6 +158,7 @@ class Claim(Base):
     diagnoses = relationship("ClaimDiagnosis", back_populates="claim", cascade="all, delete-orphan")
     procedures = relationship("ClaimProcedure", back_populates="claim", cascade="all, delete-orphan")
     tariffs = relationship("ClaimTariff", back_populates="claim", cascade="all, delete-orphan")
+    ai_recommendations_summary = relationship("ClaimAIRecommendationSummary", back_populates="claim", uselist=False, cascade="all, delete-orphan")
 
     # logs sebaiknya tanpa delete-orphan, hanya back_populates
     logs = relationship("ClaimLog", back_populates="claim")
@@ -174,7 +175,7 @@ class ClaimAIRecommendation(Base):
 
     type = Column(String(50), nullable=False)   # diagnosis / procedure
     category = Column(String(50), nullable=False) # ddx / komorbid / komplikasi / pretindakan
-    text = Column(Text, nullable=False)          # nama diagnosis/tindakan
+    sim_text = Column(Text, nullable=False)          # nama diagnosis/tindakan
     icd10_code = Column(String(20), nullable=True)
     icd9_code = Column(String(20), nullable=True)
     confidence_score = Column(Integer, nullable=True)
@@ -222,7 +223,7 @@ class ClaimProcedure(Base):
     procedure_type = Column(String(50), nullable=False)  # utama / sekunder
     procedure_text = Column(Text, nullable=False)
     icd9_code = Column(String(20), nullable=True)
-    requirement_flag = Column(Boolean, nullable=False, server_default=False)    # wajib/tidak
+    requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))    # wajib/tidak
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
@@ -307,7 +308,7 @@ class MedicalRecord(Base):
     
 
     # Status rekam medis → sinkron dengan klaim
-    is_final = Column(Boolean, default=False)
+    is_final = Column(Boolean, nullable=False, server_default=text("false"))
 
     notes_date = Column(Date, nullable=False, default=datetime.utcnow)
 
@@ -401,7 +402,7 @@ class MedicalRecordLog(Base):
     data_snapshot = Column(JSONB, nullable=True)
     action = Column(String(50), nullable=False)   # created / updated / finalized / rejected / recalculated
     description = Column(Text, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_by = Column(Integer, ForeignKey("users.id"))
 
     medical_record = relationship("MedicalRecord", back_populates="logs")
