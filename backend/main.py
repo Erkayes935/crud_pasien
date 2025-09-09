@@ -848,37 +848,58 @@ def list_claims(
     status: str | None = Query(None),
     tanggal_kunjungan: str | None = Query(None),
     patient_name: str | None = Query(None),
+    jenis_kunjungan: str | None = Query(None),
+    claim_id: int | None = Query(None),
+    visit_id: int | None = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))
 ):
-    query = db.query(models.Claim)
-    # filter jika ada status
+    query = db.query(models.Claim).join(models.Visit, models.Claim.visit_id == models.Visit.id)
 
     if status:
-        query = query.filter(models.Claim.status.ilike(status))  # case-insensitive
+        query = query.filter(models.Claim.status.ilike(status))
+
+    if jenis_kunjungan:
+        query = query.filter(models.Visit.jenis_kunjungan.ilike(jenis_kunjungan))
 
     if tanggal_kunjungan:
-        query = query.filter(models.Claim.tanggal_kunjungan == tanggal_kunjungan)
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
 
     if patient_name:
         query = query.join(models.Patient).filter(
-        models.Patient.nama.ilike(f"%{patient_name}%")
+            models.Patient.nama.ilike(f"%{patient_name}%")
+        )
+
+    if claim_id:
+        query = query.filter(models.Claim.id == claim_id)
+
+    if visit_id:
+        query = query.filter(models.Claim.visit_id == visit_id)
+
+    claims = (
+        query.filter(models.Claim.is_deleted == False)
+             .order_by(models.Claim.id.desc())
+             .all()
     )
 
-    claims = query.order_by(models.Claim.id.desc()).filter(models.Claim.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "claim_list.html",
-        {"request": request, 
-        "claims": claims, 
-        "user": user, 
-        "csrf_token": csrf_token, 
-        "current_user": user,
-        "status": status,
-        "tanggal_kunjungan": tanggal_kunjungan,
-        "patient_name": patient_name
-    }
-)
+        {
+            "request": request,
+            "claims": claims,
+            "user": user,
+            "csrf_token": csrf_token,
+            "current_user": user,
+            "status": status,
+            "tanggal_kunjungan": tanggal_kunjungan,
+            "patient_name": patient_name,
+            "jenis_kunjungan": jenis_kunjungan,
+            "claim_id": claim_id,
+            "visit_id": visit_id,
+        }
+    )
+
 
 @app.get("/claims/export", name="export_claims")
 def export_claims(
