@@ -147,7 +147,7 @@ async function generateAI() {
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400"></td>
+                                    focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
@@ -204,7 +204,7 @@ async function generateAI() {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400"></td>
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -261,7 +261,7 @@ async function generateAI() {
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400"></td>
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -695,7 +695,7 @@ async function loadRecommendations(claimId) {
                         class="border px-2 py-1 w-full rounded 
                                 bg-white dark:bg-gray-700 
                                 text-gray-900 dark:text-gray-100 
-                                focus:ring-2 focus:ring-blue-400"></td>
+                                focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
               <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                         class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -755,7 +755,7 @@ async function loadRecommendations(claimId) {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400"></td>
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -816,7 +816,7 @@ async function loadRecommendations(claimId) {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400"></td>
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 

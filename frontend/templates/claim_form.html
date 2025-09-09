@@ -67,7 +67,7 @@
                 {% if acc == "Diagnosis" %}
                 <tbody id="diagnosis-manual-admission">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
+                    <td><input x-model="manualInput.admission.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                     <td><input x-model="manualInput.admission.diagnosis.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.diagnosis.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.diagnosis.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
@@ -78,7 +78,7 @@
                 {% elif acc == "Komorbid" %}
                 <tbody id="komorbid-manual-admission">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.komorbid.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
+                    <td><input x-model="manualInput.admission.komorbid.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                     <td><input x-model="manualInput.admission.komorbid.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.komorbid.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.komorbid.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
@@ -89,7 +89,7 @@
                 {% elif acc == "Komplikasi" %}
                 <tbody id="komplikasi-manual-admission">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.komplikasi.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
+                    <td><input x-model="manualInput.admission.komplikasi.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
                     <td><input x-model="manualInput.admission.komplikasi.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.komplikasi.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                     <td><input x-model="manualInput.admission.komplikasi.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
@@ -167,7 +167,7 @@
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                     <td><input type="text" x-model="manualInput.discharge.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
                       text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400">
+                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
                             </td>
                             <td><input type="text" 
                               x-model="manualInput.discharge.diagnosis.klinis" 
@@ -206,7 +206,7 @@
                       class="border px-2 py-1 w-full rounded 
                       bg-white dark:bg-gray-700 
                       text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400">
+                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
                             </td>
                             <td><input type="text" 
                               x-model="manualInput.discharge.komorbid.klinis" 
@@ -245,7 +245,7 @@
                       class="border px-2 py-1 w-full rounded 
                       bg-white dark:bg-gray-700 
                       text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400">
+                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
                             </td>
                             <td><input type="text" 
                               x-model="manualInput.discharge.komplikasi.klinis" 
