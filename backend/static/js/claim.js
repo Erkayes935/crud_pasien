@@ -13,6 +13,19 @@ function claimData(init) {
       daily: { klinis:[], regulasi:[], tarif:[] },
       discharge: { klinis:[], regulasi:[], tarif:[] }
     },
+    manualInput: {
+      admission: {
+        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      },
+      discharge: {
+        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      },
+      daily: {} // akan diisi dinamis pakai dayId
+    },
     recommendations: { medis:[], regulasi:[], tarif:[] },
     modalOpen: false,
     modalTitle: '',
@@ -34,7 +47,6 @@ function claimData(init) {
       if(s==='invalid') return "❌"
       return ""
     },
-    manualInput: { kategori:"", klinis:"", icd:"", tindakan:"" },
   }
 }
 async function generateAI() {
@@ -90,6 +102,14 @@ async function generateAI() {
     // unique id per hari
     hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
     const dayId = `daily-${idx}`
+    // init manualInput untuk setiap dayId
+    if (!state.manualInput.daily[dayId]) {
+      state.manualInput.daily[dayId] = {
+        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
+        komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"" },
+        komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
+      }
+    }
 
     // bikin accordion section baru
     dailyContainer.insertAdjacentHTML("beforeend", `
@@ -121,29 +141,33 @@ async function generateAI() {
                   </tr>
                 </thead>
                 <tbody id="diagnosis-${dayId}"></tbody>
-                <tbody id="manual-diagnosis-${dayId}">
+                <tbody id="diagnosis-manual-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.kategori" placeholder="Nama penyakit"
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" :value="manualInput.daily[dayId].diagnosis.kategori" placeholder="Nama penyakit"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
                                     focus:ring-2 focus:ring-blue-400"></td>
-                  <td><input x-model="manualInput.klinis" placeholder="Klinis"
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400"></td>
-                  <td><input x-model="manualInput.icd" placeholder="ICD"
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400"></td>
-                  <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400"></td>
-                  <td>-</td>
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
                     <button @click="addManual('diagnosis','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
@@ -174,17 +198,33 @@ async function generateAI() {
                   </tr>
                 </thead>
                 <tbody id="komorbid-${dayId}"></tbody>
-                <tbody id="manual-komorbid-${dayId}">
+                <tbody id="komorbid-manual-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded ..."></td>
-                <td><input x-model="manualInput.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded ..."></td>
-                <td><input x-model="manualInput.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded ..."></td>
-                <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded ..."></td>
-                <td>-</td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
                 <td>
                   <button @click="addManual('komorbid','${dayId}')"
                           class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
@@ -215,17 +255,33 @@ async function generateAI() {
                   </tr>
                 </thead>
                 <tbody id="komplikasi-${dayId}"></tbody>
-                <tbody id="manual-komplikasi-${dayId}">
+                <tbody id="komplikasi-manual-${dayId}">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.kategori" placeholder="Komplikasi"
-                            class="border px-2 py-1 w-full rounded ..."></td>
-                  <td><input x-model="manualInput.klinis" placeholder="Klinis"
-                            class="border px-2 py-1 w-full rounded ..."></td>
-                  <td><input x-model="manualInput.icd" placeholder="ICD"
-                            class="border px-2 py-1 w-full rounded ..."></td>
-                  <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
-                            class="border px-2 py-1 w-full rounded ..."></td>
-                  <td>-</td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400"></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
                     <button @click="addManual('komplikasi','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
@@ -246,9 +302,9 @@ async function generateAI() {
       dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
     }
     // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily")
-    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily")
-    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", "daily")
+    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily", dayId)
+    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily", dayId)
+    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", "daily", dayId)
       })
     } else {
       // fallback lama kalau backend masih kirim 1 blok
@@ -300,7 +356,7 @@ async function generateAI() {
 
 
 // ==================== Render Table ====================
-function renderTable(targetId, items, type, tab) {
+function renderTable(targetId, items, type, tab, dayId = null) {
   const state = Alpine.$data(document.getElementById('claimRoot'))  // ✅ ambil Alpine state
   if (!state.simulasi[tab]) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
@@ -355,13 +411,9 @@ function renderTable(targetId, items, type, tab) {
 
 
   // update counter di header
-  let countEl = document.getElementById(`count-${type}-${tab}`)
-  if (!countEl && typeof dayId !== "undefined") {
-    countEl = document.getElementById(`count-${type}-${dayId}`)
-  }
-  if (countEl) {
-    countEl.textContent = items.length
-  }
+  let counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
+  const countEl = document.getElementById(counterId)
+  if (countEl) countEl.textContent = items.length
 
   console.log("✅ renderTable synced", tab, type, state.simulasi[tab][type])
 }
@@ -637,23 +689,38 @@ async function loadRecommendations(claimId) {
               </tr>
             </thead>
             <tbody id="diagnosis-${dayId}"></tbody>
-            <tbody id="manual-diagnosis-${dayId}">
+            <tbody id="diagnosis-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-              <td><input x-model="manualInput.kategori" placeholder="Nama penyakit"
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" placeholder="Nama penyakit"
                         class="border px-2 py-1 w-full rounded 
                                 bg-white dark:bg-gray-700 
                                 text-gray-900 dark:text-gray-100 
                                 focus:ring-2 focus:ring-blue-400"></td>
-              <td><input x-model="manualInput.klinis" placeholder="Klinis"
-                        class="border px-2 py-1 w-full rounded …"></td>
-              <td><input x-model="manualInput.icd" placeholder="ICD"
-                        class="border px-2 py-1 w-full rounded …"></td>
-              <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
-                        class="border px-2 py-1 w-full rounded …"></td>
-              <td>-</td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
+                        class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
+                        class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
+                        class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
+                        class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
               <td>
                 <button @click="addManual('diagnosis','${dayId}')"
-                        class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                        class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
               </td>
             </tr>
             </tbody>
@@ -682,24 +749,39 @@ async function loadRecommendations(claimId) {
               </tr>
             </thead>
             <tbody id="komorbid-${dayId}"></tbody>
-            <tbody id="manual-komorbid-${dayId}">
+            <tbody id="komorbid-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td>-</td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td>
                   <button @click="addManual('komorbid','${dayId}')"
-                          class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                          class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
                 </td>
               </tr>
             </tbody>
@@ -728,24 +810,39 @@ async function loadRecommendations(claimId) {
               </tr>
             </thead>
             <tbody id="komplikasi-${dayId}"></tbody>
-            <tbody id="manual-komplikasi-${dayId}">
+            <tbody id="komplikasi-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.kategori" placeholder="Komplikasi"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                                  text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td>-</td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
                 <td>
                   <button @click="addManual('komplikasi','${dayId}')"
-                          class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                          class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
                 </td>
               </tr>
             </tbody>
@@ -795,18 +892,27 @@ function addManual(type, tab) {
   if (!Array.isArray(state.simulasi[tab][type])) {
     state.simulasi[tab][type] = []
   }
+  
+  let input
+  if (tab.startsWith("daily-")) {
+    input = state.manualInput.daily[tab][type]
+  } else {
+    input = state.manualInput[tab][type]
+  }
+
 
   // Buat object baru dari input manual
+  // PERBAIKAN
   const newItem = {
-    name: state.manualInput.kategori || "-",
-    label: "",
-    kategori: state.manualInput.kategori || "",
-    klinis: state.manualInput.klinis || "-",     
-    icd: state.manualInput.icd || "-",        
-    tindakan: state.manualInput.tindakan || "-", 
+    name: input.kategori || "-",
+    kategori: input.kategori || "",
+    klinis: input.klinis || "-",
+    icd: input.icd || "-",
+    tindakan: input.tindakan || "-",
     score: 0,
     mapping: ""
   }
+
 
   // Masukkan ke simulasi
   state.simulasi[tab][type].push(newItem)
@@ -824,10 +930,14 @@ function addManual(type, tab) {
   `)
 
   // Reset input manual (jangan ganti object)
-  state.manualInput.kategori = ""
-  state.manualInput.klinis = ""
-  state.manualInput.icd = ""
-  state.manualInput.tindakan = ""
+  // PERBAIKAN
+  if (tab.startsWith("daily-")) {
+  state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  } else {
+    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  }
+
+
 
   // Trigger AI recommendation
   fetch("/ai/recommendation", {

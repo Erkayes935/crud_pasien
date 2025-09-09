@@ -795,6 +795,10 @@ def finalize_claim(
                     status=item.get("status"),
                     message=item.get("message"),
                     confidence=item.get("confidence"),
+                    created_at=datetime.utcnow()-timedelta(days=5),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=True
                 )
                 db.add(summary_row)
 
@@ -812,7 +816,9 @@ def finalize_claim(
             updated_by=user.id,
             updated_at=datetime.utcnow(),
             version=latest_version + 1,
-            data_snapshot=json.dumps(claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {}, ensure_ascii=False)
+            data_snapshot=json.dumps(claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {}, ensure_ascii=False),
+            is_deleted=False,
+            is_dummy=True
         )
         db.add(log_mr)
 
@@ -822,7 +828,9 @@ def finalize_claim(
         action="FINALIZED",
         description=f"Klaim {claim.id} difinalisasi oleh {user.name}",
         updated_by=user.id,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
     )
     db.add(log_claim)
 
