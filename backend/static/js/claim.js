@@ -120,7 +120,8 @@ async function generateAI() {
                     <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
                   </tr>
                 </thead>
-                <tbody id="diagnosis-${dayId}">
+                <tbody id="diagnosis-${dayId}"></tbody>
+                <tbody id="manual-diagnosis-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                   <td><input x-model="manualInput.kategori" placeholder="Nama penyakit"
                             class="border px-2 py-1 w-full rounded 
@@ -172,7 +173,8 @@ async function generateAI() {
                     <th>Tindakan</th><th>Score</th><th>Mapping</th>
                   </tr>
                 </thead>
-                <tbody id="komorbid-${dayId}">
+                <tbody id="komorbid-${dayId}"></tbody>
+                <tbody id="manual-komorbid-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                 <td><input x-model="manualInput.kategori" placeholder="Komorbid"
                            class="border px-2 py-1 w-full rounded ..."></td>
@@ -212,7 +214,8 @@ async function generateAI() {
                     <th>Tindakan</th><th>Score</th><th>Mapping</th>
                   </tr>
                 </thead>
-                <tbody id="komplikasi-${dayId}">
+                <tbody id="komplikasi-${dayId}"></tbody>
+                <tbody id="manual-komplikasi-${dayId}">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                   <td><input x-model="manualInput.kategori" placeholder="Komplikasi"
                             class="border px-2 py-1 w-full rounded ..."></td>
@@ -319,12 +322,6 @@ function renderTable(targetId, items, type, tab) {
   const target = document.getElementById(targetId)
   if (!target) return
 
-  // simpan row manual (kalau ada) supaya nggak hilang
-  const manualRow = target.querySelector(".manual-row")
-
-  // kosongkan tbody
-  target.innerHTML = ""
-
   // render semua item AI/rekomendasi
   state.simulasi[tab][type].forEach((item, idx) => {
     target.insertAdjacentHTML("beforeend", `
@@ -356,10 +353,6 @@ function renderTable(targetId, items, type, tab) {
     `)
   })
 
-  // tambahkan kembali row manual (biar nggak hilang dan tetep dark mode friendly)
-  if (manualRow) {
-    target.appendChild(manualRow)
-  }
 
   // update counter di header
   let countEl = document.getElementById(`count-${type}-${tab}`)
@@ -643,7 +636,8 @@ async function loadRecommendations(claimId) {
                 <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
               </tr>
             </thead>
-            <tbody id="diagnosis-${dayId}">
+            <tbody id="diagnosis-${dayId}"></tbody>
+            <tbody id="manual-diagnosis-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
               <td><input x-model="manualInput.kategori" placeholder="Nama penyakit"
                         class="border px-2 py-1 w-full rounded 
@@ -673,9 +667,9 @@ async function loadRecommendations(claimId) {
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komorbid
-            <span id="count-diagnosis-daily-${idx}"
+            <span id="count-komorbid-daily-${idx}"
             class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.diagnosis || []).length}
+              ${(hari.komorbid || []).length}
             </span>
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
@@ -687,7 +681,8 @@ async function loadRecommendations(claimId) {
                 <th>Tindakan</th><th>Score</th><th>Mapping</th>
               </tr>
             </thead>
-            <tbody id="komorbid-${dayId}">
+            <tbody id="komorbid-${dayId}"></tbody>
+            <tbody id="manual-komorbid-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                 <td><input x-model="manualInput.kategori" placeholder="Komorbid"
                            class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
@@ -718,9 +713,9 @@ async function loadRecommendations(claimId) {
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komplikasi
-            <span id="count-diagnosis-daily-${idx}"
+            <span id="count-komplikasi-daily-${idx}"
             class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.diagnosis || []).length}
+              ${(hari.komplikasi || []).length}
             </span>
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
@@ -732,7 +727,8 @@ async function loadRecommendations(claimId) {
                 <th>Tindakan</th><th>Score</th><th>Mapping</th>
               </tr>
             </thead>
-            <tbody id="komplikasi-${dayId}">
+            <tbody id="komplikasi-${dayId}"></tbody>
+            <tbody id="manual-komplikasi-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                 <td><input x-model="manualInput.kategori" placeholder="Komplikasi"
                            class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
@@ -815,6 +811,18 @@ function addManual(type, tab) {
   // Masukkan ke simulasi
   state.simulasi[tab][type].push(newItem)
 
+  const manualBody = document.getElementById(`${type}-manual-${tab}`)
+  manualBody.insertAdjacentHTML("beforeend", `
+    <tr class="bg-gray-50 dark:bg-gray-800">
+      <td>${newItem.kategori}</td>
+      <td>${newItem.klinis}</td>
+      <td>${newItem.icd}</td>
+      <td>${newItem.tindakan}</td>
+      <td>${newItem.score}</td>
+      <td>-</td>
+    </tr>
+  `)
+
   // Reset input manual (jangan ganti object)
   state.manualInput.kategori = ""
   state.manualInput.klinis = ""
@@ -822,7 +830,7 @@ function addManual(type, tab) {
   state.manualInput.tindakan = ""
 
   // Trigger AI recommendation
-  fetch("/api/ai/recommendation", {
+  fetch("/ai/recommendation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kategori: newItem.kategori })

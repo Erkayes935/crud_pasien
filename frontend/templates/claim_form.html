@@ -56,10 +56,11 @@
                 <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
                     <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}</th>
+                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
                   </tr>
                 </thead>
-                <tbody id="{{ acc|lower }}-admission">
+                <tbody id="{{ acc|lower }}-admission"></tbody>
+                <tbody id="{{ acc|lower }}-manual-admission">
                   <template x-for="(item, idx) in simulasi.admission.diagnosis" :key="idx">
                     <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                       <td x-text="item.kategori"></td>
@@ -85,7 +86,7 @@
                         bg-white dark:bg-gray-700 
                         text-gray-900 dark:text-gray-100 
                         focus:ring-2 focus:ring-blue-400"></td>
-                    <td><button @click="addManual('diagnosis','admission')">➕</button></td>
+                    <td><button @click="addManual('{{ acc|lower }}','admission')">➕</button></td>
                   </tr>
                 </tbody>
               </table>
@@ -148,10 +149,11 @@
                 <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
                     <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}</th>
+                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
                   </tr>
                 </thead>
-                <tbody id="{{ acc|lower }}-discharge">
+                <tbody id="{{ acc|lower }}-discharge"></tbody>
+                <tbody id="{{ acc|lower }}-manual-discharge">
                   <template x-for="(item, idx) in simulasi.discharge.diagnosis" :key="idx">
                     <tr class="manual-row bg-gray-50 dark:bg-gray-800">
                       <td x-text="item.kategori"></td>
@@ -164,32 +166,32 @@
                     <td><input type="text" 
                       x-model="manualInput.kategori" 
                       class="border px-2 py-1 w-full rounded 
-              bg-white dark:bg-gray-700 
-              text-gray-900 dark:text-gray-100 
-              focus:ring-2 focus:ring-blue-400">
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100 
+                      focus:ring-2 focus:ring-blue-400">
+                            </td>
+                            <td><input type="text" 
+                              x-model="manualInput.klinis" 
+                              class="border px-2 py-1 w-full rounded 
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100 
+                      focus:ring-2 focus:ring-blue-400">
+                            </td>
+                            <td><input type="text" 
+                              x-model="manualInput.icd" 
+                              class="border px-2 py-1 w-full rounded 
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100 
+                      focus:ring-2 focus:ring-blue-400">
+                            </td>
+                            <td><input type="text" 
+                              x-model="manualInput.tindakan" 
+                              class="border px-2 py-1 w-full rounded 
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-gray-100 
+                      focus:ring-2 focus:ring-blue-400">
                     </td>
-                    <td><input type="text" 
-                      x-model="manualInput.klinis" 
-                      class="border px-2 py-1 w-full rounded 
-              bg-white dark:bg-gray-700 
-              text-gray-900 dark:text-gray-100 
-              focus:ring-2 focus:ring-blue-400">
-                    </td>
-                    <td><input type="text" 
-                      x-model="manualInput.icd" 
-                      class="border px-2 py-1 w-full rounded 
-              bg-white dark:bg-gray-700 
-              text-gray-900 dark:text-gray-100 
-              focus:ring-2 focus:ring-blue-400">
-                    </td>
-                    <td><input type="text" 
-                      x-model="manualInput.tindakan" 
-                      class="border px-2 py-1 w-full rounded 
-              bg-white dark:bg-gray-700 
-              text-gray-900 dark:text-gray-100 
-              focus:ring-2 focus:ring-blue-400">
-                    </td>
-                    <td><button @click="addManual('diagnosis','discharge')">➕</button></td>
+                    <td><button @click="addManual('{{ acc|lower }}','discharge')">➕</button></td>
                   </tr>
                 </tbody>
               </table>
