@@ -10,6 +10,8 @@ COPY web/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY web .
+COPY ../core_engine /app/core_engine
+ENV PYTHONPATH="/app"
 
 EXPOSE 8001
 

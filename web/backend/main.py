@@ -13,6 +13,7 @@ and DB operations live in `crud.py` and models are in `models.py`.
 """
 
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter, Body
+from core_engine.endpoints import router as core_router
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -60,6 +61,7 @@ def get_flashed_messages(request: Request):
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+app.include_router(core_router, prefix="/api")
 templates = Jinja2Templates(directory="frontend/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 app.add_middleware(SessionMiddleware, secret_key=config.SESSION_SECRET, same_site="lax", https_only=False)
