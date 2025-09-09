@@ -36,7 +36,10 @@
     </div>
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-semibold">Rekomendasi Klaim</h3>
-      <button onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
+      <div class="flex gap-2">
+        <button onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
+        <button type="button" class="bg-green-500 text-white px-3 py-2 rounded text-sm" onclick="openResumePopup()">📄 Generate Resume</button>
+      </div>
     </div>
     <!-- Tabs -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
@@ -309,12 +312,27 @@
   </div>
 </div>
 
-  <!-- Modal Detail -->
-  <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" @click.self="modalOpen=false">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-3xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
-      <button @click="modalOpen=false" class="absolute top-3 right-3">✖</button>
-      <h3 class="text-lg font-bold mb-4" x-text="modalTitle"></h3>
-      <div class="space-y-2 text-sm" x-html="modalContent"></div>
+  <!-- Modal Resume Medis -->
+  <div id="resumeModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+    <div class="bg-white p-4 rounded-lg w-2/3 max-h-[80vh] overflow-y-auto relative">
+      <button onclick="closeResumePopup()" class="absolute top-3 right-3">✖</button>
+      <h2 class="text-lg font-bold mb-2">Resume Medis</h2>
+      <div class="mb-2">
+        Mode:
+        <label><input type="radio" name="mode" value="list" checked onchange="updateResume()"> List</label>
+        <label><input type="radio" name="mode" value="naratif" onchange="updateResume()"> Naratif AI</label>
+      </div>
+      <div class="mb-2">
+        <label><input type="checkbox" id="chkRegulasi" checked onchange="updateResume()"> Sertakan Regulasi</label>
+        <label><input type="checkbox" id="chkObat" checked onchange="updateResume()"> Sertakan Obat</label>
+        <label><input type="checkbox" id="chkRingkas" onchange="updateResume()"> Format Ringkas</label>
+      </div>
+      <div id="resumePreview" class="border p-2 rounded bg-gray-50 mb-2"></div>
+      <div class="mt-3 flex justify-end gap-2">
+        <button onclick="copyResume()" class="bg-blue-500 text-white px-3 py-1 rounded">Copy Text</button>
+        <button onclick="downloadResumePDF()" class="bg-purple-600 text-white px-3 py-1 rounded">Download PDF</button>
+        <button onclick="closeResumePopup()" class="bg-gray-400 text-white px-3 py-1 rounded">Close</button>
+      </div>
     </div>
   </div>
 </div>

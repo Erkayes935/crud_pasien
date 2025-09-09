@@ -1,3 +1,6 @@
+
+# ...existing code...
+
 """
 Module: backend.main
 
@@ -13,7 +16,6 @@ and DB operations live in `crud.py` and models are in `models.py`.
 """
 
 from fastapi import FastAPI, Depends, Request, Form, UploadFile, File, HTTPException, Query, APIRouter, Body
-from core_engine.endpoints import router as core_router
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -60,8 +62,24 @@ def get_flashed_messages(request: Request):
 # Init DB & App
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
+# PROXY ENDPOINT FOR RESUME MEDIS
+@app.post("/api/resume_medis")
+async def proxy_resume_medis(request: Request):
+    try:
+        async with httpx.AsyncClient() as client:
+            data = await request.json()
+            response = await client.post(
+                "http://core_engine:8002/resume_medis",
+                json=data,
+                timeout=60.0
+            )
+        return JSONResponse(status_code=response.status_code, content=response.json())
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Core Engine unreachable: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+    
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
-app.include_router(core_router, prefix="/api")
 templates = Jinja2Templates(directory="frontend/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 app.add_middleware(SessionMiddleware, secret_key=config.SESSION_SECRET, same_site="lax", https_only=False)

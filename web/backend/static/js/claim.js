@@ -1,3 +1,83 @@
+// ==================== Resume Medis Modal ====================
+function openResumePopup() {
+  document.getElementById("resumeModal").classList.remove("hidden");
+  updateResume();
+}
+
+function closeResumePopup() {
+  document.getElementById("resumeModal").classList.add("hidden");
+}
+
+async function updateResume() {
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const settings = {
+    regulasi: document.getElementById("chkRegulasi").checked,
+    obat: document.getElementById("chkObat").checked,
+    ringkas: document.getElementById("chkRingkas").checked,
+  };
+  // Dummy payload, nanti bisa diisi dari form
+  const payload = {
+    pasien: { nama: "Andi", no_rm: "RM001", umur: 45, jk: "L", keluhan: "demam tinggi" },
+    visit: { tgl_masuk: "2025-09-01", tgl_pulang: "2025-09-05", jenis_rawat: "Rawat Inap" },
+    diagnosis: { utama: { nama: "Sepsis", kode: "A41.9" }, sekunder: [{ nama: "Hipotensi", kode: "R65.2" }] },
+    tindakan: { utama: { nama: "Ventilasi Mekanik", kode: "96.70" }, sekunder: [] },
+    obat: [{ nama: "Ceftriaxone", dosis: "2x1g IV" }],
+    regulasi: [{ nama: "PNPK Sepsis", detail: "2023" }],
+    dokter: { nama: "dr. Budi" },
+    mode: mode,
+    settings: settings,
+  };
+  try {
+    const res = await fetch("/api/resume_medis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    document.getElementById("resumePreview").innerHTML = renderResumeHTML(data);
+  } catch (err) {
+    document.getElementById("resumePreview").innerText = "Error resume: " + err;
+  }
+}
+
+function renderResumeHTML(data) {
+  if (data.mode === "naratif") {
+    return `<div class='mb-2'><b>Naratif Resume Medis</b></div><div>${data.naratif}</div>`;
+  }
+  // List mode
+  return `
+    <div class='mb-2'><b>Identitas Pasien</b></div>
+    <table class='w-full text-sm mb-2'><tr><td>Nama</td><td>${data.identitas.nama}</td></tr><tr><td>No RM</td><td>${data.identitas.no_rm}</td></tr><tr><td>Umur</td><td>${data.identitas.umur}</td></tr><tr><td>JK</td><td>${data.identitas.jk}</td></tr><tr><td>Keluhan</td><td>${data.identitas.keluhan}</td></tr></table>
+    <div class='mb-2'><b>Diagnosis</b></div>
+    <ul>${data.diagnosis.utama ? `<li>Utama: ${data.diagnosis.utama.nama} [${data.diagnosis.utama.kode}]</li>` : ''}${data.diagnosis.sekunder?.map(dx => `<li>Sekunder: ${dx.nama} [${dx.kode}]</li>`).join('')}</ul>
+    <div class='mb-2'><b>Tindakan</b></div>
+    <ul>${data.tindakan.utama ? `<li>Utama: ${data.tindakan.utama.nama} [${data.tindakan.utama.kode}]</li>` : ''}${data.tindakan.sekunder?.map(td => `<li>Sekunder: ${td.nama || td} [${td.kode || ''}]</li>`).join('')}</ul>
+    <div class='mb-2'><b>Obat</b></div>
+    <ul>${(data.obat||[]).map(ob => `<li>${ob.nama} (${ob.dosis})</li>`).join('')}</ul>
+    <div class='mb-2'><b>Regulasi</b></div>
+    <ul>${(data.regulasi||[]).map(rg => `<li>${rg.nama} (${rg.detail})</li>`).join('')}</ul>
+    <div class='mb-2'><b>Dokter</b></div>
+    <ul><li>${data.dokter.nama}</li></ul>
+    <div class='mt-2 text-xs text-gray-500'>Created: ${data.created_at}</div>
+  `;
+}
+
+function copyResume() {
+  const text = document.getElementById("resumePreview").innerText;
+  navigator.clipboard.writeText(text);
+  alert("Resume copied to clipboard!");
+}
+
+function downloadResumePDF() {
+  const element = document.getElementById("resumePreview");
+  html2pdf().set({
+    margin: 0.5,
+    filename: 'resume_medis.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  }).from(element).save();
+}
 // ==================== Generate AI ====================
 // Export hasil simulasi ke PDF
 document.addEventListener('DOMContentLoaded', function() {
