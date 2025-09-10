@@ -176,6 +176,7 @@ class ClaimAIRecommendation(Base):
     type = Column(String(50), nullable=False)   # diagnosis / procedure
     category = Column(String(50), nullable=False) # ddx / komorbid / komplikasi / pretindakan
     sim_text = Column(Text, nullable=False)          # nama diagnosis/tindakan
+    sim_detail = Column(JSONB, nullable=True)        # simpan dict lengkap
     icd10_code = Column(String(20), nullable=True)
     icd9_code = Column(String(20), nullable=True)
     confidence_score = Column(Integer, nullable=True)

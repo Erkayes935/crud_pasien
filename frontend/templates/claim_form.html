@@ -438,6 +438,10 @@
       <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
       {% if role and role == 'doctor' %}
       <form method="post" action="/claims/{{ record.id }}/update-draft">
+        <!-- ID klaim & rekam medis -->
+        <input type="hidden" name="claim_id" value="{{ record.id }}">
+        <input type="hidden" name="medical_record_id" value="{{ record.medical_record_id }}">
+
         <!-- Hidden inputs supaya ikut terkirim -->
         <input type="hidden" name="simulasi" :value="JSON.stringify(simulasi)">
         <input type="hidden" name="summary" :value="JSON.stringify(summary)">
@@ -452,13 +456,17 @@
 
       {% if role and role == 'verifikator' and record and record.status == 'draft' %}
       <form method="post" action="/claims/{{ record.id }}/finalize">
-        <!-- Hidden input summary juga ikut -->
+        <!-- ID klaim & rekam medis -->
+        <input type="hidden" name="claim_id" value="{{ record.id }}">
+        <input type="hidden" name="medical_record_id" value="{{ record.medical_record_id }}">
+
+        <!-- Hidden inputs lain -->
         <input type="hidden" name="summary" :value="JSON.stringify(summary)">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <button type="submit"
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
-          Simpan Final
+          Save Final
         </button>
       </form>
       {% endif %}

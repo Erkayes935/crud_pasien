@@ -794,17 +794,25 @@ def finalize_claim(
                         claim_id=claim.id,
                         category=jenis,
                         type="utama",
-                        sim_text=item,
-                        is_active=True
-                    ))
-                for item in arr.get("sekunder", []):
+                        sim_text=item["name"] if isinstance(item, dict) else str(item),
+                        sim_detail=item if isinstance(item, dict) else None,
+                        created_at=datetime.utcnow()-timedelta(days=5),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
+                ))
+            for item in arr.get("sekunder", []):
                     db.add(models.ClaimAIRecommendation(
                         claim_id=claim.id,
                         category=jenis,
                         type="sekunder",
-                        sim_text=item,
-                        is_active=True
-                    ))
+                        sim_text=item["name"] if isinstance(item, dict) else str(item),
+                        sim_detail=item if isinstance(item, dict) else None,
+                        created_at=datetime.utcnow()-timedelta(days=5),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
+                ))
         except Exception as e:
             print("❌ Gagal parse simulasi:", e)
 
@@ -1305,22 +1313,40 @@ def update_claim_draft(
     if simulasi:
         try:
             data = json.loads(simulasi)
+            print("🟢 Simulasi keys:", list(data.keys()))  # cek admission/daily/discharge
+            print("🟢 Simulasi sample:", json.dumps(data, indent=2, ensure_ascii=False)[:500])  # potong biar gak kepanjangan
             for jenis, arr in data.items():
                 for item in arr.get("utama", []):
                     db.add(models.ClaimAIRecommendation(
                         claim_id=claim.id,
                         category=jenis,
                         type="utama",
-                        sim_text=item,
-                        is_active=True
+                        sim_text=item.get("name") if isinstance(item, dict) else str(item),
+                        sim_detail=item if isinstance(item, dict) else None,
+                        icd10_code=item.get("icd") if isinstance(item, dict) else None,
+                        icd9_code=item.get("tindakan") if isinstance(item, dict) else None,
+                        confidence_score=item.get("score") if isinstance(item, dict) else None,
+                        regulation_refs=item.get("modal_detail") if isinstance(item, dict) else None,
+                        created_at=datetime.utcnow()-timedelta(days=5),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     ))
                 for item in arr.get("sekunder", []):
                     db.add(models.ClaimAIRecommendation(
                         claim_id=claim.id,
                         category=jenis,
                         type="sekunder",
-                        sim_text=item,
-                        is_active=True
+                        sim_text=item.get("name") if isinstance(item, dict) else str(item),
+                        sim_detail=item if isinstance(item, dict) else None,
+                        icd10_code=item.get("icd") if isinstance(item, dict) else None,
+                        icd9_code=item.get("tindakan") if isinstance(item, dict) else None,
+                        confidence_score=item.get("score") if isinstance(item, dict) else None,
+                        regulation_refs=item.get("modal_detail") if isinstance(item, dict) else None,
+                        created_at=datetime.utcnow()-timedelta(days=5),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=True,
+                        is_dummy=False
                     ))
         except Exception as e:
             print("❌ Gagal parse simulasi:", e)
@@ -1335,35 +1361,35 @@ def update_claim_draft(
     # 🔹 Update rekam medis
     if claim.medical_record:
         mr = claim.medical_record
-        mr.riwayat_penyakit = riwayat_penyakit or None
-        mr.riwayat_pengobatan = riwayat_pengobatan or None
-        mr.riwayat_operasi = riwayat_operasi or None
-        mr.alergi = alergi or None
-        mr.keluhan = keluhan or None
-        mr.gejala_lain = gejala_lain or None
-        mr.td = td or None
-        mr.nadi = nadi or None
-        mr.pernapasan = pernapasan or None
-        mr.suhu = suhu or None
-        mr.spo2 = spo2 or None
-        mr.berat_badan = berat_badan or None
-        mr.tinggi_badan = tinggi_badan or None
-        mr.hemoglobin = hemoglobin or None
-        mr.leukosit = leukosit or None
-        mr.trombosit = trombosit or None
-        mr.gula_darah = gula_darah or None
-        mr.creatinin = creatinin or None
-        mr.rontgen_thorax = rontgen_thorax or None
-        mr.ct_scan = ct_scan or None
-        mr.usg = usg or None
-        mr.diagnosis_awal = diagnosis_awal or None
-        mr.komorbid = komorbid or None
-        mr.komplikasi = komplikasi or None
-        mr.diagnosis_akhir = diagnosis_akhir or None
-        mr.tindakan = tindakan or None
-        mr.obat = obat or None
-        mr.validasi_fornas = validasi_fornas or None
-        mr.notes_doctor = notes_doctor or None
+        mr.riwayat_penyakit = riwayat_penyakit if riwayat_penyakit is not None else mr.riwayat_penyakit
+        mr.riwayat_pengobatan = riwayat_pengobatan if riwayat_pengobatan is not None else mr.riwayat_pengobatan
+        mr.riwayat_operasi = riwayat_operasi if riwayat_operasi is not None else mr.riwayat_operasi
+        mr.alergi = alergi if alergi is not None else mr.alergi
+        mr.keluhan = keluhan if keluhan is not None else mr.keluhan
+        mr.gejala_lain = gejala_lain if gejala_lain is not None else mr.gejala_lain
+        mr.td = td if td is not None else mr.td
+        mr.nadi = nadi if nadi is not None else mr.nadi
+        mr.pernapasan = pernapasan if pernapasan is not None else mr.pernapasan
+        mr.suhu = suhu if suhu is not None else mr.suhu
+        mr.spo2 = spo2 if spo2 is not None else mr.spo2
+        mr.berat_badan = berat_badan if berat_badan is not None else mr.berat_badan
+        mr.tinggi_badan = tinggi_badan if tinggi_badan is not None else mr.tinggi_badan
+        mr.hemoglobin = hemoglobin if hemoglobin is not None else mr.hemoglobin
+        mr.leukosit = leukosit if leukosit is not None else mr.leukosit
+        mr.trombosit = trombosit if trombosit is not None else mr.trombosit
+        mr.gula_darah = gula_darah if gula_darah is not None else mr.gula_darah
+        mr.creatinin = creatinin if creatinin is not None else mr.creatinin
+        mr.rontgen_thorax = rontgen_thorax if rontgen_thorax is not None else mr.rontgen_thorax
+        mr.ct_scan = ct_scan if ct_scan is not None else mr.ct_scan
+        mr.usg = usg if usg is not None else mr.usg
+        mr.diagnosis_awal = diagnosis_awal if diagnosis_awal is not None else mr.diagnosis_awal
+        mr.komorbid = komorbid if komorbid is not None else mr.komorbid
+        mr.komplikasi = komplikasi if komplikasi is not None else mr.komplikasi
+        mr.diagnosis_akhir = diagnosis_akhir if diagnosis_akhir is not None else mr.diagnosis_akhir
+        mr.tindakan = tindakan if tindakan is not None else mr.tindakan
+        mr.obat = obat if obat is not None else mr.obat
+        mr.validasi_fornas = validasi_fornas if validasi_fornas is not None else mr.validasi_fornas
+        mr.notes_doctor = notes_doctor if notes_doctor is not None else mr.notes_doctor
         mr.updated_at = datetime.utcnow()
 
         # log rekam medis
@@ -1392,6 +1418,9 @@ def update_claim_draft(
         is_deleted=False,
         is_dummy=True
     ))
+
+    print("🟢 rekam medis", mr.__dict__)
+    print("🟢 summary_draft", claim.summary_draft)
 
     db.commit()
     db.refresh(claim)
@@ -1577,17 +1606,25 @@ def update_claim(
                         claim_id=claim.id,
                         category=jenis,
                         type="utama",
-                        sim_text=item,
-                        is_active=True
+                        sim_text=item["name"] if isinstance(item, dict) else str(item),
+                        sim_detail=item if isinstance(item, dict) else None,
+                        created_at=datetime.utcnow()-timedelta(days=1),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     ))
-                for item in arr.get("sekunder", []):
-                    db.add(models.ClaimAIRecommendation(
-                        claim_id=claim.id,
-                        category=jenis,
-                        type="sekunder",
-                        sim_text=item,
-                        is_active=True
-                    ))
+            for item in arr.get("sekunder", []):
+                db.add(models.ClaimAIRecommendation(
+                    claim_id=claim.id,
+                    category=jenis,
+                    type="sekunder",
+                    sim_text=item["name"] if isinstance(item, dict) else str(item),
+                    sim_detail=item if isinstance(item, dict) else None,
+                    created_at=datetime.utcnow()-timedelta(days=1),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=True
+                ))
         except Exception as e:
             print("❌ Gagal parse simulasi:", e)
 
@@ -2271,9 +2308,9 @@ def list_medical_records(
     total = query.count()
     records = (
         query.order_by(models.MedicalRecord.id.desc())
+             .filter(models.MedicalRecord.is_deleted == False)
              .offset((page-1)*page_size)
              .limit(page_size)
-             .filter(models.MedicalRecord.is_deleted == False)
              .all()
     )
     total_pages = (total + page_size - 1) // page_size
