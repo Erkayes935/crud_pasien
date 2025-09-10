@@ -1,17 +1,19 @@
-{# _form_renderer.html #}
+{# _form_renderer.html (final versi form POST murni) #}
 {% if not field.roles or current_user.role in field.roles %}
 
   {% if field.type == "hidden" %}
-    <input type="hidden" name="{{ field.name }}"
-           x-model="form.{{ field.name }}"
-           :value="form.{{ field.name }} || '{{ field.get('value') or (record|attr(field.name) if record else '') }}'">
+    <input type="hidden" 
+           name="{{ field.name }}" 
+           value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
 
   {% elif field.type in ["text","email","date","number"] %}
     <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
-      <input type="{{ field.type }}" name="{{ field.name }}"
-             x-model="form.{{ field.name }}"
-             :value="form.{{ field.name }} || '{{ field.get('value') or (record|attr(field.name) if record else '') }}'"
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
+      </label>
+      <input type="{{ field.type }}" 
+             name="{{ field.name }}" 
+             value="{{ field.get('value') or (record|attr(field.name) if record else '') }}"
              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
@@ -20,60 +22,74 @@
 
   {% elif field.type == "textarea" %}
     <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
+      </label>
       <textarea name="{{ field.name }}" rows="3"
-                x-model="form.{{ field.name }}"
-                x-text="form.{{ field.name }}"
                 class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                        focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-                {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}></textarea>
+                {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}>
+        {{ field.get('value') or (record|attr(field.name) if record else '') }}
+      </textarea>
     </div>
 
   {% elif field.type == "select" %}
     <div>
-      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
-      <select id="{{ field.name }}" name="{{ field.name }}"
-              x-model="form.{{ field.name }}"
-              :value="form.{{ field.name }} || '{{ field.get('value') or (record|attr(field.name) if record else '') }}'"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 bg-white dark:bg-gray-800">
-        <option value="" disabled>-- Pilih {{ field.label or field.name }} --</option>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
+      </label>
+      <select name="{{ field.name }}"
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              {% if current_user.role in field.get("readonly_roles", []) %}disabled{% endif %}>
+        <option value="">-- Pilih {{ field.label or field.name }} --</option>
         {% for val, label in field.options %}
-        <option value="{{ val }}">{{ label }}</option>
+          <option value="{{ val }}"
+                  {% if field.get('value') == val or (record and record|attr(field.name) == val) %}selected{% endif %}>
+            {{ label }}
+          </option>
         {% endfor %}
       </select>
       {% if current_user.role in field.get("readonly_roles", []) %}
-        <input type="hidden" name="{{ field.name }}" 
-               :value="form.{{ field.name }} || '{{ field.get('value') or (record|attr(field.name) if record else '') }}'">
+        <input type="hidden" 
+               name="{{ field.name }}" 
+               value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
       {% endif %}
     </div>
 
   {% elif field.type == "readonly" %}
     <div>
-        <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">{{ field.label }}</label>
-        <input type="text" 
-               :value="form.{{ field.name }} || '{{ field.value }}'"
-               readonly
-               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
-                      bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                      font-semibold cursor-not-allowed">
-        {% if field.hidden_name %}
-            <input type="hidden" name="{{ field.hidden_name }}" :value="form.{{ field.hidden_name }} || '{{ field.hidden_value }}'">
-        {% endif %}
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
+      </label>
+      <input type="text" 
+             value="{{ field.value or (record|attr(field.name) if record else '') }}"
+             readonly
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                    font-semibold cursor-not-allowed">
+      {% if field.hidden_name %}
+        <input type="hidden" 
+               name="{{ field.hidden_name }}" 
+               value="{{ field.hidden_value }}">
+      {% endif %}
     </div>
 
   {% elif field.type == "checkbox" %}
     <div class="flex items-center space-x-2">
-      <input type="checkbox" name="{{ field.name }}" value="true"
-             x-model="form.{{ field.name }}"
-             :checked="form.{{ field.name }}"
+      <input type="checkbox" 
+             name="{{ field.name }}" 
+             value="true"
              class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+             {% if field.get("value") or (record and record|attr(field.name)) %}checked{% endif %}
              {% if current_user.role in field.get("readonly_roles", []) %}disabled{% endif %}>
       <label class="text-sm text-gray-700 dark:text-gray-200">
         {{ field.label or field.name }}
       </label>
       {% if current_user.role in field.get("readonly_roles", []) %}
-        <input type="hidden" name="{{ field.name }}" :value="form.{{ field.name }}">
+        <input type="hidden" name="{{ field.name }}" 
+               value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
       {% endif %}
     </div>
   {% endif %}

@@ -769,140 +769,121 @@ def get_claim_recommendations(
 def finalize_claim(
     request: Request,
     claim_id: int,
+    simulasi: str = Form(None),
     summary: str = Form(None),
+    # rekam medis
+    riwayat_penyakit: Optional[str] = Form(None),
+    riwayat_pengobatan: Optional[str] = Form(None),
+    riwayat_operasi: Optional[str] = Form(None),
+    alergi: Optional[str] = Form(None),
+    keluhan: Optional[str] = Form(None),
+    gejala_lain: Optional[str] = Form(None),
+    td: Optional[str] = Form(None),
+    nadi: Optional[str] = Form(None),
+    pernapasan: Optional[str] = Form(None),
+    suhu: Optional[str] = Form(None),
+    spo2: Optional[str] = Form(None),
+    berat_badan: Optional[str] = Form(None),
+    tinggi_badan: Optional[str] = Form(None),
+    hemoglobin: Optional[str] = Form(None),
+    leukosit: Optional[str] = Form(None),
+    trombosit: Optional[str] = Form(None),
+    gula_darah: Optional[str] = Form(None),
+    creatinin: Optional[str] = Form(None),
+    rontgen_thorax: Optional[str] = Form(None),
+    ct_scan: Optional[str] = Form(None),
+    usg: Optional[str] = Form(None),
+    diagnosis_awal: Optional[str] = Form(None),
+    komorbid: Optional[str] = Form(None),
+    komplikasi: Optional[str] = Form(None),
+    diagnosis_akhir: Optional[str] = Form(None),
+    tindakan: Optional[str] = Form(None),
+    obat: Optional[str] = Form(None),
+    validasi_fornas: Optional[str] = Form(None),
+    notes_doctor: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("verifikator")),   # hanya verifikator yang bisa finalize
+    user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep)
 ):
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Update status klaim
+    # update status klaim
     claim.is_final = True
-    claim.status = "final"
+    claim.status = "submitted"
+    claim.summary_final = json.loads(summary) if summary else {}
+    claim.simulasi_final = json.loads(simulasi) if simulasi else {}
+    claim.updated_at = datetime.utcnow()
 
-    # Hapus summary lama → simpan yang baru
-    db.query(models.ClaimAIRecommendationSummary).filter_by(claim_id=claim_id).delete()
-
-    if simulasi:
-        try:
-            data = json.loads(simulasi)
-            for jenis, arr in data.items():
-                for item in arr.get("utama", []):
-                    db.add(models.ClaimAIRecommendation(
-                        claim_id=claim.id,
-                        category=jenis,
-                        type="utama",
-                        sim_text=item["name"] if isinstance(item, dict) else str(item),
-                        sim_detail=item if isinstance(item, dict) else None,
-                        created_at=datetime.utcnow()-timedelta(days=5),
-                        updated_at=datetime.utcnow(),
-                        is_deleted=False,
-                        is_dummy=True
-                ))
-            for item in arr.get("sekunder", []):
-                    db.add(models.ClaimAIRecommendation(
-                        claim_id=claim.id,
-                        category=jenis,
-                        type="sekunder",
-                        sim_text=item["name"] if isinstance(item, dict) else str(item),
-                        sim_detail=item if isinstance(item, dict) else None,
-                        created_at=datetime.utcnow()-timedelta(days=5),
-                        updated_at=datetime.utcnow(),
-                        is_deleted=False,
-                        is_dummy=True
-                ))
-        except Exception as e:
-            print("❌ Gagal parse simulasi:", e)
-
-    summary_data = json.loads(summary) if summary else {}
-    for stage, stage_data in summary_data.items():
-        for category, items in stage_data.items():
-            for item in items:
-                summary_row = models.ClaimAIRecommendationSummary(
-                    claim_id=claim_id,
-                    category="medis" if category == "klinis" else category,
-                    target=item.get("target"),
-                    status=item.get("status"),
-                    message=item.get("message"),
-                    confidence=item.get("confidence"),
-                    created_at=datetime.utcnow()-timedelta(days=5),
-                    updated_at=datetime.utcnow(),
-                    is_deleted=False,
-                    is_dummy=True
-                )
-                db.add(summary_row)
-
-    # Rekam medis final
+    # update rekam medis
     if claim.medical_record:
-        claim.medical_record.riwayat_penyakit = riwayat_penyakit or None
-        claim.medical_record.riwayat_pengobatan = riwayat_pengobatan or None
-        claim.medical_record.riwayat_operasi = riwayat_operasi or None
-        claim.medical_record.alergi = alergi or None
-        claim.medical_record.keluhan = keluhan or None
-        claim.medical_record.gejala_lain = gejala_lain or None
-        claim.medical_record.td = td or None
-        claim.medical_record.nadi = nadi or None
-        claim.medical_record.pernapasan = pernapasan or None
-        claim.medical_record.suhu = suhu or None
-        claim.medical_record.spo2 = spo2 or None
-        claim.medical_record.berat_badan = berat_badan or None
-        claim.medical_record.tinggi_badan = tinggi_badan or None
-        claim.medical_record.hemoglobin = hemoglobin or None
-        claim.medical_record.leukosit = leukosit or None
-        claim.medical_record.trombosit = trombosit or None
-        claim.medical_record.gula_darah = gula_darah or None
-        claim.medical_record.creatinin = creatinin or None
-        claim.medical_record.rontgen_thorax = rontgen_thorax or None
-        claim.medical_record.ct_scan = ct_scan or None
-        claim.medical_record.usg = usg or None
-        claim.medical_record.diagnosis_awal = diagnosis_awal or None
-        claim.medical_record.komorbid = komorbid or None
-        claim.medical_record.komplikasi = komplikasi or None
-        claim.medical_record.diagnosis_akhir = diagnosis_akhir or None
-        claim.medical_record.tindakan = tindakan or None
-        claim.medical_record.obat = obat or None
-        claim.medical_record.validasi_fornas = validasi_fornas or None
-        claim.medical_record.notes_doctor = notes_doctor or None
-        claim.medical_record.is_deleted = False
-        claim.medical_record.is_dummy = True
-        claim.medical_record.is_final = True
+        mr = claim.medical_record
+        for field, value in {
+            "riwayat_penyakit": riwayat_penyakit,
+            "riwayat_pengobatan": riwayat_pengobatan,
+            "riwayat_operasi": riwayat_operasi,
+            "alergi": alergi,
+            "keluhan": keluhan,
+            "gejala_lain": gejala_lain,
+            "td": td,
+            "nadi": nadi,
+            "pernapasan": pernapasan,
+            "suhu": suhu,
+            "spo2": spo2,
+            "berat_badan": berat_badan,
+            "tinggi_badan": tinggi_badan,
+            "hemoglobin": hemoglobin,
+            "leukosit": leukosit,
+            "trombosit": trombosit,
+            "gula_darah": gula_darah,
+            "creatinin": creatinin,
+            "rontgen_thorax": rontgen_thorax,
+            "ct_scan": ct_scan,
+            "usg": usg,
+            "diagnosis_awal": diagnosis_awal,
+            "komorbid": komorbid,
+            "komplikasi": komplikasi,
+            "diagnosis_akhir": diagnosis_akhir,
+            "tindakan": tindakan,
+            "obat": obat,
+            "validasi_fornas": validasi_fornas,
+            "notes_doctor": notes_doctor,
+        }.items():
+            if value is not None:
+                setattr(mr, field, value)
+        mr.updated_at = datetime.utcnow()
 
-        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
-                           .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
-                           .scalar() or 0
-        log_mr = models.MedicalRecordLog(
-            medical_record_id=claim.medical_record.id,
-            action="FINALIZED",
-            description=f"Rekam medis {claim.medical_record.id} difinalisasi (klaim {claim.id})",
-            updated_by=user.id,
-            updated_at=datetime.utcnow(),
-            version=latest_version + 1,
-            data_snapshot=json.dumps(claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {}, ensure_ascii=False),
-            is_deleted=False,
-            is_dummy=True
-        )
-        db.add(log_mr)
-
-    # Log klaim
-    log_claim = models.ClaimLog(
+    # logging
+    db.add(models.ClaimLog(
         claim_id=claim.id,
         action="FINALIZED",
-        description=f"Klaim {claim.id} difinalisasi oleh {user.name}",
+        description="Klaim difinalisasi oleh verifikator",
         updated_by=user.id,
         updated_at=datetime.utcnow(),
         is_deleted=False,
+        is_dummy=False
+    ))
+
+    latest_version = db.query(func.max(models.MedicalRecordLog.version)) \
+                           .filter(models.MedicalRecordLog.medical_record_id == mr.id) \
+                           .scalar() or 0
+    db.add(models.MedicalRecordLog(
+        medical_record_id=mr.id,
+        action="UPDATED",
+        description="Rekam medis diperbarui via finalisasi klaim",
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        version=latest_version + 1,
+        data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False),
+        is_deleted=False,
         is_dummy=True
-    )
-    db.add(log_claim)
+    ))
 
     db.commit()
     db.refresh(claim)
 
-    flash(request, "✅ Klaim berhasil difinalisasi!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
-
 
 
 @app.get("/claims")
@@ -1267,42 +1248,46 @@ def claim_form(
 def update_claim_draft(
     request: Request,
     claim_id: int,
-    simulasi: str = Form(None),
-    summary: str = Form(None),
-    # field rekam medis
-    riwayat_penyakit: Optional[str] = Form(None),
-    riwayat_pengobatan: Optional[str] = Form(None),
-    riwayat_operasi: Optional[str] = Form(None),
-    alergi: Optional[str] = Form(None),
-    keluhan: Optional[str] = Form(None),
-    gejala_lain: Optional[str] = Form(None),
-    td: Optional[str] = Form(None),
-    nadi: Optional[str] = Form(None),
-    pernapasan: Optional[str] = Form(None),
-    suhu: Optional[str] = Form(None),
-    spo2: Optional[str] = Form(None),
-    berat_badan: Optional[str] = Form(None),
-    tinggi_badan: Optional[str] = Form(None),
-    hemoglobin: Optional[str] = Form(None),
-    leukosit: Optional[str] = Form(None),
-    trombosit: Optional[str] = Form(None),
-    gula_darah: Optional[str] = Form(None),
-    creatinin: Optional[str] = Form(None),
-    rontgen_thorax: Optional[str] = Form(None),
-    ct_scan: Optional[str] = Form(None),
-    usg: Optional[str] = Form(None),
-    diagnosis_awal: Optional[str] = Form(None),
-    komorbid: Optional[str] = Form(None),
-    komplikasi: Optional[str] = Form(None),
-    diagnosis_akhir: Optional[str] = Form(None),
-    tindakan: Optional[str] = Form(None),
-    obat: Optional[str] = Form(None),
-    validasi_fornas: Optional[str] = Form(None),   # ✅ tambahkan
-    notes_doctor: Optional[str] = Form(None),      # ✅ tambahkan
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
-    _=Depends(require_csrf_dep)
+    _=Depends(require_csrf_dep),
+
+    # ambil dari Form
+    simulasi: str = Form(None),
+    summary: str = Form(None),
+
+    riwayat_penyakit: str = Form(None),
+    riwayat_pengobatan: str = Form(None),
+    riwayat_operasi: str = Form(None),
+    alergi: str = Form(None),
+    keluhan: str = Form(None),
+    gejala_lain: str = Form(None),
+    td: str = Form(None),
+    nadi: str = Form(None),
+    pernapasan: str = Form(None),
+    suhu: str = Form(None),
+    spo2: str = Form(None),
+    berat_badan: str = Form(None),
+    tinggi_badan: str = Form(None),
+    hemoglobin: str = Form(None),
+    leukosit: str = Form(None),
+    trombosit: str = Form(None),
+    gula_darah: str = Form(None),
+    creatinin: str = Form(None),
+    rontgen_thorax: str = Form(None),
+    ct_scan: str = Form(None),
+    usg: str = Form(None),
+    diagnosis_awal: str = Form(None),
+    komorbid: str = Form(None),
+    komplikasi: str = Form(None),
+    diagnosis_akhir: str = Form(None),
+    tindakan: str = Form(None),
+    obat: str = Form(None),
+    validasi_fornas: str = Form(None),
+    notes_doctor: str = Form(None),
 ):
+    print("📥 Draft klaim form masuk!")
+
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -1310,40 +1295,45 @@ def update_claim_draft(
     # 🔹 Bersihkan rekomendasi lama
     db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id).delete()
 
+    # 🔹 Simpan rekomendasi baru dari simulasi
     if simulasi:
         try:
-            data = json.loads(simulasi)
-            print("🟢 Simulasi keys:", list(data.keys()))  # cek admission/daily/discharge
-            print("🟢 Simulasi sample:", json.dumps(data, indent=2, ensure_ascii=False)[:500])  # potong biar gak kepanjangan
-            for jenis, arr in data.items():
-                for item in arr.get("utama", []):
-                    db.add(models.ClaimAIRecommendation(
-                        claim_id=claim.id,
-                        category=jenis,
-                        type="utama",
-                        sim_text=item.get("name") if isinstance(item, dict) else str(item),
-                        sim_detail=item if isinstance(item, dict) else None,
-                        icd10_code=item.get("icd") if isinstance(item, dict) else None,
-                        icd9_code=item.get("tindakan") if isinstance(item, dict) else None,
-                        confidence_score=item.get("score") if isinstance(item, dict) else None,
-                        regulation_refs=item.get("modal_detail") if isinstance(item, dict) else None,
-                        created_at=datetime.utcnow()-timedelta(days=5),
-                        updated_at=datetime.utcnow(),
-                        is_deleted=False,
-                        is_dummy=True
-                    ))
+            sim_data = json.loads(simulasi)
+            for stage, arr in sim_data.items():
+                if not isinstance(arr, dict):
+                    continue
+
+                utama_items = arr.get("utama")
+                if utama_items:
+                    if not isinstance(utama_items, list):
+                        utama_items = [utama_items]
+                    for item in utama_items:
+                        db.add(models.ClaimAIRecommendation(
+                            claim_id=claim.id,
+                            category=stage,
+                            type="utama",
+                            sim_text=item.get("name"),
+                            icd10_code=item.get("icd"),
+                            icd9_code=item.get("tindakan"),
+                            confidence_score=item.get("score"),
+                            regulation_refs=item.get("modal_detail"),
+                            created_at=datetime.utcnow() - timedelta(days=5),
+                            updated_at=datetime.utcnow(),
+                            is_deleted=False,
+                            is_dummy=True
+                        ))
+
                 for item in arr.get("sekunder", []):
                     db.add(models.ClaimAIRecommendation(
                         claim_id=claim.id,
-                        category=jenis,
+                        category=stage,
                         type="sekunder",
-                        sim_text=item.get("name") if isinstance(item, dict) else str(item),
-                        sim_detail=item if isinstance(item, dict) else None,
-                        icd10_code=item.get("icd") if isinstance(item, dict) else None,
-                        icd9_code=item.get("tindakan") if isinstance(item, dict) else None,
-                        confidence_score=item.get("score") if isinstance(item, dict) else None,
-                        regulation_refs=item.get("modal_detail") if isinstance(item, dict) else None,
-                        created_at=datetime.utcnow()-timedelta(days=5),
+                        sim_text=item.get("name"),
+                        icd10_code=item.get("icd"),
+                        icd9_code=item.get("tindakan"),
+                        confidence_score=item.get("score"),
+                        regulation_refs=item.get("modal_detail"),
+                        created_at=datetime.utcnow() - timedelta(days=5),
                         updated_at=datetime.utcnow(),
                         is_deleted=True,
                         is_dummy=False
@@ -1351,7 +1341,7 @@ def update_claim_draft(
         except Exception as e:
             print("❌ Gagal parse simulasi:", e)
 
-    # 🔹 Update klaim draft
+    # 🔹 Update draft claim
     claim.simulasi_draft = json.loads(simulasi) if simulasi else {}
     claim.summary_draft = json.loads(summary) if summary else {}
     claim.is_final = False
@@ -1361,40 +1351,44 @@ def update_claim_draft(
     # 🔹 Update rekam medis
     if claim.medical_record:
         mr = claim.medical_record
-        mr.riwayat_penyakit = riwayat_penyakit if riwayat_penyakit is not None else mr.riwayat_penyakit
-        mr.riwayat_pengobatan = riwayat_pengobatan if riwayat_pengobatan is not None else mr.riwayat_pengobatan
-        mr.riwayat_operasi = riwayat_operasi if riwayat_operasi is not None else mr.riwayat_operasi
-        mr.alergi = alergi if alergi is not None else mr.alergi
-        mr.keluhan = keluhan if keluhan is not None else mr.keluhan
-        mr.gejala_lain = gejala_lain if gejala_lain is not None else mr.gejala_lain
-        mr.td = td if td is not None else mr.td
-        mr.nadi = nadi if nadi is not None else mr.nadi
-        mr.pernapasan = pernapasan if pernapasan is not None else mr.pernapasan
-        mr.suhu = suhu if suhu is not None else mr.suhu
-        mr.spo2 = spo2 if spo2 is not None else mr.spo2
-        mr.berat_badan = berat_badan if berat_badan is not None else mr.berat_badan
-        mr.tinggi_badan = tinggi_badan if tinggi_badan is not None else mr.tinggi_badan
-        mr.hemoglobin = hemoglobin if hemoglobin is not None else mr.hemoglobin
-        mr.leukosit = leukosit if leukosit is not None else mr.leukosit
-        mr.trombosit = trombosit if trombosit is not None else mr.trombosit
-        mr.gula_darah = gula_darah if gula_darah is not None else mr.gula_darah
-        mr.creatinin = creatinin if creatinin is not None else mr.creatinin
-        mr.rontgen_thorax = rontgen_thorax if rontgen_thorax is not None else mr.rontgen_thorax
-        mr.ct_scan = ct_scan if ct_scan is not None else mr.ct_scan
-        mr.usg = usg if usg is not None else mr.usg
-        mr.diagnosis_awal = diagnosis_awal if diagnosis_awal is not None else mr.diagnosis_awal
-        mr.komorbid = komorbid if komorbid is not None else mr.komorbid
-        mr.komplikasi = komplikasi if komplikasi is not None else mr.komplikasi
-        mr.diagnosis_akhir = diagnosis_akhir if diagnosis_akhir is not None else mr.diagnosis_akhir
-        mr.tindakan = tindakan if tindakan is not None else mr.tindakan
-        mr.obat = obat if obat is not None else mr.obat
-        mr.validasi_fornas = validasi_fornas if validasi_fornas is not None else mr.validasi_fornas
-        mr.notes_doctor = notes_doctor if notes_doctor is not None else mr.notes_doctor
+        for field, value in {
+            "riwayat_penyakit": riwayat_penyakit,
+            "riwayat_pengobatan": riwayat_pengobatan,
+            "riwayat_operasi": riwayat_operasi,
+            "alergi": alergi,
+            "keluhan": keluhan,
+            "gejala_lain": gejala_lain,
+            "td": td,
+            "nadi": nadi,
+            "pernapasan": pernapasan,
+            "suhu": suhu,
+            "spo2": spo2,
+            "berat_badan": berat_badan,
+            "tinggi_badan": tinggi_badan,
+            "hemoglobin": hemoglobin,
+            "leukosit": leukosit,
+            "trombosit": trombosit,
+            "gula_darah": gula_darah,
+            "creatinin": creatinin,
+            "rontgen_thorax": rontgen_thorax,
+            "ct_scan": ct_scan,
+            "usg": usg,
+            "diagnosis_awal": diagnosis_awal,
+            "komorbid": komorbid,
+            "komplikasi": komplikasi,
+            "diagnosis_akhir": diagnosis_akhir,
+            "tindakan": tindakan,
+            "obat": obat,
+            "validasi_fornas": validasi_fornas,
+            "notes_doctor": notes_doctor,
+        }.items():
+            if value is not None:
+                setattr(mr, field, value)
         mr.updated_at = datetime.utcnow()
 
-        # log rekam medis
-        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
-                           .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
+        # ⏺️ Logging rekam medis
+        latest_version = db.query(func.max(models.MedicalRecordLog.version)) \
+                           .filter(models.MedicalRecordLog.medical_record_id == mr.id) \
                            .scalar() or 0
         db.add(models.MedicalRecordLog(
             medical_record_id=mr.id,
@@ -1408,7 +1402,7 @@ def update_claim_draft(
             is_dummy=True
         ))
 
-    # log klaim
+    # ⏺️ Logging klaim
     db.add(models.ClaimLog(
         claim_id=claim.id,
         action="UPDATED",
@@ -1419,15 +1413,10 @@ def update_claim_draft(
         is_dummy=True
     ))
 
-    print("🟢 rekam medis", mr.__dict__)
-    print("🟢 summary_draft", claim.summary_draft)
-
     db.commit()
     db.refresh(claim)
 
-    flash(request, "✅ Draft klaim berhasil disimpan & rekomendasi lama dibersihkan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
-
 
 
 default_sim = {
@@ -1545,6 +1534,8 @@ def update_claim(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator","coder","doctor")),
     claim_date: Optional[datetime] = Form(None),
+    simulasi: Optional[str] = Form(None),
+    summary: Optional[str] = Form(None),
     is_final: bool = Form(False),
 
     # Semua field rekam medis
@@ -1600,31 +1591,45 @@ def update_claim(
     if simulasi:
         try:
             data = json.loads(simulasi)
-            for jenis, arr in data.items():
-                for item in arr.get("utama", []):
+            for stage, arr in data.items():
+                if not isinstance(arr, dict):
+                    continue
+
+                utama_items = arr.get("utama")
+                if utama_items:
+                    if not isinstance(utama_items, list):
+                        utama_items = [utama_items]
+                    for item in utama_items:
+                        db.add(models.ClaimAIRecommendation(
+                            claim_id=claim.id,
+                            category=stage,
+                            type="utama",
+                            sim_text=item.get("name"),
+                            icd10_code=item.get("icd"),
+                            icd9_code=item.get("tindakan"),
+                            confidence_score=item.get("score"),
+                            regulation_refs=item.get("modal_detail"),
+                            created_at=datetime.utcnow() - timedelta(days=5),
+                            updated_at=datetime.utcnow(),
+                            is_deleted=False,
+                            is_dummy=True
+                        ))
+
+                for item in arr.get("sekunder", []):
                     db.add(models.ClaimAIRecommendation(
                         claim_id=claim.id,
-                        category=jenis,
-                        type="utama",
-                        sim_text=item["name"] if isinstance(item, dict) else str(item),
-                        sim_detail=item if isinstance(item, dict) else None,
-                        created_at=datetime.utcnow()-timedelta(days=1),
+                        category=stage,
+                        type="sekunder",
+                        sim_text=item.get("name"),
+                        icd10_code=item.get("icd"),
+                        icd9_code=item.get("tindakan"),
+                        confidence_score=item.get("score"),
+                        regulation_refs=item.get("modal_detail"),
+                        created_at=datetime.utcnow() - timedelta(days=5),
                         updated_at=datetime.utcnow(),
-                        is_deleted=False,
-                        is_dummy=True
+                        is_deleted=True,
+                        is_dummy=False
                     ))
-            for item in arr.get("sekunder", []):
-                db.add(models.ClaimAIRecommendation(
-                    claim_id=claim.id,
-                    category=jenis,
-                    type="sekunder",
-                    sim_text=item["name"] if isinstance(item, dict) else str(item),
-                    sim_detail=item if isinstance(item, dict) else None,
-                    created_at=datetime.utcnow()-timedelta(days=1),
-                    updated_at=datetime.utcnow(),
-                    is_deleted=False,
-                    is_dummy=True
-                ))
         except Exception as e:
             print("❌ Gagal parse simulasi:", e)
 

@@ -118,7 +118,7 @@ async function generateAI() {
     // bikin accordion section baru
     dailyContainer.insertAdjacentHTML("beforeend", `
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
           <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
@@ -127,7 +127,7 @@ async function generateAI() {
 
           <!-- Diagnosis -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Diagnosis
@@ -184,7 +184,7 @@ async function generateAI() {
 
           <!-- Komorbid -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Komorbid
@@ -241,7 +241,7 @@ async function generateAI() {
 
           <!-- Komplikasi -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Komplikasi
@@ -474,9 +474,9 @@ function buildModalContent(it) {
             <div class="flex justify-between items-center border p-2 rounded">
               <span>${td.nama}</span>
               <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
               </div>
             </div>
@@ -537,78 +537,69 @@ function normalizeItem(val) {
 
 
 function updateSimulasi(type, opt, value, source, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  const role = state.role
-  if (!tab) tab = 'admission'
-  opt = normalizeOpt(opt)
-  console.log("updateSimulasi", { type, opt, tab, current: state.simulasi[tab] })
-  let sim = state.simulasi[tab]
-  if (!sim || typeof sim !== 'object' || Array.isArray(sim)) {
-    sim = { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
-    state.simulasi[tab] = sim
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  if (!tab) tab = "admission";
+  opt = normalizeOpt(opt);
+
+  let sim = state.simulasi[tab];
+  if (!sim || typeof sim !== "object" || Array.isArray(sim)) {
+    sim = { utama: null, sekunder: [], tindakanUtama: null, tindakanSekunder: [], tarifDraft: null };
+    state.simulasi[tab] = sim;
   }
 
-  if (!Array.isArray(sim.sekunder)) sim.sekunder = []
-  if (!('utama' in sim)) sim.utama = null
-  if (!('tindakanUtama' in sim)) sim.tindakanUtama = null
-  if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = []
-  if (!('tarifDraft' in sim)) sim.tarifDraft = null
-  // pastikan object {name,label}
-  const item = (typeof value === 'string')
-    ? { name: value.split(' [')[0], label: '' }
-    : { name: value.name, label: value.label || '' }
+  if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
+  if (!("utama" in sim)) sim.utama = null;
+  if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
+  if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = [];
 
-  // mapping label berdasar dropdown mapping (accordion kiri)
+  const item = typeof value === "string"
+    ? { name: value.split(" [")[0], label: "" }
+    : { name: value.name, label: value.label || "" };
+
   if (source) {
-    if (opt === "Primary") item.label = "Utama Klinis"
-    else if (opt === "Secondary-Komorbid") item.label = "Komorbid"
-    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi"
+    if (opt === "Primary") item.label = "Utama Klinis";
+    else if (opt === "Secondary-Komorbid") item.label = "Komorbid";
+    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi";
   }
 
-  // ========== DIAGNOSIS ==========
-  if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') {
-  const sim = state.simulasi[tab]  // admission / daily / discharge
+  // Diagnosis, Komorbid, Komplikasi
+  if (type === "diagnosis" || type === "komorbid" || type === "komplikasi") {
     if (opt === "Primary") {
-      const oldPrimary = sim.utama
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
-      sim.utama = item
-      if (oldPrimary && oldPrimary.name !== item.name) {
-        sim.sekunder.unshift(oldPrimary)
-      }
-    }
-    else if (opt === "Secondary" || opt === "Secondary-Komorbid" || opt === "Secondary-Komplikasi") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      const idx = sim.sekunder.findIndex(dx => dx.name === item.name)
-      if (idx === -1) sim.sekunder.push(item)
-      else sim.sekunder[idx] = item
-    }
-    else if (opt === "None") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
+      const oldPrimary = sim.utama;
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
+      sim.utama = item;
+      if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
+    } else if (opt.startsWith("Secondary")) {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null;
+      const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
+      if (idx === -1) sim.sekunder.push(item);
+      else sim.sekunder[idx] = item;
+    } else if (opt === "None") {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null;
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
     }
   }
 
-  // ========== TINDAKAN ==========
-  if (type === 'tindakan') {
+  // Tindakan
+  if (type === "tindakan") {
+    const nama = typeof value === "string" ? value : value.name;
     if (opt === "Primary") {
-      const oldPrimary = sim.tindakanUtama
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
-      sim.tindakanUtama = item.name
-      if (oldPrimary && oldPrimary !== item.name) {
-        sim.tindakanSekunder.unshift(oldPrimary)
+      const oldPrimary = sim.tindakanUtama;
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
+      sim.tindakanUtama = { name: nama };
+      if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
+    } else if (opt === "Secondary") {
+      if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
+      if (!sim.tindakanSekunder.find(td => td.name === nama)) {
+        sim.tindakanSekunder.push({ name: nama });
       }
-    }
-    else if (opt === "Secondary") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      if (!sim.tindakanSekunder.includes(item.name)) {
-        sim.tindakanSekunder.push(item.name)
-      }
-    }
-    else if (opt === "None") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
+    } else if (opt === "None") {
+      if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
     }
   }
+
+  console.log("🟢 Simulasi updated:", state.simulasi);
 }
 
 // ==================== Helpers ====================
@@ -665,7 +656,7 @@ async function loadRecommendations(claimId) {
 
       dailyContainer.insertAdjacentHTML("beforeend", `
   <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-    <button @click="open=!open"
+    <button type="button" @click="open=!open"
             class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
       <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
       <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
@@ -674,7 +665,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Diagnosis -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Diagnosis
@@ -734,7 +725,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Komorbid -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komorbid
@@ -795,7 +786,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Komplikasi -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komplikasi
@@ -941,8 +932,6 @@ function addManual(type, tab) {
     state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
   }
 
-
-
   // Trigger AI recommendation
   fetch("/ai/recommendation", {
     method: "POST",
@@ -960,10 +949,6 @@ function addManual(type, tab) {
   .catch(err => console.error("AI recommendation failed", err))
 }
 
-
-
-
-
 function onMappingChange(event, tab, type, idx) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   const arr = state.simulasi?.[tab]?.[type] || []
@@ -977,4 +962,3 @@ function onMappingChange(event, tab, type, idx) {
   const opt = event.target.value
   updateSimulasi("diagnosis", opt, normalizeItem(item), "AI", tab)
 }
-
