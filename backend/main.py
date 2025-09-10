@@ -784,6 +784,30 @@ def finalize_claim(
 
     # Hapus summary lama → simpan yang baru
     db.query(models.ClaimAIRecommendationSummary).filter_by(claim_id=claim_id).delete()
+
+    if simulasi:
+        try:
+            data = json.loads(simulasi)
+            for jenis, arr in data.items():
+                for item in arr.get("utama", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="utama",
+                        sim_text=item,
+                        is_active=True
+                    ))
+                for item in arr.get("sekunder", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="sekunder",
+                        sim_text=item,
+                        is_active=True
+                    ))
+        except Exception as e:
+            print("❌ Gagal parse simulasi:", e)
+
     summary_data = json.loads(summary) if summary else {}
     for stage, stage_data in summary_data.items():
         for category, items in stage_data.items():
@@ -804,6 +828,37 @@ def finalize_claim(
 
     # Rekam medis final
     if claim.medical_record:
+        claim.medical_record.riwayat_penyakit = riwayat_penyakit or None
+        claim.medical_record.riwayat_pengobatan = riwayat_pengobatan or None
+        claim.medical_record.riwayat_operasi = riwayat_operasi or None
+        claim.medical_record.alergi = alergi or None
+        claim.medical_record.keluhan = keluhan or None
+        claim.medical_record.gejala_lain = gejala_lain or None
+        claim.medical_record.td = td or None
+        claim.medical_record.nadi = nadi or None
+        claim.medical_record.pernapasan = pernapasan or None
+        claim.medical_record.suhu = suhu or None
+        claim.medical_record.spo2 = spo2 or None
+        claim.medical_record.berat_badan = berat_badan or None
+        claim.medical_record.tinggi_badan = tinggi_badan or None
+        claim.medical_record.hemoglobin = hemoglobin or None
+        claim.medical_record.leukosit = leukosit or None
+        claim.medical_record.trombosit = trombosit or None
+        claim.medical_record.gula_darah = gula_darah or None
+        claim.medical_record.creatinin = creatinin or None
+        claim.medical_record.rontgen_thorax = rontgen_thorax or None
+        claim.medical_record.ct_scan = ct_scan or None
+        claim.medical_record.usg = usg or None
+        claim.medical_record.diagnosis_awal = diagnosis_awal or None
+        claim.medical_record.komorbid = komorbid or None
+        claim.medical_record.komplikasi = komplikasi or None
+        claim.medical_record.diagnosis_akhir = diagnosis_akhir or None
+        claim.medical_record.tindakan = tindakan or None
+        claim.medical_record.obat = obat or None
+        claim.medical_record.validasi_fornas = validasi_fornas or None
+        claim.medical_record.notes_doctor = notes_doctor or None
+        claim.medical_record.is_deleted = False
+        claim.medical_record.is_dummy = True
         claim.medical_record.is_final = True
 
         latest_version = db.query(func.max(models.MedicalRecordLog.version))\
@@ -1234,78 +1289,101 @@ def update_claim_draft(
     diagnosis_akhir: Optional[str] = Form(None),
     tindakan: Optional[str] = Form(None),
     obat: Optional[str] = Form(None),
-    notes_doctor: Optional[str] = Form(None),
+    validasi_fornas: Optional[str] = Form(None),   # ✅ tambahkan
+    notes_doctor: Optional[str] = Form(None),      # ✅ tambahkan
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep)
 ):
-    # Cari klaim
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Update draft klaim
+    # 🔹 Bersihkan rekomendasi lama
+    db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id).delete()
+
+    if simulasi:
+        try:
+            data = json.loads(simulasi)
+            for jenis, arr in data.items():
+                for item in arr.get("utama", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="utama",
+                        sim_text=item,
+                        is_active=True
+                    ))
+                for item in arr.get("sekunder", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="sekunder",
+                        sim_text=item,
+                        is_active=True
+                    ))
+        except Exception as e:
+            print("❌ Gagal parse simulasi:", e)
+
+    # 🔹 Update klaim draft
     claim.simulasi_draft = json.loads(simulasi) if simulasi else {}
     claim.summary_draft = json.loads(summary) if summary else {}
     claim.is_final = False
     claim.status = "draft"
+    claim.updated_at = datetime.utcnow()
 
-    # Update rekam medis (kalau ada)
+    # 🔹 Update rekam medis
     if claim.medical_record:
         mr = claim.medical_record
-        mr.riwayat_penyakit = riwayat_penyakit
-        mr.riwayat_pengobatan = riwayat_pengobatan
-        mr.riwayat_operasi = riwayat_operasi
-        mr.alergi = alergi
-        mr.keluhan = keluhan
-        mr.gejala_lain = gejala_lain
-        mr.td = td
-        mr.nadi = nadi
-        mr.pernapasan = pernapasan
-        mr.suhu = suhu
-        mr.spo2 = spo2
-        mr.berat_badan = berat_badan
-        mr.tinggi_badan = tinggi_badan
-        mr.hemoglobin = hemoglobin
-        mr.leukosit = leukosit
-        mr.trombosit = trombosit
-        mr.gula_darah = gula_darah
-        mr.creatinin = creatinin
-        mr.rontgen_thorax = rontgen_thorax
-        mr.ct_scan = ct_scan
-        mr.usg = usg
-        mr.diagnosis_awal = diagnosis_awal
-        mr.komorbid = komorbid
-        mr.komplikasi = komplikasi
-        mr.diagnosis_akhir = diagnosis_akhir
-        mr.tindakan = tindakan
-        mr.obat = obat
-        mr.notes_doctor = notes_doctor
+        mr.riwayat_penyakit = riwayat_penyakit or None
+        mr.riwayat_pengobatan = riwayat_pengobatan or None
+        mr.riwayat_operasi = riwayat_operasi or None
+        mr.alergi = alergi or None
+        mr.keluhan = keluhan or None
+        mr.gejala_lain = gejala_lain or None
+        mr.td = td or None
+        mr.nadi = nadi or None
+        mr.pernapasan = pernapasan or None
+        mr.suhu = suhu or None
+        mr.spo2 = spo2 or None
+        mr.berat_badan = berat_badan or None
+        mr.tinggi_badan = tinggi_badan or None
+        mr.hemoglobin = hemoglobin or None
+        mr.leukosit = leukosit or None
+        mr.trombosit = trombosit or None
+        mr.gula_darah = gula_darah or None
+        mr.creatinin = creatinin or None
+        mr.rontgen_thorax = rontgen_thorax or None
+        mr.ct_scan = ct_scan or None
+        mr.usg = usg or None
+        mr.diagnosis_awal = diagnosis_awal or None
+        mr.komorbid = komorbid or None
+        mr.komplikasi = komplikasi or None
+        mr.diagnosis_akhir = diagnosis_akhir or None
+        mr.tindakan = tindakan or None
+        mr.obat = obat or None
+        mr.validasi_fornas = validasi_fornas or None
+        mr.notes_doctor = notes_doctor or None
         mr.updated_at = datetime.utcnow()
 
-        # Log rekam medis
+        # log rekam medis
         latest_version = db.query(func.max(models.MedicalRecordLog.version))\
                            .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
                            .scalar() or 0
-
-        log_mr = models.MedicalRecordLog(
+        db.add(models.MedicalRecordLog(
             medical_record_id=mr.id,
             action="UPDATED",
             description="Rekam medis diperbarui via draft klaim",
             updated_by=user.id,
             updated_at=datetime.utcnow(),
             version=latest_version + 1,
-            data_snapshot=json.dumps(
-                mr.to_dict() if hasattr(mr, "to_dict") else {},
-                ensure_ascii=False
-            ),
+            data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False),
             is_deleted=False,
             is_dummy=True
-        )
-        db.add(log_mr)
+        ))
 
-    # Log klaim
-    log_claim = models.ClaimLog(
+    # log klaim
+    db.add(models.ClaimLog(
         claim_id=claim.id,
         action="UPDATED",
         description="Draft klaim diperbarui",
@@ -1313,14 +1391,12 @@ def update_claim_draft(
         updated_at=datetime.utcnow(),
         is_deleted=False,
         is_dummy=True
-    )
-    db.add(log_claim)
+    ))
 
-    # Commit semua perubahan
     db.commit()
     db.refresh(claim)
 
-    flash(request, "✅ Draft klaim berhasil disimpan!", "success")
+    flash(request, "✅ Draft klaim berhasil disimpan & rekomendasi lama dibersihkan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
@@ -1470,9 +1546,11 @@ def update_claim(
     diagnosis_akhir: Optional[str] = Form(None),
     tindakan: Optional[str] = Form(None),
     obat: Optional[str] = Form(None),
+    validasi_fornas: Optional[str] = Form(None),
     notes_doctor: Optional[str] = Form(None),
 ):
     claim = db.query(models.Claim).filter(models.Claim.id == id).first()
+
     if not claim:
         flash(request, "❌ Klaim tidak ditemukan", "error")
         return RedirectResponse(url="/claims", status_code=303)
@@ -1485,51 +1563,80 @@ def update_claim(
     claim.claim_date = claim_date
     claim.is_final = is_final
     claim.status = "final" if is_final else "draft"
+    claim.updated_at = datetime.utcnow()
+
+    # 🔹 Bersihkan rekomendasi lama
+    db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim.id).delete()
+
+    if simulasi:
+        try:
+            data = json.loads(simulasi)
+            for jenis, arr in data.items():
+                for item in arr.get("utama", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="utama",
+                        sim_text=item,
+                        is_active=True
+                    ))
+                for item in arr.get("sekunder", []):
+                    db.add(models.ClaimAIRecommendation(
+                        claim_id=claim.id,
+                        category=jenis,
+                        type="sekunder",
+                        sim_text=item,
+                        is_active=True
+                    ))
+        except Exception as e:
+            print("❌ Gagal parse simulasi:", e)
 
     # 🔹 Claim log
-    log_claim = models.ClaimLog(
+    db.add(models.ClaimLog(
         claim_id=claim.id,
         action="UPDATED",
         description="Klaim diperbarui",
         updated_by=user.id,
-        updated_at=datetime.utcnow()
-    )
-    db.add(log_claim)
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
+    ))
 
-    # Update rekam medis lengkap
+    # 🔹 Update rekam medis lengkap
     if claim.medical_record:
         mr = claim.medical_record
         mr.claim_date = claim_date
         mr.is_final = is_final
 
-        mr.riwayat_penyakit = riwayat_penyakit or mr.riwayat_penyakit
-        mr.riwayat_pengobatan = riwayat_pengobatan or mr.riwayat_pengobatan
-        mr.riwayat_operasi = riwayat_operasi or mr.riwayat_operasi
-        mr.alergi = alergi or mr.alergi
-        mr.keluhan = keluhan or mr.keluhan
-        mr.gejala_lain = gejala_lain or mr.gejala_lain
-        mr.td = td or mr.td
-        mr.nadi = nadi or mr.nadi
-        mr.pernapasan = pernapasan or mr.pernapasan
-        mr.suhu = suhu or mr.suhu
-        mr.spo2 = spo2 or mr.spo2
-        mr.berat_badan = berat_badan or mr.berat_badan
-        mr.tinggi_badan = tinggi_badan or mr.tinggi_badan
-        mr.hemoglobin = hemoglobin or mr.hemoglobin
-        mr.leukosit = leukosit or mr.leukosit
-        mr.trombosit = trombosit or mr.trombosit
-        mr.gula_darah = gula_darah or mr.gula_darah
-        mr.creatinin = creatinin or mr.creatinin
-        mr.rontgen_thorax = rontgen_thorax or mr.rontgen_thorax
-        mr.ct_scan = ct_scan or mr.ct_scan
-        mr.usg = usg or mr.usg
-        mr.diagnosis_awal = diagnosis_awal or mr.diagnosis_awal
-        mr.komorbid = komorbid or mr.komorbid
-        mr.komplikasi = komplikasi or mr.komplikasi
-        mr.diagnosis_akhir = diagnosis_akhir or mr.diagnosis_akhir
-        mr.tindakan = tindakan or mr.tindakan
-        mr.obat = obat or mr.obat
-        mr.notes_doctor = notes_doctor or mr.notes_doctor
+        mr.riwayat_penyakit = riwayat_penyakit or None
+        mr.riwayat_pengobatan = riwayat_pengobatan or None
+        mr.riwayat_operasi = riwayat_operasi or None
+        mr.alergi = alergi or None
+        mr.keluhan = keluhan or None
+        mr.gejala_lain = gejala_lain or None
+        mr.td = td or None
+        mr.nadi = nadi or None
+        mr.pernapasan = pernapasan or None
+        mr.suhu = suhu or None
+        mr.spo2 = spo2 or None
+        mr.berat_badan = berat_badan or None
+        mr.tinggi_badan = tinggi_badan or None
+        mr.hemoglobin = hemoglobin or None
+        mr.leukosit = leukosit or None
+        mr.trombosit = trombosit or None
+        mr.gula_darah = gula_darah or None
+        mr.creatinin = creatinin or None
+        mr.rontgen_thorax = rontgen_thorax or None
+        mr.ct_scan = ct_scan or None
+        mr.usg = usg or None
+        mr.diagnosis_awal = diagnosis_awal or None
+        mr.komorbid = komorbid or None
+        mr.komplikasi = komplikasi or None
+        mr.diagnosis_akhir = diagnosis_akhir or None
+        mr.tindakan = tindakan or None
+        mr.obat = obat or None
+        mr.validasi_fornas = validasi_fornas or None
+        mr.notes_doctor = notes_doctor or None
         mr.notes_date = datetime.utcnow()
         mr.updated_at = datetime.utcnow()
 
@@ -1538,22 +1645,24 @@ def update_claim(
                            .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
                            .scalar() or 0
 
-        log_mr = models.MedicalRecordLog(
+        db.add(models.MedicalRecordLog(
             medical_record_id=mr.id,
             action="UPDATED",
-            description="Rekam medis diperbarui",
+            description="Rekam medis diperbarui via klaim edit",
             updated_by=user.id,
             updated_at=datetime.utcnow(),
             version=latest_version + 1,
-            data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False)
-        )
-        db.add(log_mr)
+            data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False),
+            is_deleted=False,
+            is_dummy=True
+        ))
 
     db.commit()
     db.refresh(claim)
 
-    flash(request, "✅ Klaim berhasil diperbarui!", "success")
+    flash(request, "✅ Klaim berhasil diperbarui & rekomendasi lama dibersihkan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 
 @app.post("/claims/delete/{id}", name="delete_claim")

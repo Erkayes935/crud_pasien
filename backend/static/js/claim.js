@@ -1,8 +1,10 @@
 // ==================== Generate AI ====================
 function claimData(init) {
-  return {
+
+  const state = {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
+    form : {},
     simulasi: init.sim || {
       admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
       daily: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
@@ -48,6 +50,8 @@ function claimData(init) {
       return ""
     },
   }
+  window.claimState = state  
+  return state
 }
 async function generateAI() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId
@@ -470,9 +474,9 @@ function buildModalContent(it) {
             <div class="flex justify-between items-center border p-2 rounded">
               <span>${td.nama}</span>
               <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', '${it.tab || 'admission'}')"
+                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', '${it.tab || 'admission'}')"
+                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
               </div>
             </div>
