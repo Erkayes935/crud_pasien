@@ -876,7 +876,7 @@ def finalize_claim(
     claim.simulasi_draft = sim_data
     claim.summary_draft = summ_data
     claim.is_final = True
-    claim.status = "submitted"
+    claim.status = "final"
     claim.updated_at = datetime.utcnow()
 
     # update rekam medis
