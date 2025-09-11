@@ -15,6 +15,11 @@ function claimData(init) {
       daily: { klinis:[], regulasi:[], tarif:[] },
       discharge: { klinis:[], regulasi:[], tarif:[] }
     },
+    showManual: {
+      admission: { diagnosis:false, komorbid:false, komplikasi:false },
+      daily: {},
+      discharge: { diagnosis:false, komorbid:false, komplikasi:false }
+    },
     manualInput: {
       admission: {
         diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
@@ -26,7 +31,11 @@ function claimData(init) {
         komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
         komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
       },
-      daily: {} // akan diisi dinamis pakai dayId
+      daily: {
+        'daily-0': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        'daily-1': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        'daily-2': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      }
     },
     recommendations: { medis:[], regulasi:[], tarif:[] },
     modalOpen: false,
@@ -107,6 +116,10 @@ async function generateAI() {
         hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
         const dayId = `daily-${idx}`
     // init manualInput untuk setiap dayId
+    if (!state.simulasi[dayId]) {
+        state.simulasi[dayId] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+      }
+    
     if (!state.manualInput.daily[dayId]) {
       state.manualInput.daily[dayId] = {
         diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
@@ -114,6 +127,20 @@ async function generateAI() {
         komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
       }
     }
+    const mergeAI = (aiData, type) => {
+        const aiItems = (aiData || []).map(it => ({ ...it, isManual: false }))
+        const manualItems = state.simulasi[dayId][type]?.filter(it => it.isManual) || []
+        state.simulasi[dayId][type] = [...aiItems, ...manualItems]
+        renderTable(`${type}-${dayId}`, [], type, dayId)
+      }
+
+    mergeAI(hari.diagnosis, "diagnosis")
+    mergeAI(hari.komorbid, "komorbid")
+    mergeAI(hari.komplikasi, "komplikasi")
+
+    // Setelah mergeAI selesai
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = []
+    state.simulasi.daily.days[idx] = state.simulasi[dayId]
 
     // bikin accordion section baru
     dailyContainer.insertAdjacentHTML("beforeend", `
@@ -147,11 +174,9 @@ async function generateAI() {
                 <tbody id="diagnosis-${dayId}"></tbody>
                 <tbody id="diagnosis-manual-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" :value="manualInput.daily[dayId].diagnosis.kategori" placeholder="Nama penyakit"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori"
+             placeholder="Nama penyakit"
+             class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
@@ -173,7 +198,7 @@ async function generateAI() {
                                     text-gray-900 dark:text-gray-100 
                                     focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
-                    <button @click="addManual('diagnosis','${dayId}')"
+                    <button type="button" @click="addManual('diagnosis','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                   </td>
                 </tr>
@@ -204,11 +229,9 @@ async function generateAI() {
                 <tbody id="komorbid-${dayId}"></tbody>
                 <tbody id="komorbid-manual-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori"
+         placeholder="Nama penyakit"
+         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -230,7 +253,7 @@ async function generateAI() {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400 readonly"></td>
                 <td>
-                  <button @click="addManual('komorbid','${dayId}')"
+                  <button type="button" @click="addManual('komorbid','${dayId}')"
                           class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                 </td>
               </tr>
@@ -261,11 +284,9 @@ async function generateAI() {
                 <tbody id="komplikasi-${dayId}"></tbody>
                 <tbody id="komplikasi-manual-${dayId}">
                   <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                  <td> <input x-model="manualInput.daily['${dayId}'].komplikasi.kategori"
+         placeholder="Nama penyakit"
+         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -287,7 +308,7 @@ async function generateAI() {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
-                    <button @click="addManual('komplikasi','${dayId}')"
+                    <button type="button" @click="addManual('komplikasi','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                   </td>
                 </tr>
@@ -361,28 +382,43 @@ async function generateAI() {
 
 // ==================== Render Table ====================
 function renderTable(targetId, items, type, tab, dayId = null) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))  // ✅ ambil Alpine state
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+
   if (!state.simulasi[tab]) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
   }
-
-  // force isi array di state
   if (!Array.isArray(state.simulasi[tab][type])) {
     state.simulasi[tab][type] = []
   }
-  state.simulasi[tab][type].splice(
-    0,
-    state.simulasi[tab][type].length,
-    ...(items || []).map(it => ({
-      ...it,
-      mapping: it.mapping || ""
-    }))
-  )
+
+  // Ambil isi lama
+  const oldItems = state.simulasi[tab][type] || []
+  const oldAiItems = oldItems.filter(it => !it.isManual)
+  const manualItems = oldItems.filter(it => it.isManual)
+
+  // AI baru
+  const newAiItems = (items || []).filter(it => !it.isManual)
+  const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
+
+  // Gabungan
+  let merged = [...aiItems, ...manualItems]
+
+  // Dedup (berdasarkan kategori-icd-tindakan)
+  const seen = new Set()
+  merged = merged.filter(it => {
+    const key = `${it.kategori}-${it.icd}-${it.tindakan}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  state.simulasi[tab][type] = merged
 
   const target = document.getElementById(targetId)
   if (!target) return
 
-  // render semua item AI/rekomendasi
+  target.innerHTML = ""
+
   state.simulasi[tab][type].forEach((item, idx) => {
     target.insertAdjacentHTML("beforeend", `
       <tr>
@@ -413,15 +449,85 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     `)
   })
 
-
-  // update counter di header
+  // Update counter
   let counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
   const countEl = document.getElementById(counterId)
-  if (countEl) countEl.textContent = items.length
-
-  console.log("✅ renderTable synced", tab, type, state.simulasi[tab][type])
+  if (countEl) countEl.textContent = state.simulasi[tab][type].length
 }
 
+// ==================== Add Manual ====================
+function addManual(type, tab) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+
+  // Pastikan manualInput daily ada
+  if (tab.startsWith("daily-") && !state.manualInput.daily[tab]) {
+    state.manualInput.daily[tab] = {
+      diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+      komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+      komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+    }
+  }
+
+  // Ambil input
+  const input = tab.startsWith("daily-")
+    ? state.manualInput.daily[tab][type]
+    : state.manualInput[tab][type]
+
+  if (!input) {
+    console.warn("❌ manualInput kosong:", tab, type)
+    return
+  }
+
+  // Buat item manual
+  const newItem = {
+    name: input.kategori || "-",
+    kategori: input.kategori || "",
+    klinis: input.klinis || "-",
+    icd: input.icd || "-",
+    tindakan: input.tindakan || "-",
+    score: input.score || 0,
+    mapping: "",
+    isManual: true
+  }
+
+  // Pastikan simulasi[tab][type] ada
+  if (!state.simulasi[tab]) {
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+  }
+  if (!Array.isArray(state.simulasi[tab][type])) {
+    state.simulasi[tab][type] = []
+  }
+
+  state.simulasi[tab][type].push(newItem)
+
+  // Reset form
+  if (tab.startsWith("daily-")) {
+    state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  } else {
+    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  }
+
+  // Render ulang
+  // Render ulang → kirim [] biar renderTable ambil AI lama + manual
+  renderTable(`${type}-${tab}`, [], type, tab)
+
+
+  // AI rekomendasi untuk enrich manual → update row + render ulang
+  fetch("/ai/recommendation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kategori: newItem.kategori, tab, type })
+  })
+  .then(res => res.json())
+  .then(data => {
+  Object.assign(newItem, data)
+  renderTable(`${type}-${tab}`, [], type, tab) // refresh DOM dengan AI lama + manual
+  })
+
+  .catch(err => console.error("AI recommendation failed", err))
+}
+
+window.addManual = addManual
 
 // ==================== Modal ====================
 
@@ -686,11 +792,9 @@ async function loadRecommendations(claimId) {
             <tbody id="diagnosis-${dayId}"></tbody>
             <tbody id="diagnosis-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" placeholder="Nama penyakit"
-                        class="border px-2 py-1 w-full rounded 
-                                bg-white dark:bg-gray-700 
-                                text-gray-900 dark:text-gray-100 
-                                focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori"
+             placeholder="Nama penyakit"
+             class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
               <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                         class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -711,7 +815,7 @@ async function loadRecommendations(claimId) {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400" readonly></td>
               <td>
-                <button @click="addManual('diagnosis','${dayId}')"
+                <button type="button" @click="addManual('diagnosis','${dayId}')"
                         class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
@@ -729,7 +833,7 @@ async function loadRecommendations(claimId) {
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komorbid
-            <span id="count-komorbid-daily-${idx}"
+            <span id="count-komorbid-daily-${dayId}"
             class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
               ${(hari.komorbid || []).length}
             </span>
@@ -746,11 +850,9 @@ async function loadRecommendations(claimId) {
             <tbody id="komorbid-${dayId}"></tbody>
             <tbody id="komorbid-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori"
+         placeholder="Nama penyakit"
+         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -772,7 +874,7 @@ async function loadRecommendations(claimId) {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td>
-                  <button @click="addManual('komorbid','${dayId}')"
+                  <button type="button" @click="addManual('komorbid','${dayId}')"
                           class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
@@ -790,7 +892,7 @@ async function loadRecommendations(claimId) {
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komplikasi
-            <span id="count-komplikasi-daily-${idx}"
+            <span id="count-komplikasi-daily-${dayId}"
             class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
               ${(hari.komplikasi || []).length}
             </span>
@@ -807,11 +909,9 @@ async function loadRecommendations(claimId) {
             <tbody id="komplikasi-${dayId}"></tbody>
             <tbody id="komplikasi-manual-${dayId}">
             <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td> <input x-model="manualInput.daily['${dayId}'].komplikasi.kategori"
+         placeholder="Nama penyakit"
+         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -833,7 +933,7 @@ async function loadRecommendations(claimId) {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400 readonly"></td>
                 <td>
-                  <button @click="addManual('komplikasi','${dayId}')"
+                  <button type="button" @click="addManual('komplikasi','${dayId}')"
                           class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
@@ -878,76 +978,6 @@ function mapRecommendation(r) {
 }
 
 
-function addManual(type, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-
-  if (!state.simulasi[tab]) {
-    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
-  }
-  if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
-  }
-  
-  let input
-  if (tab.startsWith("daily-")) {
-    input = state.manualInput.daily[tab][type]
-  } else {
-    input = state.manualInput[tab][type]
-  }
-
-
-  // Buat object baru dari input manual
-  // PERBAIKAN
-  const newItem = {
-    name: input.kategori || "-",
-    kategori: input.kategori || "",
-    klinis: input.klinis || "-",
-    icd: input.icd || "-",
-    tindakan: input.tindakan || "-",
-    score: 0,
-    mapping: ""
-  }
-
-
-  // Masukkan ke simulasi
-  state.simulasi[tab][type].push(newItem)
-
-  const manualBody = document.getElementById(`${type}-manual-${tab}`)
-  manualBody.insertAdjacentHTML("beforeend", `
-    <tr class="bg-gray-50 dark:bg-gray-800">
-      <td>${newItem.kategori}</td>
-      <td>${newItem.klinis}</td>
-      <td>${newItem.icd}</td>
-      <td>${newItem.tindakan}</td>
-      <td>${newItem.score}</td>
-      <td>-</td>
-    </tr>
-  `)
-
-  // Reset input manual (jangan ganti object)
-  // PERBAIKAN
-  if (tab.startsWith("daily-")) {
-  state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
-  } else {
-    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
-  }
-
-  // Trigger AI recommendation
-  fetch("/ai/recommendation", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kategori: newItem.kategori })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const idx = state.simulasi[tab][type].length - 1
-    state.simulasi[tab][type][idx].klinis   = data.klinis   || state.simulasi[tab][type][idx].klinis
-    state.simulasi[tab][type][idx].icd      = data.icd      || state.simulasi[tab][type][idx].icd
-    state.simulasi[tab][type][idx].tindakan = data.tindakan || state.simulasi[tab][type][idx].tindakan
-    state.simulasi[tab][type][idx].score    = data.score    ?? state.simulasi[tab][type][idx].score
-  })
-  .catch(err => console.error("AI recommendation failed", err))
-}
 
 function onMappingChange(event, tab, type, idx) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
