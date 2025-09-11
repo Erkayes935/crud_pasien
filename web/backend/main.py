@@ -1,6 +1,3 @@
-
-# ...existing code...
-
 """
 Module: backend.main
 
@@ -23,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, or_ 
 from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlencode
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from openpyxl import Workbook, load_workbook
 from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware
@@ -62,23 +59,6 @@ def get_flashed_messages(request: Request):
 # Init DB & App
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
-# PROXY ENDPOINT FOR RESUME MEDIS
-@app.post("/api/resume_medis")
-async def proxy_resume_medis(request: Request):
-    try:
-        async with httpx.AsyncClient() as client:
-            data = await request.json()
-            response = await client.post(
-                "http://core_engine:8002/resume_medis",
-                json=data,
-                timeout=60.0
-            )
-        return JSONResponse(status_code=response.status_code, content=response.json())
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Core Engine unreachable: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
-    
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="frontend/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
@@ -101,69 +81,79 @@ def welcome(request: Request):
     return templates.TemplateResponse("welcome.html", {"request": request})
 
 @app.get("/login")
-def login_get(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.post("/auth/login")
-async def login_post(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    token_url = f"https://{config.AUTH0_DOMAIN}/oauth/token"
-    data = {
-        "grant_type": "http://auth0.com/oauth/grant-type/password-realm",
-        "username": email,
-        "password": password,
-        "audience": config.AUDIENCE,
+def login():
+    params = {
+        "client_id": config.CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": config.REDIRECT_URI,
         "scope": "openid profile email",
+        "audience": config.AUDIENCE,  # boleh hapus kalau gak pakai audience
+    }
+    url = f"https://{config.AUTH0_DOMAIN}/authorize?{urlencode(params)}"
+    return RedirectResponse(url)
+
+
+# ---------------------
+# /callback → Auth0 balikin "code", kita tukar jadi token
+# ---------------------
+@app.get("/callback")
+async def callback(request: Request, db: Session = Depends(get_db)):
+    code = request.query_params.get("code")
+    if not code:
+        return JSONResponse({"error": "Missing code"}, status_code=400)
+
+    token_url = f"https://{config.AUTH0_DOMAIN}/oauth/token"
+    headers = {"content-type": "application/x-www-form-urlencoded"}
+    data = {
+        "grant_type": "authorization_code",
         "client_id": config.CLIENT_ID,
         "client_secret": config.CLIENT_SECRET,
-        "realm": "Username-Password-Authentication"
+        "code": code,
+        "redirect_uri": config.REDIRECT_URI,
     }
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        res = await client.post(token_url, data=data)
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(token_url, data=data, headers=headers)
+        if token_res.status_code != 200:
+            return JSONResponse(token_res.json(), status_code=token_res.status_code)
 
-    if res.status_code != 200:
-        raise HTTPException(status_code=401, detail=f"Login failed: {res.text}")
+        token_json = token_res.json()
+        access_token = token_json.get("access_token")
+        if not access_token:
+            return JSONResponse({"error": "No access_token in response", "detail": token_json}, status_code=400)
 
-    tokens = res.json()
-    id_token = tokens.get("id_token")
-    if not id_token:
-        raise HTTPException(status_code=401, detail="No id_token returned")
+        # Ambil data user dari Auth0
+        userinfo_res = await client.get(
+            f"https://{config.AUTH0_DOMAIN}/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        if userinfo_res.status_code != 200:
+            return JSONResponse(userinfo_res.json(), status_code=userinfo_res.status_code)
 
-    payload = verify_jwt(id_token, expected_aud=config.CLIENT_ID)
+        userinfo = userinfo_res.json()
 
-    sub = payload["sub"]
-    email = payload.get("email") or email
+    # Cari user di DB berdasarkan auth0_sub
+    user = db.query(models.User).filter_by(auth0_sub=userinfo["sub"]).first()
 
-    user = db.query(models.User).filter_by(auth0_sub=sub).first()
     if not user:
-        user = db.query(models.User).filter_by(email=email).first()
-        if user:
-            user.auth0_sub = sub
-            user.role = role
-            user.hospital_id = hospital_id
-            user.name = None
-            user.jabatan = None
-            user.sip_number = None
-            db.commit()
-            db.refresh(user)
-        # pastikan user sudah di-refresh sebelum dipakai
-        else:
-            user = models.User(auth0_sub=sub, email=email, name=None, role="doctor", jabatan=None, sip_number=None, hospital_id=None)
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        # Buat user baru kalau belum ada
+        user = models.User(
+            auth0_sub=userinfo["sub"],
+            email=userinfo.get("email"),
+            name=userinfo.get("name"),
+            role="doctor",  # default role → bisa kamu ubah sesuai kebutuhan
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
+    # Simpan user_id (integer lokal) ke session
     request.session["user_id"] = user.id
-    request.session["sub"] = sub
-    request.session["email"] = email
-    request.session["roles"] = [user.role]
-    flash(request, "Login successful!", "success")
-    return RedirectResponse(url="/dashboard", status_code=302)
+    request.session["email"] = user.email
+    request.session["name"] = user.name
+    request.session["role"] = user.role
+
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 @app.get("/logout")
 def logout():
@@ -187,45 +177,65 @@ def dashboard(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator")),
 ):
+    users_dashboard = []
+    if current_user.role == "superadmin":
+        users_dashboard = db.query(models.User).filter(models.User.role == "admin_rs", models.User.is_deleted == False).order_by(models.User.id.desc()).limit(10).all()
+    
+    # Admin RS hanya boleh lihat user RS yang sama, selain dirinya
+    elif current_user.role == "admin_rs":
+        users_dashboard = (
+            db.query(models.User)
+              .filter(
+                  models.User.hospital_id == current_user.hospital_id,
+                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"]),
+                  models.User.is_deleted == False
+              )
+              .order_by(models.User.id.desc())
+              .limit(10)
+              .all()
+        )
+    else:
+        users_dashboard = []  # fallback (nggak boleh lihat)
     # hitung umum
     total_pasien = db.query(models.Patient).count()
     pasien_hari_ini = db.query(models.Claim).filter(
         func.date(models.Claim.claim_date) == datetime.today().date()
     ).count()
-    total_claims = db.query(models.Claim).count()
+    total_claims = db.query(models.Claim).filter(models.Claim.is_deleted == False).count()
 
     # klaim terbaru
     claims = (
         db.query(models.Claim)
         .options(joinedload(models.Claim.patient))
+        .filter(models.Claim.is_deleted == False)
         .order_by(models.Claim.id.desc())
         .limit(10)
         .all()
     )
 
     # klaim draft & final
-    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False).count()
-    final_claims = db.query(models.Claim).filter(models.Claim.is_final == True).count()
+    draft_claims = db.query(models.Claim).filter(models.Claim.is_final == False, models.Claim.is_deleted == False).count()
+    final_claims = db.query(models.Claim).filter(models.Claim.is_final == True, models.Claim.is_deleted == False).count()
     draft_claims_list = []
     if current_user.role == "verifikator":
         draft_claims_list = (
             db.query(models.Claim)
-            .filter(models.Claim.is_final == False)
             .options(joinedload(models.Claim.patient))
+            .filter(models.Claim.is_final == False, models.Claim.is_deleted == False)
             .order_by(models.Claim.id.desc())
             .all()
         )
     final_claims_list = (
         db.query(models.Claim)
-        .filter(models.Claim.is_final == True)
         .options(joinedload(models.Claim.patient))
+        .filter(models.Claim.is_final == True, models.Claim.is_deleted == False)
         .order_by(models.Claim.id.desc())
         .all()
     )
 
     # role check
     if current_user.role in ["doctor", "coder", "verifikator"]:
-        pasien_list = db.query(models.Patient).all()
+        pasien_list = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     else:
         pasien_list = []
 
@@ -246,6 +256,7 @@ def dashboard(
         "final_claims_list": final_claims_list,
         "total_users": total_users,
         "pasien_list": pasien_list,
+        "users": users_dashboard,
         "csrf_token": csrf_token
     })
 
@@ -271,12 +282,13 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
             )
         )
 
-    patients = query.order_by(models.Patient.id.desc()).all()
+    patients = query.filter(models.Patient.is_deleted == False).order_by(models.Patient.id.desc()).options(joinedload(models.Patient.hospital)).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("patient_list.html", {
         "request": request,
         "patients": patients,
         "user": user,
+        "search": search,
         "mode": mode,
         "flow": flow,
         "current_user": user,
@@ -285,9 +297,9 @@ def list_patients(request: Request, flow: str = None, search: str | None = Query
 
 
 @app.get("/patients/add",name="add_patient", response_class=HTMLResponse)
-def add_form(request: Request, user=Depends(require_roles_session("doctor"))):
+def add_form(request: Request, user=Depends(require_roles_session("doctor")), db: Session = Depends(get_db)):
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "add", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user, "fields": form_configs["patient"]})
+    return templates.TemplateResponse("patient_form.html", {"request": request, "mode": "add", "patient": None, "csrf_token": csrf_token, "user": user, "current_user": user, "fields": form_configs["patient"], "patients": None})
 
 
 @app.post("/patients/add",name="add_patient")
@@ -346,7 +358,7 @@ def add_patient(
 
 @app.get("/patients/edit/{patient_id}", name="edit_patient")
 def edit_form(patient_id: int, request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id, models.Patient.is_deleted == False).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Pasien tidak ditemukan")
     csrf_token = issue_csrf_token(request)
@@ -378,7 +390,7 @@ def update_patient(
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep)
 ):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id, models.Patient.is_deleted == False).first()
     if not patient:
         error_msg = "Pasien tidak ditemukan"
         return templates.TemplateResponse("patient_form.html", {
@@ -402,7 +414,7 @@ def update_patient(
             "email": email or None,
             "no_hp": no_hp or None
         })
-        flash(request, success_msg, "success")
+        flash(request, "Pasien berhasil diperbarui!", "success")
         return RedirectResponse(url="/patients", status_code=303)
     except Exception as e:
         error_msg = f"Gagal memperbarui pasien: {str(e)}"
@@ -429,17 +441,30 @@ def update_patient(
         })
 
 
-@app.get("/patients/delete/{patient_id}")
-def delete_patient(patient_id: int, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor"))):
-    crud.delete_patient(db, patient_id)
-    csrf_token = issue_csrf_token(request)
+@app.post("/patients/delete/{patient_id}")
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)  # ✅ token dicek
+):
+    patient = db.query(models.Patient).get(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # soft delete, bukan delete beneran
+    patient.is_deleted = True
+    db.commit()
+
     flash(request, "Pasien berhasil dihapus!", "success")
     return RedirectResponse("/patients", status_code=303)
 
 
+
 @app.get("/export")
 def export_patients(db: Session = Depends(get_db), user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))):
-    patients = db.query(models.Patient).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Patients"
@@ -526,6 +551,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 1b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}1b", "tindakan": "ICU", "score": 70,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}1b")},
+        {"kategori": f"→ {prefix} 1c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}1c", "tindakan": "ICU", "score": 60,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}1c")},
 
         {"kategori": f"{prefix} 2", "klinis": f"{prefix} deskripsi 2",
          "icd": f"{icd_prefix}2", "tindakan": "Antibiotik IV", "score": 88,
@@ -536,6 +564,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 2b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}2b", "tindakan": "Rawat Inap", "score": 68,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}2b")},
+        {"kategori": f"→ {prefix} 2c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}2c", "tindakan": "ICU", "score": 58,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}2c")},
 
         {"kategori": f"{prefix} 3", "klinis": f"{prefix} deskripsi 3",
          "icd": f"{icd_prefix}3", "tindakan": "Ventilasi Mekanik", "score": 85,
@@ -546,6 +577,9 @@ def make_group(prefix, icd_prefix):
         {"kategori": f"→ {prefix} 3b", "klinis": f"{prefix} child b",
          "icd": f"{icd_prefix}3b", "tindakan": "Intubasi", "score": 65,
          "child": True, "modal_detail": make_modal(f"{icd_prefix}3b")},
+        {"kategori": f"→ {prefix} 3c", "klinis": f"{prefix} child c",
+         "icd": f"{icd_prefix}3c", "tindakan": "ICU", "score": 55,
+         "child": True, "modal_detail": make_modal(f"{icd_prefix}3c")},
     ]
 
 
@@ -583,85 +617,211 @@ def make_dummy(tab):
                 {"status":"warning", "message":"Rp 2.500.000", "confidence":0.6, "target":["CT Scan Abdomen"]},
                 {"status":"invalid", "message":"Rp 1.000.000", "confidence":0.3, "target":["Lab Darah Lengkap"]}
             ]
-
         }
     }
 
+def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage: str):
+    """
+    Simpan rekomendasi AI (dummy atau real) ke tabel ClaimAIRecommendation.
+    stage: admission, daily1, daily2, discharge, dll
+    """
 
-@app.post("/ai/recommendation")
-def ai_recommendation(payload: dict = Body(...)):
-    return {
-        "admission": make_dummy("admission"),
-        "daily": [
-            { "tanggal": "2025-09-01", **make_dummy("daily"),"tarifDraft": "Rp 17.500.000" },
-            { "tanggal": "2025-09-02", **make_dummy("daily2"),"tarifDraft": "Rp 27.500.000" },
-        ],
-        "discharge": make_dummy("discharge"),
-    }
+    # Diagnosis
+    for item in dummy_data.get("diagnosis", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_diagnosis",
+            sim_text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
+        ))
 
-# End Rekomendasi AI untuk Klaim
+    # Komorbid
+    for item in dummy_data.get("komorbid", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_komorbid",
+            sim_text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
+        ))
 
-@app.post("/claims/{claim_id}/finalize")
-def finalize_claim(
-    request: Request,
+    # Komplikasi
+    for item in dummy_data.get("komplikasi", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="diagnosis",
+            category=f"{stage}_komplikasi",
+            sim_text=item.get("kategori"),
+            icd10_code=item.get("icd"),
+            confidence_score=item.get("score"),
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "tindakan": item.get("tindakan"),
+                "child": item.get("child"),
+                "modal_detail": item.get("modal_detail"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
+        ))
+
+    # Prosedur / Tindakan
+    for item in dummy_data.get("tindakan", []):
+        db.add(models.ClaimAIRecommendation(
+            claim_id=claim_id,
+            type="procedure",
+            category=f"{stage}_tindakan",
+            sim_text=item.get("kategori"),
+            icd9_code=item.get("tindakan"),
+            confidence_score=item.get("score"),
+            regulation_refs={
+                "klinis": item.get("klinis"),
+                "child": item.get("child"),
+            },
+            created_at=datetime.utcnow()-timedelta(days=5),
+            updated_at=datetime.utcnow(),
+            is_deleted=False,
+            is_dummy=True
+        ))
+
+    db.commit()
+
+
+
+
+
+
+@app.get("/claims/{claim_id}/recommendations")
+def get_claim_recommendations(
     claim_id: int,
-    payload: dict = Body(...),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("verifikator"))
+    user=Depends(require_roles_session("doctor","verifikator","coder"))
 ):
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # update status klaim
+    recs = db.query(models.ClaimAIRecommendation)\
+             .filter(models.ClaimAIRecommendation.claim_id == claim_id)\
+             .filter(models.ClaimAIRecommendation.is_deleted == False)\
+             .all()
+
+    return [
+        {
+            "id": r.id,
+            "type": r.type,              # diagnosis / procedure
+            "category": r.category,      # admission_diagnosis, daily1_komorbid, discharge_tindakan, dst.
+            "sim_text": r.sim_text,
+            "icd10_code": r.icd10_code,
+            "icd9_code": r.icd9_code,
+            "confidence_score": r.confidence_score,
+            "regulation_refs": r.regulation_refs,
+        }
+        for r in recs
+    ]
+
+
+# End Rekomendasi AI untuk Klaim
+
+@app.post("/claims/{claim_id}/finalize", name="finalize_claim")
+def finalize_claim(
+    request: Request,
+    claim_id: int,
+    summary: str = Form(None),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("verifikator")),   # hanya verifikator yang bisa finalize
+    _=Depends(require_csrf_dep)
+):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    # Update status klaim
     claim.is_final = True
-    claim.status = "submitted"
+    claim.status = "final"
 
-    # hapus summary lama biar nggak dobel
+    # Hapus summary lama → simpan yang baru
     db.query(models.ClaimAIRecommendationSummary).filter_by(claim_id=claim_id).delete()
-
-    # simpan semua item summary AI ke tabel summary
-    for stage, stage_data in (payload.get("summary") or {}).items():
+    summary_data = json.loads(summary) if summary else {}
+    for stage, stage_data in summary_data.items():
         for category, items in stage_data.items():
             for item in items:
-                summary = models.ClaimAIRecommendationSummary(
+                summary_row = models.ClaimAIRecommendationSummary(
                     claim_id=claim_id,
-                    category="medis" if category == "klinis" else category,  # map klinis -> medis
+                    category="medis" if category == "klinis" else category,
                     target=item.get("target"),
                     status=item.get("status"),
                     message=item.get("message"),
                     confidence=item.get("confidence"),
+                    created_at=datetime.utcnow()-timedelta(days=5),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=True
                 )
-                db.add(summary)
+                db.add(summary_row)
 
-    # Integrasi ke database ngrok: simpan UUID ke visit_mapping dan claim_logs
-    import psycopg2
-    try:
-        conn = psycopg2.connect(
-            dbname="postgres",
-            user="postgres",
-            password="user",
-            host="0.tcp.ap.ngrok.io",
-            port=17313
+    # Rekam medis final
+    if claim.medical_record:
+        claim.medical_record.is_final = True
+
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == claim.medical_record.id)\
+                           .scalar() or 0
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=claim.medical_record.id,
+            action="FINALIZED",
+            description=f"Rekam medis {claim.medical_record.id} difinalisasi (klaim {claim.id})",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(claim.medical_record.to_dict() if hasattr(claim.medical_record, "to_dict") else {}, ensure_ascii=False),
+            is_deleted=False,
+            is_dummy=True
         )
-        cur = conn.cursor()
-        patient_uuid = payload.get("patient_uuid")
-        visit_uuid = payload.get("visit_uuid")
-        # Update visit_mapping jika UUID dikirim
-        if visit_uuid:
-            cur.execute("UPDATE visit_mapping SET ai_status='submitted' WHERE visit_uuid=%s", (visit_uuid,))
-        # Tambah log klaim
-        cur.execute("INSERT INTO claim_logs (claim_id, description, updated_by, updated_at) VALUES (%s, %s, %s, %s)",
-            (claim_id, f"Finalized claim with patient_uuid={patient_uuid}, visit_uuid={visit_uuid}", user.id if hasattr(user,'id') else None, datetime.utcnow()))
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f"Ngrok DB error: {e}")
+        db.add(log_mr)
+
+    # Log klaim
+    log_claim = models.ClaimLog(
+        claim_id=claim.id,
+        action="FINALIZED",
+        description=f"Klaim {claim.id} difinalisasi oleh {user.name}",
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
+    )
+    db.add(log_claim)
 
     db.commit()
-    flash(request,"Claim finalized successfully", "success")
+    db.refresh(claim)
+
+    flash(request, "✅ Klaim berhasil difinalisasi!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 
 @app.get("/claims")
@@ -670,37 +830,58 @@ def list_claims(
     status: str | None = Query(None),
     tanggal_kunjungan: str | None = Query(None),
     patient_name: str | None = Query(None),
+    jenis_kunjungan: str | None = Query(None),
+    claim_id: int | None = Query(None),
+    visit_id: int | None = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))
 ):
-    query = db.query(models.Claim)
-    # filter jika ada status
+    query = db.query(models.Claim).join(models.Visit, models.Claim.visit_id == models.Visit.id)
 
     if status:
-        query = query.filter(models.Claim.status.ilike(status))  # case-insensitive
+        query = query.filter(models.Claim.status.ilike(status))
+
+    if jenis_kunjungan:
+        query = query.filter(models.Visit.jenis_kunjungan.ilike(jenis_kunjungan))
 
     if tanggal_kunjungan:
-        query = query.filter(models.Claim.tanggal_kunjungan == tanggal_kunjungan)
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
 
     if patient_name:
         query = query.join(models.Patient).filter(
-        models.Patient.nama.ilike(f"%{patient_name}%")
+            models.Patient.nama.ilike(f"%{patient_name}%")
+        )
+
+    if claim_id:
+        query = query.filter(models.Claim.id == claim_id)
+
+    if visit_id:
+        query = query.filter(models.Claim.visit_id == visit_id)
+
+    claims = (
+        query.filter(models.Claim.is_deleted == False)
+             .order_by(models.Claim.id.desc())
+             .all()
     )
 
-    claims = query.order_by(models.Claim.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "claim_list.html",
-        {"request": request, 
-        "claims": claims, 
-        "user": user, 
-        "csrf_token": csrf_token, 
-        "current_user": user,
-        "status": status,
-        "tanggal_kunjungan": tanggal_kunjungan,
-        "patient_name": patient_name
-    }
-)
+        {
+            "request": request,
+            "claims": claims,
+            "user": user,
+            "csrf_token": csrf_token,
+            "current_user": user,
+            "status": status,
+            "tanggal_kunjungan": tanggal_kunjungan,
+            "patient_name": patient_name,
+            "jenis_kunjungan": jenis_kunjungan,
+            "claim_id": claim_id,
+            "visit_id": visit_id,
+        }
+    )
+
 
 @app.get("/claims/export", name="export_claims")
 def export_claims(
@@ -717,37 +898,34 @@ def export_claims(
         query = query.filter(models.Claim.tanggal_kunjungan >= start_date)
     if end_date:
         query = query.filter(models.Claim.tanggal_kunjungan <= end_date)
-    claims = query.all()
+    claims = query.filter(models.Claim.is_deleted == False).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Claims"
     ws.append([
-        "ID Klaim",
+        "Tanggal Klaim",
         "Nama Pasien",
-        "Tanggal Kunjungan",
-        "Jenis Kunjungan",
-        "Nama Dokter",
-        "Diagnosis Awal",
-        "Kode ICD",
-        "Tindakan",
-        "Obat",
         "Status",
-        "Hasil",
-        "Created At"
+        "Nama Dokter",
+        "Simulasi Draft",
+        "Ringkasan Draft",
+        "Final",
+        "Simulasi Final",
+        "Ringkasan Final",
+        "Created At",
     ])
     for c in claims:
         ws.append([
-            c.patient.id if c.patient else '-',
-            c.patient.nama if c.patient else '-',
-            c.tanggal_kunjungan.isoformat() if c.tanggal_kunjungan else '',
-            c.doctor_name or '',
-            c.diagnosis_awal or '',
-            c.kode_icd or '',
-            c.tindakan or '',
-            c.obat or '',
-            c.status or '',
-            c.hasil or '',
-            c.created_at.isoformat() if c.created_at else '',
+            c.claim_date,
+            c.patient.nama if c.patient else "N/A",
+            c.status,
+            c.doctor_name,
+            json.dumps(c.simulasi_draft) if not c.is_final else "N/A",
+            json.dumps(c.summary_draft) if not c.is_final else "N/A",
+            "Ya" if c.is_final else "Tidak",
+            json.dumps(c.simulasi_draft) if c.is_final else "N/A",
+            json.dumps(c.summary_draft) if c.is_final else "N/A",
+            c.created_at,
         ])
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -766,7 +944,7 @@ def claim_detail(request: Request, claim_id: int, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Claim not found")
     return templates.TemplateResponse(
         "claim_detail.html",
-        {"request": request, "claim": claim, "user": user, "current_user": user}
+        {"request": request, "claim": claim, "user": user, "current_user": user, "csrf_token": issue_csrf_token(request)}
     )
 
 
@@ -775,12 +953,14 @@ def add_claim(
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
+    record_type: Optional[str] = Form("admission"),  # inpatient / outpatient
+    # Klaim
     patient_id: Optional[int] = Form(None),
     visit_id: Optional[int] = Form(None),
     hospital_id: Optional[int] = Form(None),
     doctor_id: Optional[int] = Form(None),
     doctor_name: Optional[str] = Form(None),
-    claim_date: Optional[datetime] = Form(datetime.utcnow()),
+    claim_date: Optional[datetime] = Form(None),
     is_final: Optional[bool] = Form(False),
     # Rekam medis
     riwayat_penyakit: Optional[str] = Form(None),
@@ -812,9 +992,23 @@ def add_claim(
     obat: Optional[str] = Form(None),
     validasi_fornas: Optional[str] = Form(None),
     notes_doctor: Optional[str] = Form(None),
+    summary_draft: Optional[str] = Form(None),
+    simulasi_draft: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
+    created_at: Optional[datetime] = Form(None),
+    updated_at: Optional[datetime] = Form(None),
+    is_deleted: Optional[bool] = Form(False),
+    is_dummy: Optional[bool] = Form(False),
+    _=Depends(require_csrf_dep)
 ):
+    if claim_date is None:
+        if visit_id:
+            claim_date = None   # atau pakai tanggal visit kalau ada di DB
+        else:
+            claim_date = datetime.utcnow()
     # 1. Buat rekam medis baru
     mr = models.MedicalRecord(
+        record_type=record_type,
         patient_id=patient_id,
         visit_id=visit_id,
         doctor_id=doctor_id,
@@ -850,10 +1044,33 @@ def add_claim(
         obat=obat,
         validasi_fornas=validasi_fornas,
         notes_doctor=notes_doctor,
+        created_at=datetime.utcnow()-timedelta(days=5),
+        updated_at=datetime.utcnow(),
+        is_deleted=is_deleted,
+        is_dummy=is_dummy
     )
     db.add(mr)
     db.commit()
     db.refresh(mr)
+
+    latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                   .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
+                   .scalar() or 0
+
+    log = models.MedicalRecordLog(
+        medical_record_id=mr.id,
+        action="CREATED",
+        description=f"Rekam medis {mr.id} dibuat oleh {user.name}",
+        version=latest_version + 1,
+        data_snapshot=json.dumps(mr.to_dict(), ensure_ascii=False),
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        is_deleted=is_deleted,
+        is_dummy=is_dummy
+    )
+
+    db.add(log)
+    db.commit()
 
     # 2. Buat klaim baru link ke rekam medis
     claim = models.Claim(
@@ -865,12 +1082,28 @@ def add_claim(
         doctor_name=doctor_name,
         medical_record_id=mr.id,
         is_final=False,       # klaim baru otomatis Draft
-        status="draft" 
+        status="draft",
+        created_at=datetime.utcnow()-timedelta(days=5),
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=is_dummy, 
     )
     db.add(claim)
     db.commit()
+    db.refresh(claim)
+    log = models.ClaimLog(
+        claim_id=claim.id,
+        action="CREATED",
+        description=f"Klaim {claim.id} dibuat oleh {user.name}",
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=is_dummy
+    )
+    db.add(log)
+    db.commit()
 
-    flash(request, "✅ Klaim berhasil diubah!", "success")
+    flash(request, "✅ ID Klaim berhasil didapatkan!", "success")
     return RedirectResponse(url=f"/claims/{claim.id}/edit", status_code=303)
 
 
@@ -923,7 +1156,7 @@ def claim_form(
             "value": user.id
         })
     else:
-        doctors = db.query(models.User).filter(models.User.role == "doctor").all()
+        doctors = db.query(models.User).filter(models.User.role == "doctor").filter(models.User.is_deleted == False).all()
         fields.insert(2, {
             "name": "doctor_id",
             "label": "Dokter",
@@ -949,27 +1182,130 @@ def claim_form(
         },
     )
 
-@app.post("/claims/{claim_id}/update-draft")
+@app.post("/claims/{claim_id}/update-draft", name="save_draft")
 def update_claim_draft(
+    request: Request,
     claim_id: int,
-    payload: dict = Body(...),
+    simulasi: str = Form(None),
+    summary: str = Form(None),
+    # field rekam medis
+    riwayat_penyakit: Optional[str] = Form(None),
+    riwayat_pengobatan: Optional[str] = Form(None),
+    riwayat_operasi: Optional[str] = Form(None),
+    alergi: Optional[str] = Form(None),
+    keluhan: Optional[str] = Form(None),
+    gejala_lain: Optional[str] = Form(None),
+    td: Optional[str] = Form(None),
+    nadi: Optional[str] = Form(None),
+    pernapasan: Optional[str] = Form(None),
+    suhu: Optional[str] = Form(None),
+    spo2: Optional[str] = Form(None),
+    berat_badan: Optional[str] = Form(None),
+    tinggi_badan: Optional[str] = Form(None),
+    hemoglobin: Optional[str] = Form(None),
+    leukosit: Optional[str] = Form(None),
+    trombosit: Optional[str] = Form(None),
+    gula_darah: Optional[str] = Form(None),
+    creatinin: Optional[str] = Form(None),
+    rontgen_thorax: Optional[str] = Form(None),
+    ct_scan: Optional[str] = Form(None),
+    usg: Optional[str] = Form(None),
+    diagnosis_awal: Optional[str] = Form(None),
+    komorbid: Optional[str] = Form(None),
+    komplikasi: Optional[str] = Form(None),
+    diagnosis_akhir: Optional[str] = Form(None),
+    tindakan: Optional[str] = Form(None),
+    obat: Optional[str] = Form(None),
+    notes_doctor: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor"))  # hanya dokter yang bisa save draft
+    user=Depends(require_roles_session("doctor")),
+    _=Depends(require_csrf_dep)
 ):
+    # Cari klaim
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # simpan hasil simulasi/summary ke kolom JSON (pastikan model Claim ada field simulasi_draft & summary_draft tipe JSON)
-    claim.simulasi_draft = payload.get("simulasi")
-    claim.summary_draft = payload.get("summary")
+    # Update draft klaim
+    claim.simulasi_draft = json.loads(simulasi) if simulasi else {}
+    claim.summary_draft = json.loads(summary) if summary else {}
     claim.is_final = False
     claim.status = "draft"
 
+    # Update rekam medis (kalau ada)
+    if claim.medical_record:
+        mr = claim.medical_record
+        mr.riwayat_penyakit = riwayat_penyakit
+        mr.riwayat_pengobatan = riwayat_pengobatan
+        mr.riwayat_operasi = riwayat_operasi
+        mr.alergi = alergi
+        mr.keluhan = keluhan
+        mr.gejala_lain = gejala_lain
+        mr.td = td
+        mr.nadi = nadi
+        mr.pernapasan = pernapasan
+        mr.suhu = suhu
+        mr.spo2 = spo2
+        mr.berat_badan = berat_badan
+        mr.tinggi_badan = tinggi_badan
+        mr.hemoglobin = hemoglobin
+        mr.leukosit = leukosit
+        mr.trombosit = trombosit
+        mr.gula_darah = gula_darah
+        mr.creatinin = creatinin
+        mr.rontgen_thorax = rontgen_thorax
+        mr.ct_scan = ct_scan
+        mr.usg = usg
+        mr.diagnosis_awal = diagnosis_awal
+        mr.komorbid = komorbid
+        mr.komplikasi = komplikasi
+        mr.diagnosis_akhir = diagnosis_akhir
+        mr.tindakan = tindakan
+        mr.obat = obat
+        mr.notes_doctor = notes_doctor
+        mr.updated_at = datetime.utcnow()
+
+        # Log rekam medis
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
+                           .scalar() or 0
+
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=mr.id,
+            action="UPDATED",
+            description="Rekam medis diperbarui via draft klaim",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(
+                mr.to_dict() if hasattr(mr, "to_dict") else {},
+                ensure_ascii=False
+            ),
+            is_deleted=False,
+            is_dummy=True
+        )
+        db.add(log_mr)
+
+    # Log klaim
+    log_claim = models.ClaimLog(
+        claim_id=claim.id,
+        action="UPDATED",
+        description="Draft klaim diperbarui",
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
+    )
+    db.add(log_claim)
+
+    # Commit semua perubahan
     db.commit()
     db.refresh(claim)
 
+    flash(request, "✅ Draft klaim berhasil disimpan!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
 
 default_sim = {
     "admission": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": None},
@@ -1000,49 +1336,38 @@ def edit_claim_form(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    patients = db.query(models.Patient).all()
-    visits = db.query(models.Visit).all()
-    hospitals = db.query(models.Hospital).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    visits = db.query(models.Visit).filter(models.Visit.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     # --- Parse simpanan JSON dari DB ---
+   # edit_claim_form
     sim = claim.simulasi_draft
+    summ = claim.summary_draft
+
     if isinstance(sim, str):
         try:
             sim = json.loads(sim)
         except Exception:
-            sim = None
-
-    summ = claim.summary_draft
+            sim = {}
     if isinstance(summ, str):
         try:
             summ = json.loads(summ)
         except Exception:
-            summ = None
+            summ = {}
+
+    # 🔹 kalau role doctor → jangan auto-load sim/summ (biar kosong)
+    if "doctor" in user.role:
+        sim = None
+        summ = None
+
 
     # --- Default struktur lengkap biar Alpine aman ---
     default_sim = {
-        "admission": {
-            "utama": None,
-            "sekunder": [],
-            "tindakanUtama": None,
-            "tindakanSekunder": [],
-            "tarifDraft": ""
-        },
-        "daily": {
-            "utama": None,
-            "sekunder": [],
-            "tindakanUtama": None,
-            "tindakanSekunder": [],
-            "tarifDraft": ""
-        },
-        "discharge": {
-            "utama": None,
-            "sekunder": [],
-            "tindakanUtama": None,
-            "tindakanSekunder": [],
-            "tarifDraft": ""
-        }
+        "admission": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": ""},
+        "daily": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": ""},
+        "discharge": {"utama": None, "sekunder": [], "tindakanUtama": None, "tindakanSekunder": [], "tarifDraft": ""}
     }
 
     default_summary = {
@@ -1054,14 +1379,24 @@ def edit_claim_form(
     sim = merge_dict(default_sim, sim)
     summ = merge_dict(default_summary, summ)
 
+    # --- Siapkan fields ---
     fields = form_configs["claim_medical_record"].copy()
     for f in fields:
         if f["name"] == "patient_id":
             f["options"] = [(p.id, p.nama) for p in patients]
+            if claim.patient_id:
+                f["value"] = claim.patient_id
         if f["name"] == "visit_id":
             f["options"] = [(v.id, f"{v.id} - {v.tanggal_kunjungan}") for v in visits]
+            if claim.visit_id:
+                f["value"] = claim.visit_id
         if f["name"] == "hospital_id":
             f["options"] = [(h.id, h.nama) for h in hospitals]
+            if claim.hospital_id:
+                f["value"] = claim.hospital_id
+        # auto-fill dari rekam medis
+        if claim.medical_record and f["name"] in claim.medical_record.__dict__:
+            f["value"] = getattr(claim.medical_record, f["name"])
 
     return templates.TemplateResponse("claim_form.html", {
         "request": request,
@@ -1080,57 +1415,147 @@ def edit_claim_form(
     })
 
 
-
-
 @app.post("/claims/{id}/edit", name="update_claim")
 def update_claim(
     id: int,
     request: Request,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator","coder","doctor")),
-    claim_date: datetime = Form(datetime.utcnow()),
+    claim_date: Optional[datetime] = Form(None),
     is_final: bool = Form(False),
-    diagnosis_awal: str = Form(None),
-    diagnosis_akhir: str = Form(None),
-    tindakan: str = Form(None),
-    obat: str = Form(None),
-    notes_doctor: str = Form(None),
+
+    # Semua field rekam medis
+    riwayat_penyakit: Optional[str] = Form(None),
+    riwayat_pengobatan: Optional[str] = Form(None),
+    riwayat_operasi: Optional[str] = Form(None),
+    alergi: Optional[str] = Form(None),
+    keluhan: Optional[str] = Form(None),
+    gejala_lain: Optional[str] = Form(None),
+    td: Optional[str] = Form(None),
+    nadi: Optional[str] = Form(None),
+    pernapasan: Optional[str] = Form(None),
+    suhu: Optional[str] = Form(None),
+    spo2: Optional[str] = Form(None),
+    berat_badan: Optional[str] = Form(None),
+    tinggi_badan: Optional[str] = Form(None),
+    hemoglobin: Optional[str] = Form(None),
+    leukosit: Optional[str] = Form(None),
+    trombosit: Optional[str] = Form(None),
+    gula_darah: Optional[str] = Form(None),
+    creatinin: Optional[str] = Form(None),
+    rontgen_thorax: Optional[str] = Form(None),
+    ct_scan: Optional[str] = Form(None),
+    usg: Optional[str] = Form(None),
+    diagnosis_awal: Optional[str] = Form(None),
+    komorbid: Optional[str] = Form(None),
+    komplikasi: Optional[str] = Form(None),
+    diagnosis_akhir: Optional[str] = Form(None),
+    tindakan: Optional[str] = Form(None),
+    obat: Optional[str] = Form(None),
+    notes_doctor: Optional[str] = Form(None),
 ):
-    claim = db.query(Claim).filter(Claim.id == id).first()
+    claim = db.query(models.Claim).filter(models.Claim.id == id).first()
     if not claim:
         flash(request, "❌ Klaim tidak ditemukan", "error")
         return RedirectResponse(url="/claims", status_code=303)
 
+    # Default claim_date kalau kosong
+    if not claim_date:
+        claim_date = datetime.utcnow()
+
     # Update klaim
     claim.claim_date = claim_date
     claim.is_final = is_final
+    claim.status = "final" if is_final else "draft"
 
-    # Update rekam medis terkait
+    # 🔹 Claim log
+    log_claim = models.ClaimLog(
+        claim_id=claim.id,
+        action="UPDATED",
+        description="Klaim diperbarui",
+        updated_by=user.id,
+        updated_at=datetime.utcnow()
+    )
+    db.add(log_claim)
+
+    # Update rekam medis lengkap
     if claim.medical_record:
-        claim.medical_record.is_final = is_final
-        claim.medical_record.diagnosis_awal = diagnosis_awal
-        claim.medical_record.diagnosis_akhir = diagnosis_akhir
-        claim.medical_record.tindakan = tindakan
-        claim.medical_record.obat = obat
-        claim.medical_record.notes_doctor = notes_doctor
+        mr = claim.medical_record
+        mr.claim_date = claim_date
+        mr.is_final = is_final
+
+        mr.riwayat_penyakit = riwayat_penyakit or mr.riwayat_penyakit
+        mr.riwayat_pengobatan = riwayat_pengobatan or mr.riwayat_pengobatan
+        mr.riwayat_operasi = riwayat_operasi or mr.riwayat_operasi
+        mr.alergi = alergi or mr.alergi
+        mr.keluhan = keluhan or mr.keluhan
+        mr.gejala_lain = gejala_lain or mr.gejala_lain
+        mr.td = td or mr.td
+        mr.nadi = nadi or mr.nadi
+        mr.pernapasan = pernapasan or mr.pernapasan
+        mr.suhu = suhu or mr.suhu
+        mr.spo2 = spo2 or mr.spo2
+        mr.berat_badan = berat_badan or mr.berat_badan
+        mr.tinggi_badan = tinggi_badan or mr.tinggi_badan
+        mr.hemoglobin = hemoglobin or mr.hemoglobin
+        mr.leukosit = leukosit or mr.leukosit
+        mr.trombosit = trombosit or mr.trombosit
+        mr.gula_darah = gula_darah or mr.gula_darah
+        mr.creatinin = creatinin or mr.creatinin
+        mr.rontgen_thorax = rontgen_thorax or mr.rontgen_thorax
+        mr.ct_scan = ct_scan or mr.ct_scan
+        mr.usg = usg or mr.usg
+        mr.diagnosis_awal = diagnosis_awal or mr.diagnosis_awal
+        mr.komorbid = komorbid or mr.komorbid
+        mr.komplikasi = komplikasi or mr.komplikasi
+        mr.diagnosis_akhir = diagnosis_akhir or mr.diagnosis_akhir
+        mr.tindakan = tindakan or mr.tindakan
+        mr.obat = obat or mr.obat
+        mr.notes_doctor = notes_doctor or mr.notes_doctor
+        mr.notes_date = datetime.utcnow()
+        mr.updated_at = datetime.utcnow()
+
+        # 🔹 Medical record log
+        latest_version = db.query(func.max(models.MedicalRecordLog.version))\
+                           .filter(models.MedicalRecordLog.medical_record_id == mr.id)\
+                           .scalar() or 0
+
+        log_mr = models.MedicalRecordLog(
+            medical_record_id=mr.id,
+            action="UPDATED",
+            description="Rekam medis diperbarui",
+            updated_by=user.id,
+            updated_at=datetime.utcnow(),
+            version=latest_version + 1,
+            data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False)
+        )
+        db.add(log_mr)
 
     db.commit()
+    db.refresh(claim)
+
     flash(request, "✅ Klaim berhasil diperbarui!", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
 
-@app.get("/claims/{id}/delete")
+
+@app.post("/claims/delete/{id}", name="delete_claim")
 def delete_claim(
     id: int,
+    request: Request,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder"))
+    user=Depends(require_roles_session("doctor", "verifikator")),
+    _=Depends(require_csrf_dep)
 ):
     claim = db.query(models.Claim).get(id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    db.delete(claim)
+
+    claim.is_deleted = True
     db.commit()
-    flash(request, "Klaim berhasil dihapus!", "success")
-    return RedirectResponse(url="/claims", status_code=303)
+
+    flash(request, "Klaim berhasil dihapus !", "success")
+    return RedirectResponse("/claims", status_code=303)
+
 
 # -------------------------
 # USER MANAGEMENT ROUTES (NEW)
@@ -1143,7 +1568,7 @@ def list_users(
 ):
     # Superadmin hanya boleh lihat user dengan role admin_rs
     if current_user.role == "superadmin":
-        users = db.query(models.User).filter(models.User.role == "admin_rs").order_by(models.User.id.desc()).all()
+        users = db.query(models.User).filter(models.User.role == "admin_rs", models.User.is_deleted == False).order_by(models.User.id.desc()).all()
     
     # Admin RS hanya boleh lihat user RS yang sama, selain dirinya
     elif current_user.role == "admin_rs":
@@ -1151,7 +1576,8 @@ def list_users(
             db.query(models.User)
               .filter(
                   models.User.hospital_id == current_user.hospital_id,
-                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"])
+                  models.User.role.in_(["doctor", "coder", "verifikator", "costing", "validator", "manajemen"]),
+                  models.User.is_deleted == False,
               )
               .order_by(models.User.id.desc())
               .all()
@@ -1202,7 +1628,7 @@ def add_user_form(
         # 🔹 Hospital
         if f["name"] == "hospital_id":
             if current_user.role == "superadmin":
-                hospitals = db.query(models.Hospital).all()
+                hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
 
@@ -1287,7 +1713,7 @@ def edit_user_form(
         # 🔹 Hospital
         if f["name"] == "hospital_id":
             if current_user.role == "superadmin":
-                hospitals = db.query(models.Hospital).all()
+                hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
 
@@ -1362,7 +1788,7 @@ def list_visits(request: Request, search: str | None = Query(None), db: Session 
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = query.order_by(models.Visit.id.desc()).all()
+    visits = query.order_by(models.Visit.id.desc()).filter(models.Visit.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -1384,7 +1810,7 @@ def list_visit(
             models.Visit.dokter.ilike(f"%{search}%") |
             models.Visit.poli.ilike(f"%{search}%")
         )
-    visits = visits.order_by(models.Visit.id.desc()).all()
+    visits = visits.order_by(models.Visit.id.desc()).filter(models.Visit.is_deleted == False).all()
     patient = db.query(models.Patient).get(patient_id)
     return templates.TemplateResponse(
         "visit_list.html",
@@ -1393,8 +1819,10 @@ def list_visit(
 
 @app.get("/visits/add")
 def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("doctor", "admin_rs"))):
-    patients = db.query(models.Patient).all()
-    hospitals = db.query(models.Hospital).all()
+    patient_id = request.query_params.get("patient_id")
+    patient = db.query(models.Patient).get(patient_id) if patient_id else None
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     fields = form_configs["visit"].copy()
@@ -1411,11 +1839,19 @@ def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends
             f["value"] = user.name
             f["hidden_name"] = "doctor_id"
             f["hidden_value"] = user.id
-
+    # Patient (jika ada patient_id di query param)       
+        if f["name"] == "patient_id":
+            f["options"] = [(p.id, p.nama) for p in patients]
     return templates.TemplateResponse("visit_form.html", {
         "request": request,
         "mode": "add",
         "user": user,
+        "visit": None,
+        "flow": None,
+        "hospitals": hospitals,
+        "patient": patient,
+        "patient_id": patient_id,
+        "patients" : patients,
         "csrf_token": csrf_token,
         "current_user": user,
         "fields": fields   # dynamic
@@ -1462,8 +1898,8 @@ def edit_visit_form(request: Request, visit_id: int, db: Session = Depends(get_d
     visit = db.query(models.Visit).get(visit_id)
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
-    patients = db.query(models.Patient).all()
-    hospitals = db.query(models.Hospital).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
     fields = form_configs["visit"].copy()
@@ -1480,6 +1916,9 @@ def edit_visit_form(request: Request, visit_id: int, db: Session = Depends(get_d
         "csrf_token": csrf_token,
         "current_user": user,
         "user": user,
+        "flow": None,
+        "hospitals": hospitals,
+        "patients": patients,
         "fields": fields  # dynamic
     })
 
@@ -1519,29 +1958,32 @@ def edit_visit(
     flash(request, "Kunjungan berhasil diperbarui!", "success")
     return RedirectResponse(url="/visits", status_code=303)
 
-@app.get("/visits/delete/{visit_id}", name="delete_visit")
+@app.post("/visits/delete/{visit_id}")
 def delete_visit(
-    request: Request,
     visit_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs"))
+    user=Depends(require_roles_session("doctor")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)
 ):
     visit = db.query(models.Visit).get(visit_id)
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
-    db.delete(visit)
+
+    visit.is_deleted = True
     db.commit()
-    flash(request, "Kunjungan berhasil dihapus!", "success")
-    return RedirectResponse(url="/visits", status_code=303)
+
+    flash(request, "Visit berhasil dihapus !", "success")
+    return RedirectResponse("/visits", status_code=303)
+
 
 # -------------------------
-# VISIT ROUTES (END)
-
-# Hospital Routes
+# HOSPITAL ROUTES
+# -------------------------
 
 @app.get("/hospitals")
 def list_hospitals(request: Request, db: Session = Depends(get_db), user=Depends(require_roles_session("superadmin","admin_rs"))):
-    hospitals = db.query(models.Hospital).order_by(models.Hospital.id.desc()).all()
+    hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).order_by(models.Hospital.id.desc()).all()
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse(
         "hospital_list.html",
@@ -1644,20 +2086,24 @@ def edit_hospital(
     flash(request, "Hospital berhasil diperbarui!", "success")
     return RedirectResponse(url="/hospitals", status_code=303)
 
-@app.get("/hospitals/{hospital_id}/delete", name='delete_hospital')
+@app.post("/hospitals/delete/{hospital_id}")
 def delete_hospital(
-    request: Request,
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("superadmin","admin_rs"))
+    user=Depends(require_roles_session("admin_rs", "superadmin")),
+    request: Request = None,
+    _=Depends(require_csrf_dep)
 ):
     hospital = db.query(models.Hospital).get(hospital_id)
     if not hospital:
         raise HTTPException(status_code=404, detail="Hospital not found")
-    db.delete(hospital)
+
+    hospital.is_deleted = True
     db.commit()
-    flash(request, "Hospital berhasil dihapus!", "success")
-    return RedirectResponse(url="/hospitals", status_code=303)
+
+    flash(request, "Rumah sakit berhasil dihapus !", "success")
+    return RedirectResponse("/hospitals", status_code=303)
+
 
 #---------------------
 # End Hospital Routes
@@ -1699,6 +2145,7 @@ def list_medical_records(
         query.order_by(models.MedicalRecord.id.desc())
              .offset((page-1)*page_size)
              .limit(page_size)
+             .filter(models.MedicalRecord.is_deleted == False)
              .all()
     )
     total_pages = (total + page_size - 1) // page_size
@@ -1722,16 +2169,16 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
     medical_record = db.query(models.MedicalRecord).get(record_id)
     if not medical_record:
         raise HTTPException(status_code=404, detail="Medical record not found")
-    patients = db.query(models.Patient).all()
+    patients = db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
-    fields = form_configs["medical_record"].copy()
+    fields = form_configs["claim_medical_record"].copy()
     for f in fields:
         if f["name"] == "patient_id":
             f["options"] = [(p.id, p.nama) for p in patients]
             f["type"] = "select"
 
-    return templates.TemplateResponse("medical_record_form.html", {
+    return templates.TemplateResponse("claim_form.html", {
         "request": request,
         "mode": "edit",
         "record": medical_record,
@@ -1767,13 +2214,16 @@ def update_medical_record(
     # Simpan snapshot lama ke log
     snapshot = {col.name: getattr(record, col.name) for col in record.__table__.columns}
 
-    log = MedicalRecordLog(
-        medical_record_id=record.id,
-        version=new_version,
-        data_snapshot=snapshot,
-        updated_by=user_id
+    log = models.MedicalRecordLog(
+    medical_record_id=record.id,
+    action="UPDATED",
+    description="Rekam medis diperbarui",
+    updated_by=user.id,
+    updated_at=datetime.utcnow(),
+    data_snapshot=snapshot   # optional: json.dumps(record.to_dict())
     )
     db.add(log)
+
 
     # Update data baru
     for key, value in update_data.items():
@@ -1788,19 +2238,25 @@ def update_medical_record(
 )
 
 
-@app.get("/medical-records/{record_id}/delete", name="delete_medical_record")
+@app.post("/medical-records/{record_id}/delete", name="delete_medical_record")
 def delete_medical_record(
     record_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles_session("doctor", "admin_rs"))
+    request: Request = None,
+    current_user=Depends(require_roles_session("doctor", "admin_rs")),
+    _=Depends(require_csrf_dep)  # ✅ cek token
 ):
     medical_record = db.query(models.MedicalRecord).get(record_id)
     if not medical_record:
         raise HTTPException(status_code=404, detail="Medical record not found")
-    db.delete(medical_record)
+
+    # Soft delete, jangan hard delete
+    medical_record.is_deleted = True
     db.commit()
-    flash(request, "Medical record berhasil dihapus!", "success")
+
+    flash(request, "Medical record berhasil dihapus !", "success")
     return RedirectResponse(url="/medical_records", status_code=303)
+
 
 @app.get("/medical-records/{record_id}/logs", name="medical_record_logs")
 def medical_record_logs(record_id: int, request: Request, db: Session = Depends(get_db)):
@@ -1809,7 +2265,7 @@ def medical_record_logs(record_id: int, request: Request, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Medical record not found")
 
     logs = db.query(models.MedicalRecordLog)\
-             .filter(models.MedicalRecordLog.medical_record_id == record_id)\
+             .filter(models.MedicalRecordLog.medical_record_id == record_id, models.MedicalRecordLog.is_deleted == False)\
              .order_by(models.MedicalRecordLog.version.desc())\
              .all()
 
@@ -1820,4 +2276,39 @@ def medical_record_logs(record_id: int, request: Request, db: Session = Depends(
 
 
 # End Medical Record Routes
+
+# -------------------------
+# ENDPOINT PROXY → CORE ENGINE
+# -------------------------
+import httpx
+from . import config
+
+async def proxy_core_engine(path: str, payload: dict):
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.post(f"{config.CORE_ENGINE_URL}{path}", json=payload)
+            res.raise_for_status()
+            return res.json()
+        except httpx.HTTPStatusError as e:
+            return {"error": str(e), "detail": e.response.text}
+
+@app.post("/predict_ddx")
+async def predict_ddx(payload: dict = Body(None)):
+    return await proxy_core_engine("/predict_ddx", payload)
+
+@app.post("/analyze_diagnosis")
+async def analyze_diagnosis(payload: dict = Body(None)):
+    return await proxy_core_engine("/analyze_diagnosis", payload)
+
+@app.post("/analyze_claim")
+async def analyze_claim(payload: dict = Body(None)):
+    return await proxy_core_engine("/analyze_claim", payload)
+
+@app.post("/generate_claim_combos")
+async def generate_claim_combos(payload: dict = Body(None)):
+    return await proxy_core_engine("/generate_claim_combos", payload)
+
+@app.post("/resume_medis")
+async def resume_medis(payload: dict = Body(None)):
+    return await proxy_core_engine("/resume_medis", payload)
 

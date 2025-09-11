@@ -18,7 +18,7 @@
   <!-- Tombol tambah klaim -->
   
   <div class="mb-4 flex gap-2">
-    {% if user and (user.role in ['doctor','coder','verifikator']) %}
+    {% if user and (user.role in ['doctor','coder']) %}
     <a href="/patients?flow=claim" 
        class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
       Tambah Klaim
@@ -31,17 +31,30 @@
   </div>
   
 
-  <!-- Filter -->
   <form method="get" action="{{ list_claims_url }}" class="flex flex-wrap gap-4 mb-4 items-end">
 
+  <!-- 🔍 Search -->
     <div>
-      <label class="block">Filter Klaim Nama Pasien</label>
-      <input type="text" name="patient_name" placeholder="Nama Pasien" 
-             class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+      <label class="block">Cari Nama Pasien</label>
+      <input type="text" name="patient_name" placeholder="Nama Pasien"
+            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
     </div>
 
     <div>
-      <label class="block">Filter Status</label>
+      <label class="block">Cari ID Klaim</label>
+      <input type="number" name="claim_id" placeholder="ID Klaim"
+            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+    </div>
+
+    <div>
+      <label class="block">Cari ID Visit</label>
+      <input type="number" name="visit_id" placeholder="ID Visit"
+            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+    </div>
+
+    <!-- 🗂️ Filter -->
+    <div>
+      <label class="block">Status</label>
       <select name="status" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
         <option value="">-- Semua --</option>
         <option value="draft">Draft</option>
@@ -51,19 +64,31 @@
     </div>
 
     <div>
-      <label class="block">Filter Tanggal</label>
-      <input type="date" name="tanggal_kunjungan" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+      <label class="block">Jenis Kunjungan</label>
+      <select name="jenis_kunjungan" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+        <option value="">-- Semua --</option>
+        <option value="rawat_inap">Rawat Inap</option>
+        <option value="rawat_jalan">Rawat Jalan</option>
+        <option value="igd">IGD</option>
+      </select>
     </div>
 
     <div>
-      <button type="submit" class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
-        Filter
+      <label class="block">Tanggal Kunjungan</label>
+      <input type="date" name="tanggal_kunjungan"
+            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+    </div>
+
+    <div>
+      <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded">
+        Terapkan
       </button>
-      <a href="/claims" class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-3 py-1 rounded">
+      <a href="/claims" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded">
         Reset
       </a>
     </div>
   </form>
+
 
   <!-- Table -->
   <div class="overflow-x-auto">
@@ -98,7 +123,7 @@
           <td class="px-4 py-2">{{ claim.hospital.id if claim.hospital else '-' }}</td>
           <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
           <td class="px-4 py-2">{{ claim.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.dokter or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.doctor_name or '-' }}</td>
           <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
           <td class="px-4 py-2">{{ claim.kode_icd or '-' }}</td>
           <td class="px-4 py-2">{{ claim.tindakan or '-' }}</td>

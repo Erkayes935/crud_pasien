@@ -1,110 +1,187 @@
 {% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
 {% block content %}
+<div class="max-w-7xl mx-auto p-6 space-y-6">
 
-<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+  <!-- Judul -->
+    {% if current_user.role in ['superadmin', 'admin_rs'] %}
+      <h1 class="text-2xl font-bold mb-4">📊 Dashboard Users</h1>
+    {% else %}
+      <h1 class="text-2xl font-bold mb-4">📊 Dashboard Klaim</h1>
+    {% endif %}
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-    <p class="text-gray-500">Total Pasien</p>
-    <p class="text-2xl font-bold">{{ total_pasien }}</p>
+  <!-- Tombol cepat -->
+  <div class="flex flex-wrap gap-3">
+    {% if current_user.role in ['superadmin', 'admin_rs'] %}
+    <a href="/hospitals" 
+       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+       🏥 List Semua RS
+    </a>
+    <a href="/users" 
+       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+       👥 List Semua Users
+    </a>
+    {% else %}
+      {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
+        <a href="/patients?flow=claim" 
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
+          + Klaim Baru
+        </a>
+        <a href="/patients" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          👤 Pasien
+        </a>
+        <a href="/medical-records" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          📝 Rekam Medis
+        </a>
+        <a href="/visits" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          🏥 Kunjungan
+        </a>
+        <a href="/claims" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          📝 Klaim
+        </a>
+        <a href="/claims/export" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          ⬇️ Ekspor Klaim
+        </a>
+      {% endif %}
+    {% endif %}
   </div>
-  <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-    <p class="text-gray-500">Klaim Hari Ini</p>
-    <p class="text-2xl font-bold">{{ pasien_hari_ini }}</p>
-  </div>
-  <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-    <p class="text-gray-500">Total Klaim</p>
-    <p class="text-2xl font-bold">{{ total_claims }}</p>
-  </div>
-</div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-  <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-    <p class="text-gray-500">Draft Claims</p>
-    <p class="text-2xl font-bold">{{ draft_claims }}</p>
-  </div>
-  <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-    <p class="text-gray-500">Final Claims</p>
-    <p class="text-2xl font-bold">{{ final_claims }}</p>
-  </div>
-</div>
+  <!-- Daftar User -->
+  {% if current_user.role in ['superadmin', 'admin_rs'] %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
+      <h2 class="text-lg font-semibold mb-3">User Terbaru</h2>
+      <table class="w-full text-sm border text-center">
+        <thead class="bg-gray-100 dark:bg-gray-700">
+          <tr>
+            <th class="p-2 border">ID</th>
+            <th class="p-2 border">Email</th>
+            <th class="p-2 border">Nama</th>
+            <th class="p-2 border">Role</th>
+            {% if current_user.role == 'admin_rs' %}
+            <th class="p-2 border">RS</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
+            <td class="p-2 border">{{ user.id }}</td>
+            <td class="p-2 border">{{ user.email }}</td>
+            <td class="p-2 border">{{ user.name }}</td>
+            <td class="p-2 border">{{ user.role }}</td>
+            {% if current_user.role == 'admin_rs' %}
+            <td class="p-2 border">{{ user.hospital.nama if user.hospital else '-' }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-{% if user.role == 'doctor' %}
-<div class="mb-4">
-  <a href="/patients?flow=claim" 
-     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-    ➕ Tambah Klaim
-  </a>
+    <!-- Statistik Klaim -->
+  {% else %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
+      <h2 class="text-lg font-semibold mb-3">Statistik Klaim</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-green-100 text-green-800 p-4 rounded-lg shadow">
+          <h3 class="text-sm font-medium">Total Klaim</h3>
+          <p class="text-2xl font-bold">{{ total_claims }}</p>
+        </div>
+        <div class="bg-blue-100 text-blue-800 p-4 rounded-lg shadow">
+          <h3 class="text-sm font-medium">Klaim Final</h3>
+          <p class="text-2xl font-bold">{{ final_claims }}</p>
+        </div>
+        <div class="bg-yellow-100 text-yellow-800 p-4 rounded-lg shadow">
+          <h3 class="text-sm font-medium">Klaim Draft</h3>
+          <p class="text-2xl font-bold">{{ draft_claims }}</p>
+        </div>
+      </div>
+    </div>
+    <!-- Daftar Klaim Draft -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
+      <h2 class="text-lg font-semibold mb-3">Klaim Draft</h2>
+      <div class="space-y-2">
+        <table class="w-full text-sm border text-center">
+          <thead class="bg-gray-100 dark:bg-gray-700">
+            <tr>
+              <th class="p-2 border">ID</th>
+              <th class="p-2 border">Pasien</th>
+              <th class="p-2 border">Status</th>
+              <th class="p-2 border">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for claim in claims %}
+              {% if claim and claim.status == 'draft' %}
+                  <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <td class="p-2 border">{{ claim.id }}</td>
+                    <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
+                    <td class="p-2 border">
+                      <span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs">Draft</span>
+                    </td>
+                    <td class="p-2 border text-center">
+                      {% if user and user.role in ['doctor', 'coder'] %}
+                        <a href="/claims/{{ claim.id }}/edit" 
+                        class="text-blue-600 hover:underline">Edit</a>
+                      {% endif %}
+                      {% if user and user.role == 'verifikator' %}
+                        <a href="/claims/{{ claim.id }}/edit" 
+                        class="text-blue-600 hover:underline">Review</a>
+                      {% endif %}
+                    </td>
+                  </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if not claims or (claims and claims|selectattr("status", "equalto", "draft")|list|length == 0) %}
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim draft.</p>
+        {% endif %}
+      </div>
+    </div>
+    <!-- Daftar Klaim Final -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
+      <h2 class="text-lg font-semibold mb-3">Klaim Final</h2>
+      <table class="w-full text-sm border text-center">
+        <thead class="bg-gray-100 dark:bg-gray-700">
+          <tr>
+            <th class="p-2 border">ID</th>
+            <th class="p-2 border">Pasien</th>
+            <th class="p-2 border">Dokter</th>
+            <th class="p-2 border">Status</th>
+            <th class="p-2 border">Tanggal</th>
+            <th class="p-2 border">Disetujui</th>
+            <th class="p-2 border">Lihat Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for claim in claims %}
+            {% if claim and claim.status == 'final' %}
+              <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
+                <td class="p-2 border">{{ claim.id }}</td>
+                <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
+                <td class="p-2 border">{{ claim.doctor_name or '-' }}</td>
+                <td class="p-2 border">
+                  <span class="px-2 py-1 bg-green-200 text-green-800 rounded text-xs">Final</span>
+                </td>
+                <td class="p-2 border">{{ claim.created_at.strftime("%Y-%m-%d") }}</td>
+                <td class="p-2 border">{{ user.name or '-' }}</td>
+                <td class="p-2 border text-center">
+                  <a href="/claims/{{ claim.id }}" 
+                    class="text-blue-600 hover:underline">Detail</a>
+                </td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
 </div>
-{% endif %}
-
-<!-- Klaim terbaru -->
-<div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6">
-  <h2 class="text-xl font-bold mb-2">10 Klaim Terbaru</h2>
-  <table class="table-auto w-full text-sm border-collapse">
-    <thead class="bg-gray-200 dark:bg-gray-700">
-      <tr class="text-center">
-        <th class="px-4 py-2">ID</th>
-        <th class="px-4 py-2">Pasien</th>
-        <th class="px-4 py-2">Tanggal Klaim</th>
-        <th class="px-4 py-2">Dokter</th>
-        <th class="px-4 py-2">Diagnosis</th>
-        <th class="px-4 py-2">Status</th>
-        <th class="px-4 py-2">Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for claim in claims %}
-      <tr class="border-b dark:border-gray-700 text-center">
-        <td class="px-4 py-2">{{ claim.id }}</td>
-        <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
-        <td class="px-4 py-2">{{ claim.claim_date or '-' }}</td>
-        <td class="px-4 py-2">{{ claim.doctor_name or '-' }}</td>
-        <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
-        <td class="px-4 py-2">
-          {% if claim.status == 'draft' %}
-            <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded">Draft</span>
-          {% elif claim.status == 'submitted' %}
-            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Final</span>
-          {% else %}
-            <span class="bg-gray-100 text-gray-800 text-xs font-semibold px-2 py-0.5 rounded">-</span>
-          {% endif %}
-        </td>
-        <td class="px-4 py-2">
-          <a href="/claims/{{ claim.id }}" 
-             class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">🔍 Detail</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- Opsional: daftar khusus Draft Claims -->
-<div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6">
-  <h2 class="text-xl font-bold mb-2">Daftar Klaim Draft</h2>
-  <ul class="list-disc pl-5">
-    {% for claim in draft_claims_list %}
-    <li>
-      #{{ claim.id }} - {{ claim.patient.nama if claim.patient else '-' }} 
-      ({{ claim.claim_date.strftime('%Y-%m-%d') if claim.claim_date else '-' }})
-      <a href="/claims/{{ claim.id }}/edit" class="text-blue-600 underline">Review</a>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-
-<!-- Opsional: daftar khusus Final Claims -->
-<div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-  <h2 class="text-xl font-bold mb-2">Daftar Klaim Final</h2>
-  <ul class="list-disc pl-5">
-    {% for claim in final_claims_list %}
-    <li>
-      #{{ claim.id }} - {{ claim.patient.nama if claim.patient else '-' }} 
-      ({{ claim.claim_date.strftime('%Y-%m-%d') if claim.claim_date else '-' }})
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-
 {% endblock %}

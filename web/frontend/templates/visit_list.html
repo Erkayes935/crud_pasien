@@ -47,8 +47,8 @@
         <tr class="border-b dark:border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
           <td class="px-4 py-2">{{ v.id }}</td>
           <td class="px-4 py-2">{{ v.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ v.patient_name or '-' }}</td>
-          <td class="px-4 py-2">{{ v.doctor_name or '-' }}</td>
+          <td class="px-4 py-2">{{ v.patient.nama or '-' }}</td>
+          <td class="px-4 py-2">{{ user.name or '-' }}</td>
           <td class="px-4 py-2">{{ v.poli or '-' }}</td>
           <td class="px-4 py-2">{{ v.sumber or '-' }}</td>
           <td class="px-4 py-2">{{ v.eksternal_id or '-' }}</td>
@@ -57,11 +57,17 @@
             {% if flow == "claim" %}
               <!-- Mode wizard klaim -->
               <form action="{{ url_for('add_claim') }}" method="post" class="inline">
-                <input type="hidden" name="patient_id" value="{{ v.patient.id }}">
-                <input type="hidden" name="visit_id" value="{{ v.id }}">
-                <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id }}">
-                <input type="hidden" name="doctor_id" value="{{ current_user.id }}">
-                <input type="hidden" name="doctor_name" value="{{ current_user.name }}">
+                <input type="hidden" name="patient_id" value="{{ v.patient.id or '' }}">
+                <input type="hidden" name="visit_id" value="{{ v.id or '' }}">
+                <input type="hidden" name="hospital_id" value="{{ current_user.hospital_id or '' }}">
+                <input type="hidden" name="doctor_id" value="{{ current_user.id or '' }}">
+                <input type="hidden" name="doctor_name" value="{{ current_user.name or '' }}">
+                <input type="hidden" name="created_at" value="{{ v.created_at or '' }}">
+                <input type="hidden" name="updated_at" value="{{ v.updated_at or '' }}">
+                <input type="hidden" name="record_type" value="{{ v.record_type or '' }}">
+                <input type="hidden" name="is_deleted" value="{{ v.is_deleted or '' }}">
+                <input type="hidden" name="is_dummy" value="{{ v.is_dummy or '' }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
                   Buat Klaim
@@ -72,8 +78,10 @@
               <div class="flex gap-2 justify-center">
                 <a href="/visits/edit/{{ v.id }}"
                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
-                <a href="/visits/delete/{{ v.id }}"
-                   class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Hapus</a>
+                <form method="post" action="/visits/delete/{{ v.id }}" onsubmit="return confirm('Yakin ingin menghapus kunjungan ini?');" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded">Hapus</button>
+                </form>
               </div>
               {% endif %}
             {% endif %}

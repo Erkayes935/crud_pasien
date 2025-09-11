@@ -1,116 +1,30 @@
-// ==================== Resume Medis Modal ====================
-function openResumePopup() {
-  document.getElementById("resumeModal").classList.remove("hidden");
-  updateResume();
-}
-
-function closeResumePopup() {
-  document.getElementById("resumeModal").classList.add("hidden");
-}
-
-async function updateResume() {
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const settings = {
-    regulasi: document.getElementById("chkRegulasi").checked,
-    obat: document.getElementById("chkObat").checked,
-    ringkas: document.getElementById("chkRingkas").checked,
-  };
-  // Dummy payload, nanti bisa diisi dari form
-  const payload = {
-    pasien: { nama: "Andi", no_rm: "RM001", umur: 45, jk: "L", keluhan: "demam tinggi" },
-    visit: { tgl_masuk: "2025-09-01", tgl_pulang: "2025-09-05", jenis_rawat: "Rawat Inap" },
-    diagnosis: { utama: { nama: "Sepsis", kode: "A41.9" }, sekunder: [{ nama: "Hipotensi", kode: "R65.2" }] },
-    tindakan: { utama: { nama: "Ventilasi Mekanik", kode: "96.70" }, sekunder: [] },
-    obat: [{ nama: "Ceftriaxone", dosis: "2x1g IV" }],
-    regulasi: [{ nama: "PNPK Sepsis", detail: "2023" }],
-    dokter: { nama: "dr. Budi" },
-    mode: mode,
-    settings: settings,
-  };
-  try {
-    const res = await fetch("/api/resume_medis", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    document.getElementById("resumePreview").innerHTML = renderResumeHTML(data);
-  } catch (err) {
-    document.getElementById("resumePreview").innerText = "Error resume: " + err;
-  }
-}
-
-function renderResumeHTML(data) {
-  if (data.mode === "naratif") {
-    return `<div class='mb-2'><b>Naratif Resume Medis</b></div><div>${data.naratif}</div>`;
-  }
-  // List mode
-  return `
-    <div class='mb-2'><b>Identitas Pasien</b></div>
-    <table class='w-full text-sm mb-2'><tr><td>Nama</td><td>${data.identitas.nama}</td></tr><tr><td>No RM</td><td>${data.identitas.no_rm}</td></tr><tr><td>Umur</td><td>${data.identitas.umur}</td></tr><tr><td>JK</td><td>${data.identitas.jk}</td></tr><tr><td>Keluhan</td><td>${data.identitas.keluhan}</td></tr></table>
-    <div class='mb-2'><b>Diagnosis</b></div>
-    <ul>${data.diagnosis.utama ? `<li>Utama: ${data.diagnosis.utama.nama} [${data.diagnosis.utama.kode}]</li>` : ''}${data.diagnosis.sekunder?.map(dx => `<li>Sekunder: ${dx.nama} [${dx.kode}]</li>`).join('')}</ul>
-    <div class='mb-2'><b>Tindakan</b></div>
-    <ul>${data.tindakan.utama ? `<li>Utama: ${data.tindakan.utama.nama} [${data.tindakan.utama.kode}]</li>` : ''}${data.tindakan.sekunder?.map(td => `<li>Sekunder: ${td.nama || td} [${td.kode || ''}]</li>`).join('')}</ul>
-    <div class='mb-2'><b>Obat</b></div>
-    <ul>${(data.obat||[]).map(ob => `<li>${ob.nama} (${ob.dosis})</li>`).join('')}</ul>
-    <div class='mb-2'><b>Regulasi</b></div>
-    <ul>${(data.regulasi||[]).map(rg => `<li>${rg.nama} (${rg.detail})</li>`).join('')}</ul>
-    <div class='mb-2'><b>Dokter</b></div>
-    <ul><li>${data.dokter.nama}</li></ul>
-    <div class='mt-2 text-xs text-gray-500'>Created: ${data.created_at}</div>
-  `;
-}
-
-function copyResume() {
-  const text = document.getElementById("resumePreview").innerText;
-  navigator.clipboard.writeText(text);
-  alert("Resume copied to clipboard!");
-}
-
-function downloadResumePDF() {
-  const element = document.getElementById("resumePreview");
-  html2pdf().set({
-    margin: 0.5,
-    filename: 'resume_medis.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-  }).from(element).save();
-}
 // ==================== Generate AI ====================
-// Export hasil simulasi ke PDF
-document.addEventListener('DOMContentLoaded', function() {
-  const btn = document.getElementById('download-pdf');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      // Pilih panel hasil simulasi (kanan)
-      var element = document.querySelector('.bg-white.rounded-xl.shadow-sm.p-4.sticky.top-6');
-      if (element) {
-        html2pdf().set({
-          margin: 0.5,
-          filename: 'claim_simulasi.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-        }).from(element).save();
-      }
-    });
-  }
-});
 function claimData(init) {
   return {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
     simulasi: init.sim || {
-      admission: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      daily: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      discharge: { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
+      admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      daily: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
     },
     summary: init.summ || {
       admission: { klinis:[], regulasi:[], tarif:[] },
       daily: { klinis:[], regulasi:[], tarif:[] },
       discharge: { klinis:[], regulasi:[], tarif:[] }
+    },
+    manualInput: {
+      admission: {
+        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      },
+      discharge: {
+        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+        komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      },
+      daily: {} // akan diisi dinamis pakai dayId
     },
     recommendations: { medis:[], regulasi:[], tarif:[] },
     modalOpen: false,
@@ -120,6 +34,12 @@ function claimData(init) {
       window.addEventListener('update-rekom', e => {
         this.recommendations = e.detail
       })
+      const role = this.role
+      const claimId = document.getElementById("claimRoot")?.dataset.claimId
+
+      if (role === 'verifikator' && claimId) {
+        loadRecommendations(claimId)   // otomatis load dari DB
+      }
     },
     statusIcon(s){
       if(s==='valid') return "✅"
@@ -130,153 +50,360 @@ function claimData(init) {
   }
 }
 async function generateAI() {
-  // Ambil data rekam medis dari form
-  const patient_uuid = document.getElementById('patient_uuid')?.value || "1";
-  const visit_uuid = document.getElementById('visit_uuid')?.value || "10";
-  const keluhan = document.getElementById('keluhan')?.value || "";
-  const riwayat_penyakit = document.getElementById('riwayat_penyakit')?.value || "";
-  const diagnosis_akhir = document.getElementById('diagnosis_akhir')?.value || "";
-  const tindakan = document.getElementById('tindakan')?.value || "";
-  const obat = document.getElementById('obat')?.value || "";
-
-  // Request ke core_engine
-  try {
-    // 1. Diagnosis, Komorbid, Komplikasi
-    const ddxRes = await fetch("http://localhost:8002/predict_ddx", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patient_uuid, visit_uuid, keluhan, riwayat_penyakit, diagnosis_akhir, tindakan, obat })
-    });
-    const ddxData = await ddxRes.json();
-    renderTable("diagnosis-admission", ddxData.diagnosis || [], "diagnosis", "admission");
-    renderTable("komorbid-admission", ddxData.komorbid || [], "komorbid", "admission");
-    renderTable("komplikasi-admission", ddxData.komplikasi || [], "komplikasi", "admission");
-
-    // 2. Simulasi Klaim & Summary
-    // Ambil diagnosis utama, sekunder, tindakan dari hasil ddx (atau dari user input)
-    const primary = ddxData.diagnosis?.[0]?.klinis || "";
-    const secondary = ddxData.komorbid?.map(k => k.klinis) || [];
-    const procedures = [ddxData.diagnosis?.[0]?.tindakan || ""];
-    const claimRes = await fetch("http://localhost:8002/analyze_claim", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ primary, secondary, procedures })
-    });
-    const claimData = await claimRes.json();
-    const state = Alpine.$data(document.getElementById('claimRoot'));
-    // Map tindakan dari backend ke panel tindakan
-    state.simulasi.admission = {
-      utama: state.simulasi.admission.utama,
-      sekunder: state.simulasi.admission.sekunder,
-      tindakanUtama: claimData.simulasi?.tindakan_utama || null,
-      tindakanSekunder: claimData.simulasi?.tindakan_sekunder || [],
-      tarifDraft: claimData.simulasi?.tarif_draft || null
-    };
-    state.summary.admission = claimData.summary || {};
-
-    // Render Saran Simulasi panel
-    renderSaranSimulasi('admission', claimData.summary);
-
-    // 3. Rekomendasi Kombinasi
-    const combosRes = await fetch("http://localhost:8002/generate_claim_combos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patient_uuid, visit_uuid, keluhan, riwayat_penyakit, diagnosis_akhir, tindakan, obat })
-    });
-    const combosData = await combosRes.json();
-      // Map rekomendasi to recommendations Alpine state for saran simulasi panel
-    // Hitung total tarif keseluruhan dari rekomendasi (valid+warning)
-    let totalTarif = 0;
-    if (combosData.rekomendasi) {
-      combosData.rekomendasi.forEach(rec => {
-        if (rec.status === 'valid' || rec.status === 'warning') {
-          totalTarif += rec.tarif_draft || 0;
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId
+                 || document.getElementById("claimIdHidden")?.value
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const payload = {
+    claim_id: claimId,
+    patient_uuid: state.pasien?.uuid || state.pasien?.patient_uuid || '',
+    visit_uuid: state.visit?.uuid || state.visit?.visit_uuid || '',
+    context: "all",
+    notes: "generate by AI"
+  }
+  console.log("📦 Payload yg dikirim:", payload)
+  fetch("/predict_ddx", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log("📥 Data dari BE:", data)
+      function mapAIItem(item) {
+        return {
+          kategori: item.kategori || item.category || '-',
+          klinis: item.klinis || item.clinical || '-',
+          icd: item.icd || item.icd_code || '-',
+          tindakan: item.tindakan || item.action || '-',
+          score: item.score || '-',
+          mapping: item.mapping || ''
         }
-      });
-    }
-    // Tampilkan total di bawah panel saran simulasi
-    const totalEl = document.getElementById('total-tarif-simulasi');
-    if (totalEl) {
-      totalEl.textContent = 'Total Tarif Simulasi: Rp' + totalTarif.toLocaleString();
-    }
-      const state2 = Alpine.$data(document.getElementById('claimRoot'));
-      // Transform combosData.rekomendasi into categories for recommendations panel
-      if (combosData.rekomendasi) {
-        // Example: group by status (valid, warning, invalid)
-        const recs = { valid: [], warning: [], invalid: [] };
-        combosData.rekomendasi.forEach(rec => {
-          const cat = rec.status || 'valid';
-          recs[cat] = recs[cat] || [];
-          recs[cat].push({
-            target: [rec.diagnosis_utama, ...(rec.diagnosis_sekunder || []), rec.tindakan_utama].filter(Boolean),
-            message: `Tarif: Rp${rec.tarif_draft?.toLocaleString()}`,
-            status: rec.status,
-            confidence: 0.95 // Dummy confidence, adjust if backend provides
-          });
-        });
-        state2.recommendations = recs;
       }
-    // Bisa digunakan untuk panel rekomendasi atau simulasi lain
-// Render Saran Simulasi panel
-function renderSaranSimulasi(tab, summary) {
-  if (!summary) return;
-  const medisEl = document.getElementById(`saran-medis-${tab}`);
-  const regulasiEl = document.getElementById(`saran-regulasi-${tab}`);
-  const tarifEl = document.getElementById(`saran-tarif-${tab}`);
-  if (medisEl) medisEl.textContent = (summary.medis || []).join("; ");
-  if (regulasiEl) regulasiEl.textContent = (summary.regulasi || []).join("; ");
-  if (tarifEl) tarifEl.textContent = (summary.tarif || []).join("; ");
-}
+      // Admission
+      renderTable("diagnosis-admission", Array.isArray(data.diagnosis) ? data.diagnosis.map(mapAIItem) : [], "diagnosis", "admission")
+      renderTable("komorbid-admission", Array.isArray(data.komorbid) ? data.komorbid.map(mapAIItem) : [], "komorbid", "admission")
+      renderTable("komplikasi-admission", Array.isArray(data.komplikasi) ? data.komplikasi.map(mapAIItem) : [], "komplikasi", "admission")
+      Object.assign(state.simulasi.admission, data.admission?.simulasi || {})
+      state.summary.admission = data.admission?.summary || {}
+      // Daily
+      if (Array.isArray(data.daily)) {
+        const dailyContainer = document.getElementById("daily-accordion")
+        dailyContainer.innerHTML = ""
+        data.daily.forEach((hari, idx) => {
+          hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
+          const dayId = `daily-${idx}`
+          if (!state.manualInput.daily[dayId]) {
+            state.manualInput.daily[dayId] = {
+              diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
+              komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"" },
+              komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
+            }
+          }
+          dailyContainer.insertAdjacentHTML("beforeend", `
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+          <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2 space-y-2">
+
+          <!-- Diagnosis -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Diagnosis
+                <span id="count-diagnosis-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="diagnosis-${dayId}"></tbody>
+                <tbody id="diagnosis-manual-${dayId}">
+                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" :value="manualInput.daily[dayId].diagnosis.kategori" placeholder="Nama penyakit"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
+                            class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td>
+                    <button @click="addManual('diagnosis','${dayId}')"
+                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Komorbid -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Komorbid
+                <span id="count-komorbid-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="komorbid-${dayId}"></tbody>
+                <tbody id="komorbid-manual-${dayId}">
+                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400 readonly"></td>
+                <td>
+                  <button @click="addManual('komorbid','${dayId}')"
+                          class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                </td>
+              </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Komplikasi -->
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+            <button @click="open=!open"
+                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+              <span>
+                Komplikasi
+                <span id="count-komplikasi-${dayId}"
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </span>
+              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+            </button>
+            <div x-show="open" class="p-2">
+              <table class="w-full text-xs border">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
+                  </tr>
+                </thead>
+                <tbody id="komplikasi-${dayId}"></tbody>
+                <tbody id="komplikasi-manual-${dayId}">
+                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
+                            class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                  <td>
+                    <button @click="addManual('komplikasi','${dayId}')"
+                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `)
+    console.log("✅ accordion harusnya dibuat, cek DOM:", document.getElementById("daily-accordion").innerHTML)
+    const tmpl = document.getElementById("daily-form-template")
+    if (tmpl) {
+      const clone = tmpl.content.cloneNode(true)
+      dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
+    }
+    // render tabel per bagian
+    renderTable(`diagnosis-${dayId}`, Array.isArray(hari.diagnosis) ? hari.diagnosis.map(mapAIItem) : [], "diagnosis", "daily", dayId)
+    renderTable(`komorbid-${dayId}`, Array.isArray(hari.komorbid) ? hari.komorbid.map(mapAIItem) : [], "komorbid", "daily", dayId)
+    renderTable(`komplikasi-${dayId}`, Array.isArray(hari.komplikasi) ? hari.komplikasi.map(mapAIItem) : [], "komplikasi", "daily", dayId)
+      })
+    } else {
+      // fallback lama kalau backend masih kirim 1 blok
+      renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
+      renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
+      renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
+    }
+    Object.assign(state.simulasi.daily, {
+      utama: (data.daily[0] && data.daily[0].utama) || null,
+      sekunder: data.daily.flatMap(d => d.sekunder || []),
+      tindakanUtama: (data.daily[0] && data.daily[0].tindakanUtama) || null,
+      tindakanSekunder: data.daily.flatMap(d => d.tindakanSekunder || []),
+      tarifDraft: null
+    })
+    Object.assign(state.summary.daily, {
+      klinis: data.daily.flatMap(d => d.summary?.klinis || []),
+      regulasi: data.daily.flatMap(d => d.summary?.regulasi || []),
+      tarif: data.daily.flatMap(d => d.summary?.tarif || [])
+    })
+
+
+    // === Discharge ===
+    renderTable("diagnosis-discharge", Array.isArray(data.discharge?.diagnosis) ? data.discharge.diagnosis.map(mapAIItem) : [], "diagnosis", "discharge")
+    renderTable("komorbid-discharge", Array.isArray(data.discharge?.komorbid) ? data.discharge.komorbid.map(mapAIItem) : [], "komorbid", "discharge")
+    renderTable("komplikasi-discharge", Array.isArray(data.discharge?.komplikasi) ? data.discharge.komplikasi.map(mapAIItem) : [], "komplikasi", "discharge")
+    Object.assign(state.simulasi.discharge, data.discharge?.simulasi || {})
+    state.summary.discharge = data.discharge?.summary || {}
+
+    // === Panel kanan (SARAN SIMULASI) ===
+    window.dispatchEvent(new CustomEvent('update-rekom', {
+      detail: {
+        medis: [
+          ...(data.discharge?.summary?.klinis || [])
+        ],
+        regulasi: [
+          ...(data.discharge?.summary?.regulasi || [])
+        ],
+        tarif: [
+          ...(data.discharge?.summary?.tarif || [])
+        ]
+      }
+    }))
 
   } catch (err) {
-    console.error("Error generate AI:", err);
-    alert("Gagal generate AI");
+    alert("Gagal generate AI: " + err)
   }
 }
 
 
 // ==================== Render Table ====================
-function renderTable(targetId, data, type, tab) {
+function renderTable(targetId, items, type, tab, dayId = null) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))  // ✅ ambil Alpine state
+  if (!state.simulasi[tab]) {
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+  }
+
+  // force isi array di state
+  if (!Array.isArray(state.simulasi[tab][type])) {
+    state.simulasi[tab][type] = []
+  }
+  state.simulasi[tab][type].splice(
+    0,
+    state.simulasi[tab][type].length,
+    ...(items || []).map(it => ({
+      ...it,
+      mapping: it.mapping || ""
+    }))
+  )
+
   const target = document.getElementById(targetId)
   if (!target) return
 
-  // ambil role dari Alpine
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  const role = state.role
-
-  // amanin data supaya array
-  const rows = (data || []).map(it => {
-    const sourceLabel = type.charAt(0).toUpperCase() + type.slice(1)
-    return `
-      <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600">
-        <td ${ (type === "diagnosis" || type === "komorbid" || type === "komplikasi")
-      ? `data-item='${JSON.stringify({...it, tab})}' onclick="openModalFromAttr(this)" class="text-blue-600 underline cursor-pointer"`
-      : "" }>${it.kategori || "-"}</td>
-        <td>${it.klinis || "-"}</td>
-        <td>${it.icd || "-"}</td>
-        <td>${it.tindakan || "-"}</td>
-        <td>${it.score ?? "-"}</td>
-        <td>
-          <select ${role === 'doctor' ? '' : 'disabled'}
-                  onchange="updateSimulasi('${type}', this.value, {name:'${it.kategori}', label:'${sourceLabel}'}, '${sourceLabel}', '${tab}')"
-                  class="border rounded px-1 text-xs bg-gray-100 dark:bg-gray-700">
-            <option value="">Pilih</option>
-            <option value="Diagnosis Utama">Diagnosis Utama</option>
-            <option value="Komorbid">Komorbid</option>
-            <option value="Komplikasi">Komplikasi</option>
-            <option value="None">None</option>
+  // render semua item AI/rekomendasi
+  state.simulasi[tab][type].forEach((item, idx) => {
+    target.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td class="border px-2 py-1 cursor-pointer text-blue-600 underline"
+            data-item='${JSON.stringify(item)}'
+            onclick="openModalFromAttr(this)">
+          ${item.kategori || "-"}
+        </td>
+        <td class="border px-2 py-1">${item.klinis || "-"}</td>
+        <td class="border px-2 py-1">${item.icd || "-"}</td>
+        <td class="border px-2 py-1">${item.tindakan || "-"}</td>
+        <td class="border px-2 py-1">${item.score || "-"}</td>
+        <td ${type === "tindakan" ? 'style="display:none"' : ""}>
+          <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
+                  class="border px-2 py-1 rounded 
+                         bg-white dark:bg-gray-700 
+                         text-gray-900 dark:text-gray-200 
+                         focus:ring-2 focus:ring-blue-400"
+                  ${state.role !== 'doctor' ? 'disabled' : ''}>
+            <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
+            <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
+            <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
+            <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
+            <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
           </select>
         </td>
       </tr>
-    `
-  }).join("")
+    `)
+  })
 
-  target.innerHTML = rows
 
-  // update badge jumlah
-  const countEl = document.getElementById("count-" + targetId)
-  if (countEl) countEl.textContent = (data || []).length
+  // update counter di header
+  let counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
+  const countEl = document.getElementById(counterId)
+  if (countEl) countEl.textContent = items.length
+
+  console.log("✅ renderTable synced", tab, type, state.simulasi[tab][type])
 }
+
 
 // ==================== Modal ====================
 
@@ -287,20 +414,22 @@ function openModal(title, content) {
   state.modalContent = content
 }
 
-async function openModalFromAttr(el) {
+function openModalFromAttr(el) {
   const it = JSON.parse(el.dataset.item)
-  // Request detail ke backend
-  try {
-    const res = await fetch("http://localhost:8002/analyze_diagnosis", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ diagnosis_text: it.klinis })
+  // Request ke core_engine/analyze_diagnosis untuk detail modal
+  fetch('/analyze_diagnosis', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ diagnosis_text: it.klinis || it.icd || '-' })
+  })
+    .then(res => res.json())
+    .then(detail => {
+      it.modal_detail = detail
+      openModal(it.kategori, buildModalContent(it))
     })
-    const detail = await res.json()
-    openModal(it.kategori, buildModalContent({ ...it, modal_detail: detail }))
-  } catch (err) {
-    openModal(it.kategori, '<div class="text-red-500">Gagal mengambil detail diagnosis</div>')
-  }
+    .catch(err => {
+      openModal(it.kategori, buildModalContent(it))
+    })
 }
 
 function buildModalContent(it) {
@@ -339,7 +468,7 @@ function buildModalContent(it) {
           ${(d.tindakan || []).map(td => `
             <div class="flex justify-between items-center border p-2 rounded">
               <span>${td.nama}</span>
-              <div class="space-x-1">
+              <div x-show="role !== 'verifikator'" class="space-x-1">
                 <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', '${it.tab || 'admission'}')"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
                 <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', '${it.tab || 'admission'}')"
@@ -390,6 +519,17 @@ function normalizeOpt(opt) {
   if (opt === "None") return "None"
   return opt
 }
+
+function normalizeItem(val) {
+  if (typeof val === "string") {
+    return { name: val.split(" [")[0] || "-", label: "" }
+  }
+  return {
+    name: val.name || val.kategori || val.icd || "-",
+    label: val.label || "",
+  }
+}
+
 
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -468,107 +608,432 @@ function updateSimulasi(type, opt, value, source, tab) {
 
 // ==================== Helpers ====================
 
-// Export hasil simulasi ke PDF
-document.addEventListener('DOMContentLoaded', function() {
-  var btn = document.getElementById('download-pdf');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      // Pilih parent container panel kanan (simulasi klaim)
-      var panel = btn.closest('.lg\:col-span-1');
-      if (!panel) {
-        panel = document.querySelector('.bg-white.rounded-xl.shadow-sm.p-4.sticky.top-6');
-      }
-      if (!panel) {
-        alert('Panel hasil simulasi tidak ditemukan!');
-        return;
-      }
-      // Clone panel agar dropdown/select tidak ikut
-      var clone = panel.cloneNode(true);
-      clone.querySelectorAll('select').forEach(function(sel){ sel.style.display='none'; });
-      clone.querySelectorAll('button').forEach(function(b){ b.style.display='none'; });
-      var tempDiv = document.createElement('div');
-      tempDiv.style.position = 'fixed';
-      tempDiv.style.left = '-9999px';
-      tempDiv.appendChild(clone);
-      document.body.appendChild(tempDiv);
-      html2pdf().set({
-        margin: 0.5,
-        filename: 'claim_simulasi.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      }).from(clone).save().then(function(){
-        document.body.removeChild(tempDiv);
-      });
-    });
-  }
-});
-
 function confidenceBadge(val){
   val=parseInt(val)
   let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
   return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
 }
 
-async function simpanFinal() {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-
-  // TODO: ganti claimId sesuai klaim aktif (misalnya ambil dari hidden input / URL)
-  const claimId = state.currentClaimId || document.getElementById("claimRoot").dataset.claimId  
-
-  // Ambil UUID dari hidden input atau Alpine state
-  const patient_uuid = document.getElementById('patient_uuid')?.value || state.patient_uuid || null;
-  const visit_uuid = document.getElementById('visit_uuid')?.value || state.visit_uuid || null;
-  const payload = {
-    simulasi: state.simulasi,
-    summary: state.summary,
-    patient_uuid,
-    visit_uuid
-  }
-
+async function loadRecommendations(claimId) {
   try {
-    const res = await fetch(`/claims/${claimId}/finalize`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    const res = await fetch(`/claims/${claimId}/recommendations`)
+    if (!res.ok) {
+      console.error("❌ Gagal load rekomendasi dari DB")
+      return
+    }
+    const recs = await res.json()
+    console.log("📥 Data rekomendasi dari DB:", recs)
+
+    // Grouping per stage & category
+    const grouped = { admission: {}, discharge: {}, daily: {} }
+    recs.forEach(r => {
+      const parts = r.category.split("_", 2)
+      const stage = parts[0]
+      const cat = parts[1] || "unknown"
+
+      if (stage === "admission") {
+        grouped.admission[cat] = grouped.admission[cat] || []
+        grouped.admission[cat].push(r)
+      } else if (stage === "discharge") {
+        grouped.discharge[cat] = grouped.discharge[cat] || []
+        grouped.discharge[cat].push(r)
+      } else if (stage.startsWith("daily")) {
+        grouped.daily[stage] = grouped.daily[stage] || { diagnosis: [], komorbid: [], komplikasi: [] }
+        grouped.daily[stage][cat] = grouped.daily[stage][cat] || []
+        grouped.daily[stage][cat].push(r)
+      }
     })
 
-    if (res.ok) {
-      // redirect ke dashboard (atau klaim detail)
-      window.location.href = "/dashboard"
-    } else {
-      const err = await res.json()
-      alert("Gagal simpan final: " + err.detail)
-    }
-  } catch (e) {
-    console.error(e)
-    alert("Error simpan final")
+    // === Admission ===
+    renderTable("diagnosis-admission", (grouped.admission.diagnosis || []).map(mapRecommendation), "diagnosis", "admission")
+    renderTable("komorbid-admission", (grouped.admission.komorbid || []).map(mapRecommendation), "komorbid", "admission")
+    renderTable("komplikasi-admission", (grouped.admission.komplikasi || []).map(mapRecommendation), "komplikasi", "admission")
+
+    // === Daily ===
+    const dailyContainer = document.getElementById("daily-accordion")
+    dailyContainer.innerHTML = ""
+
+    Object.keys(grouped.daily).forEach((stage, idx) => {
+      const hari = grouped.daily[stage]
+      hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
+      const dayId = `daily-${idx}`
+
+      dailyContainer.insertAdjacentHTML("beforeend", `
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+    <button @click="open=!open"
+            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+    </button>
+    <div x-show="open" class="p-2 space-y-2">
+
+      <!-- Diagnosis -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Diagnosis
+            <span id="count-diagnosis-daily-${idx}"
+            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+              ${(hari.diagnosis || []).length}
+            </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="diagnosis-${dayId}"></tbody>
+            <tbody id="diagnosis-manual-${dayId}">
+            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" placeholder="Nama penyakit"
+                        class="border px-2 py-1 w-full rounded 
+                                bg-white dark:bg-gray-700 
+                                text-gray-900 dark:text-gray-100 
+                                focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
+                        class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
+                        class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
+                        class="border px-2 py-1 w-full rounded 
+                                bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
+                        class="border px-2 py-1 w-full rounded 
+                                    bg-white dark:bg-gray-700 
+                                    text-gray-900 dark:text-gray-100 
+                                    focus:ring-2 focus:ring-blue-400" readonly></td>
+              <td>
+                <button @click="addManual('diagnosis','${dayId}')"
+                        class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Komorbid -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komorbid
+            <span id="count-komorbid-daily-${idx}"
+            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+              ${(hari.komorbid || []).length}
+            </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komorbid-${dayId}"></tbody>
+            <tbody id="komorbid-manual-${dayId}">
+            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td>
+                  <button @click="addManual('komorbid','${dayId}')"
+                          class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Komplikasi -->
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+        <button @click="open=!open"
+                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+          <span>
+            Komplikasi
+            <span id="count-komplikasi-daily-${idx}"
+            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+              ${(hari.komplikasi || []).length}
+            </span>
+          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+        </button>
+        <div x-show="open" class="p-2">
+          <table class="w-full text-xs border">
+            <thead class="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                <th>Tindakan</th><th>Score</th><th>Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="komplikasi-${dayId}"></tbody>
+            <tbody id="komplikasi-manual-${dayId}">
+            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
+                           class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400" readonly></td>
+                <td>
+                  <button @click="addManual('komplikasi','${dayId}')"
+                          class="border px-2 py-1 w-full rounded 
+       bg-white dark:bg-gray-700 
+       text-gray-900 dark:text-gray-100 
+       focus:ring-2 focus:ring-blue-400">➕</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+`)
+
+      renderTable(`diagnosis-${dayId}`, Array.isArray(hari.diagnosis) ? hari.diagnosis.map(mapRecommendation) : [], "diagnosis", "daily")
+      renderTable(`komorbid-${dayId}`, Array.isArray(hari.komorbid) ? hari.komorbid.map(mapRecommendation) : [], "komorbid", "daily")
+      renderTable(`komplikasi-${dayId}`, Array.isArray(hari.komplikasi) ? hari.komplikasi.map(mapRecommendation) : [], "komplikasi", "daily")
+    })
+
+    // === Discharge ===
+    renderTable("diagnosis-discharge", (grouped.discharge.diagnosis || []).map(mapRecommendation), "diagnosis", "discharge")
+    renderTable("komorbid-discharge", (grouped.discharge.komorbid || []).map(mapRecommendation), "komorbid", "discharge")
+    renderTable("komplikasi-discharge", (grouped.discharge.komplikasi || []).map(mapRecommendation), "komplikasi", "discharge")
+
+  } catch (err) {
+    console.error("❌ Error loadRecommendations:", err)
   }
 }
 
-async function saveDraft() {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  const claimId = state.currentClaimId || document.getElementById("claimRoot").dataset.claimId
-
-  const payload = {
-    simulasi: state.simulasi,
-    summary: state.summary
-  }
-
-  try {
-    const res = await fetch(`/claims/${claimId}/update-draft`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-    if (res.ok) {
-      alert("✅ Draft klaim berhasil disimpan")
-    } else {
-      const err = await res.json()
-      alert("❌ Gagal simpan draft: " + (err.detail || "Unknown error"))
-    }
-  } catch (e) {
-    console.error("Save Draft error:", e)
-    alert("❌ Error koneksi")
+function mapRecommendation(r) {
+  return {
+    kategori: r.sim_text || "-",
+    klinis: r.regulation_refs?.klinis || "-",
+    icd: r.icd10_code || r.icd9_code || "-",
+    tindakan: r.icd9_code || r.regulation_refs?.tindakan || "-",
+    score: r.confidence_score || 0,
+    child: r.regulation_refs?.child || false,
+    name: r.sim_text || "-",  // biar updateSimulasi aman
+    modal_detail: r.regulation_refs?.modal_detail || {}
   }
 }
+
+
+function addManual(type, tab) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+
+  if (!state.simulasi[tab]) {
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+  }
+  if (!Array.isArray(state.simulasi[tab][type])) {
+    state.simulasi[tab][type] = []
+  }
+  
+  let input
+  if (tab.startsWith("daily-")) {
+    input = state.manualInput.daily[tab][type]
+  } else {
+    input = state.manualInput[tab][type]
+  }
+
+
+  // Buat object baru dari input manual
+  // PERBAIKAN
+  const newItem = {
+    name: input.kategori || "-",
+    kategori: input.kategori || "",
+    klinis: input.klinis || "-",
+    icd: input.icd || "-",
+    tindakan: input.tindakan || "-",
+    score: 0,
+    mapping: ""
+  }
+
+
+  // Masukkan ke simulasi
+  state.simulasi[tab][type].push(newItem)
+
+  const manualBody = document.getElementById(`${type}-manual-${tab}`)
+  manualBody.insertAdjacentHTML("beforeend", `
+    <tr class="bg-gray-50 dark:bg-gray-800">
+      <td>${newItem.kategori}</td>
+      <td>${newItem.klinis}</td>
+      <td>${newItem.icd}</td>
+      <td>${newItem.tindakan}</td>
+      <td>${newItem.score}</td>
+      <td>-</td>
+    </tr>
+  `)
+
+  // Reset input manual (jangan ganti object)
+  // PERBAIKAN
+  if (tab.startsWith("daily-")) {
+  state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  } else {
+    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+  }
+
+
+
+  // Trigger AI recommendation
+  // Ganti ke endpoint core_engine yang sesuai
+  fetch("/analyze_claim", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kategori: newItem.kategori })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const idx = state.simulasi[tab][type].length - 1
+    state.simulasi[tab][type][idx].klinis   = data.klinis   || state.simulasi[tab][type][idx].klinis
+    state.simulasi[tab][type][idx].icd      = data.icd      || state.simulasi[tab][type][idx].icd
+    state.simulasi[tab][type][idx].tindakan = data.tindakan || state.simulasi[tab][type][idx].tindakan
+    state.simulasi[tab][type][idx].score    = data.score    ?? state.simulasi[tab][type][idx].score
+  })
+  .catch(err => console.error("AI recommendation failed", err))
+}
+
+
+
+
+
+function onMappingChange(event, tab, type, idx) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const arr = state.simulasi?.[tab]?.[type] || []
+  const item = arr[idx]
+
+  if (!item) {
+    console.warn("❌ onMappingChange: item not found", { tab, type, idx })
+    return
+  }
+
+  const opt = event.target.value
+  updateSimulasi("diagnosis", opt, normalizeItem(item), "AI", tab)
+}
+
+// ==================== Resume Medis ====================
+function generateResumeMedis() {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+  // Diagnosis dan tindakan harus dict, bukan array kosong
+  const payload = {
+    pasien: state.pasien || {},
+    visit: state.visit || {},
+    diagnosis: state.simulasi.admission.diagnosis.length ? state.simulasi.admission.diagnosis[0] : {},
+    tindakan: state.simulasi.admission.tindakanUtama || {},
+    obat: state.obat || [],
+    regulasi: state.recommendations.regulasi || [],
+    dokter: state.dokter || {},
+    mode: "list",
+    settings: {}
+  }
+  console.log('📦 Payload Resume Medis:', payload)
+  fetch('/resume_medis', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log('📥 Data Resume Medis dari BE:', data)
+      openModal('Resume Medis', buildResumeMedisModal(data))
+    })
+    .catch(err => {
+      alert('Gagal generate Resume Medis: ' + err)
+    })
+}
+
+function buildResumeMedisModal(data) {
+  // Template resume medis, bisa kamu modifikasi sesuai kebutuhan
+  const diagnosisArr = Array.isArray(data.diagnosis) ? data.diagnosis : (data.diagnosis ? [data.diagnosis] : [])
+  const tindakanArr = Array.isArray(data.tindakan) ? data.tindakan : (data.tindakan ? [data.tindakan] : [])
+  const obatArr = Array.isArray(data.obat) ? data.obat : (data.obat ? [data.obat] : [])
+  return `
+    <div class="space-y-2">
+      <h3 class="font-bold text-lg">Identitas Pasien</h3>
+      <div>Nama: ${data.identitas?.nama || '-'}<br>Umur: ${data.identitas?.umur || '-'}<br>Jenis Kelamin: ${data.identitas?.jenis_kelamin || '-'}</div>
+      <h3 class="font-bold text-lg mt-2">Kunjungan</h3>
+      <div>Tanggal Masuk: ${data.visit?.tanggal_masuk || '-'}<br>Tanggal Keluar: ${data.visit?.tanggal_keluar || '-'}</div>
+      <h3 class="font-bold text-lg mt-2">Diagnosis</h3>
+      <table class="table-auto w-full border">
+        <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th></tr></thead>
+        <tbody>
+          ${diagnosisArr.map(d => `<tr><td>${d.kategori || '-'}</td><td>${d.klinis || '-'}</td><td>${d.icd || '-'}</td></tr>`).join('')}
+        </tbody>
+      </table>
+      <h3 class="font-bold text-lg mt-2">Tindakan</h3>
+      <table class="table-auto w-full border">
+        <thead><tr><th>Nama</th><th>Kode</th></tr></thead>
+        <tbody>
+          ${tindakanArr.map(t => `<tr><td>${t.nama || '-'}</td><td>${t.kode || '-'}</td></tr>`).join('')}
+        </tbody>
+      </table>
+      <h3 class="font-bold text-lg mt-2">Obat</h3>
+      <ul>${obatArr.map(o => `<li>${o.nama || '-'}</li>`).join('')}</ul>
+    </div>
+  `
+}
+
