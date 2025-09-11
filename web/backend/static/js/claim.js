@@ -52,7 +52,12 @@ function claimData(init) {
 async function generateAI() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId
                  || document.getElementById("claimIdHidden")?.value
-  const state = Alpine.$data(document.getElementById('claimRoot'))
+  
+  if (!claimId) {
+    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.")
+    return
+  }
+
   const payload = {
     claim_id: claimId,
     patient_uuid: state.pasien?.uuid || state.pasien?.patient_uuid || '',
@@ -61,28 +66,26 @@ async function generateAI() {
     notes: "generate by AI"
   }
   console.log("📦 Payload yg dikirim:", payload)
-  fetch("/predict_ddx", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-    .then(res => res.json())
-    .then(data => {
-      console.log("📥 Data dari BE:", data)
-      function mapAIItem(item) {
-        return {
-          kategori: item.kategori || item.category || '-',
-          klinis: item.klinis || item.clinical || '-',
-          icd: item.icd || item.icd_code || '-',
-          tindakan: item.tindakan || item.action || '-',
-          score: item.score || '-',
-          mapping: item.mapping || ''
-        }
-      }
+
+  try {
+
+    const res = await fetch("/predict_ddx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+
+    const data = await res.json()
+    console.log("📥 Data yg diterima:", data)
+        
+     if (!Array.isArray(data.daily)) {
+      data.daily = data.daily ? [data.daily] : []
+    }
+    const state = Alpine.$data(document.getElementById('claimRoot'))
       // Admission
-      renderTable("diagnosis-admission", Array.isArray(data.diagnosis) ? data.diagnosis.map(mapAIItem) : [], "diagnosis", "admission")
-      renderTable("komorbid-admission", Array.isArray(data.komorbid) ? data.komorbid.map(mapAIItem) : [], "komorbid", "admission")
-      renderTable("komplikasi-admission", Array.isArray(data.komplikasi) ? data.komplikasi.map(mapAIItem) : [], "komplikasi", "admission")
+      renderTable("diagnosis-admission", data.admission?.diagnosis || [],  "diagnosis", "admission")
+      renderTable("komorbid-admission", data.admission?.komorbid || [],  "komorbid", "admission")
+      renderTable("komplikasi-admission", data.admission?.komplikasi || [], "komplikasi", "admission")
       Object.assign(state.simulasi.admission, data.admission?.simulasi || {})
       state.summary.admission = data.admission?.summary || {}
       // Daily
@@ -101,7 +104,7 @@ async function generateAI() {
           }
           dailyContainer.insertAdjacentHTML("beforeend", `
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
           <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
@@ -110,7 +113,7 @@ async function generateAI() {
 
           <!-- Diagnosis -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Diagnosis
@@ -167,7 +170,7 @@ async function generateAI() {
 
           <!-- Komorbid -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Komorbid
@@ -224,7 +227,7 @@ async function generateAI() {
 
           <!-- Komplikasi -->
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
+            <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
                 Komplikasi
@@ -289,9 +292,9 @@ async function generateAI() {
       dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
     }
     // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, Array.isArray(hari.diagnosis) ? hari.diagnosis.map(mapAIItem) : [], "diagnosis", "daily", dayId)
-    renderTable(`komorbid-${dayId}`, Array.isArray(hari.komorbid) ? hari.komorbid.map(mapAIItem) : [], "komorbid", "daily", dayId)
-    renderTable(`komplikasi-${dayId}`, Array.isArray(hari.komplikasi) ? hari.komplikasi.map(mapAIItem) : [], "komplikasi", "daily", dayId)
+    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily")
+    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily")
+    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [] , "komplikasi", "daily")
       })
     } else {
       // fallback lama kalau backend masih kirim 1 blok
@@ -314,9 +317,9 @@ async function generateAI() {
 
 
     // === Discharge ===
-    renderTable("diagnosis-discharge", Array.isArray(data.discharge?.diagnosis) ? data.discharge.diagnosis.map(mapAIItem) : [], "diagnosis", "discharge")
-    renderTable("komorbid-discharge", Array.isArray(data.discharge?.komorbid) ? data.discharge.komorbid.map(mapAIItem) : [], "komorbid", "discharge")
-    renderTable("komplikasi-discharge", Array.isArray(data.discharge?.komplikasi) ? data.discharge.komplikasi.map(mapAIItem) : [], "komplikasi", "discharge")
+    renderTable("diagnosis-discharge", data.discharge?.diagnosis || [] ,"diagnosis", "discharge")
+    renderTable("komorbid-discharge", data.discharge?.komorbid || [], "komorbid", "discharge")
+    renderTable("komplikasi-discharge", data.discharge?.komplikasi || [], "komplikasi", "discharge")
     Object.assign(state.simulasi.discharge, data.discharge?.simulasi || {})
     state.summary.discharge = data.discharge?.summary || {}
 
@@ -336,6 +339,7 @@ async function generateAI() {
     }))
 
   } catch (err) {
+    console.error("❌ Error Generate AI: ", err)
     alert("Gagal generate AI: " + err)
   }
 }
@@ -469,9 +473,9 @@ function buildModalContent(it) {
             <div class="flex justify-between items-center border p-2 rounded">
               <span>${td.nama}</span>
               <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', '${it.tab || 'admission'}')"
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', '${it.tab || 'admission'}')"
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
                         class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
               </div>
             </div>
@@ -533,7 +537,6 @@ function normalizeItem(val) {
 
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
-  const role = state.role
   if (!tab) tab = 'admission'
   opt = normalizeOpt(opt)
   console.log("updateSimulasi", { type, opt, tab, current: state.simulasi[tab] })
@@ -561,8 +564,7 @@ function updateSimulasi(type, opt, value, source, tab) {
   }
 
   // ========== DIAGNOSIS ==========
-  if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') {
-  const sim = state.simulasi[tab]  // admission / daily / discharge
+  if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') { // admission / daily / discharge
     if (opt === "Primary") {
       const oldPrimary = sim.utama
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
@@ -584,24 +586,21 @@ function updateSimulasi(type, opt, value, source, tab) {
   }
 
   // ========== TINDAKAN ==========
-  if (type === 'tindakan') {
+  if (type === "tindakan") {
+    const nama = typeof value === "string" ? value : value.name;
     if (opt === "Primary") {
-      const oldPrimary = sim.tindakanUtama
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
-      sim.tindakanUtama = item.name
-      if (oldPrimary && oldPrimary !== item.name) {
-        sim.tindakanSekunder.unshift(oldPrimary)
+      const oldPrimary = sim.tindakanUtama;
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
+      sim.tindakanUtama = { name: nama };
+      if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
+    } else if (opt === "Secondary") {
+      if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
+      if (!sim.tindakanSekunder.find(td => td.name === nama)) {
+        sim.tindakanSekunder.push({ name: nama });
       }
-    }
-    else if (opt === "Secondary") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      if (!sim.tindakanSekunder.includes(item.name)) {
-        sim.tindakanSekunder.push(item.name)
-      }
-    }
-    else if (opt === "None") {
-      if (sim.tindakanUtama === item.name) sim.tindakanUtama = ''
-      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td !== item.name)
+    } else if (opt === "None") {
+      if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
+      sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
     }
   }
 }
@@ -660,7 +659,7 @@ async function loadRecommendations(claimId) {
 
       dailyContainer.insertAdjacentHTML("beforeend", `
   <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-    <button @click="open=!open"
+    <button type="button" @click="open=!open"
             class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
       <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
       <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
@@ -669,7 +668,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Diagnosis -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Diagnosis
@@ -730,7 +729,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Komorbid -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komorbid
@@ -791,7 +790,7 @@ async function loadRecommendations(claimId) {
 
       <!-- Komplikasi -->
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button @click="open=!open"
+        <button type ="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
             Komplikasi

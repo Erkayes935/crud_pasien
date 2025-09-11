@@ -2,483 +2,491 @@
 {% block title %}Draft Klaim{% endblock %}
 
 {% block content %}
-<div id="claimRoot"
-     data-claim-id="{{ record.id if record else '' }}"
-     x-data='claimData({
-       role: {{ role|tojson }},
-       sim: {{ sim|tojson }},
-       summ: {{ summ|tojson }}
-     })'
-     @open-modal.window="openModal($event)"
-     class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
+<form id="claimForm"
+      method="post"
+      action="{% if role == 'doctor' %}/claims/{{ record.id }}/update-draft{% elif role == 'verifikator' %}/claims/{{ record.id }}/finalize{% endif %}"
+      data-claim-id="{{ record.id if record else '' }}"
+      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
 
-     <input type="hidden" id="claimIdHidden" value="{{ record.id if record else '' }}">
-  <!-- ========== LEFT PANEL ========== -->
-  <div class="lg:col-span-2 space-y-4">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">📝 Draft Klaim</h1>
-    </div>
-    <div class="flex justify-between items-center">
-      <h3 class="text-lg font-semibold">Rekomendasi Klaim</h3>
-      <div class="flex gap-2">
-        {% if role == "doctor" %}
-        <button onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
-        <button onclick="generateResumeMedis()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">🩺 Generate Resume Medis</button>
-        {% endif %}
+  <div id="claimRoot"
+      data-claim-id="{{ record.id if record else '' }}"
+      x-data='claimData({
+        role: {{ role|tojson }},
+        sim: {{ sim|tojson }},
+        summ: {{ summ|tojson }}
+      })'
+      @open-modal.window="openModal($event)"
+      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
+
+      <input type="hidden" id="claimIdHidden" value="{{ record.id if record else '' }}">
+    <!-- ========== LEFT PANEL ========== -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">📝 Draft Klaim</h1>
       </div>
-    </div>
-    <!-- Tabs -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-      <div class="flex border-b">
-        <button @click="tab='admission'" :class="tab==='admission'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Admission</button>
-        <button @click="tab='daily'" :class="tab==='daily'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Daily</button>
-        <button @click="tab='discharge'" :class="tab==='discharge'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Discharge</button>
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-semibold">Rekomendasi Klaim</h3>
+        <div class="flex gap-2">
+          {% if role == "doctor" %}
+          <button type="button" onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
+          <button type="button" onclick="generateResumeMedis()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">🩺 Generate Resume Medis</button>
+          {% endif %}
+        </div>
       </div>
-      <div class="p-4 space-y-4">
+      <!-- Tabs -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+        <div class="flex border-b">
+          <button type = "button" @click="tab='admission'" :class="tab==='admission'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Admission</button>
+          <button type = "button" @click="tab='daily'" :class="tab==='daily'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Daily</button>
+          <button type = "button" @click="tab='discharge'" :class="tab==='discharge'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Discharge</button>
+        </div>
+        <div class="p-4 space-y-4">
 
-        {% set accs = ['Diagnosis','Komorbid','Komplikasi','Form Rekam Medis'] %}
+          {% set accs = ['Diagnosis','Komorbid','Komplikasi','Form Rekam Medis'] %}
 
-        <!-- Admission -->
-        <div x-show="tab==='admission'" class="space-y-2">
-          {% for acc in accs %}
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open" 
-                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-              <span>
-                {{ acc }}
+          <!-- Admission -->
+          <div x-show="tab==='admission'" class="space-y-2">
+            {% for acc in accs %}
+            <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+              <button @click="open=!open" 
+                      class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+                <span>
+                  {{ acc }}
+                  {% if acc!='Form Rekam Medis' %}
+                    <span id="count-{{ acc|lower }}-admission"
+                          class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                  {% endif %}
+                </span>
+                <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+              </button>
+              <div x-show="open" class="p-2">
                 {% if acc!='Form Rekam Medis' %}
-                  <span id="count-{{ acc|lower }}-admission"
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                {% endif %}
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              {% if acc!='Form Rekam Medis' %}
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
-                  </tr>
-                </thead>
+                <table class="w-full text-xs border">
+                  <thead class="bg-gray-100 dark:bg-gray-800">
+                    <tr>
+                      <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                      <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
+                    </tr>
+                  </thead>
 
-                <!-- Tempat render AI -->
-                <tbody id="{{ acc|lower }}-admission"></tbody>
+                  <!-- Tempat render AI -->
+                  <tbody id="{{ acc|lower }}-admission"></tbody>
 
-                <!-- Row Manual -->
-                {% if acc == "Diagnosis" %}
-                <tbody id="diagnosis-manual-admission">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                    <td><input x-model="manualInput.admission.diagnosis.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.diagnosis.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.diagnosis.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.diagnosis.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
-                {% elif acc == "Komorbid" %}
-                <tbody id="komorbid-manual-admission">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.komorbid.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                    <td><input x-model="manualInput.admission.komorbid.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komorbid.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komorbid.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komorbid.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
-                {% elif acc == "Komplikasi" %}
-                <tbody id="komplikasi-manual-admission">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input x-model="manualInput.admission.komplikasi.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                    <td><input x-model="manualInput.admission.komplikasi.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komplikasi.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komplikasi.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><input x-model="manualInput.admission.komplikasi.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                    <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
+                  <!-- Row Manual -->
+                  {% if acc == "Diagnosis" %}
+                  <tbody id="diagnosis-manual-admission">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input x-model="manualInput.admission.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                      <td><input x-model="manualInput.admission.diagnosis.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.diagnosis.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.diagnosis.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.diagnosis.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% elif acc == "Komorbid" %}
+                  <tbody id="komorbid-manual-admission">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input x-model="manualInput.admission.komorbid.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                      <td><input x-model="manualInput.admission.komorbid.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komorbid.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komorbid.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komorbid.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% elif acc == "Komplikasi" %}
+                  <tbody id="komplikasi-manual-admission">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input x-model="manualInput.admission.komplikasi.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                      <td><input x-model="manualInput.admission.komplikasi.klinis"   class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komplikasi.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komplikasi.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><input x-model="manualInput.admission.komplikasi.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
+                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% endif %}
+                </table>
+                {% else %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
+                    {% include "_form_renderer.html" %}
+                  {% endfor %}
+                </div>
                 {% endif %}
-              </table>
-              {% else %}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
               </div>
-              {% endif %}
             </div>
+            {% endfor %}
           </div>
-          {% endfor %}
+
+          <!-- Daily -->
+          <div x-show="tab==='daily'" class="space-y-2">
+
+          <!-- container kosong buat accordion harian -->
+          <div id="daily-accordion"></div>
+
+          <!-- form rekam medis tetap ada -->
+          <template id="daily-form-template">
+            <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+              <button @click="open=!open"
+                      class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
+                <span>Form Rekam Medis</span>
+                <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+              </button>
+              <div x-show="open" class="p-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+                    {% include "_form_renderer.html" %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </template>
+
+
         </div>
-
-        <!-- Daily -->
-        <div x-show="tab==='daily'" class="space-y-2">
-
-        <!-- container kosong buat accordion harian -->
-        <div id="daily-accordion"></div>
-
-        <!-- form rekam medis tetap ada -->
-        <template id="daily-form-template">
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>Form Rekam Medis</span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </template>
-
-
-      </div>
-        <!-- Discharge -->
-        <div x-show="tab==='discharge'" class="space-y-2">
-          {% for acc in accs %}
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button @click="open=!open" 
-                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-              <span>
-                {{ acc }}
+          <!-- Discharge -->
+          <div x-show="tab==='discharge'" class="space-y-2">
+            {% for acc in accs %}
+            <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+              <button @click="open=!open" 
+                      class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+                <span>
+                  {{ acc }}
+                  {% if acc!='Form Rekam Medis' %}
+                    <span id="count-{{ acc|lower }}-discharge"
+                          class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                  {% endif %}
+                </span>
+                <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+              </button>
+              <div x-show="open" class="p-2">
                 {% if acc!='Form Rekam Medis' %}
-                  <span id="count-{{ acc|lower }}-discharge"
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <table class="w-full text-xs border">
+                  <thead class="bg-gray-100 dark:bg-gray-800">
+                    <tr>
+                      <th>Kategori</th><th>Klinis</th><th>ICD</th>
+                      <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
+                    </tr>
+                  </thead>
+                  <tbody id="{{ acc|lower }}-discharge"></tbody>
+                  {% if acc == "Diagnosis" %}
+                  <tbody id="{{ acc|lower }}-manual-discharge">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input type="text" x-model="manualInput.discharge.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.diagnosis.klinis" 
+                                class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.diagnosis.icd" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.diagnosis.tindakan" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><input type="text" 
+                        x-model="manualInput.discharge.diagnosis.score" 
+                        class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% endif %}
+                  {% if acc == "Komorbid" %}
+                  <tbody id="{{ acc|lower }}-manual-discharge">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input type="text" 
+                        x-model="manualInput.discharge.komorbid.kategori" 
+                        class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komorbid.klinis" 
+                                class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komorbid.icd" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komorbid.tindakan" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><input type="text" 
+                        x-model="manualInput.discharge.komorbid.score" 
+                        class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% endif %}
+                  {% if acc == "Komplikasi" %}
+                  <tbody id="{{ acc|lower }}-manual-discharge">
+                    <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+                      <td><input type="text" 
+                        x-model="manualInput.discharge.komplikasi.kategori" 
+                        class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komplikasi.klinis" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komplikasi.icd" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                              </td>
+                              <td><input type="text" 
+                                x-model="manualInput.discharge.komplikasi.tindakan" 
+                                class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><input type="text" 
+                        x-model="manualInput.discharge.komplikasi.score" 
+                        class="border px-2 py-1 w-full rounded 
+                        bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-gray-100 
+                        focus:ring-2 focus:ring-blue-400" readonly>
+                      </td>
+                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                    </tr>
+                  </tbody>
+                  {% endif %}
+                </table>
+                {% else %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
+                    {% include "_form_renderer.html" %}
+                  {% endfor %}
+                </div>
                 {% endif %}
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              {% if acc!='Form Rekam Medis' %}
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th>{% if role == "doctor" %}<th>Mapping</th>{% endif %}
-                  </tr>
-                </thead>
-                <tbody id="{{ acc|lower }}-discharge"></tbody>
-                {% if acc == "Diagnosis" %}
-                <tbody id="{{ acc|lower }}-manual-discharge">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input type="text" x-model="manualInput.discharge.diagnosis.kategori" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.diagnosis.klinis" 
-                              class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.diagnosis.icd" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.diagnosis.tindakan" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><input type="text" 
-                      x-model="manualInput.discharge.diagnosis.score" 
-                      class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
-                {% endif %}
-                {% if acc == "Komorbid" %}
-                <tbody id="{{ acc|lower }}-manual-discharge">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input type="text" 
-                      x-model="manualInput.discharge.komorbid.kategori" 
-                      class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komorbid.klinis" 
-                              class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komorbid.icd" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komorbid.tindakan" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><input type="text" 
-                      x-model="manualInput.discharge.komorbid.score" 
-                      class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
-                {% endif %}
-                {% if acc == "Komplikasi" %}
-                <tbody id="{{ acc|lower }}-manual-discharge">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                    <td><input type="text" 
-                      x-model="manualInput.discharge.komplikasi.kategori" 
-                      class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)">
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komplikasi.klinis" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komplikasi.icd" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                            </td>
-                            <td><input type="text" 
-                              x-model="manualInput.discharge.komplikasi.tindakan" 
-                              class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><input type="text" 
-                      x-model="manualInput.discharge.komplikasi.score" 
-                      class="border px-2 py-1 w-full rounded 
-                      bg-white dark:bg-gray-700 
-                      text-gray-900 dark:text-gray-100 
-                      focus:ring-2 focus:ring-blue-400" readonly>
-                    </td>
-                    <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
-                  </tr>
-                </tbody>
-                {% endif %}
-              </table>
-              {% else %}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
               </div>
-              {% endif %}
             </div>
+            {% endfor %}
           </div>
-          {% endfor %}
         </div>
       </div>
     </div>
-  </div>
 
-<!-- ========== RIGHT PANEL (Simulasi) ========== -->
-<div class="lg:col-span-1">
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-4">
-    <h2 class="text-lg font-bold mb-3">Simulasi Klaim</h2>
+  <!-- ========== RIGHT PANEL (Simulasi) ========== -->
+      <div class="lg:col-span-1">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-4">
+          <h2 class="text-lg font-bold mb-3">Simulasi Klaim</h2>
 
-    <div class="space-y-6">
+          <div class="space-y-6">
 
-  <!-- Diagnosis Section -->
-<div>
-  <h3 class="font-bold text-lg mb-3">Diagnosis</h3>
-
-  <!-- Primary Claim -->
-  <div class="mb-2">
-    <label class="text-sm font-medium">Primary Claim</label>
-    <template x-if="simulasi[tab].utama">
-      <div class="flex items-center gap-2 mt-1">
-        <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-          <span x-text="simulasi[tab].utama.name + ' [' + (simulasi[tab].utama.label || '') + ']'"></span>
-        </div>
-        <select 
-          :disabled="role !== 'doctor'"
-          x-model="simulasi[tab].utama.mapping"
-          @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
-          class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-          <option value="Primary">Primary</option>
-          <option value="Secondary">Secondary</option>
-          <option value="None">None</option>
-        </select>
-      </div>
-    </template>
-    <template x-if="!simulasi[tab].utama">
-      <div class="italic text-gray-400 mt-1">Belum ada Primary Claim</div>
-    </template>
-  </div>
-
-  <!-- Secondary Claims -->
-  <div>
-    <label class="text-sm font-medium">Secondary Claims</label>
-    <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
-      <div class="flex items-center gap-2 mt-1">
-        <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-          <span x-text="dx.name + ' [' + (dx.label || '') + ']'"></span>
-        </div>
-        <select 
-          :disabled="role !== 'doctor'"
-          x-model="dx.mapping"
-          @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
-          class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-          <option value="Secondary">Secondary</option>
-          <option value="Primary">Primary</option>
-          <option value="None">None</option>
-        </select>
-      </div>
-    </template>
-    <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
-      <div class="italic text-gray-400 mt-1">Belum ada Secondary Claim</div>
-    </template>
-  </div>
-</div>
-
-
-
-  <div>
-      <h3 class="font-bold text-lg mb-3">Tindakan</h3>
-
-       <!-- Tindakan Utama -->
-      <div class="mb-2">
-        <label class="text-sm font-medium">Primary Action</label>
-        <template x-if="simulasi[tab].tindakanUtama">
-        <div class="flex items-center gap-2 mt-1">
-          <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-            <span x-text="simulasi[tab].tindakanUtama"></span>
-          </div>
-          <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-            <option value="Primary" selected>Primary</option>
-            <option value="Secondary">Secondary</option>
-            <option value="None">None</option>
-          </select>
-        </div>
-      </template>
-      <template x-if="!simulasi[tab].tindakanUtama">
-        <div class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</div>
-      </template>
-    </div>
-
-
-    <!-- Tindakan Sekunder -->
-     <div>
-      <label class="text-sm font-medium">Secondary Actions</label>
-      <template x-for="(tdk,i) in simulasi[tab].tindakanSekunder" :key="i">
-        <div class="flex items-center gap-2 mt-1">
-          <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-            <span x-text="tdk"></span>
-          </div>
-          <select x-bind:disabled="role === 'doctor'" @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
-            <option value="Secondary" selected>Secondary</option>
-            <option value="Primary">Primary</option>
-            <option value="None">None</option>
-          </select>
-        </div>
-      </template>
-      <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
-        <div class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</div>
-      </template>
-    </div>
-  </div>
-
-    <!-- Rekomendasi AI -->
-    <div class="space-y-2">
-      <h3 class="text-md font-bold mt-4">SARAN SIMULASI</h3>
-      <template x-for="(items,cat) in recommendations" :key="cat">
+        <!-- Diagnosis Section -->
         <div>
-          <h4 class="font-semibold bg-blue-500 text-white px-2 py-1 rounded" x-text="cat.toUpperCase()"></h4>
-          <table class="w-full text-xs border">
-            <tbody>
-              <template x-for="(rec, i) in items" :key="rec.message + '-' + i">
-                <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
-                  <td class="p-2" x-html="statusIcon(rec.status)"></td>
-                  <td class="p-2" x-text="(rec.target || []).join(' + ')"></td>
-                  <td class="p-2" x-text="rec.message"></td>
-                  <td class="p-2 text-right" x-html="confidenceBadge((rec.confidence*100).toFixed(0))"></td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+          <h3 class="font-bold text-lg mb-3">Diagnosis</h3>
+
+          <!-- Primary Claim -->
+          <div class="mb-2">
+            <label class="text-sm font-medium">Primary Claim</label>
+            <template x-if="simulasi[tab].utama">
+              <div class="flex items-center gap-2 mt-1">
+                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+                  <span x-text="simulasi[tab].utama.name + ' [' + (simulasi[tab].utama.label || '') + ']'"></span>
+                </div>
+                <select 
+                  :disabled="role === 'doctor'"
+                  x-model="simulasi[tab].utama.mapping"
+                  @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                  <option value="Primary">Primary</option>
+                  <option value="Secondary">Secondary</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+            </template>
+            <template x-if="!simulasi[tab].utama">
+              <div class="italic text-gray-400 mt-1">Belum ada Primary Claim</div>
+            </template>
+          </div>
+
+          <!-- Secondary Claims -->
+          <div>
+            <label class="text-sm font-medium">Secondary Claims</label>
+            <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
+              <div class="flex items-center gap-2 mt-1">
+                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+                  <span x-text="dx.name + ' [' + (dx.label || '') + ']'"></span>
+                </div>
+                <select 
+                  :disabled="role === 'doctor'"
+                  x-model="dx.mapping"
+                  @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                  <option value="Secondary">Secondary</option>
+                  <option value="Primary">Primary</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+            </template>
+            <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
+              <div class="italic text-gray-400 mt-1">Belum ada Secondary Claim</div>
+            </template>
+          </div>
         </div>
-      </template>
+
+
+
+          <div>
+            <h3 class="font-bold text-lg mb-3">Tindakan</h3>
+
+            <!-- Tindakan Utama -->
+            <div class="mb-2">
+              <label class="text-sm font-medium">Primary Action</label>
+              <template x-if="simulasi[tab].tindakanUtama">
+              <div class="flex items-center gap-2 mt-1">
+                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+                  <span x-text="simulasi[tab].tindakanUtama.name"></span>
+                </div>
+                <select 
+                  :disabled="role === 'doctor'"
+                  x-model="simulasi[tab].tindakanUtama.mapping"
+                  @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                  <option value="Primary">Primary</option>
+                  <option value="Secondary">Secondary</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+              </template>
+              <template x-if="!simulasi[tab].tindakanUtama">
+                <div class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</div>
+              </template>
+            </div>
+
+
+            <!-- Tindakan Sekunder -->
+          <div>
+            <label class="text-sm font-medium">Secondary Actions</label>
+            <template x-for="(tdk,i) in simulasi[tab].tindakanSekunder" :key="i">
+              <div class="flex items-center gap-2 mt-1">
+                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
+                  <span x-text="tdk.name"></span>
+                </div>
+                <select 
+                  :disabled="role === 'doctor'"
+                  x-model="tdk.mapping"
+                  @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                  <option value="Secondary">Secondary</option>
+                  <option value="Primary">Primary</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+            </template>
+            <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+              <div class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</div>
+            </template>
+          </div>
+        </div>
+
+          <!-- Rekomendasi AI -->
+          <div class="space-y-2">
+            <h3 class="text-md font-bold mt-4">SARAN SIMULASI</h3>
+            <template x-for="(items,cat) in recommendations" :key="cat">
+              <div>
+                <h4 class="font-semibold bg-blue-500 text-white px-2 py-1 rounded" x-text="cat.toUpperCase()"></h4>
+                <table class="w-full text-xs border">
+                  <tbody>
+                    <template x-for="(rec, i) in items" :key="i">
+                      <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+                        <td class="p-2" x-html="statusIcon(rec.status)"></td>
+                        <td class="p-2" x-text="(rec.target || []).join(' + ')"></td>
+                        <td class="p-2" x-text="rec.message"></td>
+                        <td class="p-2 text-right" x-html="confidenceBadge((rec.confidence*100).toFixed(0))"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+          </div>
+
+        <!-- Tarif Draft (muncul setelah generate AI) -->
+        <div x-show="simulasi[tab].tarifDraft" class="pt-3 border-t">
+          <label class="font-semibold">Tarif Draft</label>
+          <p class="text-lg font-bold text-green-700" x-text="simulasi[tab].tarifDraft"></p>
+        </div>
+
+        <!-- Hidden inputs -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="simulasi" :value="JSON.stringify(simulasi)">
+            <input type="hidden" name="summary" :value="JSON.stringify(summary)">
+
+
+        <!-- Footer -->
+        <div class="flex gap-2 mt-2">
+          <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
+          {% if role and role == 'doctor' %}
+          <button type="button" onclick="generateAI()" 
+                      class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm whitespace-nowrap">
+                ⚡ Recalculate
+              </button>
+              <button type="submit" name="action" value="draft"
+                      class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
+                Save Draft
+              </button>
+              {% endif %}
+
+              {% if role and role == 'verifikator' and record and record.status == 'draft' %}
+              <button type="submit" name="action" value="finalize"
+                      class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
+                Save Final
+              </button>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
-    <!-- Tarif Draft (muncul setelah generate AI) -->
-    <div x-show="simulasi[tab].tarifDraft" class="pt-3 border-t">
-      <label class="font-semibold">Tarif Draft</label>
-      <p class="text-lg font-bold text-green-700" x-text="simulasi[tab].tarifDraft"></p>
-    </div>
-
-
-    <!-- Footer -->
-    <div class="flex gap-2 mt-2">
-      <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
-      {% if role and role == 'doctor' %}
-      <form method="post" action="/claims/{{ record.id }}/update-draft">
-        <!-- Hidden inputs supaya ikut terkirim -->
-        <input type="hidden" name="simulasi" :value="JSON.stringify(simulasi)">
-        <input type="hidden" name="summary" :value="JSON.stringify(summary)">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-        <button type="submit"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex-1">
-          Save Draft
-        </button>
-      </form>
-      {% endif %}
-
-      {% if role and role == 'verifikator' and record and record.status == 'draft' %}
-      <form method="post" action="/claims/{{ record.id }}/finalize">
-        <!-- Hidden input summary juga ikut -->
-        <input type="hidden" name="summary" :value="JSON.stringify(summary)">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-        <button type="submit"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-1">
-          Simpan Final
-        </button>
-      </form>
-      {% endif %}
-
-    </div>
+      <!-- Modal Detail -->
+        <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" @click.self="modalOpen=false">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-3xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
+            <button @click="modalOpen=false" class="absolute top-3 right-3">✖</button>
+            <h3 class="text-lg font-bold mb-4" x-text="modalTitle"></h3>
+            <div class="space-y-2 text-sm" x-html="modalContent"></div>
+          </div>
+        </div>
   </div>
-</div>
-
-  <!-- Modal Detail -->
-  <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" @click.self="modalOpen=false">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-3xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
-      <button @click="modalOpen=false" class="absolute top-3 right-3">✖</button>
-      <h3 class="text-lg font-bold mb-4" x-text="modalTitle"></h3>
-      <div class="space-y-2 text-sm" x-html="modalContent"></div>
-    </div>
-  </div>
-</div>
+</form>      
 {% endblock %}
 
 {% block scripts %}
