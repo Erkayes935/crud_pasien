@@ -99,13 +99,13 @@ async function generateAI() {
 
     // === Daily ===
     if (Array.isArray(data.daily)) {
-  const dailyContainer = document.getElementById("daily-accordion")
-  dailyContainer.innerHTML = ""  // reset
+      const dailyContainer = document.getElementById("daily-accordion")
+      dailyContainer.innerHTML = ""  // reset
 
-  data.daily.forEach((hari, idx) => {
+      data.daily.forEach((hari, idx) => {
     // unique id per hari
-    hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
-    const dayId = `daily-${idx}`
+        hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
+        const dayId = `daily-${idx}`
     // init manualInput untuk setiap dayId
     if (!state.manualInput.daily[dayId]) {
       state.manualInput.daily[dayId] = {
