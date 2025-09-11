@@ -156,7 +156,6 @@
             <th class="p-2 border">Dokter</th>
             <th class="p-2 border">Status</th>
             <th class="p-2 border">Tanggal</th>
-            <th class="p-2 border">Disetujui</th>
             <th class="p-2 border">Lihat Detail</th>
           </tr>
         </thead>
@@ -171,7 +170,6 @@
                   <span class="px-2 py-1 bg-green-200 text-green-800 rounded text-xs">Final</span>
                 </td>
                 <td class="p-2 border">{{ claim.created_at.strftime("%Y-%m-%d") }}</td>
-                <td class="p-2 border">{{ user.name or '-' }}</td>
                 <td class="p-2 border text-center">
                   <a href="/claims/{{ claim.id }}" 
                     class="text-blue-600 hover:underline">Detail</a>
