@@ -52,12 +52,13 @@ function claimData(init) {
 async function generateAI() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId
                  || document.getElementById("claimIdHidden")?.value
-  
   if (!claimId) {
     alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.")
     return
   }
-
+  // Ambil Alpine state dulu
+  const state = Alpine.$data(document.getElementById('claimRoot'));
+  // Baru bikin payload pakai state
   const payload = {
     claim_id: claimId,
     patient_uuid: state.pasien?.uuid || state.pasien?.patient_uuid || '',
@@ -68,7 +69,6 @@ async function generateAI() {
   console.log("📦 Payload yg dikirim:", payload)
 
   try {
-
     const res = await fetch("/predict_ddx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,8 +77,7 @@ async function generateAI() {
 
     const data = await res.json()
     console.log("📥 Data yg diterima:", data)
-        
-     if (!Array.isArray(data.daily)) {
+    if (!Array.isArray(data.daily)) {
       data.daily = data.daily ? [data.daily] : []
     }
     const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -979,13 +978,13 @@ function generateResumeMedis() {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   // Diagnosis dan tindakan harus dict, bukan array kosong
   const payload = {
-    pasien: state.pasien || {},
-    visit: state.visit || {},
-    diagnosis: state.simulasi.admission.diagnosis.length ? state.simulasi.admission.diagnosis[0] : {},
-    tindakan: state.simulasi.admission.tindakanUtama || {},
-    obat: state.obat || [],
-    regulasi: state.recommendations.regulasi || [],
-    dokter: state.dokter || {},
+    pasien: state?.pasien || {},
+    visit: state?.visit || {},
+    diagnosis: state?.simulasi?.admission?.diagnosis?.length ? state.simulasi.admission.diagnosis[0] : {},
+    tindakan: state?.simulasi?.admission?.tindakanUtama || {},
+    obat: state?.obat || [],
+    regulasi: state?.recommendations?.regulasi || [],
+    dokter: state?.dokter || {},
     mode: "list",
     settings: {}
   }
@@ -1006,32 +1005,51 @@ function generateResumeMedis() {
 }
 
 function buildResumeMedisModal(data) {
-  // Template resume medis, bisa kamu modifikasi sesuai kebutuhan
-  const diagnosisArr = Array.isArray(data.diagnosis) ? data.diagnosis : (data.diagnosis ? [data.diagnosis] : [])
-  const tindakanArr = Array.isArray(data.tindakan) ? data.tindakan : (data.tindakan ? [data.tindakan] : [])
-  const obatArr = Array.isArray(data.obat) ? data.obat : (data.obat ? [data.obat] : [])
+  // Mapping sesuai struktur response resume_service.py
+  const identitas = data.identitas || {};
+  const visit = data.visit || {};
+  const diagnosis = data.diagnosis || {};
+  const tindakan = data.tindakan || {};
+  const obatArr = Array.isArray(data.obat) ? data.obat : (data.obat ? [data.obat] : []);
+  const diagnosisUtama = diagnosis.utama || {};
+  const diagnosisSekunder = Array.isArray(diagnosis.sekunder) ? diagnosis.sekunder : [];
+  const tindakanUtama = tindakan.utama || {};
+  const tindakanSekunder = Array.isArray(tindakan.sekunder) ? tindakan.sekunder : [];
   return `
     <div class="space-y-2">
       <h3 class="font-bold text-lg">Identitas Pasien</h3>
-      <div>Nama: ${data.identitas?.nama || '-'}<br>Umur: ${data.identitas?.umur || '-'}<br>Jenis Kelamin: ${data.identitas?.jenis_kelamin || '-'}</div>
+      <div>
+        Nama: ${identitas.nama || '-'}<br>
+        No RM: ${identitas.no_rm || '-'}<br>
+        Umur: ${identitas.umur || '-'}<br>
+        Jenis Kelamin: ${identitas.jk || '-'}<br>
+        Keluhan: ${identitas.keluhan || '-'}
+      </div>
       <h3 class="font-bold text-lg mt-2">Kunjungan</h3>
-      <div>Tanggal Masuk: ${data.visit?.tanggal_masuk || '-'}<br>Tanggal Keluar: ${data.visit?.tanggal_keluar || '-'}</div>
+      <div>
+        Tanggal Masuk: ${visit.tgl_masuk || '-'}<br>
+        Tanggal Keluar: ${visit.tgl_keluar || '-'}
+      </div>
       <h3 class="font-bold text-lg mt-2">Diagnosis</h3>
       <table class="table-auto w-full border">
-        <thead><tr><th>Kategori</th><th>Klinis</th><th>ICD</th></tr></thead>
+        <thead><tr><th>Nama</th><th>Kode</th></tr></thead>
         <tbody>
-          ${diagnosisArr.map(d => `<tr><td>${d.kategori || '-'}</td><td>${d.klinis || '-'}</td><td>${d.icd || '-'}</td></tr>`).join('')}
+          <tr><td>${diagnosisUtama.nama || '-'} (Utama)</td><td>${diagnosisUtama.kode || '-'}</td></tr>
+          ${diagnosisSekunder.map(d => `<tr><td>${d.nama || '-'} (Sekunder)</td><td>${d.kode || '-'}</td></tr>`).join('')}
         </tbody>
       </table>
       <h3 class="font-bold text-lg mt-2">Tindakan</h3>
       <table class="table-auto w-full border">
         <thead><tr><th>Nama</th><th>Kode</th></tr></thead>
         <tbody>
-          ${tindakanArr.map(t => `<tr><td>${t.nama || '-'}</td><td>${t.kode || '-'}</td></tr>`).join('')}
+          <tr><td>${tindakanUtama.nama || '-'} (Utama)</td><td>${tindakanUtama.kode || '-'}</td></tr>
+          ${tindakanSekunder.map(t => `<tr><td>${t.nama || '-'} (Sekunder)</td><td>${t.kode || '-'}</td></tr>`).join('')}
         </tbody>
       </table>
       <h3 class="font-bold text-lg mt-2">Obat</h3>
       <ul>${obatArr.map(o => `<li>${o.nama || '-'}</li>`).join('')}</ul>
+      <h3 class="font-bold text-lg mt-2">Naratif</h3>
+      <div>${data.naratif || '-'}</div>
     </div>
   `
 }

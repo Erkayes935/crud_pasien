@@ -3,7 +3,7 @@ import random
 
 def process_predict_ddx(data):
     # Dummy logic, bisa diganti AI
-    return {
+    admission = {
         "diagnosis": [
             {
                 "kategori": "Diagnosis",
@@ -106,4 +106,9 @@ def process_predict_ddx(data):
                 }
             }
         ]
+    }
+    return {
+        "admission": admission,
+        "daily": [],
+        "discharge": { "diagnosis": [], "komorbid": [], "komplikasi": [] }
     }
