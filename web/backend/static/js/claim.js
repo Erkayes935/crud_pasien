@@ -158,7 +158,7 @@ async function generateAI() {
                                     text-gray-900 dark:text-gray-100 
                                     focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
-                    <button @click="addManual('diagnosis','${dayId}')"
+                    <button type ="button" @click="addManual('diagnosis','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                   </td>
                 </tr>
@@ -215,7 +215,7 @@ async function generateAI() {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400 readonly"></td>
                 <td>
-                  <button @click="addManual('komorbid','${dayId}')"
+                  <button type ="button" @click="addManual('komorbid','${dayId}')"
                           class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                 </td>
               </tr>
@@ -272,7 +272,7 @@ async function generateAI() {
        text-gray-900 dark:text-gray-100 
        focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td>
-                    <button @click="addManual('komplikasi','${dayId}')"
+                    <button type ="button" @click="addManual('komplikasi','${dayId}')"
                             class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
                   </td>
                 </tr>
