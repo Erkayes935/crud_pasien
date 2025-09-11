@@ -16,7 +16,7 @@
         summ: {{ summ|tojson }}
       })'
       @open-modal.window="openModal($event)"
-      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
+      class="contents">
 
       <input type="hidden" id="claimIdHidden" value="{{ record.id if record else '' }}">
     <!-- ========== LEFT PANEL ========== -->
@@ -455,7 +455,6 @@
 
         <!-- Footer -->
         <div class="flex gap-2 mt-2">
-          <button onclick="generateAI()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded flex-1">Recalculate</button>
           {% if role and role == 'doctor' %}
           <button type="button" onclick="generateAI()" 
                       class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm whitespace-nowrap">
