@@ -81,7 +81,7 @@
                       <td><input x-model="manualInput.admission.diagnosis.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.diagnosis.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.diagnosis.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% elif acc == "Komorbid" %}
@@ -92,7 +92,7 @@
                       <td><input x-model="manualInput.admission.komorbid.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.komorbid.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.komorbid.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% elif acc == "Komplikasi" %}
@@ -103,7 +103,7 @@
                       <td><input x-model="manualInput.admission.komplikasi.icd"      class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.komplikasi.tindakan" class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
                       <td><input x-model="manualInput.admission.komplikasi.score"    class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400" readonly></td>
-                      <td><button @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','admission')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% endif %}
@@ -203,7 +203,7 @@
                         text-gray-900 dark:text-gray-100 
                         focus:ring-2 focus:ring-blue-400" readonly>
                       </td>
-                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% endif %}
@@ -242,7 +242,7 @@
                         text-gray-900 dark:text-gray-100 
                         focus:ring-2 focus:ring-blue-400" readonly>
                       </td>
-                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% endif %}
@@ -284,7 +284,7 @@
                         text-gray-900 dark:text-gray-100 
                         focus:ring-2 focus:ring-blue-400" readonly>
                       </td>
-                      <td><button @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
+                      <td><button type="button" @click="addManual('{{ acc|lower }}','discharge')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
                     </tr>
                   </tbody>
                   {% endif %}
