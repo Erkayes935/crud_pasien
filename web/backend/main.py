@@ -2386,11 +2386,11 @@ def list_medical_records(
 
     total = query.count()
     records = (
-        query.order_by(models.MedicalRecord.id.desc())
-             .offset((page-1)*page_size)
-             .limit(page_size)
-             .filter(models.MedicalRecord.is_deleted == False)
-             .all()
+        query.filter(models.MedicalRecord.is_deleted == False)
+        .order_by(models.MedicalRecord.id.desc())
+        .offset((page-1)*page_size)
+        .limit(page_size)
+        .all()
     )
     total_pages = (total + page_size - 1) // page_size
 
