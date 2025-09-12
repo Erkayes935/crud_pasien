@@ -976,19 +976,33 @@ function onMappingChange(event, tab, type, idx) {
 // ==================== Resume Medis ====================
 function generateResumeMedis() {
   const state = Alpine.$data(document.getElementById('claimRoot'))
-  // Diagnosis dan tindakan harus dict, bukan array kosong
+  // Kirim diagnosis/tindakan sebagai dict utama & sekunder
   const payload = {
     pasien: state?.pasien || {},
     visit: state?.visit || {},
-    diagnosis: state?.simulasi?.admission?.diagnosis?.length ? state.simulasi.admission.diagnosis[0] : {},
-    tindakan: state?.simulasi?.admission?.tindakanUtama || {},
-    obat: state?.obat || [],
+    diagnosis: {
+      utama: Array.isArray(state?.simulasi?.admission?.diagnosis) && state.simulasi.admission.diagnosis.length > 0
+        ? state.simulasi.admission.diagnosis[0]
+        : {},
+      sekunder: [
+        ...(state?.simulasi?.admission?.komorbid || []),
+        ...(state?.simulasi?.admission?.komplikasi || [])
+      ]
+    },
+    tindakan: {
+      utama: state?.simulasi?.admission?.tindakanUtama || {},
+      sekunder: state?.simulasi?.admission?.tindakanSekunder || []
+    },
+    obat: state?.obat?.length ? state.obat : [
+      { nama: "Paracetamol", dosis: "3x500mg" },
+      { nama: "Antibiotik", dosis: "2x500mg" }
+    ],
     regulasi: state?.recommendations?.regulasi || [],
     dokter: state?.dokter || {},
     mode: "list",
     settings: {}
   }
-  console.log('📦 Payload Resume Medis:', payload)
+  console.log('📦 Payload Resume Medis (final):', payload)
   fetch('/resume_medis', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1005,52 +1019,76 @@ function generateResumeMedis() {
 }
 
 function buildResumeMedisModal(data) {
-  // Mapping sesuai struktur response resume_service.py
-  const identitas = data.identitas || {};
-  const visit = data.visit || {};
-  const diagnosis = data.diagnosis || {};
-  const tindakan = data.tindakan || {};
-  const obatArr = Array.isArray(data.obat) ? data.obat : (data.obat ? [data.obat] : []);
-  const diagnosisUtama = diagnosis.utama || {};
-  const diagnosisSekunder = Array.isArray(diagnosis.sekunder) ? diagnosis.sekunder : [];
-  const tindakanUtama = tindakan.utama || {};
-  const tindakanSekunder = Array.isArray(tindakan.sekunder) ? tindakan.sekunder : [];
+  // --- Normalisasi diagnosis ---
+  const utamaDx = data?.diagnosis?.utama ? [data.diagnosis.utama] : []
+  const sekunderDx = Array.isArray(data?.diagnosis?.sekunder) ? data.diagnosis.sekunder : []
+  const utamaTdk = data?.tindakan?.utama ? [data.tindakan.utama] : []
+  const sekunderTdk = Array.isArray(data?.tindakan?.sekunder) ? data.tindakan.sekunder : []
+  const obatArr = Array.isArray(data?.obat) ? data.obat : []
+
   return `
-    <div class="space-y-2">
-      <h3 class="font-bold text-lg">Identitas Pasien</h3>
-      <div>
-        Nama: ${identitas.nama || '-'}<br>
-        No RM: ${identitas.no_rm || '-'}<br>
-        Umur: ${identitas.umur || '-'}<br>
-        Jenis Kelamin: ${identitas.jk || '-'}<br>
-        Keluhan: ${identitas.keluhan || '-'}
+    <div class="space-y-4 text-sm">
+      <div class="flex justify-end gap-2 mb-3">
+        <button type="button" onclick="switchResumeMode('list')" class="px-3 py-1 rounded bg-blue-600 text-white">📄 List</button>
+        <button type="button" onclick="switchResumeMode('naratif')" class="px-3 py-1 rounded bg-green-600 text-white">📝 Naratif</button>
       </div>
-      <h3 class="font-bold text-lg mt-2">Kunjungan</h3>
-      <div>
-        Tanggal Masuk: ${visit.tgl_masuk || '-'}<br>
-        Tanggal Keluar: ${visit.tgl_keluar || '-'}
+      <div id="resume-list" style="display:block">
+        <!-- Identitas Pasien -->
+        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <h3 class="font-bold text-lg">🧍 Identitas Pasien</h3>
+          <p>Nama: ${data.identitas?.nama || '-'}<br>No RM: ${data.identitas?.no_rm || '-'}<br>Umur: ${data.identitas?.umur || '-'}<br>Jenis Kelamin: ${data.identitas?.jk || '-'}<br>Keluhan: ${data.identitas?.keluhan || '-'}</p>
+        </section>
+        <!-- Kunjungan -->
+        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <h3 class="font-bold text-lg">🏥 Kunjungan</h3>
+          <p>Tanggal Masuk: ${data.visit?.tgl_masuk || data.visit?.tanggal_masuk || '-'}<br>Tanggal Keluar: ${data.visit?.tgl_keluar || data.visit?.tanggal_keluar || '-'}</p>
+        </section>
+        <!-- Diagnosis -->
+        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <h3 class="font-bold text-lg">🩺 Diagnosis</h3>
+          <h4 class="font-semibold mt-2">Utama</h4>
+          <ul class="list-disc list-inside">
+            ${utamaDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('')}
+          </ul>
+          <h4 class="font-semibold mt-2">Sekunder</h4>
+          <ul class="list-disc list-inside">
+            ${sekunderDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('')}
+          </ul>
+        </section>
+        <!-- Tindakan -->
+        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <h3 class="font-bold text-lg">💉 Tindakan</h3>
+          <h4 class="font-semibold mt-2">Utama</h4>
+          <ul class="list-disc list-inside">
+            ${utamaTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('')}
+          </ul>
+          <h4 class="font-semibold mt-2">Sekunder</h4>
+          <ul class="list-disc list-inside">
+            ${sekunderTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('')}
+          </ul>
+        </section>
+        <!-- Obat -->
+        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+          <h3 class="font-bold text-lg">💊 Obat</h3>
+          <ul class="list-disc list-inside">
+            ${obatArr.length
+              ? obatArr.map(o => `<li>${o.nama || '-'} ${o.dosis ? `(${o.dosis})` : ''}</li>`).join('')
+              : '<li>-</li>'}
+          </ul>
+        </section>
       </div>
-      <h3 class="font-bold text-lg mt-2">Diagnosis</h3>
-      <table class="table-auto w-full border">
-        <thead><tr><th>Nama</th><th>Kode</th></tr></thead>
-        <tbody>
-          <tr><td>${diagnosisUtama.nama || '-'} (Utama)</td><td>${diagnosisUtama.kode || '-'}</td></tr>
-          ${diagnosisSekunder.map(d => `<tr><td>${d.nama || '-'} (Sekunder)</td><td>${d.kode || '-'}</td></tr>`).join('')}
-        </tbody>
-      </table>
-      <h3 class="font-bold text-lg mt-2">Tindakan</h3>
-      <table class="table-auto w-full border">
-        <thead><tr><th>Nama</th><th>Kode</th></tr></thead>
-        <tbody>
-          <tr><td>${tindakanUtama.nama || '-'} (Utama)</td><td>${tindakanUtama.kode || '-'}</td></tr>
-          ${tindakanSekunder.map(t => `<tr><td>${t.nama || '-'} (Sekunder)</td><td>${t.kode || '-'}</td></tr>`).join('')}
-        </tbody>
-      </table>
-      <h3 class="font-bold text-lg mt-2">Obat</h3>
-      <ul>${obatArr.map(o => `<li>${o.nama || '-'}</li>`).join('')}</ul>
-      <h3 class="font-bold text-lg mt-2">Naratif</h3>
-      <div>${data.naratif || '-'}</div>
+      <div id="resume-naratif" style="display:none">
+        <h3 class="font-bold text-lg">Resume Naratif</h3>
+        <p class="p-3 bg-gray-100 dark:bg-gray-700 rounded">${data.naratif || '-'}</p>
+      </div>
     </div>
   `
 }
+
+
+function switchResumeMode(mode) {
+  document.getElementById("resume-list").style.display = (mode === "list" ? "block" : "none")
+  document.getElementById("resume-naratif").style.display = (mode === "naratif" ? "block" : "none")
+}
+
 
