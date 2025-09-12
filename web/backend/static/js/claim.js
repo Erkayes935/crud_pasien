@@ -1,6 +1,6 @@
 // ==================== Generate AI ====================
 function claimData(init) {
-  return {
+  const state = {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
     simulasi: init.sim || {
@@ -13,6 +13,11 @@ function claimData(init) {
       daily: { klinis:[], regulasi:[], tarif:[] },
       discharge: { klinis:[], regulasi:[], tarif:[] }
     },
+    showManual: {
+      admission: { diagnosis:false, komorbid:false, komplikasi:false },
+      daily: {},
+      discharge: { diagnosis:false, komorbid:false, komplikasi:false }
+    },
     manualInput: {
       admission: {
         diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
@@ -24,8 +29,9 @@ function claimData(init) {
         komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
         komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
       },
-      daily: {} // akan diisi dinamis pakai dayId
+      daily: {}
     },
+
     recommendations: { medis:[], regulasi:[], tarif:[] },
     modalOpen: false,
     modalTitle: '',
@@ -48,6 +54,8 @@ function claimData(init) {
       return ""
     },
   }
+  window.claimState = state
+  return state
 }
 async function generateAI() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId
@@ -95,6 +103,9 @@ async function generateAI() {
         data.daily.forEach((hari, idx) => {
           hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
           const dayId = `daily-${idx}`
+          if (!state.simulasi[dayId]) {
+            state.simulasi[dayId] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+          }
           if (!state.manualInput.daily[dayId]) {
             state.manualInput.daily[dayId] = {
               diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
@@ -102,6 +113,20 @@ async function generateAI() {
               komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
             }
           }
+          const mergeAI = (aiData, type) => {
+          const aiItems = (aiData || []).map(it => ({ ...it, isManual: false }))
+          const manualItems = state.simulasi[dayId][type]?.filter(it => it.isManual) || []
+          state.simulasi[dayId][type] = [...aiItems, ...manualItems]
+          renderTable(`${type}-${dayId}`, [], type, dayId)
+        }
+
+          mergeAI(hari.diagnosis, "diagnosis")
+          mergeAI(hari.komorbid, "komorbid")
+          mergeAI(hari.komplikasi, "komplikasi")
+
+          // Setelah mergeAI selesai
+          if (!state.simulasi.daily.days) state.simulasi.daily.days = []
+          state.simulasi.daily.days[idx] = state.simulasi[dayId]
           dailyContainer.insertAdjacentHTML("beforeend", `
       <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
         <button type="button" @click="open=!open"
@@ -133,11 +158,11 @@ async function generateAI() {
                 <tbody id="diagnosis-${dayId}"></tbody>
                 <tbody id="diagnosis-manual-${dayId}">
                 <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" :value="manualInput.daily[dayId].diagnosis.kategori" placeholder="Nama penyakit"
+                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" placeholder="Nama penyakit"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
                                     text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                                    focus:ring-2 focus:ring-blue-400"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
@@ -194,27 +219,27 @@ async function generateAI() {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+       focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td>
                   <button type ="button" @click="addManual('komorbid','${dayId}')"
                           class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
@@ -251,7 +276,7 @@ async function generateAI() {
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+       focus:ring-2 focus:ring-blue-400"></td>
                   <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -292,9 +317,9 @@ async function generateAI() {
       dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
     }
     // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily")
-    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily")
-    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [] , "komplikasi", "daily")
+    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", dayId)
+    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", dayId)
+    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [] , "komplikasi", dayId)
       })
     } else {
       // fallback lama kalau backend masih kirim 1 blok
@@ -356,17 +381,33 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   if (!Array.isArray(state.simulasi[tab][type])) {
     state.simulasi[tab][type] = []
   }
-  state.simulasi[tab][type].splice(
-    0,
-    state.simulasi[tab][type].length,
-    ...(items || []).map(it => ({
-      ...it,
-      mapping: it.mapping || ""
-    }))
-  )
+  // Ambil isi lama
+  const oldItems = state.simulasi[tab][type] || []
+  const oldAiItems = oldItems.filter(it => !it.isManual)
+  const manualItems = oldItems.filter(it => it.isManual)
+
+  // AI baru
+  const newAiItems = (items || []).filter(it => !it.isManual)
+  const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
+
+  // Gabungan
+  let merged = [...aiItems, ...manualItems]
+
+  // Dedup (berdasarkan kategori-icd-tindakan)
+  const seen = new Set()
+  merged = merged.filter(it => {
+    const key = `${it.kategori}-${it.icd}-${it.tindakan}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  state.simulasi[tab][type] = merged
 
   const target = document.getElementById(targetId)
   if (!target) return
+
+  target.innerHTML = ""
 
   // render semua item AI/rekomendasi
   state.simulasi[tab][type].forEach((item, idx) => {
@@ -526,11 +567,19 @@ function normalizeOpt(opt) {
 
 function normalizeItem(val) {
   if (typeof val === "string") {
-    return { name: val.split(" [")[0] || "-", label: "" }
+    return { 
+      name: val.split(" [")[0] || "-", 
+      label: "", 
+      mapping: "", 
+      source: "Manual", 
+      isManual: true 
+    }
   }
   return {
+    ...val,  // jaga semua field biar tetap ada
     name: val.name || val.kategori || val.icd || "-",
     label: val.label || "",
+    mapping: val.mapping || ""
   }
 }
 
@@ -538,23 +587,22 @@ function normalizeItem(val) {
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   if (!tab) tab = 'admission'
-  opt = normalizeOpt(opt)
+  const finalOpt = normalizeOpt(opt || value.mapping || "");
   console.log("updateSimulasi", { type, opt, tab, current: state.simulasi[tab] })
-  let sim = state.simulasi[tab]
-  if (!sim || typeof sim !== 'object' || Array.isArray(sim)) {
-    sim = { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
-    state.simulasi[tab] = sim
+  if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
+    state.simulasi[tab] = {};
   }
+  let sim = state.simulasi[tab]
 
-  if (!Array.isArray(sim.sekunder)) sim.sekunder = []
   if (!('utama' in sim)) sim.utama = null
+  if (!Array.isArray(sim.sekunder)) sim.sekunder = []
   if (!('tindakanUtama' in sim)) sim.tindakanUtama = null
   if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = []
   if (!('tarifDraft' in sim)) sim.tarifDraft = null
   // pastikan object {name,label}
-  const item = (typeof value === 'string')
-    ? { name: value.split(' [')[0], label: '' }
-    : { name: value.name, label: value.label || '' }
+  const item = typeof value === "string"
+  ? { name: value.split(" [")[0], label: "", source: "Manual", isManual: true }
+  : { ...value };
 
   // mapping label berdasar dropdown mapping (accordion kiri)
   if (source) {
@@ -565,7 +613,7 @@ function updateSimulasi(type, opt, value, source, tab) {
 
   // ========== DIAGNOSIS ==========
   if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') { // admission / daily / discharge
-    if (opt === "Primary") {
+    if (finalOpt === "Primary") {
       const oldPrimary = sim.utama
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
       sim.utama = item
@@ -573,7 +621,7 @@ function updateSimulasi(type, opt, value, source, tab) {
         sim.sekunder.unshift(oldPrimary)
       }
     }
-    else if (opt === "Secondary" || opt === "Secondary-Komorbid" || opt === "Secondary-Komplikasi") {
+    else if (finalOpt.startsWith("Secondary")) {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null
       const idx = sim.sekunder.findIndex(dx => dx.name === item.name)
       if (idx === -1) sim.sekunder.push(item)
@@ -693,7 +741,7 @@ async function loadRecommendations(claimId) {
                         class="border px-2 py-1 w-full rounded 
                                 bg-white dark:bg-gray-700 
                                 text-gray-900 dark:text-gray-100 
-                                focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+                                focus:ring-2 focus:ring-blue-400"></td>
               <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
                         class="border px-2 py-1 w-full rounded 
                                     bg-white dark:bg-gray-700 
@@ -754,7 +802,7 @@ async function loadRecommendations(claimId) {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+       focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -815,7 +863,7 @@ async function loadRecommendations(claimId) {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
+       focus:ring-2 focus:ring-blue-400"></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -885,23 +933,22 @@ function mapRecommendation(r) {
 function addManual(type, tab) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
 
-  if (!state.simulasi[tab]) {
-    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+  if (tab.startsWith("daily-") && !state.manualInput.daily[tab]) {
+    state.manualInput.daily[tab] = {
+      diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+      komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+      komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+    }
   }
-  if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
-  }
-  
-  let input
-  if (tab.startsWith("daily-")) {
-    input = state.manualInput.daily[tab][type]
-  } else {
-    input = state.manualInput[tab][type]
+  const input = tab.startsWith("daily-")
+    ? state.manualInput.daily[tab][type]
+    : state.manualInput[tab][type]
+
+  if (!input) {
+    console.warn("❌ manualInput kosong:", tab, type)
+    return
   }
 
-
-  // Buat object baru dari input manual
-  // PERBAIKAN
   const newItem = {
     name: input.kategori || "-",
     kategori: input.kategori || "",
@@ -909,25 +956,39 @@ function addManual(type, tab) {
     icd: input.icd || "-",
     tindakan: input.tindakan || "-",
     score: 0,
-    mapping: ""
+    mapping: "",
+    isManual: true,
+    source : "Manual"
   }
 
-
-  // Masukkan ke simulasi
+  if (!state.simulasi[tab]) {
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+  }
+  if (!Array.isArray(state.simulasi[tab][type])) {
+    state.simulasi[tab][type] = []
+  }
+  
   state.simulasi[tab][type].push(newItem)
 
-  const manualBody = document.getElementById(`${type}-manual-${tab}`)
-  manualBody.insertAdjacentHTML("beforeend", `
-    <tr class="bg-gray-50 dark:bg-gray-800">
-      <td>${newItem.kategori}</td>
-      <td>${newItem.klinis}</td>
-      <td>${newItem.icd}</td>
-      <td>${newItem.tindakan}</td>
-      <td>${newItem.score}</td>
-      <td>-</td>
-    </tr>
-  `)
+  if (tab.startsWith("daily-")) {
+  const idx = parseInt(tab.split("-")[1], 10);
+  if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
+  state.simulasi.daily.days[idx] = state.simulasi[tab];
 
+  // 🔄 sinkronisasi ke summary daily
+  const allDays = state.simulasi.daily.days || [];
+  state.simulasi.daily.utama = null;
+  state.simulasi.daily.sekunder = [];
+
+  allDays.forEach(d => {
+    if (d.utama && !state.simulasi.daily.utama) {
+      state.simulasi.daily.utama = d.utama;
+    }
+    if (Array.isArray(d.sekunder)) {
+      state.simulasi.daily.sekunder.push(...d.sekunder);
+    }
+  });
+  }
   // Reset input manual (jangan ganti object)
   // PERBAIKAN
   if (tab.startsWith("daily-")) {
@@ -936,7 +997,8 @@ function addManual(type, tab) {
     state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
   }
 
-
+  // Render ulang tabel
+  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
 
   // Trigger AI recommendation
   // Ganti ke endpoint core_engine yang sesuai
@@ -947,18 +1009,12 @@ function addManual(type, tab) {
   })
   .then(res => res.json())
   .then(data => {
-    const idx = state.simulasi[tab][type].length - 1
-    state.simulasi[tab][type][idx].klinis   = data.klinis   || state.simulasi[tab][type][idx].klinis
-    state.simulasi[tab][type][idx].icd      = data.icd      || state.simulasi[tab][type][idx].icd
-    state.simulasi[tab][type][idx].tindakan = data.tindakan || state.simulasi[tab][type][idx].tindakan
-    state.simulasi[tab][type][idx].score    = data.score    ?? state.simulasi[tab][type][idx].score
+    Object.assign(newItem, data)
+    renderTable(`${type}-${tab}`, [], type, tab) // refresh DOM
   })
   .catch(err => console.error("AI recommendation failed", err))
 }
-
-
-
-
+window.addManual = addManual
 
 function onMappingChange(event, tab, type, idx) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -971,7 +1027,26 @@ function onMappingChange(event, tab, type, idx) {
   }
 
   const opt = event.target.value
-  updateSimulasi("diagnosis", opt, normalizeItem(item), "AI", tab)
+  item.mapping = opt
+  updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab)
+
+  if (tab.startsWith("daily-")) {
+    const idxDay = parseInt(tab.split("-")[1], 10)
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = []
+    state.simulasi.daily.days[idxDay] = state.simulasi[tab]
+
+    // rebuild summary daily
+    state.simulasi.daily.utama = null
+    state.simulasi.daily.sekunder = []
+    state.simulasi.daily.days.forEach(d => {
+      if (d?.utama && !state.simulasi.daily.utama) {
+        state.simulasi.daily.utama = d.utama
+      }
+      if (Array.isArray(d?.sekunder)) {
+        state.simulasi.daily.sekunder.push(...d.sekunder)
+      }
+    })
+  }  
 }
 
 // ==================== Resume Medis ====================
