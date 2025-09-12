@@ -31,11 +31,7 @@ function claimData(init) {
         komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
         komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
       },
-      daily: {
-        'daily-0': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-        'daily-1': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-        'daily-2': { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
-      }
+      daily: {}
     },
     recommendations: { medis:[], regulasi:[], tarif:[] },
     modalOpen: false,
@@ -236,22 +232,22 @@ async function generateAI() {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td>
                   <button type="button" @click="addManual('komorbid','${dayId}')"
                           class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
@@ -291,7 +287,7 @@ async function generateAI() {
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                   <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
                             class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
@@ -327,9 +323,9 @@ async function generateAI() {
       dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
     }
     // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily", dayId)
-    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily", dayId)
-    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", "daily", dayId)
+    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", dayId)
+    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", dayId)
+    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", dayId)
       })
     } else {
       // fallback lama kalau backend masih kirim 1 blok
@@ -487,7 +483,8 @@ function addManual(type, tab) {
     tindakan: input.tindakan || "-",
     score: input.score || 0,
     mapping: "",
-    isManual: true
+    isManual: true,
+    source: "Manual"
   }
 
   // Pastikan simulasi[tab][type] ada
@@ -498,21 +495,41 @@ function addManual(type, tab) {
     state.simulasi[tab][type] = []
   }
 
+  // Tambahkan item ke simulasi per-tab
   state.simulasi[tab][type].push(newItem)
 
-  // Reset form
+  // Sinkronisasi ke struktur daily.days (tanpa auto masuk sekunder!)
+  if (tab.startsWith("daily-")) {
+  const idx = parseInt(tab.split("-")[1], 10);
+  if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
+  state.simulasi.daily.days[idx] = state.simulasi[tab];
+
+  // 🔄 sinkronisasi ke summary daily
+  const allDays = state.simulasi.daily.days || [];
+  state.simulasi.daily.utama = null;
+  state.simulasi.daily.sekunder = [];
+
+  allDays.forEach(d => {
+    if (d.utama && !state.simulasi.daily.utama) {
+      state.simulasi.daily.utama = d.utama;
+    }
+    if (Array.isArray(d.sekunder)) {
+      state.simulasi.daily.sekunder.push(...d.sekunder);
+    }
+  });
+}
+
+  // Reset form input
   if (tab.startsWith("daily-")) {
     state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
   } else {
     state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
   }
 
-  // Render ulang
-  // Render ulang → kirim [] biar renderTable ambil AI lama + manual
-  renderTable(`${type}-${tab}`, [], type, tab)
+  // Render ulang tabel
+  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
 
-
-  // AI rekomendasi untuk enrich manual → update row + render ulang
+  // Panggil AI rekomendasi untuk enrich manual
   fetch("/ai/recommendation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -520,14 +537,14 @@ function addManual(type, tab) {
   })
   .then(res => res.json())
   .then(data => {
-  Object.assign(newItem, data)
-  renderTable(`${type}-${tab}`, [], type, tab) // refresh DOM dengan AI lama + manual
+    Object.assign(newItem, data)
+    renderTable(`${type}-${tab}`, [], type, tab) // refresh DOM
   })
-
   .catch(err => console.error("AI recommendation failed", err))
 }
 
 window.addManual = addManual
+
 
 // ==================== Modal ====================
 
@@ -633,54 +650,66 @@ function normalizeOpt(opt) {
 
 function normalizeItem(val) {
   if (typeof val === "string") {
-    return { name: val.split(" [")[0] || "-", label: "" }
+    return { 
+      name: val.split(" [")[0] || "-", 
+      label: "", 
+      mapping: "", 
+      source: "Manual", 
+      isManual: true 
+    }
   }
   return {
+    ...val,  // jaga semua field biar tetap ada
     name: val.name || val.kategori || val.icd || "-",
     label: val.label || "",
+    mapping: val.mapping || ""
   }
 }
+
+
 
 
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById("claimRoot"));
   if (!tab) tab = "admission";
-  opt = normalizeOpt(opt);
+  const finalOpt = normalizeOpt(opt || value.mapping || "");
 
-  let sim = state.simulasi[tab];
-  if (!sim || typeof sim !== "object" || Array.isArray(sim)) {
-    sim = { utama: null, sekunder: [], tindakanUtama: null, tindakanSekunder: [], tarifDraft: null };
-    state.simulasi[tab] = sim;
+  // --- pastikan struktur simulasi[tab] selalu ada & lengkap ---
+  if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
+    state.simulasi[tab] = {};
   }
+  let sim = state.simulasi[tab];
 
-  if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
   if (!("utama" in sim)) sim.utama = null;
+  if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
   if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
   if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = [];
+  if (!("tarifDraft" in sim)) sim.tarifDraft = null;
 
   const item = typeof value === "string"
-    ? { name: value.split(" [")[0], label: "" }
-    : { name: value.name, label: value.label || "" };
+  ? { name: value.split(" [")[0], label: "", source: "Manual", isManual: true }
+  : { ...value };
+
 
   if (source) {
-    if (opt === "Primary") item.label = "Utama Klinis";
-    else if (opt === "Secondary-Komorbid") item.label = "Komorbid";
-    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi";
+    if (finalOpt === "Primary") item.label = "Utama Klinis";
+    else if (finalOpt === "Secondary-Komorbid") item.label = "Komorbid";
+    else if (finalOpt === "Secondary-Komplikasi") item.label = "Komplikasi";
   }
 
   // Diagnosis, Komorbid, Komplikasi
   if (type === "diagnosis" || type === "komorbid" || type === "komplikasi") {
-    if (opt === "Primary") {
+    if (finalOpt === "Primary") {
       const oldPrimary = sim.utama;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
       sim.utama = item;
       if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
-    } else if (opt.startsWith("Secondary")) {
+    } else if (finalOpt.startsWith("Secondary")) {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
       if (idx === -1) sim.sekunder.push(item);
       else sim.sekunder[idx] = item;
-    } else if (opt === "None") {
+    } else if (finalOpt === "None") {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
     }
@@ -689,17 +718,17 @@ function updateSimulasi(type, opt, value, source, tab) {
   // Tindakan
   if (type === "tindakan") {
     const nama = typeof value === "string" ? value : value.name;
-    if (opt === "Primary") {
+    if (finalOpt === "Primary") {
       const oldPrimary = sim.tindakanUtama;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
       sim.tindakanUtama = { name: nama };
       if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
-    } else if (opt === "Secondary") {
+    } else if (finalOpt === "Secondary") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       if (!sim.tindakanSekunder.find(td => td.name === nama)) {
         sim.tindakanSekunder.push({ name: nama });
       }
-    } else if (opt === "None") {
+    } else if (finalOpt === "None") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
     }
@@ -707,6 +736,7 @@ function updateSimulasi(type, opt, value, source, tab) {
 
   console.log("🟢 Simulasi updated:", state.simulasi);
 }
+
 
 // ==================== Helpers ====================
 
@@ -921,17 +951,17 @@ async function loadRecommendations(claimId) {
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
                            class="border px-2 py-1 w-full rounded 
        bg-white dark:bg-gray-700 
        text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
+       focus:ring-2 focus:ring-blue-400" readonly></td>
                 <td>
                   <button type="button" @click="addManual('komplikasi','${dayId}')"
                           class="border px-2 py-1 w-full rounded 
@@ -949,10 +979,10 @@ async function loadRecommendations(claimId) {
   </div>
 `)
 
-      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", "daily")
-      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", "daily")
-      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", "daily")
-    })
+      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId)
+      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId)
+      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId)
+      })
 
     // === Discharge ===
     renderTable("diagnosis-discharge", (grouped.discharge.diagnosis || []).map(mapRecommendation), "diagnosis", "discharge")
@@ -990,5 +1020,25 @@ function onMappingChange(event, tab, type, idx) {
   }
 
   const opt = event.target.value
-  updateSimulasi("diagnosis", opt, normalizeItem(item), "AI", tab)
+  item.mapping = opt
+  updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab)
+
+  // 🔄 sinkronisasi tambahan untuk Daily
+  if (tab.startsWith("daily-")) {
+    const idxDay = parseInt(tab.split("-")[1], 10)
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = []
+    state.simulasi.daily.days[idxDay] = state.simulasi[tab]
+
+    // rebuild summary daily
+    state.simulasi.daily.utama = null
+    state.simulasi.daily.sekunder = []
+    state.simulasi.daily.days.forEach(d => {
+      if (d?.utama && !state.simulasi.daily.utama) {
+        state.simulasi.daily.utama = d.utama
+      }
+      if (Array.isArray(d?.sekunder)) {
+        state.simulasi.daily.sekunder.push(...d.sekunder)
+      }
+    })
+  }
 }
