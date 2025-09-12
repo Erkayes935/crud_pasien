@@ -500,24 +500,24 @@ function addManual(type, tab) {
 
   // Sinkronisasi ke struktur daily.days (tanpa auto masuk sekunder!)
   if (tab.startsWith("daily-")) {
-  const idx = parseInt(tab.split("-")[1], 10);
-  if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
-  state.simulasi.daily.days[idx] = state.simulasi[tab];
+    const idx = parseInt(tab.split("-")[1], 10);
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
+      state.simulasi.daily.days[idx] = state.simulasi[tab];
 
   // 🔄 sinkronisasi ke summary daily
-  const allDays = state.simulasi.daily.days || [];
-  state.simulasi.daily.utama = null;
-  state.simulasi.daily.sekunder = [];
+      const allDays = state.simulasi.daily.days || [];
+      state.simulasi.daily.utama = null;
+      state.simulasi.daily.sekunder = [];
 
-  allDays.forEach(d => {
-    if (d.utama && !state.simulasi.daily.utama) {
-      state.simulasi.daily.utama = d.utama;
+      allDays.forEach(d => {
+        if (d.utama && !state.simulasi.daily.utama) {
+          state.simulasi.daily.utama = d.utama;
+        }
+        if (Array.isArray(d.sekunder)) {
+          state.simulasi.daily.sekunder.push(...d.sekunder);
+        }
+      });
     }
-    if (Array.isArray(d.sekunder)) {
-      state.simulasi.daily.sekunder.push(...d.sekunder);
-    }
-  });
-}
 
   // Reset form input
   if (tab.startsWith("daily-")) {
