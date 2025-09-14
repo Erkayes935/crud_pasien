@@ -140,7 +140,7 @@ async function generateAI() {
 
     // bikin accordion section baru
     dailyContainer.insertAdjacentHTML("beforeend", `
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
         <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
           <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
@@ -149,7 +149,7 @@ async function generateAI() {
         <div x-show="open" class="p-2 space-y-2">
 
           <!-- Diagnosis -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
             <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
@@ -160,51 +160,14 @@ async function generateAI() {
               <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
-                  </tr>
-                </thead>
+              <table class="w-full text-xs border table-fixed">
                 <tbody id="diagnosis-${dayId}"></tbody>
-                <tbody id="diagnosis-manual-${dayId}">
-                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori"
-             placeholder="Nama penyakit"
-             class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td>
-                    <button type="button" @click="addManual('diagnosis','${dayId}')"
-                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                  </td>
-                </tr>
-                </tbody>
               </table>
             </div>
           </div>
 
           <!-- Komorbid -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
             <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
@@ -215,51 +178,14 @@ async function generateAI() {
               <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                  </tr>
-                </thead>
+              <table class="w-full text-xs border table-fixed">
                 <tbody id="komorbid-${dayId}"></tbody>
-                <tbody id="komorbid-manual-${dayId}">
-                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori"
-         placeholder="Nama penyakit"
-         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td>
-                  <button type="button" @click="addManual('komorbid','${dayId}')"
-                          class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                </td>
-              </tr>
-                </tbody>
               </table>
             </div>
           </div>
 
           <!-- Komplikasi -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
             <button type="button" @click="open=!open"
                     class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
               <span>
@@ -270,45 +196,8 @@ async function generateAI() {
               <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
             <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                  </tr>
-                </thead>
+              <table class="w-full text-xs border table-fixed">
                 <tbody id="komplikasi-${dayId}"></tbody>
-                <tbody id="komplikasi-manual-${dayId}">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td> <input x-model="manualInput.daily['${dayId}'].komplikasi.kategori"
-         placeholder="Nama penyakit"
-         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td>
-                    <button type="button" @click="addManual('komplikasi','${dayId}')"
-                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                  </td>
-                </tr>
-                </tbody>
               </table>
             </div>
           </div>
@@ -316,6 +205,7 @@ async function generateAI() {
         </div>
       </div>
     `)
+    Alpine.initTree(dailyContainer)
     console.log("✅ accordion harusnya dibuat, cek DOM:", document.getElementById("daily-accordion").innerHTML)
     const tmpl = document.getElementById("daily-form-template")
     if (tmpl) {
@@ -326,7 +216,7 @@ async function generateAI() {
     renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", dayId)
     renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", dayId)
     renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", dayId)
-      })
+    })
     } else {
       // fallback lama kalau backend masih kirim 1 blok
       renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
@@ -375,31 +265,26 @@ async function generateAI() {
   }
 }
 
-
 // ==================== Render Table ====================
 function renderTable(targetId, items, type, tab, dayId = null) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-
+  const state = Alpine.$data(document.getElementById("claimRoot"))
   if (!state.simulasi[tab]) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
   }
+
   if (!Array.isArray(state.simulasi[tab][type])) {
     state.simulasi[tab][type] = []
   }
 
-  // Ambil isi lama
   const oldItems = state.simulasi[tab][type] || []
   const oldAiItems = oldItems.filter(it => !it.isManual)
   const manualItems = oldItems.filter(it => it.isManual)
 
-  // AI baru
   const newAiItems = (items || []).filter(it => !it.isManual)
   const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
 
-  // Gabungan
   let merged = [...aiItems, ...manualItems]
 
-  // Dedup (berdasarkan kategori-icd-tindakan)
   const seen = new Set()
   merged = merged.filter(it => {
     const key = `${it.kategori}-${it.icd}-${it.tindakan}`
@@ -412,44 +297,164 @@ function renderTable(targetId, items, type, tab, dayId = null) {
 
   const target = document.getElementById(targetId)
   if (!target) return
-
   target.innerHTML = ""
 
-  state.simulasi[tab][type].forEach((item, idx) => {
-    target.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td class="border px-2 py-1 cursor-pointer text-blue-600 underline"
-            data-item='${JSON.stringify(item)}'
-            onclick="openModalFromAttr(this)">
-          ${item.kategori || "-"}
-        </td>
-        <td class="border px-2 py-1">${item.klinis || "-"}</td>
-        <td class="border px-2 py-1">${item.icd || "-"}</td>
-        <td class="border px-2 py-1">${item.tindakan || "-"}</td>
-        <td class="border px-2 py-1">${item.score || "-"}</td>
-        <td ${type === "tindakan" ? 'style="display:none"' : ""}>
-          <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
-                  class="border px-2 py-1 rounded 
-                         bg-white dark:bg-gray-700 
-                         text-gray-900 dark:text-gray-200 
-                         focus:ring-2 focus:ring-blue-400"
-                  ${state.role !== 'doctor' ? 'disabled' : ''}>
-            <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
-            <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
-            <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
-            <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
-            <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
-          </select>
-        </td>
-      </tr>
-    `)
+  let grouped = []
+  let currentParent = null
+  merged.forEach(it => {
+    if (!it.child) {
+      currentParent = { ...it, children: [] }
+      grouped.push(currentParent)
+    } else if (currentParent) {
+      currentParent.children.push(it)
+    }
   })
 
-  // Update counter
-  let counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
+  // 🔑 fix di sini: cek thead di level <table>, bukan tbody
+  const table = target.closest("table")
+  if (table && !table.querySelector("thead")) {
+    const thead = document.createElement("thead")
+    thead.className = "bg-gray-100 dark:bg-gray-800"
+    thead.innerHTML = `
+      <tr>
+        <th class="border px-3 py-2 align-middle">Kategori</th>
+        <th class="border px-3 py-2 align-middle">Klinis</th>
+        <th class="border px-3 py-2 align-middle">ICD</th>
+        <th class="border px-3 py-2 align-middle">Tindakan</th>
+        <th class="border px-3 py-2 align-middle text-center">Score</th>
+        ${state.role === "doctor" ? `<th class="border px-3 py-2 align-middle text-center">Mapping</th>` : ``}
+      </tr>`
+    table.insertBefore(thead, table.firstChild)
+  }
+
+  grouped.forEach((parent, idx) => {
+    const counter = 1 + (parent.children ? parent.children.length : 0)
+
+    const tbody = document.createElement("tbody")
+    tbody.setAttribute("x-data", "{ open:false }")
+
+    tbody.insertAdjacentHTML("beforeend", `
+      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm">
+        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+            data-item='${JSON.stringify(parent)}'
+            onclick="openModalFromAttr(this)">
+          <span @click.stop="open=!open" class="mr-1 cursor-pointer">
+            <span x-show="!open" x-cloak>▶</span>
+            <span x-show="open" x-cloak>▼</span>
+          </span>
+          ${parent.kategori || "-"}
+          <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
+        </td>
+        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${parent.klinis || "-"}</td>
+        <td class="border px-3 py-2 align-middle text-center">${parent.icd || "-"}</td>
+        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${parent.tindakan || "-"}</td>
+        <td class="border px-3 py-2 align-middle text-center">${parent.score || "-"}</td>
+        ${state.role === "doctor" ? `
+        <td class="border px-3 py-2 align-middle text-center">
+          ${renderMappingSelect(parent, tab, type, idx)}
+        </td>` : ``}
+      </tr>
+    `)
+
+    parent.children.forEach(child => {
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr x-show="open" x-cloak
+            class="bg-gray-50 dark:bg-gray-800 italic text-gray-600 dark:text-gray-300 text-sm">
+          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+              data-item='${JSON.stringify(child)}'
+              onclick="openModalFromAttr(this)">
+            → ${child.kategori || "-"}
+          </td>
+          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${child.klinis || "-"}</td>
+          <td class="border px-3 py-2 align-middle text-center">${child.icd || "-"}</td>
+          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${child.tindakan || "-"}</td>
+          <td class="border px-3 py-2 align-middle text-center">${child.score || "-"}</td>
+          ${state.role === "doctor" ? `
+          <td class="border px-3 py-2 align-middle text-center">
+            ${renderMappingSelect(child, tab, type, idx)}
+          </td>` : ``}
+        </tr>
+      `)
+    })
+
+    target.appendChild(tbody)
+    Alpine.initTree(tbody)
+  })
+
+  const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
   const countEl = document.getElementById(counterId)
-  if (countEl) countEl.textContent = state.simulasi[tab][type].length
+  if (countEl) {
+    let total = grouped.reduce((sum, p) => sum + 1 + p.children.length, 0)
+    countEl.textContent = total
+  }
+
+  // === Manual Row Input ===
+  if (state.role === "doctor") {
+    if (tab === "admission" || tab === "discharge" || tab.startsWith("daily-")) {
+      const manualTbody = document.createElement("tbody")
+
+      // kalau tab daily-* pakai bracket notation
+      const tabPath = tab.startsWith("daily-") 
+        ? `manualInput.daily['${tab}'].${type}`
+        : `manualInput.${tab}.${type}`
+
+      manualTbody.insertAdjacentHTML("beforeend", `
+        <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+          <td class="border px-3 py-2 w-1/6">
+            <input x-model="${tabPath}.kategori"
+                  placeholder="Nama Penyakit"
+                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
+          </td>
+          <td class="border px-3 py-2 w-1/6">
+            <input x-model="${tabPath}.klinis"
+                  placeholder="Klinis" readonly
+                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
+          </td>
+          <td class="border px-3 py-2 w-1/6">
+            <input x-model="${tabPath}.icd"
+                  placeholder="ICD" readonly
+                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1">
+          </td>
+          <td class="border px-3 py-2 w-1/6">
+            <input x-model="${tabPath}.tindakan"
+                  placeholder="Tindakan" readonly
+                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
+          </td>
+          <td class="border px-3 py-2 w-1/6">
+            <input x-model="${tabPath}.score"
+                  placeholder="Score" readonly
+                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1">
+          </td>
+          <td class="border px-3 py-2 w-1/6">
+            <button type="button" onclick="addManual('${type}','${tab}')"
+                    class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+          </td>
+        </tr>
+      `)
+
+      target.appendChild(manualTbody)
+      Alpine.initTree(manualTbody)
+    }
+  }
 }
+
+
+// helper untuk mapping select
+function renderMappingSelect(item, tab, type, idx, isChild=false) {
+  const disabled = window.claimState.role !== 'doctor' ? 'disabled' : ''
+  return `
+    <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
+            class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
+            ${disabled}>
+      <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
+      <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
+      <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
+      <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
+      <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
+    </select>
+  `
+}
+
 
 // ==================== Add Manual ====================
 function addManual(type, tab) {
@@ -791,7 +796,7 @@ async function loadRecommendations(claimId) {
       const dayId = `daily-${idx}`
 
       dailyContainer.insertAdjacentHTML("beforeend", `
-  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
     <button type="button" @click="open=!open"
             class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
       <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
@@ -800,7 +805,7 @@ async function loadRecommendations(claimId) {
     <div x-show="open" class="p-2 space-y-2">
 
       <!-- Diagnosis -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
         <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
@@ -812,53 +817,14 @@ async function loadRecommendations(claimId) {
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
         <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
-              </tr>
-            </thead>
+          <table class="w-full text-xs border table-fixed">
             <tbody id="diagnosis-${dayId}"></tbody>
-            <tbody id="diagnosis-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori"
-             placeholder="Nama penyakit"
-             class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
-                        class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
-                        class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
-                        class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
-                        class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td>
-                <button type="button" @click="addManual('diagnosis','${dayId}')"
-                        class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-              </td>
-            </tr>
-            </tbody>
           </table>
         </div>
       </div>
 
       <!-- Komorbid -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
         <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
@@ -870,54 +836,14 @@ async function loadRecommendations(claimId) {
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
         <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
+          <table class="w-full text-xs border table-fixed">
             <tbody id="komorbid-${dayId}"></tbody>
-            <tbody id="komorbid-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori"
-         placeholder="Nama penyakit"
-         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td>
-                  <button type="button" @click="addManual('komorbid','${dayId}')"
-                          class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-                </td>
-              </tr>
-            </tbody>
           </table>
         </div>
       </div>
 
       <!-- Komplikasi -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
+      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
         <button type="button" @click="open=!open"
                 class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
           <span>
@@ -929,52 +855,11 @@ async function loadRecommendations(claimId) {
           <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
         </button>
         <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
+          <table class="w-full text-xs border table-fixed">
             <tbody id="komplikasi-${dayId}"></tbody>
-            <tbody id="komplikasi-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td> <input x-model="manualInput.daily['${dayId}'].komplikasi.kategori"
-         placeholder="Nama penyakit"
-         class="border px-2 py-1 w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td>
-                  <button type="button" @click="addManual('komplikasi','${dayId}')"
-                          class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-                </td>
-              </tr>
-            </tbody>
           </table>
         </div>
       </div>
-
     </div>
   </div>
 `)

@@ -10,10 +10,11 @@ Defines the SQLAlchemy ORM models used by the application:
 """
 
 from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime
+import uuid
 
 # =========================================
 # Hospital
@@ -23,6 +24,7 @@ class Hospital(Base):
     __tablename__ = "hospitals"
 
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     kode_hospital = Column(String(20), unique=True, nullable=True)
     nama = Column(String(150), nullable=False)
     tipe_hospital = Column(String(50), nullable=True)
@@ -54,6 +56,7 @@ class Patient(Base):
     __tablename__ = "patients"
 
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     no_rm = Column(String(20), unique=True, nullable=True)
     no_ktp = Column(String(20), unique=True, nullable=True)
     no_bpjs = Column(String(20), unique=True, nullable=True)
@@ -89,6 +92,7 @@ class Patient(Base):
 class Visit(Base):
     __tablename__ = "visits"
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
     hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=False)
     eksternal_id = Column(String(100), nullable=True)
@@ -122,6 +126,7 @@ class Claim(Base):
     __tablename__ = "claims"
 
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     claim_date = Column(DateTime, default=datetime.utcnow)
 
     # Relasi ke pasien
@@ -305,6 +310,8 @@ class MedicalRecord(Base):
     __tablename__ = "medical_records"
 
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+
     record_type = Column(String(50), nullable=False)  # admission / daily / discharge
     
 

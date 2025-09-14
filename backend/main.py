@@ -50,7 +50,6 @@ def flash(request: Request, message: str, category: str = "success"):
         request.session["flashes"] = []
     request.session["flashes"].append({"message": message, "category": category})
 
-
 def get_flashed_messages(request: Request):
     flashes = request.session.get("flashes", [])
     request.session["flashes"] = []  # clear setelah dibaca
@@ -2120,7 +2119,6 @@ def add_visit_form(request: Request, db: Session = Depends(get_db), user=Depends
         "current_user": user,
         "fields": fields   # dynamic
     })
-
 
 @app.post("/visits/add", name="add_visit")
 def add_visit(
