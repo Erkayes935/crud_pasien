@@ -59,6 +59,80 @@ def get_flashed_messages(request: Request):
 # Init DB & App
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from fastapi import Depends
+import json
+
+# Endpoint resume medis utama (ambil dari database, bukan core_engine)
+@app.get("/claims/{claim_id}/resume", name="get_resume_medis")
+@app.post("/resume_medis", name="post_resume_medis")
+def post_resume_medis(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    claim_id = payload.get("claim_id")
+    mode = payload.get("mode", "list")
+    settings = payload.get("settings", {})
+    if not claim_id:
+        return JSONResponse({"error": "Missing claim_id"}, status_code=400)
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        return JSONResponse({"error": "Claim not found"}, status_code=404)
+    pasien = {}
+    if claim.patient:
+        pasien = {
+            "id": getattr(claim.patient, "id", None),
+            "nama": getattr(claim.patient, "nama", "-"),
+            "no_rm": getattr(claim.patient, "no_rm", "-"),
+            "umur": getattr(claim.patient, "umur", "-"),
+            "jk": getattr(claim.patient, "jk", "-"),
+            "keluhan": getattr(claim.patient, "keluhan", "-"),
+            # tambahkan field lain sesuai kebutuhan
+        }
+    visit = {}
+    if claim.visit:
+        visit = {
+            "id": getattr(claim.visit, "id", None),
+            "tgl_masuk": getattr(claim.visit, "tgl_masuk", None),
+            "tgl_keluar": getattr(claim.visit, "tgl_keluar", None),
+            # tambahkan field lain sesuai kebutuhan
+        }
+    resume = {
+        "pasien": pasien,
+        "visit": visit,
+        "diagnosis": claim.simulasi_draft if claim.simulasi_draft else {},
+        "summary": claim.summary_draft if claim.summary_draft else {},
+        "tindakan": claim.tindakan if hasattr(claim, "tindakan") else {},
+        "obat": claim.obat if hasattr(claim, "obat") else [],
+        "regulasi": claim.regulasi if hasattr(claim, "regulasi") else [],
+        "dokter": claim.doctor_name if hasattr(claim, "doctor_name") else "",
+    }
+    if mode == "naratif":
+        # Privacy: remove patient identity fields
+        resume_naratif = dict(resume)
+        resume_naratif.pop("pasien", None)
+        from core_engine.services.resume_service import process_resume_medis
+        result = process_resume_medis(resume_naratif, mode="naratif", settings=settings)
+        return JSONResponse({"naratif": result})
+    return JSONResponse(resume)
+def get_resume_medis(claim_id: int, db: Session = Depends(get_db)):
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        return JSONResponse({"error": "Claim not found"}, status_code=404)
+    # Ambil data resume medis dari draft klaim
+    resume = {
+        "pasien": claim.patient.to_dict() if claim.patient else {},
+        "visit": claim.visit.to_dict() if claim.visit else {},
+        "diagnosis": claim.simulasi_draft if claim.simulasi_draft else {},
+        "summary": claim.summary_draft if claim.summary_draft else {},
+        "tindakan": claim.tindakan if hasattr(claim, "tindakan") else {},
+        "obat": claim.obat if hasattr(claim, "obat") else [],
+        "regulasi": claim.regulasi if hasattr(claim, "regulasi") else [],
+        "dokter": claim.doctor_name if hasattr(claim, "doctor_name") else "",
+        # Tambahkan field lain sesuai kebutuhan
+    }
+    return JSONResponse(resume)
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="frontend/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
@@ -2555,4 +2629,3 @@ async def generate_claim_combos(payload: dict = Body(None)):
 @app.post("/resume_medis")
 async def resume_medis(payload: dict = Body(None)):
     return await proxy_core_engine("/resume_medis", payload)
-

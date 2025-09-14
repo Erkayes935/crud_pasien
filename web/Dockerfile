@@ -6,6 +6,17 @@ WORKDIR /app/web
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
+    libpango-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libffi-dev \
+    libgobject-2.0-0 \
+    libxml2 \
+    libxslt1.1 \
+    libjpeg-dev \
+    libpng-dev \
+    libpangocairo-1.0-0 \
+    fonts-freefont-ttf \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements dan install dependencies

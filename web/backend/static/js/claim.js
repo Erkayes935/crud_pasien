@@ -975,34 +975,17 @@ function onMappingChange(event, tab, type, idx) {
 
 // ==================== Resume Medis ====================
 function generateResumeMedis() {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  // Kirim diagnosis/tindakan sebagai dict utama & sekunder
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId || document.getElementById("claimIdHidden")?.value;
+  if (!claimId) {
+    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
+    return;
+  }
   const payload = {
-    pasien: state?.pasien || {},
-    visit: state?.visit || {},
-    diagnosis: {
-      utama: Array.isArray(state?.simulasi?.admission?.diagnosis) && state.simulasi.admission.diagnosis.length > 0
-        ? state.simulasi.admission.diagnosis[0]
-        : {},
-      sekunder: [
-        ...(state?.simulasi?.admission?.komorbid || []),
-        ...(state?.simulasi?.admission?.komplikasi || [])
-      ]
-    },
-    tindakan: {
-      utama: state?.simulasi?.admission?.tindakanUtama || {},
-      sekunder: state?.simulasi?.admission?.tindakanSekunder || []
-    },
-    obat: state?.obat?.length ? state.obat : [
-      { nama: "Paracetamol", dosis: "3x500mg" },
-      { nama: "Antibiotik", dosis: "2x500mg" }
-    ],
-    regulasi: state?.recommendations?.regulasi || [],
-    dokter: state?.dokter || {},
+    claim_id: claimId,
     mode: "list",
     settings: {}
-  }
-  console.log('📦 Payload Resume Medis (final):', payload)
+  };
+  console.log('📦 Payload Resume Medis (minimal):', payload);
   fetch('/resume_medis', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1010,21 +993,58 @@ function generateResumeMedis() {
   })
     .then(res => res.json())
     .then(data => {
-      console.log('📥 Data Resume Medis dari BE:', data)
-      openModal('Resume Medis', buildResumeMedisModal(data))
+      console.log('📥 Data Resume Medis dari BE:', data);
+      openModal('Resume Medis', buildResumeMedisModal(data));
     })
     .catch(err => {
-      alert('Gagal generate Resume Medis: ' + err)
-    })
+      alert('Gagal generate Resume Medis: ' + err);
+    });
 }
 
 function buildResumeMedisModal(data) {
-  // --- Normalisasi diagnosis ---
-  const utamaDx = data?.diagnosis?.utama ? [data.diagnosis.utama] : []
-  const sekunderDx = Array.isArray(data?.diagnosis?.sekunder) ? data.diagnosis.sekunder : []
-  const utamaTdk = data?.tindakan?.utama ? [data.tindakan.utama] : []
-  const sekunderTdk = Array.isArray(data?.tindakan?.sekunder) ? data.tindakan.sekunder : []
-  const obatArr = Array.isArray(data?.obat) ? data.obat : []
+  // --- Patch: Normalisasi diagnosis & tindakan, support array dan fallback ---
+  let utamaDx = [];
+  let sekunderDx = [];
+  let utamaTdk = [];
+  let sekunderTdk = [];
+  let obatArr = Array.isArray(data?.obat) ? data.obat : [];
+
+  // Diagnosis utama: support array atau object
+  if (Array.isArray(data?.diagnosis?.utama)) {
+    utamaDx = data.diagnosis.utama;
+  } else if (data?.diagnosis?.utama) {
+    utamaDx = [data.diagnosis.utama];
+  }
+  // Diagnosis sekunder: support array
+  if (Array.isArray(data?.diagnosis?.sekunder)) {
+    sekunderDx = data.diagnosis.sekunder;
+  }
+
+  // Tindakan utama: support array atau object
+  if (Array.isArray(data?.tindakan?.utama)) {
+    utamaTdk = data.tindakan.utama;
+  } else if (data?.tindakan?.utama) {
+    utamaTdk = [data.tindakan.utama];
+  }
+  // Tindakan sekunder: support array
+  if (Array.isArray(data?.tindakan?.sekunder)) {
+    sekunderTdk = data.tindakan.sekunder;
+  }
+
+  // Fallback jika diagnosis/tindakan kosong
+  if (!utamaDx.length) utamaDx = [{ kategori: '-', klinis: '-', icd: '-' }];
+  if (!sekunderDx.length) sekunderDx = [];
+  if (!utamaTdk.length) utamaTdk = [{ nama: '-', kode: '-' }];
+  if (!sekunderTdk.length) sekunderTdk = [];
+
+  // --- Patch: fallback identitas pasien ke data.pasien jika data.identitas kosong ---
+  const identitas = {
+    nama: data.identitas?.nama || data.pasien?.nama || '-',
+    no_rm: data.identitas?.no_rm || data.pasien?.no_rm || '-',
+    umur: data.identitas?.umur || data.pasien?.umur || '-',
+    jk: data.identitas?.jk || data.pasien?.jk || '-',
+    keluhan: data.identitas?.keluhan || data.pasien?.keluhan || '-',
+  };
 
   return `
     <div class="space-y-4 text-sm">
@@ -1036,7 +1056,7 @@ function buildResumeMedisModal(data) {
         <!-- Identitas Pasien -->
         <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
           <h3 class="font-bold text-lg">🧍 Identitas Pasien</h3>
-          <p>Nama: ${data.identitas?.nama || '-'}<br>No RM: ${data.identitas?.no_rm || '-'}<br>Umur: ${data.identitas?.umur || '-'}<br>Jenis Kelamin: ${data.identitas?.jk || '-'}<br>Keluhan: ${data.identitas?.keluhan || '-'}</p>
+          <p>Nama: ${identitas.nama}<br>No RM: ${identitas.no_rm}<br>Umur: ${identitas.umur}<br>Jenis Kelamin: ${identitas.jk}<br>Keluhan: ${identitas.keluhan}</p>
         </section>
         <!-- Kunjungan -->
         <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
@@ -1052,7 +1072,7 @@ function buildResumeMedisModal(data) {
           </ul>
           <h4 class="font-semibold mt-2">Sekunder</h4>
           <ul class="list-disc list-inside">
-            ${sekunderDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('')}
+            ${sekunderDx.length ? sekunderDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('') : '<li>-</li>'}
           </ul>
         </section>
         <!-- Tindakan -->
@@ -1064,7 +1084,7 @@ function buildResumeMedisModal(data) {
           </ul>
           <h4 class="font-semibold mt-2">Sekunder</h4>
           <ul class="list-disc list-inside">
-            ${sekunderTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('')}
+            ${sekunderTdk.length ? sekunderTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('') : '<li>-</li>'}
           </ul>
         </section>
         <!-- Obat -->
@@ -1090,5 +1110,3 @@ function switchResumeMode(mode) {
   document.getElementById("resume-list").style.display = (mode === "list" ? "block" : "none")
   document.getElementById("resume-naratif").style.display = (mode === "naratif" ? "block" : "none")
 }
-
-
