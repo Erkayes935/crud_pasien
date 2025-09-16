@@ -1,20 +1,24 @@
 // ==================== Generate AI ====================
 function claimData(init) {
-
   const state = {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
-    form : {},
-    simulasi: init.sim || {
-      admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      daily: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
+    form: {},
+
+    // 🔹 Simulasi hasil AI (utama/sekunder) → dari ClaimSimulation
+    simulasi: {
+      admission: { utama: [], sekunder: [] },
+      daily: {},
+      discharge: { utama: [], sekunder: [] }
     },
-    summary: init.summ || {
-      admission: { klinis:[], regulasi:[], tarif:[] },
-      daily: { klinis:[], regulasi:[], tarif:[] },
-      discharge: { klinis:[], regulasi:[], tarif:[] }
-    },
+
+
+    // 🔹 Evaluasi hasil klaim → dari ClaimDiagnosisEvaluation / ClaimProcedureEvaluation / ClaimCombinationAlternative
+    evaluasiDiagnosis: [],
+    evaluasiProcedure: [],
+    alternatifKombinasi: [],
+
+    // 🔹 Manual input tetap ada
     showManual: {
       admission: { diagnosis:false, komorbid:false, komplikasi:false },
       daily: {},
@@ -33,249 +37,147 @@ function claimData(init) {
       },
       daily: {}
     },
-    recommendations: { medis:[], regulasi:[], tarif:[] },
+
     modalOpen: false,
     modalTitle: '',
     modalContent: '',
-    init(){
-      window.addEventListener('update-rekom', e => {
-        this.recommendations = e.detail
-      })
-      const role = this.role
-      const claimId = document.getElementById("claimRoot")?.dataset.claimId
+
+    init() {
+      const role = this.role;
+      const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
       if (role === 'verifikator' && claimId) {
-        loadRecommendations(claimId)   // otomatis load dari DB
+        // 🔹 langsung load dari DB (BE pecahan)
+        loadRecommendations(claimId);
       }
     },
-    statusIcon(s){
-      if(s==='valid') return "✅"
-      if(s==='warning') return "⚠️"
-      if(s==='invalid') return "❌"
-      return ""
+
+    statusIcon(s) {
+      if (s === 'valid') return "✅";
+      if (s === 'warning') return "⚠️";
+      if (s === 'invalid') return "❌";
+      return "";
     },
-  }
-  window.claimState = state  
-  return state
+  };
+  window.claimState = state;
+  return state;
 }
+
 async function generateAI() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId
-               || document.getElementById("claimIdHidden")?.value
-
-  console.log("✅ claimId terdeteksi:", claimId)
+               || document.getElementById("claimIdHidden")?.value;
 
   if (!claimId) {
-    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.")
-    return
+    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
+    return;
   }
-
-  const payload = {
-    claim_id: claimId,
-    patient_id: 1,
-    visit_id: 10,
-    context: "all",
-    notes: "dummy generate"
-  }
-
-  console.log("📦 Payload yg dikirim:", payload)
-
 
   try {
+    // ✅ endpoint sesuai BE (POST + body claim_id)
     const res = await fetch("/ai/recommendation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-    const data = await res.json()
-    console.log("📥 Data dari BE:", data)
+      body: JSON.stringify({ claim_id: claimId })
+    });
 
-    // ✅ pastikan daily selalu array
-    if (!Array.isArray(data.daily)) {
-      data.daily = data.daily ? [data.daily] : []
+    if (!res.ok) {
+      throw new Error("Server error: " + res.status);
     }
-    const state = Alpine.$data(document.getElementById('claimRoot'))
+
+    const data = await res.json();
+    console.log("📥 Data pecahan dari BE:", data);
+
+    const state = Alpine.$data(document.getElementById("claimRoot"));
 
     // === Admission ===
-    renderTable("diagnosis-admission", data.admission?.diagnosis || [], "diagnosis", "admission")
-    renderTable("komorbid-admission", data.admission?.komorbid || [], "komorbid", "admission")
-    renderTable("komplikasi-admission", data.admission?.komplikasi || [], "komplikasi", "admission")
-    Object.assign(state.simulasi.admission, data.admission?.simulasi || {})
-    state.summary.admission = data.admission?.summary || {}
+    renderTable("diagnosis-admission", data.admission?.diagnosis || [], "diagnosis", "admission");
+    renderTable("komorbid-admission", data.admission?.komorbid || [], "komorbid", "admission");
+    renderTable("komplikasi-admission", data.admission?.komplikasi || [], "komplikasi", "admission");
 
-    // === Daily ===
+    state.simulasi.admission = { ...(state.simulasi.admission || {}), ...(data.admission?.simulasi || {}) };
+
+    // === Daily (array) ===
+    const dailyContainer = document.getElementById("daily-accordion");
+    dailyContainer.innerHTML = "";
+
     if (Array.isArray(data.daily)) {
-      const dailyContainer = document.getElementById("daily-accordion")
-      dailyContainer.innerHTML = ""  // reset
-
       data.daily.forEach((hari, idx) => {
-    // unique id per hari
-        hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
-        const dayId = `daily-${idx}`
-    // init manualInput untuk setiap dayId
-    if (!state.simulasi[dayId]) {
-        state.simulasi[dayId] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
-      }
-    
-    if (!state.manualInput.daily[dayId]) {
-      state.manualInput.daily[dayId] = {
-        diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
-        komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"" },
-        komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
-      }
-    }
-    const mergeAI = (aiData, type) => {
-        const aiItems = (aiData || []).map(it => ({ ...it, isManual: false }))
-        const manualItems = state.simulasi[dayId][type]?.filter(it => it.isManual) || []
-        state.simulasi[dayId][type] = [...aiItems, ...manualItems]
-        renderTable(`${type}-${dayId}`, [], type, dayId)
-      }
+        const dayId = `daily-${idx}`;
 
-    mergeAI(hari.diagnosis, "diagnosis")
-    mergeAI(hari.komorbid, "komorbid")
-    mergeAI(hari.komplikasi, "komplikasi")
+        if (!state.simulasi[dayId]) {
+          state.simulasi[dayId] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] };
+        }
+        if (!state.manualInput.daily[dayId]) {
+          state.manualInput.daily[dayId] = {
+            diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+            komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
+            komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+          };
+        }
 
-    // Setelah mergeAI selesai
-    if (!state.simulasi.daily.days) state.simulasi.daily.days = []
-    state.simulasi.daily.days[idx] = state.simulasi[dayId]
-
-    // bikin accordion section baru
-    dailyContainer.insertAdjacentHTML("beforeend", `
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-          <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2 space-y-2">
-
-          <!-- Diagnosis -->
+        // accordion harian
+        dailyContainer.insertAdjacentHTML("beforeend", `
           <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
             <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Diagnosis
-                <span id="count-diagnosis-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
+                    class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+              <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
               <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
             </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border table-fixed">
-                <tbody id="diagnosis-${dayId}"></tbody>
-              </table>
+            <div x-show="open" class="p-2 space-y-2">
+              <div><table class="w-full text-xs border table-fixed"><tbody id="diagnosis-${dayId}"></tbody></table></div>
+              <div><table class="w-full text-xs border table-fixed"><tbody id="komorbid-${dayId}"></tbody></table></div>
+              <div><table class="w-full text-xs border table-fixed"><tbody id="komplikasi-${dayId}"></tbody></table></div>
             </div>
           </div>
+        `);
+        Alpine.initTree(dailyContainer);
 
-          <!-- Komorbid -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-            <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Komorbid
-                <span id="count-komorbid-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border table-fixed">
-                <tbody id="komorbid-${dayId}"></tbody>
-              </table>
-            </div>
-          </div>
+        renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", dayId);
+        renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", dayId);
+        renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", dayId);
 
-          <!-- Komplikasi -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-            <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Komplikasi
-                <span id="count-komplikasi-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border table-fixed">
-                <tbody id="komplikasi-${dayId}"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    `)
-    Alpine.initTree(dailyContainer)
-    console.log("✅ accordion harusnya dibuat, cek DOM:", document.getElementById("daily-accordion").innerHTML)
-    const tmpl = document.getElementById("daily-form-template")
-    if (tmpl) {
-      const clone = tmpl.content.cloneNode(true)
-      dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
+        // simpan ke state
+        state.simulasi.daily.days = state.simulasi.daily.days || [];
+        state.simulasi.daily.days[idx] = state.simulasi[dayId];
+      });
     }
-    // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", dayId)
-    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", dayId)
-    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [], "komplikasi", dayId)
-    })
-    } else {
-      // fallback lama kalau backend masih kirim 1 blok
-      renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
-      renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
-      renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
-    }
-    Object.assign(state.simulasi.daily, {
-      utama: (data.daily[0] && data.daily[0].utama) || null,
-      sekunder: data.daily.flatMap(d => d.sekunder || []),
-      tindakanUtama: (data.daily[0] && data.daily[0].tindakanUtama) || null,
-      tindakanSekunder: data.daily.flatMap(d => d.tindakanSekunder || []),
-      tarifDraft: null
-    })
-    Object.assign(state.summary.daily, {
-      klinis: data.daily.flatMap(d => d.summary?.klinis || []),
-      regulasi: data.daily.flatMap(d => d.summary?.regulasi || []),
-      tarif: data.daily.flatMap(d => d.summary?.tarif || [])
-    })
-
 
     // === Discharge ===
-    renderTable("diagnosis-discharge", data.discharge?.diagnosis || [], "diagnosis", "discharge")
-    renderTable("komorbid-discharge", data.discharge?.komorbid || [], "komorbid", "discharge")
-    renderTable("komplikasi-discharge", data.discharge?.komplikasi || [], "komplikasi", "discharge")
-    Object.assign(state.simulasi.discharge, data.discharge?.simulasi || {})
-    state.summary.discharge = data.discharge?.summary || {}
+    renderTable("diagnosis-discharge", data.discharge?.diagnosis || [], "diagnosis", "discharge");
+    renderTable("komorbid-discharge", data.discharge?.komorbid || [], "komorbid", "discharge");
+    renderTable("komplikasi-discharge", data.discharge?.komplikasi || [], "komplikasi", "discharge");
 
-    // === Panel kanan (SARAN SIMULASI) ===
+    state.simulasi.discharge = { ...(state.simulasi.discharge || {}), ...(data.discharge?.simulasi || {}) };
+
+    // === Evaluasi & Kombinasi (panel kanan) ===
+    renderEvaluasiDiagnosis(data.evaluasi_diagnosis || []);
+    renderEvaluasiProcedure(data.evaluasi_procedure || []);
+    renderAlternatifKombinasi(data.alternatif || []);
+
+    // ✅ update rekomendasi ke Alpine store
     window.dispatchEvent(new CustomEvent('update-rekom', {
       detail: {
-        medis: [
-          ...(data.discharge?.summary?.klinis || [])
-        ],
-        regulasi: [
-          ...(data.discharge?.summary?.regulasi || [])
-        ],
-        tarif: [
-          ...(data.discharge?.summary?.tarif || [])
-        ]
+        medis: data.evaluasi_diagnosis || [],
+        regulasi: data.evaluasi_procedure || [],
+        tarif: data.alternatif || []
       }
-    }))
+    }));
 
   } catch (err) {
-    console.error("Error generate AI:", err)
-    alert("Gagal generate AI")
+    console.error("Error generate AI:", err);
+    alert("Gagal generate AI");
   }
 }
 
 // ==================== Render Table ====================
 function renderTable(targetId, items, type, tab, dayId = null) {
   const state = Alpine.$data(document.getElementById("claimRoot"))
+
   if (!state.simulasi[tab]) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
   }
 
-  if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
-  }
-
+  // filter AI vs manual
   const oldItems = state.simulasi[tab][type] || []
   const oldAiItems = oldItems.filter(it => !it.isManual)
   const manualItems = oldItems.filter(it => it.isManual)
@@ -285,9 +187,10 @@ function renderTable(targetId, items, type, tab, dayId = null) {
 
   let merged = [...aiItems, ...manualItems]
 
+  // hindari duplikat
   const seen = new Set()
   merged = merged.filter(it => {
-    const key = `${it.kategori}-${it.icd}-${it.tindakan}`
+    const key = `${it.kategori}-${it.icd10_code || it.icd9_code}-${it.tindakan || it.procedure_text}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -299,6 +202,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   if (!target) return
   target.innerHTML = ""
 
+  // grup parent-child
   let grouped = []
   let currentParent = null
   merged.forEach(it => {
@@ -310,32 +214,32 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     }
   })
 
-  // 🔑 fix di sini: cek thead di level <table>, bukan tbody
+  // header table
   const table = target.closest("table")
   if (table && !table.querySelector("thead")) {
     const thead = document.createElement("thead")
     thead.className = "bg-gray-100 dark:bg-gray-800"
     thead.innerHTML = `
       <tr>
-        <th class="border px-3 py-2 align-middle">Kategori</th>
-        <th class="border px-3 py-2 align-middle">Klinis</th>
-        <th class="border px-3 py-2 align-middle">ICD</th>
-        <th class="border px-3 py-2 align-middle">Tindakan</th>
-        <th class="border px-3 py-2 align-middle text-center">Score</th>
-        ${state.role === "doctor" ? `<th class="border px-3 py-2 align-middle text-center">Mapping</th>` : ``}
+        <th class="border px-3 py-2">Kategori</th>
+        <th class="border px-3 py-2">Klinis</th>
+        <th class="border px-3 py-2">ICD</th>
+        <th class="border px-3 py-2">Tindakan</th>
+        <th class="border px-3 py-2 text-center">Score</th>
+        ${state.role === "doctor" ? `<th class="border px-3 py-2 text-center">Mapping</th>` : ``}
       </tr>`
     table.insertBefore(thead, table.firstChild)
   }
 
   grouped.forEach((parent, idx) => {
     const counter = 1 + (parent.children ? parent.children.length : 0)
-
     const tbody = document.createElement("tbody")
     tbody.setAttribute("x-data", "{ open:false }")
 
+    // parent row
     tbody.insertAdjacentHTML("beforeend", `
       <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm">
-        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+        <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
             data-item='${JSON.stringify(parent)}'
             onclick="openModalFromAttr(this)">
           <span @click.stop="open=!open" class="mr-1 cursor-pointer">
@@ -345,32 +249,49 @@ function renderTable(targetId, items, type, tab, dayId = null) {
           ${parent.kategori || "-"}
           <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
         </td>
-        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${parent.klinis || "-"}</td>
-        <td class="border px-3 py-2 align-middle text-center">${parent.icd || "-"}</td>
-        <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${parent.tindakan || "-"}</td>
-        <td class="border px-3 py-2 align-middle text-center">${parent.score || "-"}</td>
+        <td class="border px-3 py-2 text-ellipsis max-w-[200px]" title="${parent.klinis || ""}">
+          ${parent.klinis ? truncateText(parent.klinis, 20) : "…"}
+        </td>
+        <td class="border px-3 py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
+        <td class="border px-3 py-2 text-ellipsis max-w-[200px]" 
+            title="${parent.tindakan || parent.procedure_text || ""}"
+            onclick="openProcedureModal('${parent.id || ''}')">
+          ${parent.tindakan ? truncateText(parent.tindakan, 20) 
+                           : parent.procedure_text ? truncateText(parent.procedure_text, 20) 
+                           : "…"}
+        </td>
+        <td class="border px-3 py-2 text-center">${parent.score || "-"}</td>
         ${state.role === "doctor" ? `
-        <td class="border px-3 py-2 align-middle text-center">
+        <td class="border px-3 py-2 text-center">
           ${renderMappingSelect(parent, tab, type, idx)}
         </td>` : ``}
       </tr>
     `)
 
+    // children
     parent.children.forEach(child => {
       tbody.insertAdjacentHTML("beforeend", `
         <tr x-show="open" x-cloak
-            class="bg-gray-50 dark:bg-gray-800 italic text-gray-600 dark:text-gray-300 text-sm">
-          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+            class="bg-gray-50 dark:bg-gray-800 italic text-sm">
+          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
               data-item='${JSON.stringify(child)}'
               onclick="openModalFromAttr(this)">
             → ${child.kategori || "-"}
           </td>
-          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${child.klinis || "-"}</td>
-          <td class="border px-3 py-2 align-middle text-center">${child.icd || "-"}</td>
-          <td class="border px-3 py-2 align-middle whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">${child.tindakan || "-"}</td>
-          <td class="border px-3 py-2 align-middle text-center">${child.score || "-"}</td>
+          <td class="border px-3 py-2 text-ellipsis max-w-[200px]" title="${child.klinis || ""}">
+            ${child.klinis ? truncateText(child.klinis, 20) : "…"}
+          </td>
+          <td class="border px-3 py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
+          <td class="border px-3 py-2 text-ellipsis max-w-[200px]" 
+              title="${child.tindakan || child.procedure_text || ""}"
+              onclick="openProcedureModal('${child.id || ''}')">
+            ${child.tindakan ? truncateText(child.tindakan, 20) 
+                             : child.procedure_text ? truncateText(child.procedure_text, 20) 
+                             : "…"}
+          </td>
+          <td class="border px-3 py-2 text-center">${child.score || "-"}</td>
           ${state.role === "doctor" ? `
-          <td class="border px-3 py-2 align-middle text-center">
+          <td class="border px-3 py-2 text-center">
             ${renderMappingSelect(child, tab, type, idx)}
           </td>` : ``}
         </tr>
@@ -381,6 +302,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     Alpine.initTree(tbody)
   })
 
+  // update counter
   const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
   const countEl = document.getElementById(counterId)
   if (countEl) {
@@ -388,56 +310,36 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     countEl.textContent = total
   }
 
-  // === Manual Row Input ===
+  // manual row tetap ada
   if (state.role === "doctor") {
     if (tab === "admission" || tab === "discharge" || tab.startsWith("daily-")) {
       const manualTbody = document.createElement("tbody")
-
-      // kalau tab daily-* pakai bracket notation
       const tabPath = tab.startsWith("daily-") 
         ? `manualInput.daily['${tab}'].${type}`
         : `manualInput.${tab}.${type}`
 
       manualTbody.insertAdjacentHTML("beforeend", `
         <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-          <td class="border px-3 py-2 w-1/6">
-            <input x-model="${tabPath}.kategori"
-                  placeholder="Nama Penyakit"
-                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
-          </td>
-          <td class="border px-3 py-2 w-1/6">
-            <input x-model="${tabPath}.klinis"
-                  placeholder="Klinis" readonly
-                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
-          </td>
-          <td class="border px-3 py-2 w-1/6">
-            <input x-model="${tabPath}.icd"
-                  placeholder="ICD" readonly
-                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1">
-          </td>
-          <td class="border px-3 py-2 w-1/6">
-            <input x-model="${tabPath}.tindakan"
-                  placeholder="Tindakan" readonly
-                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 whitespace-nowrap">
-          </td>
-          <td class="border px-3 py-2 w-1/6">
-            <input x-model="${tabPath}.score"
-                  placeholder="Score" readonly
-                  class="w-full rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1">
-          </td>
-          <td class="border px-3 py-2 w-1/6">
-            <button type="button" onclick="addManual('${type}','${tab}')"
-                    class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2 text-center">
+            <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
           </td>
         </tr>
       `)
-
       target.appendChild(manualTbody)
       Alpine.initTree(manualTbody)
     }
   }
 }
 
+// helper untuk potong teks + tooltip
+function truncateText(text, max) {
+  return text && text.length > max ? text.substring(0, max) + "…" : text
+}
 
 // helper untuk mapping select
 function renderMappingSelect(item, tab, type, idx, isChild=false) {
@@ -463,9 +365,9 @@ function addManual(type, tab) {
   // Pastikan manualInput daily ada
   if (tab.startsWith("daily-") && !state.manualInput.daily[tab]) {
     state.manualInput.daily[tab] = {
-      diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-      komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-      komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+      diagnosis: { kategori:"", klinis:"", icd10_code:"", tindakan:"", score:"" },
+      komorbid:  { kategori:"", klinis:"", icd10_code:"", tindakan:"", score:"" },
+      komplikasi:{ kategori:"", klinis:"", icd10_code:"", tindakan:"", score:"" }
     }
   }
 
@@ -479,13 +381,12 @@ function addManual(type, tab) {
     return
   }
 
-  // Buat item manual
+  // Buat item manual sesuai schema baru
   const newItem = {
-    name: input.kategori || "-",
     kategori: input.kategori || "",
-    klinis: input.klinis || "-",
-    icd: input.icd || "-",
-    tindakan: input.tindakan || "-",
+    klinis: input.klinis || "",
+    icd10_code: input.icd10_code || "",   // ✅ ganti field icd → icd10_code
+    tindakan: input.tindakan || "",
     score: input.score || 0,
     mapping: "",
     isManual: true,
@@ -507,49 +408,54 @@ function addManual(type, tab) {
   if (tab.startsWith("daily-")) {
     const idx = parseInt(tab.split("-")[1], 10);
     if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
-      state.simulasi.daily.days[idx] = state.simulasi[tab];
+    state.simulasi.daily.days[idx] = state.simulasi[tab];
 
-  // 🔄 sinkronisasi ke summary daily
-      const allDays = state.simulasi.daily.days || [];
-      state.simulasi.daily.utama = null;
-      state.simulasi.daily.sekunder = [];
+    // 🔄 sinkronisasi ke summary daily
+    const allDays = state.simulasi.daily.days || [];
+    state.simulasi.daily.utama = null;
+    state.simulasi.daily.sekunder = [];
 
-      allDays.forEach(d => {
-        if (d.utama && !state.simulasi.daily.utama) {
-          state.simulasi.daily.utama = d.utama;
-        }
-        if (Array.isArray(d.sekunder)) {
-          state.simulasi.daily.sekunder.push(...d.sekunder);
-        }
-      });
-    }
+    allDays.forEach(d => {
+      if (d.utama && !state.simulasi.daily.utama) {
+        state.simulasi.daily.utama = d.utama;
+      }
+      if (Array.isArray(d.sekunder)) {
+        state.simulasi.daily.sekunder.push(...d.sekunder);
+      }
+    });
+  }
 
   // Reset form input
   if (tab.startsWith("daily-")) {
-    state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+    state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd10_code:"", tindakan:"", score:"" }
   } else {
-    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+    state.manualInput[tab][type] = { kategori:"", klinis:"", icd10_code:"", tindakan:"", score:"" }
   }
 
   // Render ulang tabel
   renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
 
-  // Panggil AI rekomendasi untuk enrich manual
-  fetch("/ai/recommendation", {
+  // 🚨 Opsional: panggil BE buat enrich manual input
+  fetch("/ai/recommendation/detail", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kategori: newItem.kategori, tab, type })
+    body: JSON.stringify({
+      claim_id: state.claimId,
+      type,
+      kategori: newItem.kategori,
+      klinis: newItem.klinis,
+      icd10_code: newItem.icd10_code,
+      tindakan: newItem.tindakan,
+      score: newItem.score
+    })
   })
   .then(res => res.json())
   .then(data => {
-    Object.assign(newItem, data)
+    Object.assign(newItem, data.data || {})
     renderTable(`${type}-${tab}`, [], type, tab) // refresh DOM
   })
-  .catch(err => console.error("AI recommendation failed", err))
+  .catch(err => console.error("AI enrichment failed", err))
 }
-
-window.addManual = addManual
-
 
 // ==================== Modal ====================
 
@@ -562,85 +468,155 @@ function openModal(title, content) {
 
 function openModalFromAttr(el) {
   const it = JSON.parse(el.dataset.item)
-  openModal(it.kategori, buildModalContent(it))
+  // Ubah title jadi format sesuai pic
+  const title = `Detail Diagnosis (${it.kategori || '-'})`
+  openModal(title, buildModalContent(it))
 }
 
 function buildModalContent(it) {
-  const d = it.modal_detail || {}
-  if (it.tindakan && !d.tindakan) {
-    d.tindakan = [{ nama: it.tindakan }]
-  }
+  const d = it.modal_detail || {};
+  const klinis = it.detail_klinis || d.aspek_klinis || {};
+  const icd10 = it.detail_icd10 || d.icd10 || {};
+  const tindakan = it.detail_tindakan || d.tindakan || [];
+  const rawat = it.detail_rawat_inap || d.rawat_inap || {};
+  const faskes = it.detail_faskes || d.faskes || {};
+  const rujukan = it.detail_rujukan || d.rujukan || {};
+
+  // helper untuk kotak info
+  const renderBox = (label, value, status = "default") => {
+    let colorClass = "bg-gray-200 text-gray-800"; // default abu
+    if (status === "valid") colorClass = "bg-green-500 text-white";
+    if (status === "invalid") colorClass = "bg-red-500 text-white";
+
+    return `
+      <div class="${colorClass} px-3 py-2 rounded text-sm flex justify-between items-center">
+        <span class="font-medium">${label}</span>
+        <span>${value || "-"}</span>
+      </div>
+    `;
+  };
+
+  // helper tindakan
+  const renderTindakan = (list) => {
+    if (!list || list.length === 0) {
+      return `<div class="italic text-gray-500">Tidak ada tindakan</div>`;
+    }
+    return list.map(td => `
+      <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2">
+        <div>
+          <div class="font-semibold">${td.nama || "-"}</div>
+          <div class="text-xs text-gray-500">${td.keterangan || ""}</div>
+        </div>
+        <div class="space-x-1">
+          <button class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
+          <button class="bg-purple-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
+        </div>
+      </div>
+    `).join("");
+  };
+
   return `
-    <div class="space-y-4 text-sm">
+    <div class="space-y-6 text-sm">
 
-      <!-- Aspek Klinis -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Aspek Klinis</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Justifikasi:</b> ${d.aspek_klinis?.justifikasi || '-'}</li>
-          <li><b>Bukti:</b> ${d.aspek_klinis?.bukti || '-'}</li>
-          <li><b>Syarat:</b> ${d.aspek_klinis?.syarat || '-'}</li>
-        </ul>
-      </section>
-
-      <!-- ICD-10 -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">ICD-10</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Struktur Kode:</b> ${d.icd10?.struktur_kode || '-'}</li>
-          <li><b>Kode Ganda:</b> ${d.icd10?.kode_ganda || '-'}</li>
-          <li><b>Z-Code:</b> ${d.icd10?.z_code || '-'}</li>
-          <li><b>Kode BPJS Khusus:</b> ${d.icd10?.kode_bpjs_khusus || '-'}</li>
-        </ul>
-      </section>
-
-      <!-- Tindakan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Tindakan</h4>
-        <div class="mt-2 space-y-1">
-          ${(d.tindakan || []).map(td => `
-            <div class="flex justify-between items-center border p-2 rounded">
-              <span>${td.nama}</span>
-              <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
-                        class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
-                        class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
-              </div>
-            </div>
-          `).join('')}
+      <!-- KLINIS -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">KLINIS</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderBox("Justifikasi", klinis.justifikasi, klinis.status)}
+          ${renderBox("Bukti Klinis", klinis.bukti || klinis.bukti_klinis, klinis.status_bukti)}
+          ${renderBox("Syarat Klinis", klinis.syarat || klinis.syarat_klinis, klinis.status_syarat)}
         </div>
       </section>
 
-      <!-- Rawat Inap -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Rawat Inap</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Indikasi:</b> ${d.rawat_inap?.indikasi || '-'}</li>
-          <li><b>Lama Rawat:</b> ${d.rawat_inap?.lama_rawat || '-'}</li>
-          <li><b>Perpanjangan:</b> ${d.rawat_inap?.perpanjangan || '-'}</li>
-        </ul>
+      <!-- ICD-10 -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">ICD-10</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderBox("Struktur ICD", icd10.struktur, icd10.status)}
+          ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_ganda)}
+          ${renderBox("Z-Code", icd10.z_code, icd10.status_z)}
+          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs, icd10.status_bpjs)}
+        </div>
       </section>
 
-      <!-- Faskes -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Faskes</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Kesesuaian RS:</b> ${d.faskes?.kesesuaian_rs || '-'}</li>
-        </ul>
+      <!-- TINDAKAN -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">TINDAKAN</div>
+        <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderTindakan(tindakan)}
+        </div>
       </section>
 
-      <!-- Rujukan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Rujukan</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Syarat:</b> ${d.rujukan?.syarat || '-'}</li>
-          <li><b>Kelayakan:</b> ${d.rujukan?.kelayakan || '-'}</li>
-        </ul>
+      <!-- RAWAT INAP -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">RAWAT INAP</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi)}
+          ${renderBox("Lama Rawat", rawat.lama, rawat.status_lama)}
+          ${renderBox("Perpanjangan", rawat.perpanjangan, rawat.status_perpanjangan)}
+        </div>
+      </section>
+
+      <!-- FASKES -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">FASKES</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderBox("Kesesuaian RS", faskes.kesesuaian, faskes.status)}
+        </div>
+      </section>
+
+      <!-- RUJUKAN -->
+      <section>
+        <div class="bg-blue-600 text-white px-3 py-2 rounded-t font-bold">RUJUKAN</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-b">
+          ${renderBox("Syarat", rujukan.syarat, rujukan.status_syarat)}
+          ${renderBox("Kelayakan", rujukan.kelayakan, rujukan.status_kelayakan)}
+        </div>
       </section>
 
     </div>
+  `;
+}
+
+
+function openProcedureModal(procId) {
+  // TODO: bisa diubah jadi fetch ke BE kalau mau ambil detail tindakan real
+  // sementara contoh dummy lookup dari state / mapping lokal
+  const state = Alpine.$data(document.getElementById("claimRoot"))
+  const allDiag = [...(state.simulasi?.admission?.diagnosis || []),
+                   ...(state.simulasi?.discharge?.diagnosis || []),
+                   ...(state.simulasi?.daily?.flatMap(d => d.diagnosis) || [])]
+
+  let procDetail = null
+  for (const diag of allDiag) {
+    const tindakanList = diag.modal_detail?.tindakan || []
+    const found = tindakanList.find(td => td.kode === procId || td.nama === procId)
+    if (found) {
+      procDetail = found
+      break
+    }
+  }
+
+  if (!procDetail) {
+    alert("Detail tindakan tidak ditemukan")
+    return
+  }
+
+  const content = `
+    <div class="space-y-4 text-sm">
+      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <h4 class="font-semibold mb-2">Detail Tindakan</h4>
+        <ul class="list-disc list-inside space-y-1">
+          <li><b>Kode:</b> ${procDetail.kode || '-'}</li>
+          <li><b>Nama:</b> ${procDetail.nama || '-'}</li>
+          <li><b>Deskripsi:</b> ${procDetail.deskripsi || '-'}</li>
+          <li><b>Kategori:</b> ${procDetail.kategori || '-'}</li>
+        </ul>
+      </section>
+    </div>
   `
+
+  openModal(`Detail Tindakan (${procDetail.nama})`, content)
 }
 
 // ==================== Simulasi ====================
@@ -670,9 +646,6 @@ function normalizeItem(val) {
     mapping: val.mapping || ""
   }
 }
-
-
-
 
 function updateSimulasi(type, opt, value, source, tab) {
   const state = Alpine.$data(document.getElementById("claimRoot"));
@@ -796,78 +769,24 @@ async function loadRecommendations(claimId) {
       const dayId = `daily-${idx}`
 
       dailyContainer.insertAdjacentHTML("beforeend", `
-  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-    <button type="button" @click="open=!open"
-            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
-      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-    </button>
-    <div x-show="open" class="p-2 space-y-2">
-
-      <!-- Diagnosis -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Diagnosis
-            <span id="count-diagnosis-daily-${idx}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.diagnosis || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border table-fixed">
-            <tbody id="diagnosis-${dayId}"></tbody>
-          </table>
+        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
+          <button type="button" @click="open=!open"
+                  class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+            <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+          </button>
+          <div x-show="open" class="p-2 space-y-2">
+            <div><table class="w-full text-xs border table-fixed"><tbody id="diagnosis-${dayId}"></tbody></table></div>
+            <div><table class="w-full text-xs border table-fixed"><tbody id="komorbid-${dayId}"></tbody></table></div>
+            <div><table class="w-full text-xs border table-fixed"><tbody id="komplikasi-${dayId}"></tbody></table></div>
+          </div>
         </div>
-      </div>
-
-      <!-- Komorbid -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komorbid
-            <span id="count-komorbid-daily-${dayId}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.komorbid || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border table-fixed">
-            <tbody id="komorbid-${dayId}"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Komplikasi -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komplikasi
-            <span id="count-komplikasi-daily-${dayId}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.komplikasi || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border table-fixed">
-            <tbody id="komplikasi-${dayId}"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-`)
+      `)
 
       renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId)
       renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId)
       renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId)
-      })
+    })
 
     // === Discharge ===
     renderTable("diagnosis-discharge", (grouped.discharge.diagnosis || []).map(mapRecommendation), "diagnosis", "discharge")
@@ -881,18 +800,17 @@ async function loadRecommendations(claimId) {
 
 function mapRecommendation(r) {
   return {
-    kategori: r.sim_text || "-",
-    klinis: r.regulation_refs?.klinis || "-",
-    icd: r.icd10_code || r.icd9_code || "-",
-    tindakan: r.icd9_code || r.regulation_refs?.tindakan || "-",
-    score: r.confidence_score || 0,
-    child: r.regulation_refs?.child || false,
-    name: r.sim_text || "-",  // biar updateSimulasi aman
-    modal_detail: r.regulation_refs?.modal_detail || {}
+    id: r.id, // ✅ penting untuk openProcedureModal
+    kategori: r.kategori || r.sim_text || "-",
+    klinis: r.klinis || "-", // langsung dari kolom BE
+    icd10_code: r.icd10_code || "-",
+    tindakan: r.procedure_text || r.tindakan || "-", // ambil dari ClaimProcedure
+    score: r.confidence_score || r.score || 0,
+    child: r.child || false,
+    isManual: r.is_manual || false,
+    modal_detail: r.modal_detail || {}
   }
 }
-
-
 
 function onMappingChange(event, tab, type, idx) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -927,3 +845,128 @@ function onMappingChange(event, tab, type, idx) {
     })
   }
 }
+
+async function generateSummary() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  if (!claimId) {
+    alert("❌ Claim ID tidak ditemukan.");
+    return;
+  }
+
+  try {
+    // Ambil state simulasi dari Alpine
+    const state = Alpine.$data(document.getElementById("claimRoot"));
+
+    // Payload minimal: mapping utama/sekunder dari simulasi
+    const payload = {
+      claim_id: claimId,
+      simulasi: state.simulasi,
+    };
+
+    const res = await fetch(`/ai/summary/${claimId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Gagal request summary");
+    const data = await res.json();
+
+    console.log("📥 Summary dari BE:", data);
+
+    // Render evaluasi hasil summary
+    renderEvaluasiDiagnosis(data.diagnosis || []);
+    renderEvaluasiProcedure(data.procedure || []);
+    renderAlternatifKombinasi(data.alternatif || []);
+
+    // Trigger Alpine untuk update rekomendasi
+    window.dispatchEvent(new CustomEvent("update-rekom", {
+      detail: {
+        medis: data.diagnosis || [],
+        regulasi: data.procedure || [],
+        tarif: data.alternatif || []
+      }
+    }));
+
+    alert("✅ Summary berhasil digenerate");
+
+  } catch (err) {
+    console.error("Error generate summary:", err);
+    alert("❌ Gagal generate summary");
+  }
+}
+
+
+
+// ==================== Panel Evaluasi & Alternatif ====================
+
+function renderEvaluasiDiagnosis(items) {
+  const target = document.getElementById("evaluasi-diagnosis");
+  if (!target) return;
+  target.innerHTML = "";
+
+  (items || [])
+    .filter(it => it.kategori || it.klinis || it.score)  // 🚨 filter yang kosong
+    .forEach(it => {
+      target.insertAdjacentHTML("beforeend", `
+        <div class="p-2 border-b">
+          <b>${it.kategori || "-"}</b> - ${it.klinis || "-"}
+          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
+        </div>
+      `);
+    });
+
+  if (target.innerHTML.trim() === "") {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi</div>`;
+  }
+}
+
+function renderEvaluasiProcedure(items) {
+  const target = document.getElementById("evaluasi-procedure");
+  if (!target) return;
+  target.innerHTML = "";
+
+  (items || [])
+    .filter(it => it.kategori || it.tindakan || it.score) // filter kosong
+    .forEach(it => {
+      target.insertAdjacentHTML("beforeend", `
+        <div class="p-2 border-b">
+          <b>${it.kategori || "-"}</b> - ${it.tindakan || "-"}
+          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
+        </div>
+      `);
+    });
+
+  if (target.innerHTML.trim() === "") {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
+  }
+}
+
+
+function renderAlternatifKombinasi(items) {
+  const target = document.getElementById("alternatif");
+  if (!target) return;
+  target.innerHTML = "";
+
+  (items || [])
+    .filter(it => it.nama || it.deskripsi || it.score) // filter kosong
+    .forEach(it => {
+      target.insertAdjacentHTML("beforeend", `
+        <div class="p-2 border-b">
+          <b>${it.nama || "Alternatif"}</b> - ${it.deskripsi || "-"}
+          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
+        </div>
+      `);
+    });
+
+  if (target.innerHTML.trim() === "") {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada alternatif kombinasi</div>`;
+  }
+}
+
+
+window.addManual = addManual
+window.generateSummary = generateSummary;
+window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
+window.renderEvaluasiProcedure = renderEvaluasiProcedure;
+window.renderAlternatifKombinasi = renderAlternatifKombinasi;

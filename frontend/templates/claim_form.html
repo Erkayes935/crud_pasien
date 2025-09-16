@@ -1,139 +1,184 @@
 {% extends "base.html" %}
-{% block title %}Draft Klaim{% endblock %}
-
 {% block content %}
+
 <form id="claimForm"
       method="post"
       action="{% if role == 'doctor' %}/claims/{{ record.id }}/update-draft{% elif role == 'verifikator' %}/claims/{{ record.id }}/finalize{% endif %}"
       data-claim-id="{{ record.id if record else '' }}"
-      class="max-w-7xl mx-auto p-6 bg-gray-100 dark:bg-gray-900 grid grid-cols-1 lg:grid-cols-3 gap-6 text-sm">
+      class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
 
-  <!-- Wrapper root untuk Alpine & JS -->
-  <div id="claimRoot"
-       data-claim-id="{{ record.id if record else '' }}"
-       x-data='claimData({
-         role: {{ role|tojson }},
-         sim: {{ sim|tojson }},
-         summ: {{ summ|tojson }}
-       })'
-       @open-modal.window="openModal($event)"
-       class="contents">
+  <!-- Root Alpine -->
+  <div id="claimRoot" 
+       x-data="claimData({ role: '{{ user_role }}' })" 
+       data-claim-id="{{ record.id }}"
+       class="grid grid-cols-3 gap-6">
 
-    <!-- ========== LEFT PANEL ========== -->
-    <div class="lg:col-span-2 space-y-4">
-      <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold">📝 Draft Klaim</h1>
-      </div>
-      <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold">Rekomendasi Klaim</h3>
-        {% if role == "doctor" %}
-        <button type="button" onclick="generateAI()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">⚡ Generate AI</button>
-        {% endif %}
+    <!-- ================= Panel Kiri ================= -->
+    <div class="col-span-2 space-y-4 p-4 bg-white dark:bg-gray-800">
+
+      <!-- Judul dan Tombol Generate AI -->
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
+        <button type="button" onclick="generateAI()" 
+                class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
+          Generate AI
+        </button>
       </div>
 
       <!-- Tabs -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        <div class="flex border-b">
-          <button type="button" @click="tab='admission'" :class="tab==='admission'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Admission</button>
-          <button type="button" @click="tab='daily'" :class="tab==='daily'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Daily</button>
-          <button type="button" @click="tab='discharge'" :class="tab==='discharge'?'bg-blue-600 text-white':'bg-gray-200 dark:bg-gray-700'" class="px-4 py-2">Discharge</button>
-        </div>
-        <div class="p-4 space-y-4">
-          {% set accs = ['Diagnosis','Komorbid','Komplikasi','Form Rekam Medis'] %}
+      <div class="tabs flex space-x-6 border-b mb-4">
+        <button type="button" class="px-4 py-2" 
+                :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                @click="tab='admission'">Admission</button>
+        <button type="button" class="px-4 py-2" 
+                :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                @click="tab='daily-0'">Daily</button>
+        <button type="button" class="px-4 py-2" 
+                :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                @click="tab='discharge'">Discharge</button>
+      </div>
 
-          <!-- Admission -->
-          <div x-show="tab==='admission'" class="space-y-2">
-            {% for acc in accs %}
-            <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-              <button type="button" @click="open=!open"
-                      class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-                <span>
-                  {{ acc }}
-                  {% if acc!='Form Rekam Medis' %}
-                    <span id="count-{{ acc|lower }}-admission"
-                          class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                  {% endif %}
-                </span>
-                <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-              </button>
-              <div x-show="open" class="p-2">
-                {% if acc!='Form Rekam Medis' %}
-                <table class="w-full text-xs border table-fixed">
-                  <tbody id="{{ acc|lower }}-admission"></tbody>
-                </table>
-                {% else %}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
+      <!-- ================= Admission ================= -->
+      <div x-show="tab==='admission'" class="space-y-4">
+
+        <!-- Diagnosis -->
+        <details open class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Diagnosis Admission</span>
+            <span id="count-diagnosis-admission" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="diagnosis-admission"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Komorbid -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Komorbid</span>
+            <span id="count-komorbid-admission" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="komorbid-admission"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Komplikasi -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Komplikasi</span>
+            <span id="count-komplikasi-admission" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="komplikasi-admission"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Rekam Medis -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+            Rekam Medis
+          </summary>
+          <div class="p-3 space-y-3">
+            {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
                     {% include "_form_renderer.html" %}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-            </div>
             {% endfor %}
           </div>
+        </details>
+      </div>
 
-          <!-- Daily -->
-          <div x-show="tab==='daily'" class="space-y-2">
-            <div id="daily-accordion"></div>
-            <template id="daily-form-template">
-              <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-                <button type="button" @click="open=!open"
-                        class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-                  <span>Form Rekam Medis</span>
-                  <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-                </button>
-                <div x-show="open" class="p-2">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                      {% include "_form_renderer.html" %}
-                    {% endfor %}
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
+      <!-- ================= Daily ================= -->
+      <div x-show="tab.startsWith('daily')" class="space-y-4">
 
-          <!-- Discharge -->
-          <div x-show="tab==='discharge'" class="space-y-2">
-            {% for acc in accs %}
-            <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-              <button type="button" @click="open=!open"
-                      class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-                <span>
-                  {{ acc }}
-                  {% if acc!='Form Rekam Medis' %}
-                    <span id="count-{{ acc|lower }}-discharge"
-                          class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                  {% endif %}
-                </span>
-                <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-              </button>
-              <div x-show="open" class="p-2">
-                {% if acc!='Form Rekam Medis' %}
-                <table class="w-full text-xs border table-fixed">
-                  <tbody id="{{ acc|lower }}-discharge"></tbody>
-                </table>
-                {% else %}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
-                    {% include "_form_renderer.html" %}
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-            </div>
+        <div id="daily-accordion" class="space-y-2"></div>
+
+        <!-- Rekam Medis -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+            Rekam Medis
+          </summary>
+          <div class="p-3 space-y-3">
+            {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+              {% include "_form_renderer.html" %}
             {% endfor %}
           </div>
-        </div>
+        </details>
+      </div>
 
+      <!-- ================= Discharge ================= -->
+      <div x-show="tab==='discharge'" class="space-y-4">
+
+        <!-- Diagnosis -->
+        <details open class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Diagnosis Discharge</span>
+            <span id="count-diagnosis-discharge" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="diagnosis-discharge"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Komorbid -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Komorbid</span>
+            <span id="count-komorbid-discharge" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="komorbid-discharge"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Komplikasi -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+            <span class="font-semibold">Komplikasi</span>
+            <span id="count-komplikasi-discharge" 
+                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+          </summary>
+          <div class="p-3">
+            <table class="w-full text-xs border table-fixed">
+              <tbody id="komplikasi-discharge"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- Rekam Medis -->
+        <details class="border rounded">
+          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+            Rekam Medis
+          </summary>
+          <div class="p-3 space-y-3">
+            {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
+              {% include "_form_renderer.html" %}
+            {% endfor %}
+          </div>
+        </details>
       </div>
     </div>
 
-    <!-- ========== RIGHT PANEL (Simulasi) ========== -->
-    <div class="lg:col-span-1">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sticky top-6 space-y-4">
-        <h2 class="text-lg font-bold mb-3">Simulasi Klaim</h2>
+    <!-- ================= Panel Kanan ================= -->
+    <div class="col-span-1 space-y-6">
+
+      <!-- Kombinasi Klaim -->
+      <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
+        <h3 class="font-semibold mb-3 text-lg">Kombinasi Klaim</h3>
 
         <!-- Diagnosis -->
         <div>
@@ -239,76 +284,60 @@
             </template>
           </div>
         </div>
+      
+        <!-- Tombol Generate Summary -->
+        <button type="button" onclick="generateSummary()" 
+                class="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold">
+          Generate Summary
+        </button>
 
+        <!-- Evaluasi -->
+        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
+          <h3 class="font-semibold">Evaluasi Kombinasi Diagnosis</h3>
+          <div id="evaluasi-diagnosis" class="text-xs"></div>
 
-        <!-- Rekomendasi AI -->
-        <div class="space-y-2">
-          <h3 class="text-md font-bold mt-4">SARAN SIMULASI</h3>
-          <template x-for="(items,cat) in recommendations" :key="cat">
-            <div>
-              <h4 class="font-semibold bg-blue-500 text-white px-2 py-1 rounded" x-text="cat.toUpperCase()"></h4>
-              <table class="w-full text-xs border">
-                <tbody>
-                  <template x-for="(rec, i) in items" :key="i">
-                    <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
-                      <td class="p-2" x-html="statusIcon(rec.status)"></td>
-                      <td class="p-2" x-text="(rec.target || []).join(' + ')"></td>
-                      <td class="p-2" x-text="rec.message"></td>
-                      <td class="p-2 text-right" x-html="confidenceBadge((rec.confidence*100).toFixed(0))"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-          </template>
+          <h3 class="font-semibold">Evaluasi Kombinasi Tindakan</h3>
+          <div id="evaluasi-procedure" class="text-xs"></div>
+
+          <h3 class="font-semibold">Alternatif Kombinasi</h3>
+          <div id="alternatif" class="text-xs"></div>
         </div>
 
-        <!-- Tarif Draft -->
-        <div x-show="simulasi[tab].tarifDraft" class="pt-3 border-t">
-          <label class="font-semibold">Tarif Draft</label>
-          <p class="text-lg font-bold text-green-700" x-text="simulasi[tab].tarifDraft"></p>
-        </div>
-
-        <!-- Hidden inputs -->
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="simulasi" :value="JSON.stringify(simulasi)">
-        <input type="hidden" name="summary" :value="JSON.stringify(summary)">
-
-        <!-- Footer -->
-        <div class="flex gap-2 mt-2">
-          {% if role and role == 'doctor' %}
+        <!-- Tombol Recalculate + Save Draft/Final -->
+        <div class="space-y-3">
           <button type="button" onclick="generateAI()" 
-                  class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm whitespace-nowrap">
-            ⚡ Recalculate
+                  class="w-full bg-yellow-600 text-white px-4 py-2 rounded font-semibold">
+            Recalculate
           </button>
-          <button type="submit" name="action" value="draft"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
+
+          {% if role == 'doctor' %}
+          <button type="submit"
+                  class="w-full bg-blue-600 text-white px-4 py-2 rounded font-semibold">
             Save Draft
           </button>
-          {% endif %}
-
-          {% if role and role == 'verifikator' and record and record.status == 'draft' %}
-          <button type="submit" name="action" value="finalize"
-                  class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
+          {% elif role == 'verifikator' %}
+          <button type="submit"
+                  class="w-full bg-purple-600 text-white px-4 py-2 rounded font-semibold">
             Save Final
           </button>
           {% endif %}
         </div>
-      </div>
+      </div>  
     </div>
-
 
     <!-- Modal -->
-    <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" @click.self="modalOpen=false">
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-3xl w-full p-6 relative max-h-[80vh] overflow-y-auto">
-        <button type="button" @click="modalOpen=false" class="absolute top-3 right-3">✖</button>
-        <h3 class="text-lg font-bold mb-4" x-text="modalTitle"></h3>
-        <div class="space-y-2 text-sm" x-html="modalContent"></div>
+    <div x-show="modalOpen"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <h3 class="font-bold mb-4" x-text="modalTitle"></h3>
+        <div x-html="modalContent"></div>
+        <button type="button" @click="modalOpen=false"
+                class="mt-4 bg-gray-600 text-white px-4 py-2 rounded">Close</button>
       </div>
     </div>
-
-  </div> <!-- END claimRoot -->
+  </div>
 </form>
+
 {% endblock %}
 
 {% block scripts %}

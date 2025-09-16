@@ -176,7 +176,7 @@
 
 </div>
 <div class="p-4 flex gap-3">
-  <a href="{{ url_for('edit_medical_record', record_id=record.id) }}" class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg shadow">
+  <a href="/claims/{{ record.claim.id }}/edit" class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg shadow">
     ✏️ Edit
   </a>
   <div>

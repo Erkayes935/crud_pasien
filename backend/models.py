@@ -9,7 +9,7 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -145,8 +145,6 @@ class Claim(Base):
     medical_record_id = Column(Integer, ForeignKey("medical_records.id"), nullable=False, unique=True)
     medical_record = relationship("MedicalRecord", back_populates="claim", uselist=False)
 
-    simulasi_draft = Column(JSONB, nullable=True)
-    summary_draft = Column(JSONB, nullable=True)
     status = Column(String, nullable=False, default="draft")
     # Status boolean → sinkron dengan rekam medis
     is_final = Column(Boolean, nullable=False, server_default=text("false"))
@@ -156,15 +154,16 @@ class Claim(Base):
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     doctor = relationship("User", back_populates="claims_as_doctor", foreign_keys=[doctor_id])
     doctor_name = Column(String(100), nullable=True)  # audit trail
-
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
     ai_recommendations = relationship("ClaimAIRecommendation", back_populates="claim", cascade="all, delete-orphan")
     diagnoses = relationship("ClaimDiagnosis", back_populates="claim", cascade="all, delete-orphan")
     procedures = relationship("ClaimProcedure", back_populates="claim", cascade="all, delete-orphan")
     tariffs = relationship("ClaimTariff", back_populates="claim", cascade="all, delete-orphan")
-    ai_recommendations_summary = relationship("ClaimAIRecommendationSummary", back_populates="claim", uselist=False, cascade="all, delete-orphan")
-
+    diagnosis_evaluations = relationship("ClaimDiagnosisEvaluation", back_populates="claim", cascade="all, delete-orphan")
+    procedure_evaluations = relationship("ClaimProcedureEvaluation", back_populates="claim", cascade="all, delete-orphan")
+    combination_alternatives = relationship("ClaimCombinationAlternative", back_populates="claim", cascade="all, delete-orphan")
+    simulations = relationship("ClaimSimulation", back_populates="claim", cascade="all, delete-orphan")
     # logs sebaiknya tanpa delete-orphan, hanya back_populates
     logs = relationship("ClaimLog", back_populates="claim")
 
@@ -178,14 +177,13 @@ class ClaimAIRecommendation(Base):
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
-    type = Column(String(50), nullable=False)   # diagnosis / procedure
-    category = Column(String(50), nullable=False) # ddx / komorbid / komplikasi / pretindakan
-    sim_text = Column(Text, nullable=False)          # nama diagnosis/tindakan
-    sim_detail = Column(JSONB, nullable=True)        # simpan dict lengkap
+    type = Column(String(50), nullable=False)   # diagnosis / tindakan
+    category = Column(String(50), nullable=False) # diagnosis / komorbid / komplikasi
+    klinis = Column(Text, nullable=True)          # nama diagnosis/tindakan
     icd10_code = Column(String(20), nullable=True)
-    icd9_code = Column(String(20), nullable=True)
     confidence_score = Column(Integer, nullable=True)
-    regulation_refs = Column(JSONB, nullable=True)  # CP, PNPK, Fornas, Permenkes
+    tindakan = Column(Text, nullable=True)
+    child = Column(Boolean, nullable=False, server_default=text("false"))
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
@@ -208,7 +206,16 @@ class ClaimDiagnosis(Base):
     subtype = Column(String(50), nullable=True)          # komorbid / komplikasi / none
     diagnosis_text = Column(Text, nullable=False)
     icd10_code = Column(String(20), nullable=True)
-
+    justifikasi = Column(Text, nullable=True)
+    syarat_klinis = Column(Text, nullable=True)
+    bukti_klinis = Column(Text, nullable=True)
+    struktur_icd10 = Column(Text, nullable=True)
+    kode_ganda = Column(String(50), nullable=True)
+    z_code = Column(String(50), nullable=True)
+    kode_bpjs_khusus = Column(String(50), nullable=True)
+    rawat_inap = Column(Text, nullable=True)
+    faskes = Column(Text, nullable=True)
+    rujukan = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
@@ -228,7 +235,7 @@ class ClaimProcedure(Base):
 
     procedure_type = Column(String(50), nullable=False)  # utama / sekunder
     procedure_text = Column(Text, nullable=False)
-    icd9_code = Column(String(20), nullable=True)
+    description = Column(Text, nullable=True)
     requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))    # wajib/tidak
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
@@ -237,6 +244,135 @@ class ClaimProcedure(Base):
     claim = relationship("Claim", back_populates="procedures")
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
     is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
+
+    procedure_details = relationship("ClaimProcedureDetail", back_populates="procedure", cascade="all, delete-orphan")
+
+# =========================================
+# Claim Procedure Details
+# =========================================
+class ClaimProcedureDetail(Base):
+    __tablename__ = "claim_procedure_details"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_simulation_id = Column(Integer, ForeignKey("claim_simulations.id", ondelete="CASCADE"))
+    sim_detail = relationship("ClaimSimulation", back_populates="sim_details")
+
+    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=False)
+    procedure = relationship("ClaimProcedure", back_populates="procedure_details")
+
+    validitas_tindakan = Column(String, nullable=False)         # valid / invalid
+    status_tindakan = Column(String, nullable=True)              # status tindakan
+    ina_cbg_tindakan = Column(Text, nullable=True)        # INA-CBG
+    faskes_tindakan = Column(Text, nullable=True)        # Faskes
+    rawat_inap_tindakan = Column(Text, nullable=True)    # Rawat inap
+    syarat_klinis_tindakan = Column(Text, nullable=True)        # Syarat/aturan klinis
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+
+# =========================================
+# Claim AI Simulations
+# =========================================
+class ClaimSimulation(Base):
+    __tablename__ = "claim_simulations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+
+    stage = Column(String, nullable=False)  # admission, daily1, daily2, discharge
+
+    diagnosis_utama_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
+    diagnosis_sekunder_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
+
+    tindakan_utama_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
+    tindakan_sekunder_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
+
+    # housekeeping
+    is_dummy = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    claim = relationship("Claim", back_populates="simulations")
+    diagnosis_utama = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_utama_id])
+    diagnosis_sekunder = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_sekunder_id])
+    tindakan_utama = relationship("ClaimProcedure", foreign_keys=[tindakan_utama_id])
+    tindakan_sekunder = relationship("ClaimProcedure", foreign_keys=[tindakan_sekunder_id])
+
+    sim_details = relationship("ClaimProcedureDetail", back_populates="sim_detail", cascade="all, delete-orphan")
+
+
+# =========================================
+# Claim AI Recommendations Summary
+# =========================================
+class ClaimDiagnosisEvaluation(Base):
+    __tablename__ = "claim_diagnosis_evaluations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"))
+    diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"))
+
+    validitas = Column(Enum("valid", "invalid", "warning", name="eval_status"), nullable=True)
+    severity = Column(String(50), nullable=True)
+    kode_ina_cbg = Column(String(50), nullable=True)
+    estimasi_tarif = Column(Numeric(18, 2), nullable=True)
+    syarat_klinis = Column(Text, nullable=True)
+    evaluasi_faskes = Column(Text, nullable=True)
+    rawat_inap = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, server_default=text("now()"))
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+    claim = relationship("Claim", back_populates="diagnosis_evaluations")
+
+
+
+class ClaimProcedureEvaluation(Base):
+    __tablename__ = "claim_procedure_evaluations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"))
+    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"))
+
+    validitas = Column(Enum("valid", "invalid", "warning", name="eval_status_proc"), nullable=True)
+    status_tindakan = Column(String(50), nullable=True)   # wajib / opsional / minor
+    tarif_impact = Column(Numeric(18, 2), nullable=True)
+    faskes = Column(Text, nullable=True)
+    rawat_inap = Column(Text, nullable=True)
+    syarat_klinis = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, server_default=text("now()"))
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+    claim = relationship("Claim", back_populates="procedure_evaluations")
+
+
+class ClaimCombinationAlternative(Base):
+    __tablename__ = "claim_combination_alternatives"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"))
+
+    kombinasi_nama = Column(String(255), nullable=True)
+    severity = Column(String(50), nullable=True)
+    kode_ina_cbg = Column(String(50), nullable=True)
+    estimasi_tarif = Column(Numeric(18, 2), nullable=True)
+    syarat_klinis = Column(Text, nullable=True)
+    faskes = Column(Text, nullable=True)
+    rawat_inap = Column(Text, nullable=True)
+    tindakan_wajib = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, server_default=text("now()"))
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+    claim = relationship("Claim", back_populates="combination_alternatives")
 
 
 # =========================================
@@ -278,29 +414,6 @@ class ClaimLog(Base):
     user = relationship("User")
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
     is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
-
-# ===========================
-# Rekomendasi AI untuk Klaim
-# ===========================
-class ClaimAIRecommendationSummary(Base):
-    __tablename__ = "claim_ai_recommendations_summary"
-
-    id = Column(Integer, primary_key=True, index=True)
-    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
-
-    category = Column(Enum("medis","regulasi","tarif", name="recommendation_category"), nullable=False)
-    target = Column(JSONB, nullable=True)   # contoh: ["Sepsis","ARDS"]
-    status = Column(Enum("valid","warning","invalid", name="recommendation_status"), nullable=False)
-    message = Column(Text, nullable=True)
-    confidence = Column(Float, nullable=True)
-
-    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime, default=text("now()"), onupdate=text("now()"))
-
-    claim = relationship("Claim", back_populates="ai_recommendations_summary")
-    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
-    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
-
 
 # =========================================
 # Medical Record
