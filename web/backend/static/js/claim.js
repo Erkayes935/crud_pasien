@@ -29,10 +29,12 @@ function renderPredictDDX(ddx) {
     { key: "komorbid", sel: "komorbid-admission" },
     { key: "komplikasi", sel: "komplikasi-admission" }
   ];
+
   sections.forEach(({ key, sel }) => {
     const tbody = document.getElementById(sel);
     if (!tbody) return;
     tbody.innerHTML = "";
+
     (ddx[key] || []).forEach(item => {
       // parent row
       const row = document.createElement("tr");
@@ -41,7 +43,9 @@ function renderPredictDDX(ddx) {
         <td class="border px-2 py-1 klinis">-</td>
         <td class="border px-2 py-1 icd">-</td>
         <td class="border px-2 py-1 tindakan">-</td>
-        <td class="border px-2 py-1 score">-</td>
+        <td class="border px-2 py-1 score">
+          ${item.confidence ? (item.confidence * 100).toFixed(0) + "%" : "-"}
+        </td>
         <td>
           <select class="border px-2 py-1 rounded">
             <option value="">Pilih</option>
@@ -53,6 +57,7 @@ function renderPredictDDX(ddx) {
         </td>
       `;
       tbody.appendChild(row);
+
       // children
       (item.children || []).forEach(ch => {
         const childRow = document.createElement("tr");
@@ -61,13 +66,16 @@ function renderPredictDDX(ddx) {
           <td class="border px-2 py-1 klinis">-</td>
           <td class="border px-2 py-1 icd">-</td>
           <td class="border px-2 py-1 tindakan">-</td>
-          <td class="border px-2 py-1 score">-</td>
+          <td class="border px-2 py-1 score">
+            ${ch.confidence ? (ch.confidence * 100).toFixed(0) + "%" : "-"}
+          </td>
           <td></td>
         `;
         tbody.appendChild(childRow);
       });
     });
   });
+
   // attach click handler
   document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
     el.addEventListener("click", () => onClickAnalyzeDiagnosis_new(el.dataset.disease));
@@ -76,37 +84,57 @@ function renderPredictDDX(ddx) {
 
 // Handler analyze_diagnosis: isi detail di baris + modal
 async function onClickAnalyzeDiagnosis_new(diseaseName) {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId 
+                || document.getElementById("claimIdHidden")?.value;
+
   try {
     const res = await fetch("/analyze_diagnosis", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ diagnosis_text: diseaseName })
+      body: JSON.stringify({
+        claim_id: claimId,
+        disease_name: diseaseName
+      })
     });
     const detail = await res.json();
     console.log("📥 Hasil analyze_diagnosis:", detail);
+
     fillRowWithDetail_new(diseaseName, detail);
-    openModal(diseaseName, buildModalContent({ modal_detail: detail, kategori: diseaseName }));
+    openModal(diseaseName, buildModalContent({
+      modal_detail: detail,
+      kategori: diseaseName
+    }));
   } catch (err) {
     console.error("❌ Gagal analyze_diagnosis:", err);
   }
 }
 
-// Isi detail kolom di baris yang diklik
 function fillRowWithDetail_new(diseaseName, detail) {
   document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
     if (el.dataset.disease === diseaseName) {
       const tr = el.closest("tr");
+
+      // isi kolom klinis
       tr.querySelector(".klinis").textContent = [
         detail.aspek_klinis?.justifikasi,
         detail.aspek_klinis?.bukti,
         detail.aspek_klinis?.syarat
       ].filter(Boolean).join(". ");
-      tr.querySelector(".icd").textContent = detail.code_icd || "-";
-      tr.querySelector(".tindakan").textContent = (detail.tindakan || []).map(t => t.nama).join(", ") || "-";
-      tr.querySelector(".score").textContent = detail.score ? detail.score + "%" : "-";
+
+      // isi kolom ICD dari struktur icd10
+      tr.querySelector(".icd").textContent = detail.icd10?.kode || "-";
+
+      // isi kolom tindakan
+      tr.querySelector(".tindakan").textContent =
+        (detail.tindakan || []).map(t => t.nama).join(", ") || "-";
+
+      // isi score (kalau ada, kalau nggak tetap "-")
+      tr.querySelector(".score").textContent =
+        detail.score ? detail.score + "%" : "-";
     }
   });
 }
+
 function claimData(init) {
   return {
     role: init.role || 'doctor', // doctor, verifikator, coder
