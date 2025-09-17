@@ -55,7 +55,9 @@ def process_analyze_diagnosis(data: dict) -> dict:
         "kode_bpjs_khusus": "Aturan BPJS terkait {disease_name}"
       }},
       "tindakan": [
-        {{ "nama": "Tindakan medis utama terkait {disease_name}", "aturan": "Aturan tindakan", "pengaruh_tarif": "Pengaruh tarif INA-CBG" }}
+        {{ "nama": "Tindakan medis 1 terkait {disease_name}", "aturan": "Aturan tindakan 1", "pengaruh_tarif": "Pengaruh tarif INA-CBG" }},
+        {{ "nama": "Tindakan medis 2 terkait {disease_name}", "aturan": "Aturan tindakan 2", "pengaruh_tarif": "Pengaruh tarif INA-CBG" }},
+        {{ "nama": "Tindakan medis 3 terkait {disease_name}", "aturan": "Opsional, jika ada", "pengaruh_tarif": "Opsional" }}
       ],
       "rawat_inap": {{
         "indikasi": "Kapan perlu rawat inap untuk {disease_name}",
@@ -66,8 +68,9 @@ def process_analyze_diagnosis(data: dict) -> dict:
         "syarat": "Syarat rujukan {disease_name}",
         "kelayakan": "Kelayakan rujukan {disease_name}"
       }},
-      "fornas": [
-        {{ "nama": "Obat standar dari Fornas untuk {disease_name}", "aturan": "Aturan pemakaian" }}
+      "faskes": [
+        {{ "nama": "Faskes tingkat 1", "aturan": "Kapan bisa ditangani di faskes 1" }},
+        {{ "nama": "RS Tipe B", "aturan": "Kapan perlu dirujuk ke faskes tipe B" }}
       ]
     }}
     """
@@ -92,7 +95,7 @@ def process_analyze_diagnosis(data: dict) -> dict:
             "tindakan": [],
             "rawat_inap": {"indikasi": "-", "lama_rawat": "-", "perpanjangan": "-"},
             "rujukan": {"syarat": "-", "kelayakan": "-"},
-            "fornas": []
+            "faskes": []
         }
 
     # === Mapping ICD ke standar Indo kalau ada rules ===
@@ -116,7 +119,7 @@ def process_analyze_diagnosis(data: dict) -> dict:
         "tindakan": ai_result.get("tindakan", []),
         "rawat_inap": ai_result.get("rawat_inap", {}),
         "rujukan": ai_result.get("rujukan", {}),
-        "fornas": ai_result.get("fornas", []),
+        "faskes": ai_result.get("faskes", []),
         "source": "AI+Rule",
         "engine_version": "analyze_diagnosis@2025-09-17"
     }
