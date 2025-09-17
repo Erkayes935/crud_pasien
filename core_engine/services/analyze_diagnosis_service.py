@@ -32,6 +32,7 @@ def process_analyze_diagnosis(data: dict) -> dict:
     disease_name = data.get("disease_name", "Tidak diketahui")
     rekam_medis = data.get("rekam_medis", [])
 
+    # === Prompt dinamis ===
     prompt = f"""
     Berdasarkan data rekam medis berikut:
     {rekam_medis}
@@ -42,32 +43,31 @@ def process_analyze_diagnosis(data: dict) -> dict:
 
     {{
       "aspek_klinis": {{
-        "justifikasi": "Alasan pemilihan diagnosis",
-        "bukti": "Ringkasan hasil klinis",
-        "syarat": "Syarat minimal yang terpenuhi"
+        "justifikasi": "Alasan pemilihan diagnosis {disease_name}",
+        "bukti": "Ringkasan hasil klinis yang mendukung {disease_name}",
+        "syarat": "Syarat minimal diagnosis {disease_name}"
       }},
       "icd10": {{
-        "kode": "A41.9",
-        "struktur_kode": "Sepsis, unspecified organism",
-        "kode_ganda": "A41.9 + R65.2",
-        "z_code": "Tidak perlu",
-        "kode_bpjs_khusus": "Sepsis valid hanya jika ada bukti kultur"
+        "kode": "Kode ICD-10 untuk {disease_name}",
+        "struktur_kode": "Struktur kode ICD dari {disease_name}",
+        "kode_ganda": "Opsional, jika ada kombinasi",
+        "z_code": "Opsional",
+        "kode_bpjs_khusus": "Aturan BPJS terkait {disease_name}"
       }},
       "tindakan": [
-        {{ "nama": "Ventilasi Mekanik", "aturan": "Wajib untuk sepsis berat", "pengaruh_tarif": "Menambah tarif INA-CBG" }},
-        {{ "nama": "Infus IV", "aturan": "Minor, tidak pengaruh tarif" }}
+        {{ "nama": "Tindakan medis utama terkait {disease_name}", "aturan": "Aturan tindakan", "pengaruh_tarif": "Pengaruh tarif INA-CBG" }}
       ],
       "rawat_inap": {{
-        "indikasi": "Wajib untuk klaim sepsis berat",
-        "lama_rawat": "5 hari",
-        "perpanjangan": "Minor, tidak pengaruh tarif"
+        "indikasi": "Kapan perlu rawat inap untuk {disease_name}",
+        "lama_rawat": "Durasi rawat inap standar",
+        "perpanjangan": "Kondisi perpanjangan"
       }},
       "rujukan": {{
-        "syarat": "Butuh fasilitas ICU",
-        "kelayakan": "Layak untuk rujukan"
+        "syarat": "Syarat rujukan {disease_name}",
+        "kelayakan": "Kelayakan rujukan {disease_name}"
       }},
       "fornas": [
-        {{ "nama": "Antibiotik IV", "aturan": "Wajib sesuai CP Sepsis" }}
+        {{ "nama": "Obat standar dari Fornas untuk {disease_name}", "aturan": "Aturan pemakaian" }}
       ]
     }}
     """
@@ -95,11 +95,11 @@ def process_analyze_diagnosis(data: dict) -> dict:
             "fornas": []
         }
 
-    # Load rules Indo
+    # === Mapping ICD ke standar Indo kalau ada rules ===
     rules = load_rules()
     mapped = map_to_indo(ai_result.get("icd10", {}).get("kode"), rules)
 
-    # Gabungkan hasil akhir
+    # === Hasil akhir ===
     final_result = {
         "claim_id": claim_id,
         "disease_name": disease_name,
@@ -117,7 +117,8 @@ def process_analyze_diagnosis(data: dict) -> dict:
         "rawat_inap": ai_result.get("rawat_inap", {}),
         "rujukan": ai_result.get("rujukan", {}),
         "fornas": ai_result.get("fornas", []),
-        "source": "AI+Rule"
+        "source": "AI+Rule",
+        "engine_version": "analyze_diagnosis@2025-09-17"
     }
 
     return final_result
