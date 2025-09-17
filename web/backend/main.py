@@ -32,7 +32,11 @@ from . import models, crud, config
 from .database import SessionLocal, engine, Base
 from .auth import verify_jwt, get_db, require_roles_session, issue_csrf_token, require_csrf_dep
 import requests, io, json, secrets, base64, hashlib, httpx
+import os
+from sqlalchemy.orm import Session
 
+
+CORE_ENGINE_URL = os.getenv("CORE_ENGINE_URL", "http://core_engine:8002")
 
 def _b64url(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
@@ -2602,17 +2606,73 @@ import httpx
 from . import config
 
 async def proxy_core_engine(path: str, payload: dict):
-    async with httpx.AsyncClient() as client:
+    """
+    Proxy request ke core_engine dengan timeout lebih panjang dan logging payload.
+    """
+    timeout = httpx.Timeout(120.0)  # naikkan timeout jadi 120 detik
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
+            print("=== PROXY PAYLOAD ===")
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            print("======================")
+
             res = await client.post(f"{config.CORE_ENGINE_URL}{path}", json=payload)
             res.raise_for_status()
             return res.json()
-        except httpx.HTTPStatusError as e:
-            return {"error": str(e), "detail": e.response.text}
 
-@app.post("/predict_ddx")
-async def predict_ddx(payload: dict = Body(None)):
-    return await proxy_core_engine("/predict_ddx", payload)
+        except httpx.HTTPStatusError as e:
+            # core_engine balikin error HTTP (misal 422, 500)
+            raise HTTPException(status_code=e.response.status_code,
+                                detail={"error": str(e), "detail": e.response.text})
+
+        except httpx.RequestError as e:
+            # error koneksi (timeout, refused, dll)
+            raise HTTPException(status_code=500,
+                                detail=f"Core Engine error: {str(e)}")
+# --- AI Claim Integration ---
+
+def build_rekam_medis_payload(db: Session, claim_id: int):
+    # Ambil klaim berdasarkan claim_id
+    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+    if not claim or not claim.medical_record_id:
+        raise HTTPException(status_code=404, detail="Rekam medis tidak ditemukan")
+    # Ambil rekam medis berdasarkan medical_record_id dari klaim
+    r = db.query(models.MedicalRecord).filter(models.MedicalRecord.id == claim.medical_record_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Rekam medis tidak ditemukan")
+    rm = [{
+        "record_id": r.id,
+        "riwayat_penyakit": getattr(r, "riwayat_penyakit", None),
+        "riwayat_operasi": getattr(r, "riwayat_operasi", None),
+        "alergi": getattr(r, "alergi", None),
+        "keluhan": getattr(r, "keluhan", None),
+        "ciri_fisik": getattr(r, "ciri_fisik", None),
+        "tanda_vital": getattr(r, "tanda_vital", None),
+        "radiologi": getattr(r, "radiologi", None),
+        "lab": getattr(r, "lab", None)
+    }]
+    return rm
+
+@app.post("/generate_ai/predict_ddx")
+def generate_ai_predict_ddx(payload: dict = Body(...), db: Session = Depends(get_db)):
+    """
+    Expects from frontend: { "claim_id": 56 }
+    Builds: { "rekam_medis": [...] } and forwards to core_engine:/predict_ddx
+    """
+    claim_id = payload.get("claim_id")
+    if not claim_id:
+        raise HTTPException(status_code=422, detail="claim_id required")
+    rekam_medis = build_rekam_medis_payload(db, claim_id)
+    forward = {"rekam_medis": rekam_medis}
+    try:
+        r = requests.post(f"{CORE_ENGINE_URL}/predict_ddx", json=forward, timeout=60)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Core Engine error: {e}")
+    return r.json()
+
+# Endpoint lama /predict_ddx dinonaktifkan agar tidak terjadi proxy payload mentah.
+# Gunakan endpoint baru /generate_ai/predict_ddx untuk AI Claim.
 
 @app.post("/analyze_diagnosis")
 async def analyze_diagnosis(payload: dict = Body(None)):

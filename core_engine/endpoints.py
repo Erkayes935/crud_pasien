@@ -49,15 +49,27 @@ class DiagnosisInput(BaseModel):
 # Endpoints
 # ---------------------------
 
+
 @router.post("/predict_ddx")
-async def predict_ddx(data: RMSummary):
-    await asyncio.sleep(1)
-    return process_predict_ddx(data)
+async def predict_ddx(payload: dict):
+    """
+    Expects: { "rekam_medis": [ {...}, {...} ] }
+    Returns: { "utama": [...], "komorbid": [...], "komplikasi": [...], "engine_version": ... }
+    """
+    out = process_predict_ddx(payload)
+    out["engine_version"] = "predict_ddx@2025-09-16"
+    return out
+
 
 @router.post("/analyze_diagnosis")
-async def analyze_diagnosis(data: DiagnosisInput):
-    await asyncio.sleep(1)
-    return process_analyze_diagnosis(data)
+async def analyze_diagnosis(payload: dict):
+    """
+    Expects: { "claim_id": int, "disease_name": str, "rekam_medis": [ {...} ] }
+    Returns: JSON detail + engine_version
+    """
+    out = process_analyze_diagnosis(payload)
+    out["engine_version"] = "analyze_diagnosis@2025-09-16"
+    return out
 
 @router.post("/analyze_claim")
 async def analyze_claim(data: ClaimEvalInput):

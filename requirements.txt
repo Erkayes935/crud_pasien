@@ -16,3 +16,4 @@ httpx
 itsdangerous
 openpyxl
 python-multipart
+openai

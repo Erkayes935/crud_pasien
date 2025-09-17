@@ -1,150 +1,123 @@
-import asyncio
+import os
+import json
+from pathlib import Path
+from openai import OpenAI
 
-def process_analyze_diagnosis(data):
-    # Struktur modal detail sesuai kebutuhan frontend
-    modal_map = {
-        "Demam Berdarah Dengue": {
-            "aspek_klinis": {
-                "justifikasi": "Demam tinggi 3-5 hari, trombosit menurun, nyeri kepala",
-                "bukti": "Laboratorium: trombosit <100.000, Ht naik",
-                "syarat": "Gejala klasik DBD"
-            },
-            "icd10": {
-                "struktur_kode": "A91",
-                "kode_ganda": "A91.0, A91.1",
-                "z_code": "Z20.9",
-                "kode_bpjs_khusus": "BPJS-DBD-01"
-            },
-            "tindakan": "Infus cairan, monitoring laboratorium",
-            "rawat_inap": {
-                "indikasi": "Syok, trombosit <50.000",
-                "lama_rawat": "3-5 hari",
-                "perpanjangan": "Jika trombosit belum naik"
-            },
-            "faskes": {
-                "kesesuaian_rs": "RS tipe B/C/D sesuai regulasi"
-            },
-            "rujukan": {
-                "syarat": "Syok tidak membaik",
-                "kelayakan": "Perlu ICU"
-            }
-        },
-        "Hipertensi": {
-            "aspek_klinis": {
-                "justifikasi": "Tekanan darah >140/90 mmHg",
-                "bukti": "Riwayat hipertensi, pengukuran TD",
-                "syarat": "Pengukuran berulang"
-            },
-            "icd10": {
-                "struktur_kode": "I10",
-                "kode_ganda": "I10.0, I10.1",
-                "z_code": "Z13.6",
-                "kode_bpjs_khusus": "BPJS-HIP-02"
-            },
-            "tindakan": "Kontrol tekanan darah",
-            "rawat_inap": {
-                "indikasi": "TD tidak terkontrol",
-                "lama_rawat": "2-3 hari",
-                "perpanjangan": "Jika TD tetap tinggi"
-            },
-            "faskes": {
-                "kesesuaian_rs": "RS tipe C/D"
-            },
-            "rujukan": {
-                "syarat": "Komplikasi organ target",
-                "kelayakan": "Perlu perawatan lanjutan"
-            }
-        },
-        "Diabetes Mellitus": {
-            "aspek_klinis": {
-                "justifikasi": "Gula darah >200 mg/dL",
-                "bukti": "Laboratorium: GDP/GDS tinggi",
-                "syarat": "Riwayat DM"
-            },
-            "icd10": {
-                "struktur_kode": "E11",
-                "kode_ganda": "E11.0, E11.1",
-                "z_code": "Z79.4",
-                "kode_bpjs_khusus": "BPJS-DM-03"
-            },
-            "tindakan": "Kontrol gula darah",
-            "rawat_inap": {
-                "indikasi": "Hiperglikemia berat",
-                "lama_rawat": "3 hari",
-                "perpanjangan": "Jika belum stabil"
-            },
-            "faskes": {
-                "kesesuaian_rs": "RS tipe C/D"
-            },
-            "rujukan": {
-                "syarat": "Komplikasi akut",
-                "kelayakan": "Perlu perawatan intensif"
-            }
-        },
-        "Syok Dengue": {
-            "aspek_klinis": {
-                "justifikasi": "Syok, tekanan darah turun, tanda perdarahan",
-                "bukti": "Laboratorium: Ht naik, trombosit turun",
-                "syarat": "Syok refrakter"
-            },
-            "icd10": {
-                "struktur_kode": "A91.1",
-                "kode_ganda": "A91.1, A91.2",
-                "z_code": "Z51.0",
-                "kode_bpjs_khusus": "BPJS-DBD-02"
-            },
-            "tindakan": "Resusitasi cairan",
-            "rawat_inap": {
-                "indikasi": "Syok berat",
-                "lama_rawat": "5 hari",
-                "perpanjangan": "Jika belum stabil"
-            },
-            "faskes": {
-                "kesesuaian_rs": "RS tipe B/C"
-            },
-            "rujukan": {
-                "syarat": "Syok tidak membaik",
-                "kelayakan": "Perlu ICU"
-            }
-        },
-        "Perdarahan GI": {
-            "aspek_klinis": {
-                "justifikasi": "Perdarahan saluran cerna",
-                "bukti": "Hematemesis/Melena",
-                "syarat": "Endoskopi diperlukan"
-            },
-            "icd10": {
-                "struktur_kode": "K92.2",
-                "kode_ganda": "K92.2, K92.1",
-                "z_code": "Z51.1",
-                "kode_bpjs_khusus": "BPJS-GI-04"
-            },
-            "tindakan": "Transfusi darah",
-            "rawat_inap": {
-                "indikasi": "Perdarahan masif",
-                "lama_rawat": "5 hari",
-                "perpanjangan": "Jika perdarahan berulang"
-            },
-            "faskes": {
-                "kesesuaian_rs": "RS tipe B/C"
-            },
-            "rujukan": {
-                "syarat": "Perdarahan tidak berhenti",
-                "kelayakan": "Perlu perawatan lanjutan"
-            }
-        },
-    }
-    detail = modal_map.get(data.diagnosis_text, {
-        "aspek_klinis": {"justifikasi": "-", "bukti": "-", "syarat": "-"},
-        "icd10": {"struktur_kode": "-", "kode_ganda": "-", "z_code": "-", "kode_bpjs_khusus": "-"},
-        "tindakan": "-",
-        "rawat_inap": {"indikasi": "-", "lama_rawat": "-", "perpanjangan": "-"},
-        "faskes": {"kesesuaian_rs": "-"},
-        "rujukan": {"syarat": "-", "kelayakan": "-"}
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def load_rules():
+    """Load ICD mapping rules Indo dari folder rules"""
+    rules_path = Path(__file__).parent / "rules" / "icd_mapping.json"
+    if rules_path.exists():
+        with open(rules_path, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def map_to_indo(original_code: str, rules: dict) -> dict:
+    """Mapping ICD WHO ke standar Indo pakai rules JSON"""
+    return rules.get(original_code, {
+        "code_icd": original_code or "-",
+        "description": "Deskripsi tidak tersedia",
+        "bpjs_tariff_code": None
     })
-    # Pastikan tindakan selalu array of object {nama: ...}
-    if isinstance(detail.get("tindakan"), str):
-        detail["tindakan"] = [{"nama": detail["tindakan"]}]
-    elif isinstance(detail.get("tindakan"), list):
-        detail["tindakan"] = [{"nama": td} if isinstance(td, str) else td for td in detail["tindakan"]]
-    return detail
+
+def process_analyze_diagnosis(data: dict) -> dict:
+    """
+    Analisis detail diagnosis menggunakan OpenAI + mapping rules Indo.
+    Input: { claim_id, disease_name, rekam_medis }
+    Output: JSON detail diagnosis lengkap untuk modal
+    """
+
+    claim_id = data.get("claim_id")
+    disease_name = data.get("disease_name", "Tidak diketahui")
+    rekam_medis = data.get("rekam_medis", [])
+
+    prompt = f"""
+    Berdasarkan data rekam medis berikut:
+    {rekam_medis}
+
+    Analisis detail diagnosis untuk penyakit: {disease_name}
+
+    Kembalikan JSON VALID dengan struktur berikut (jangan tambahkan teks lain):
+
+    {{
+      "aspek_klinis": {{
+        "justifikasi": "Alasan pemilihan diagnosis",
+        "bukti": "Ringkasan hasil klinis",
+        "syarat": "Syarat minimal yang terpenuhi"
+      }},
+      "icd10": {{
+        "kode": "A41.9",
+        "struktur_kode": "Sepsis, unspecified organism",
+        "kode_ganda": "A41.9 + R65.2",
+        "z_code": "Tidak perlu",
+        "kode_bpjs_khusus": "Sepsis valid hanya jika ada bukti kultur"
+      }},
+      "tindakan": [
+        {{ "nama": "Ventilasi Mekanik", "aturan": "Wajib untuk sepsis berat", "pengaruh_tarif": "Menambah tarif INA-CBG" }},
+        {{ "nama": "Infus IV", "aturan": "Minor, tidak pengaruh tarif" }}
+      ],
+      "rawat_inap": {{
+        "indikasi": "Wajib untuk klaim sepsis berat",
+        "lama_rawat": "5 hari",
+        "perpanjangan": "Minor, tidak pengaruh tarif"
+      }},
+      "rujukan": {{
+        "syarat": "Butuh fasilitas ICU",
+        "kelayakan": "Layak untuk rujukan"
+      }},
+      "fornas": [
+        {{ "nama": "Antibiotik IV", "aturan": "Wajib sesuai CP Sepsis" }}
+      ]
+    }}
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Kamu adalah AI medis, jawab HANYA dengan JSON valid."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+        )
+        raw_output = response.choices[0].message.content.strip()
+        ai_result = json.loads(raw_output)
+    except Exception as e:
+        print("❌ Error OpenAI analyze_diagnosis:", e)
+        ai_result = {
+            "aspek_klinis": {"justifikasi": "-", "bukti": "-", "syarat": "-"},
+            "icd10": {"kode": "-", "struktur_kode": "-", "kode_ganda": "-", "z_code": "-", "kode_bpjs_khusus": "-"},
+            "tindakan": [],
+            "rawat_inap": {"indikasi": "-", "lama_rawat": "-", "perpanjangan": "-"},
+            "rujukan": {"syarat": "-", "kelayakan": "-"},
+            "fornas": []
+        }
+
+    # Load rules Indo
+    rules = load_rules()
+    mapped = map_to_indo(ai_result.get("icd10", {}).get("kode"), rules)
+
+    # Gabungkan hasil akhir
+    final_result = {
+        "claim_id": claim_id,
+        "disease_name": disease_name,
+        "aspek_klinis": ai_result.get("aspek_klinis", {}),
+        "icd10": {
+            "kode": mapped["code_icd"],
+            "struktur_kode": ai_result.get("icd10", {}).get("struktur_kode"),
+            "kode_ganda": ai_result.get("icd10", {}).get("kode_ganda"),
+            "z_code": ai_result.get("icd10", {}).get("z_code"),
+            "kode_bpjs_khusus": ai_result.get("icd10", {}).get("kode_bpjs_khusus"),
+            "description": mapped["description"],
+            "bpjs_tariff_code": mapped.get("bpjs_tariff_code")
+        },
+        "tindakan": ai_result.get("tindakan", []),
+        "rawat_inap": ai_result.get("rawat_inap", {}),
+        "rujukan": ai_result.get("rujukan", {}),
+        "fornas": ai_result.get("fornas", []),
+        "source": "AI+Rule"
+    }
+
+    return final_result

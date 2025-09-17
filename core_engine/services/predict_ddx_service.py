@@ -1,114 +1,110 @@
-import asyncio
+# services/predict_ddx_service.py
+import os
+import json
 import random
+from openai import OpenAI
 
-def process_predict_ddx(data):
-    # Dummy logic, bisa diganti AI
-    admission = {
-        "diagnosis": [
-            {
-                "kategori": "Diagnosis",
-                "klinis": "Demam Berdarah Dengue",
-                "icd": "A91",
-                "score": 0.92,
-                "tindakan": "Infus cairan, monitoring laboratorium",
-                "detail_modal": {
-                    "aspek_klinis": ["Demam tinggi 3-5 hari", "Trombosit menurun", "Nyeri kepala"],
-                    "tindakan_disarankan": ["Cairan IV", "Monitoring Ht & Trombosit"],
-                    "referensi": {"PNPK": "PNPK-DBD-2022", "Fornas": "FORNAS-2023", "Permenkes": "PMK 52/2016"}
-                }
-            },
-            {
-                "kategori": "Diagnosis",
-                "klinis": "Tifoid",
-                "icd": "A01.0",
-                "score": 0.75,
-                "tindakan": "Antibiotik, monitoring suhu",
-                "detail_modal": {
-                    "aspek_klinis": ["Demam >5 hari", "Nyeri perut", "Tes Widal positif"],
-                    "tindakan_disarankan": ["Antibiotik", "Monitoring suhu"],
-                    "referensi": {"PNPK": "PNPK-Tifoid-2022"}
-                }
-            },
-            {
-                "kategori": "Diagnosis",
-                "klinis": "Infeksi Virus Nonspesifik",
-                "icd": "B34.9",
-                "score": 0.60,
-                "tindakan": "Observasi, istirahat cukup",
-                "detail_modal": {
-                    "aspek_klinis": ["Demam ringan", "Tidak ada tanda spesifik"],
-                    "tindakan_disarankan": ["Istirahat", "Cairan cukup"],
-                    "referensi": {"PNPK": "PNPK-InfeksiVirus-2022"}
-                }
-            }
-        ],
-        "komorbid": [
-            {
-                "kategori": "Komorbid",
-                "klinis": "Hipertensi",
-                "icd": "I10",
-                "score": 0.65,
-                "tindakan": "Kontrol tekanan darah",
-                "detail_modal": {
-                    "aspek_klinis": ["Tekanan darah >140/90 mmHg", "Riwayat hipertensi"],
-                    "tindakan_disarankan": ["Monitoring tekanan darah", "Obat antihipertensi"],
-                    "referensi": {"PNPK": "PNPK-Hipertensi-2022"}
-                }
-            },
-            {
-                "kategori": "Komorbid",
-                "klinis": "Diabetes Mellitus",
-                "icd": "E11",
-                "score": 0.58,
-                "tindakan": "Kontrol gula darah",
-                "detail_modal": {
-                    "aspek_klinis": ["Gula darah >200 mg/dL", "Riwayat DM"],
-                    "tindakan_disarankan": ["Monitoring gula darah", "Obat antidiabetik"],
-                    "referensi": {"PNPK": "PNPK-DM-2022"}
-                }
-            },
-            {
-                "kategori": "Komorbid",
-                "klinis": "Penyakit Ginjal Kronis",
-                "icd": "N18",
-                "score": 0.40,
-                "tindakan": "Monitoring fungsi ginjal",
-                "detail_modal": {
-                    "aspek_klinis": ["GFR <60 ml/min", "Riwayat penyakit ginjal"],
-                    "tindakan_disarankan": ["Monitoring fungsi ginjal", "Diet rendah protein"],
-                    "referensi": {"PNPK": "PNPK-Ginjal-2022"}
-                }
-            }
-        ],
-        "komplikasi": [
-            {
-                "kategori": "Komplikasi",
-                "klinis": "Syok Dengue",
-                "icd": "A91.1",
-                "score": 0.55,
-                "tindakan": "Resusitasi cairan",
-                "detail_modal": {
-                    "aspek_klinis": ["Syok", "Tekanan darah turun", "Tanda perdarahan"],
-                    "tindakan_disarankan": ["Resusitasi cairan", "Transfusi darah"],
-                    "referensi": {"PNPK": "PNPK-DBD-2022"}
-                }
-            },
-            {
-                "kategori": "Komplikasi",
-                "klinis": "Perdarahan GI",
-                "icd": "K92.2",
-                "score": 0.35,
-                "tindakan": "Transfusi darah",
-                "detail_modal": {
-                    "aspek_klinis": ["Perdarahan saluran cerna", "Hematemesis/Melena"],
-                    "tindakan_disarankan": ["Transfusi darah", "Endoskopi"],
-                    "referensi": {"PNPK": "PNPK-GI-2022"}
-                }
-            }
-        ]
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def process_predict_ddx(payload: dict) -> dict:
+    """
+    Generate daftar diagnosis, komorbid, komplikasi dari rekam medis.
+    Output format:
+    {
+      "diagnosis": [
+        { "parent": "...", "confidence": 0.9,
+          "children": [ {"name":"...", "confidence":0.8}, ... ] }
+      ],
+      "komorbid": [...],
+      "komplikasi": [...],
+      "engine_version": "predict_ddx@2025-09-17"
     }
-    return {
-        "admission": admission,
-        "daily": [],
-        "discharge": { "diagnosis": [], "komorbid": [], "komplikasi": [] }
-    }
+    """
+
+    rekam_medis = payload.get("rekam_medis", [])
+
+    prompt = f"""
+    Berdasarkan data rekam medis berikut:
+    {rekam_medis}
+
+    Hasilkan daftar:
+    - diagnosis utama (3 parent)
+    - komorbid (3 parent)
+    - komplikasi (3 parent)
+
+    Setiap parent WAJIB punya field:
+    - "parent": nama penyakit
+    - "confidence": angka float 0.0–1.0
+    - "children": daftar anak penyakit (boleh lebih dari 1)
+
+    Setiap child WAJIB punya:
+    - "name": nama penyakit turunan
+    - "confidence": angka float 0.0–1.0
+
+    Format JSON ketat, tanpa teks tambahan di luar JSON:
+    {{
+      "diagnosis": [
+        {{"parent": "...", "confidence": 0.9, "children":[{{"name":"...", "confidence":0.8}}]}}
+      ],
+      "komorbid": [...],
+      "komplikasi": [...]
+    }}
+    """
+
+    # Request ke OpenAI
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Kamu adalah AI medis. Jawab hanya JSON valid."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3
+    )
+
+    raw_output = response.choices[0].message.content.strip()
+
+    # --- Logging supaya bisa debug kalau parsing gagal ---
+    print("==== RAW OUTPUT PREDICT_DDX ====")
+    print(raw_output)
+    print("================================")
+
+    try:
+        ai_result = json.loads(raw_output)
+    except json.JSONDecodeError:
+        ai_result = {"diagnosis": [], "komorbid": [], "komplikasi": []}
+
+    # ==== fallback cleaning ====
+    def fix_item(item):
+        # parent confidence
+        if not isinstance(item.get("confidence"), (int, float)):
+            item["confidence"] = round(random.uniform(0.6, 0.95), 2)
+
+        # children
+        children = item.get("children", [])
+        if not isinstance(children, list):
+            children = []
+        fixed_children = []
+        for ch in children:
+            if not isinstance(ch, dict):
+                continue
+            if not isinstance(ch.get("confidence"), (int, float)):
+                ch["confidence"] = round(random.uniform(0.6, 0.9), 2)
+            fixed_children.append(ch)
+        # kalau kosong → tambahkan dummy
+        if not fixed_children:
+            fixed_children.append({
+                "name": f"{item['parent']} - Unspecified subtype",
+                "confidence": round(random.uniform(0.6, 0.8), 2)
+            })
+        item["children"] = fixed_children
+        return item
+
+    for section in ["diagnosis", "komorbid", "komplikasi"]:
+        items = ai_result.get(section, [])
+        if isinstance(items, list):
+            ai_result[section] = [fix_item(it) for it in items[:3]]  # max 3 parent
+        else:
+            ai_result[section] = []
+
+    ai_result["engine_version"] = "predict_ddx@2025-09-17"
+    return ai_result

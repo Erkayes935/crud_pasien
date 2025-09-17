@@ -2,6 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from endpoints import router as ai_router
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(title="AI Core Engine Dummy")
 
@@ -15,4 +17,5 @@ app.add_middleware(
 )
 
 # tambahkan prefix /ai biar sesuai dengan URL
-app.include_router(ai_router)
+app.include_router(ai_router, prefix="")
+

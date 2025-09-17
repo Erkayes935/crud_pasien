@@ -1,4 +1,112 @@
 // ==================== Generate AI ====================
+// ==================== Workflow Baru Predict DDX & Analyze Diagnosis ====================
+// Generate AI: hanya render kategori (parent + child), kolom lain kosong
+async function generateAI_new() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId || document.getElementById("claimIdHidden")?.value;
+  if (!claimId) {
+    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
+    return;
+  }
+  try {
+    const res = await fetch("/generate_ai/predict_ddx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id: claimId })
+    });
+    const data = await res.json();
+    console.log("📥 Data predict_ddx diterima:", data);
+    renderPredictDDX(data);
+  } catch (err) {
+    console.error("❌ Error Generate AI:", err);
+    alert("Gagal generate AI: " + err);
+  }
+}
+
+// Render parent & child di kolom kategori, kolom lain kosong
+function renderPredictDDX(ddx) {
+  const sections = [
+    { key: "diagnosis", sel: "diagnosis-admission" },
+    { key: "komorbid", sel: "komorbid-admission" },
+    { key: "komplikasi", sel: "komplikasi-admission" }
+  ];
+  sections.forEach(({ key, sel }) => {
+    const tbody = document.getElementById(sel);
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    (ddx[key] || []).forEach(item => {
+      // parent row
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="border px-2 py-1 text-blue-600 underline cursor-pointer parent-disease" data-disease="${item.parent}">${item.parent}</td>
+        <td class="border px-2 py-1 klinis">-</td>
+        <td class="border px-2 py-1 icd">-</td>
+        <td class="border px-2 py-1 tindakan">-</td>
+        <td class="border px-2 py-1 score">-</td>
+        <td>
+          <select class="border px-2 py-1 rounded">
+            <option value="">Pilih</option>
+            <option value="Diagnosis Utama">Diagnosis Utama</option>
+            <option value="Komorbid">Komorbid</option>
+            <option value="Komplikasi">Komplikasi</option>
+            <option value="None">None</option>
+          </select>
+        </td>
+      `;
+      tbody.appendChild(row);
+      // children
+      (item.children || []).forEach(ch => {
+        const childRow = document.createElement("tr");
+        childRow.innerHTML = `
+          <td class="border px-6 py-1 text-blue-500 underline cursor-pointer child-disease" data-disease="${ch.name}">↳ ${ch.name}</td>
+          <td class="border px-2 py-1 klinis">-</td>
+          <td class="border px-2 py-1 icd">-</td>
+          <td class="border px-2 py-1 tindakan">-</td>
+          <td class="border px-2 py-1 score">-</td>
+          <td></td>
+        `;
+        tbody.appendChild(childRow);
+      });
+    });
+  });
+  // attach click handler
+  document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
+    el.addEventListener("click", () => onClickAnalyzeDiagnosis_new(el.dataset.disease));
+  });
+}
+
+// Handler analyze_diagnosis: isi detail di baris + modal
+async function onClickAnalyzeDiagnosis_new(diseaseName) {
+  try {
+    const res = await fetch("/analyze_diagnosis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ diagnosis_text: diseaseName })
+    });
+    const detail = await res.json();
+    console.log("📥 Hasil analyze_diagnosis:", detail);
+    fillRowWithDetail_new(diseaseName, detail);
+    openModal(diseaseName, buildModalContent({ modal_detail: detail, kategori: diseaseName }));
+  } catch (err) {
+    console.error("❌ Gagal analyze_diagnosis:", err);
+  }
+}
+
+// Isi detail kolom di baris yang diklik
+function fillRowWithDetail_new(diseaseName, detail) {
+  document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
+    if (el.dataset.disease === diseaseName) {
+      const tr = el.closest("tr");
+      tr.querySelector(".klinis").textContent = [
+        detail.aspek_klinis?.justifikasi,
+        detail.aspek_klinis?.bukti,
+        detail.aspek_klinis?.syarat
+      ].filter(Boolean).join(". ");
+      tr.querySelector(".icd").textContent = detail.code_icd || "-";
+      tr.querySelector(".tindakan").textContent = (detail.tindakan || []).map(t => t.nama).join(", ") || "-";
+      tr.querySelector(".score").textContent = detail.score ? detail.score + "%" : "-";
+    }
+  });
+}
 function claimData(init) {
   return {
     role: init.role || 'doctor', // doctor, verifikator, coder
