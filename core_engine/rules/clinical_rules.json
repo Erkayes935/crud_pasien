@@ -1,0 +1,37 @@
+{
+  "pneumonia": {
+    "cp": "CP Pneumonia 2021",
+    "pnpk": "PNPK Pneumonia Dewasa 2020",
+    "fornas": ["antibiotik iv", "nebulizer"],
+    "ina_cbg": "D-4-12 Pneumonia sedang",
+    "rawat_inap": {
+      "indikasi": "saturasi O2 < 92%, pneumonia berat",
+      "lama_rawat": "4-7 hari",
+      "perpanjangan": "hingga 14 hari bila komplikasi"
+    },
+    "faskes": {
+      "kesesuaian": "RS tipe B dan A"
+    },
+    "rujukan": {
+      "syarat": "rujuk ke RS tipe A bila gagal terapi awal",
+      "kelayakan": "valid"
+    }
+  },
+  "asma bronkial": {
+    "cp": "CP Asma 2019",
+    "pnpk": "PNPK Asma 2021",
+    "fornas": ["nebulizer", "kortikosteroid inhalasi"],
+    "ina_cbg": "E-1-21 Asma",
+    "rawat_inap": {
+      "indikasi": "status asmatikus",
+      "lama_rawat": "2-5 hari"
+    },
+    "faskes": {
+      "kesesuaian": "RS tipe C, B, A"
+    },
+    "rujukan": {
+      "syarat": "rujuk bila serangan tidak membaik dengan terapi standar",
+      "kelayakan": "valid"
+    }
+  }
+}

@@ -38,39 +38,43 @@ function renderPredictDDX(ddx) {
     (ddx[key] || []).forEach(item => {
       // parent row
       const row = document.createElement("tr");
-      row.innerHTML = `
-        <td class="border px-2 py-1 text-blue-600 underline cursor-pointer parent-disease" data-disease="${item.parent}">${item.parent}</td>
-        <td class="border px-2 py-1 klinis">-</td>
-        <td class="border px-2 py-1 icd">-</td>
-        <td class="border px-2 py-1 tindakan">-</td>
-        <td class="border px-2 py-1 score">
-          ${item.confidence ? (item.confidence * 100).toFixed(0) + "%" : "-"}
-        </td>
-        <td>
-          <select class="border px-2 py-1 rounded">
+      row.innerHTML = [
+        `<td class="border px-2 py-1 text-blue-600 underline cursor-pointer parent-disease" data-disease="${item.parent}">${item.parent}</td>`,
+        `<td class="border px-2 py-1 klinis">-</td>`,
+        `<td class="border px-2 py-1 icd">-</td>`,
+        `<td class="border px-2 py-1 tindakan">-</td>`,
+        `<td class="border px-2 py-1 score">${item.confidence ? (item.confidence * 100).toFixed(0) + "%" : "-"}</td>`,
+        `<td>
+          <select class="border px-2 py-1 rounded mapping-dropdown">
             <option value="">Pilih</option>
             <option value="Diagnosis Utama">Diagnosis Utama</option>
             <option value="Komorbid">Komorbid</option>
             <option value="Komplikasi">Komplikasi</option>
             <option value="None">None</option>
           </select>
-        </td>
-      `;
+        </td>`
+      ].join("");
       tbody.appendChild(row);
 
       // children
       (item.children || []).forEach(ch => {
         const childRow = document.createElement("tr");
-        childRow.innerHTML = `
-          <td class="border px-6 py-1 text-blue-500 underline cursor-pointer child-disease" data-disease="${ch.name}">↳ ${ch.name}</td>
-          <td class="border px-2 py-1 klinis">-</td>
-          <td class="border px-2 py-1 icd">-</td>
-          <td class="border px-2 py-1 tindakan">-</td>
-          <td class="border px-2 py-1 score">
-            ${ch.confidence ? (ch.confidence * 100).toFixed(0) + "%" : "-"}
-          </td>
-          <td></td>
-        `;
+        childRow.innerHTML = [
+          `<td class="border px-6 py-1 text-blue-500 underline cursor-pointer child-disease" data-disease="${ch.name}">↳ ${ch.name}</td>`,
+          `<td class="border px-2 py-1 klinis">-</td>`,
+          `<td class="border px-2 py-1 icd">-</td>`,
+          `<td class="border px-2 py-1 tindakan">-</td>`,
+          `<td class="border px-2 py-1 score">${ch.confidence ? (ch.confidence * 100).toFixed(0) + "%" : "-"}</td>`,
+          `<td>
+            <select class="border px-2 py-1 rounded mapping-dropdown">
+              <option value="">Pilih</option>
+              <option value="Diagnosis Utama">Diagnosis Utama</option>
+              <option value="Komorbid">Komorbid</option>
+              <option value="Komplikasi">Komplikasi</option>
+              <option value="None">None</option>
+            </select>
+          </td>`
+        ].join("");
         tbody.appendChild(childRow);
       });
     });
@@ -79,6 +83,19 @@ function renderPredictDDX(ddx) {
   // attach click handler
   document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
     el.addEventListener("click", () => onClickAnalyzeDiagnosis_new(el.dataset.disease));
+  });
+
+  // attach mapping change handler for all dropdowns (parent & child)
+  document.querySelectorAll(".mapping-dropdown").forEach((dropdown, i) => {
+    dropdown.addEventListener("change", function(e) {
+      // Cari parent/child disease name
+      const tr = dropdown.closest("tr");
+      const diseaseCell = tr.querySelector(".parent-disease, .child-disease");
+      const diseaseName = diseaseCell ? diseaseCell.dataset.disease : null;
+      if (!diseaseName) return;
+      // Update simulasi panel
+      updateSimulasi("diagnosis", e.target.value, { name: diseaseName }, "AI", "admission");
+    });
   });
 }
 
@@ -163,9 +180,61 @@ function claimData(init) {
       daily: {} // akan diisi dinamis pakai dayId
     },
     recommendations: { medis:[], regulasi:[], tarif:[] },
+    combos: {
+      dx: {
+        validitas: "",
+        severity: "",
+        kode_cbg: "",
+        estimasi_tarif: "",
+        syarat_klinis: "",
+        evaluasi_faskes: "",
+        rawat_inap: ""
+      },
+      tdk: {
+        wajib: "",
+        validasi: "",
+        dampak: "",
+        konflik: ""
+      },
+      alternatif: [
+        {judul:"", catatan:"", syarat:"", tindakan:[]},
+        {judul:"", catatan:"", syarat:"", tindakan:[]}
+      ]
+    },
     modalOpen: false,
     modalTitle: '',
     modalContent: '',
+    async generateCombos() {
+      const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+      if (!claimId) {
+        alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
+        return;
+      }
+      const payload = { claim_id: claimId, stage: "admission" };
+      console.log("📦 Payload Generate Kombinasi Klaim:", payload);
+      try {
+        const res = await fetch("/generate_claim_combos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        console.log("📥 Data Kombinasi Klaim dari BE:", data);
+        if (!data.result) {
+          alert("Gagal generate kombinasi klaim: " + (data.detail || "Unknown error"));
+          return;
+        }
+        // Update combos state dengan hasil dari backend
+        this.combos = {
+          dx: data.result.evaluasi_diagnosis,
+          tdk: data.result.evaluasi_tindakan,
+          alternatif: data.result.alternatif
+        };
+      } catch (err) {
+        console.error("❌ Error Generate Kombinasi Klaim:", err);
+        alert("Gagal generate kombinasi klaim: " + err);
+      }
+    },
     init(){
       window.addEventListener('update-rekom', e => {
         this.recommendations = e.detail
@@ -608,10 +677,16 @@ function buildModalContent(it) {
             <div class="flex justify-between items-center border p-2 rounded">
               <span>${td.nama}</span>
               <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
-                        class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
-                        class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="(function(){
+                  const state = Alpine.$data(document.getElementById('claimRoot'));
+                  updateSimulasi('tindakan','Primary','${td.nama}','', state.tab);
+                })()"
+                  class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
+                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="(function(){
+                  const state = Alpine.$data(document.getElementById('claimRoot'));
+                  updateSimulasi('tindakan','Secondary','${td.nama}','', state.tab);
+                })()"
+                  class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
               </div>
             </div>
           `).join('')}

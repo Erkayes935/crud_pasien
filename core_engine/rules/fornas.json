@@ -1,0 +1,6 @@
+{
+  "Pneumonia": ["Ceftriaxone", "Ampicillin", "Azithromycin"],
+  "Asma Bronkial": ["Salbutamol inhalasi", "Ipratropium bromida", "Budesonid"],
+  "Diabetes Mellitus": ["Metformin", "Insulin", "Glibenklamid"],
+  "Hipertensi": ["Amlodipin", "Captopril", "Hydrochlorothiazide"]
+}

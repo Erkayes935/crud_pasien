@@ -1,0 +1,61 @@
+{
+  "diagnosis": "Asma Bronkial",
+  "icd10": {
+    "who": "J45.9",
+    "bpjs": "J45.9",
+    "kode_ganda": [],
+    "z_code": [],
+    "catatan_bpjs": "Klaim valid di RS tipe C ke atas"
+  },
+  "aspek_klinis": {
+    "justifikasi": "Sesak napas berulang, wheezing, riwayat alergi/asma.",
+    "bukti": [
+      "RR > 25x/menit",
+      "Wheezing di auskultasi",
+      "Respons positif terhadap bronkodilator"
+    ],
+    "syarat_medis": [
+      "Minimal 2 gejala respirasi",
+      "Ada bukti obstruksi reversibel"
+    ]
+  },
+  "tindakan": [
+    {
+      "nama": "Nebulizer",
+      "icd9": "93.96",
+      "status": "wajib",
+      "kategori": "terapi",
+      "regulasi": "PNPK Asma 2021",
+      "fornas": ["salbutamol inhalasi", "ipratropium bromida"]
+    },
+    {
+      "nama": "Kortikosteroid Inhalasi",
+      "icd9": null,
+      "status": "opsional",
+      "kategori": "terapi",
+      "regulasi": "PNPK Asma 2021",
+      "fornas": ["budesonid", "flutikason"]
+    }
+  ],
+  "rawat_inap": {
+    "indikasi": [
+      "Status asmatikus",
+      "Tidak membaik dengan terapi bronkodilator berulang"
+    ],
+    "lama_rawat": "2–5 hari",
+    "perpanjangan": "Jika masih ada gejala berat"
+  },
+  "faskes": {
+    "level": "RS tipe C ke atas",
+    "kesesuaian": "✔"
+  },
+  "rujukan": {
+    "syarat": "Jika serangan tidak membaik dengan terapi standar",
+    "kelayakan": "Rujuk ke RS tipe B/A"
+  },
+  "ina_cbg": {
+    "kode": "E-1-21",
+    "deskripsi": "Asma",
+    "tarif": "Rp 3.500.000"
+  }
+}

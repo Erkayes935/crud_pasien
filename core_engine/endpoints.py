@@ -77,10 +77,11 @@ async def analyze_claim(data: ClaimEvalInput):
     return process_analyze_claim(data)
 
 
+
 @router.post("/generate_claim_combos")
-async def generate_claim_combos(data: RMSummary):
-    await asyncio.sleep(1)
-    return process_generate_claim_combos(data)
+async def generate_claim_combos(payload: dict):
+    result = process_generate_claim_combos(payload)
+    return result
 
 @router.post("/resume_medis")
 async def generate_resume(input_data: ResumeInput):

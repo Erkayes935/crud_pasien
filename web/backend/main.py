@@ -2683,8 +2683,32 @@ async def analyze_claim(payload: dict = Body(None)):
     return await proxy_core_engine("/analyze_claim", payload)
 
 @app.post("/generate_claim_combos")
-async def generate_claim_combos(payload: dict = Body(None)):
-    return await proxy_core_engine("/generate_claim_combos", payload)
+def generate_claim_combos(payload: dict = Body(...), db: Session = Depends(get_db)):
+    claim_id = payload.get("claim_id")
+    stage = payload.get("stage", "admission")
+    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if not claim.simulasi_draft:
+        raise HTTPException(status_code=400, detail="No simulasi_draft found for this claim")
+    simulasi = claim.simulasi_draft.get(stage)
+    if not simulasi:
+        raise HTTPException(status_code=400, detail=f"No mapping for stage {stage}")
+    # Build payload for core_engine
+    core_payload = {
+        "primary_claim": (simulasi.get("utama") or {}).get("name"),
+        "secondary_claims": [s.get("name") for s in simulasi.get("sekunder", [])],
+        "primary_action": (simulasi.get("tindakanUtama") or {}).get("name"),
+        "secondary_actions": [s.get("name") for s in simulasi.get("tindakanSekunder", [])]
+    }
+    # Proxy to core_engine
+    result = requests.post(f"{CORE_ENGINE_URL}/generate_claim_combos", json=core_payload, timeout=60)
+    result.raise_for_status()
+    claim.summary_draft = result.json()
+    db.add(claim)
+    db.commit()
+    db.refresh(claim)
+    return {"claim_id": claim.id, "stage": stage, "result": claim.summary_draft}
 
 @app.post("/resume_medis")
 async def resume_medis(payload: dict = Body(None)):

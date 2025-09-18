@@ -1,0 +1,18 @@
+{
+  "D-4-12": {
+    "deskripsi": "Pneumonia sedang",
+    "tarif": 5200000
+  },
+  "E-1-21": {
+    "deskripsi": "Asma",
+    "tarif": 3500000
+  },
+  "E-4-10": {
+    "deskripsi": "Diabetes Mellitus tanpa komplikasi",
+    "tarif": 4100000
+  },
+  "I-1-01": {
+    "deskripsi": "Hipertensi Esensial",
+    "tarif": 2800000
+  }
+}

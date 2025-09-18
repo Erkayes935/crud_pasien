@@ -1,0 +1,6 @@
+{
+  "Pneumonia": ["X-ray Thorax", "Antibiotik IV", "Nebulizer"],
+  "Asma Bronkial": ["Nebulizer", "Kortikosteroid Inhalasi"],
+  "Diabetes Mellitus": ["Pemeriksaan GDS", "Terapi Insulin"],
+  "Hipertensi": ["Pemeriksaan Tensi", "Obat antihipertensi"]
+}

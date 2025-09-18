@@ -1,0 +1,23 @@
+{
+  "J18.9": {
+    "who": "Pneumonia, unspecified",
+    "bpjs": "J18.9",
+    "catatan_bpjs": "Gunakan J18.9 bila tidak ada mikrobiologi. Klaim valid di RS tipe C ke atas."
+  },
+  "J45.9": {
+    "who": "Asma Bronkial, unspecified",
+    "bpjs": "J45.9",
+    "catatan_bpjs": "Klaim valid jika disertai bukti serangan akut dan terapi bronkodilator."
+  },
+  "E11.9": {
+    "who": "Diabetes Mellitus tanpa komplikasi",
+    "bpjs": "E11.9",
+    "catatan_bpjs": "Klaim valid untuk terapi standar; eksklusi bila ada komplikasi vaskular atau ginjal."
+  },
+  "I10": {
+    "who": "Hipertensi Esensial",
+    "bpjs": "I10",
+    "catatan_bpjs": "Gunakan untuk hipertensi primer; tidak valid bila ada penyakit sekunder."
+  }
+}
+

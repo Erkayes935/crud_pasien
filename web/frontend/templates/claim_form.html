@@ -420,25 +420,85 @@
         </div>
 
           <!-- Rekomendasi AI -->
-          <div class="space-y-2">
-            <h3 class="text-md font-bold mt-4">SARAN SIMULASI</h3>
-            <template x-for="(items,cat) in recommendations" :key="cat">
-              <div>
-                <h4 class="font-semibold bg-blue-500 text-white px-2 py-1 rounded" x-text="cat.toUpperCase()"></h4>
-                <table class="w-full text-xs border">
-                  <tbody>
-                    <template x-for="(rec, i) in items" :key="i">
-                      <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
-                        <td class="p-2" x-html="statusIcon(rec.status)"></td>
-                        <td class="p-2" x-text="(rec.target || []).join(' + ')"></td>
-                        <td class="p-2" x-text="rec.message"></td>
-                        <td class="p-2 text-right" x-html="confidenceBadge((rec.confidence*100).toFixed(0))"></td>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
+          <!-- KOMBINASI KLAIM -->
+          <div class="space-y-4 mt-4">
+            <h3 class="text-xl font-bold mb-2 text-center">KOMBINASI KLAIM</h3>
+            <!-- Tombol Generate -->
+            <div class="flex justify-center mb-2">
+              <button type="button"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-semibold"
+                @click="generateCombos()">GENERATE</button>
+            </div>
+            <!-- Evaluasi Kombinasi Diagnosis -->
+            <div class="space-y-2">
+              <h4 class="font-semibold mb-2 text-yellow-500">EVALUASI KOMBINASI DIAGNOSIS</h4>
+              <div class="grid grid-cols-1 gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Validitas Klinis Kombinasi</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.validitas || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Severity</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.severity || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Kode INA-CBG</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.kode_cbg || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Estimasi Tarif</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.estimasi_tarif || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Syarat Klinis (Kombinasi)</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.syarat_klinis || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Evaluasi Faskes</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.evaluasi_faskes || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Rawat Inap</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.dx.rawat_inap || '-'" ></div>
+                </div>
               </div>
-            </template>
+            </div>
+            <!-- Evaluasi Kombinasi Tindakan -->
+            <div class="space-y-2">
+              <h4 class="font-semibold mb-2 text-yellow-500">EVALUASI KOMBINASI TINDAKAN</h4>
+              <div class="grid grid-cols-1 gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Tindakan Wajib Kombinasi</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.tdk.wajib || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Validasi Pilihan Verifikator</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.tdk.validasi || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Dampak INA-CBG / Tarif</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.tdk.dampak || '-'" ></div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-48 text-xs font-medium">Konflik / Duplikasi</span>
+                  <div class="flex-1 border rounded bg-white dark:bg-gray-700 px-2 py-1 text-xs max-h-12 overflow-y-auto" x-text="combos.tdk.konflik || '-'" ></div>
+                </div>
+              </div>
+            </div>
+            <!-- Alternatif Kombinasi -->
+            <div class="space-y-2">
+              <h4 class="font-semibold mb-2 text-yellow-500">Alternatif Kombinasi <span x-text="combos.alternatif?.length ? '('+combos.alternatif.length+')' : ''"></span></h4>
+              <div class="grid grid-cols-1 gap-2">
+                <template x-for="(alt, i) in combos.alternatif" :key="i">
+                  <div class="border rounded bg-white dark:bg-gray-700 px-2 py-2 text-xs max-h-16 overflow-y-auto">
+                    <div class="font-semibold text-blue-700" x-text="alt.judul || ('Alternatif ' + (i+1))"></div>
+                    <div x-text="alt.catatan || '-'" ></div>
+                    <div class="mt-1"><b>Syarat:</b> <span x-text="alt.syarat || '-'" ></span></div>
+                    <div><b>Saran Tindakan:</b> <span x-text="(alt.tindakan || []).join(', ') || '-'" ></span></div>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
 
         <!-- Tarif Draft (muncul setelah generate AI) -->
