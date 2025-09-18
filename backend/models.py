@@ -177,8 +177,9 @@ class ClaimAIRecommendation(Base):
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
-    type = Column(String(50), nullable=False)   # diagnosis / tindakan
+    stage = Column(String(50), nullable=False)   # admssion / daily / discharge
     category = Column(String(50), nullable=False) # diagnosis / komorbid / komplikasi
+    nama_kategori = Column(String(255), nullable=True)
     klinis = Column(Text, nullable=True)          # nama diagnosis/tindakan
     icd10_code = Column(String(20), nullable=True)
     confidence_score = Column(Integer, nullable=True)
@@ -259,7 +260,8 @@ class ClaimProcedureDetail(Base):
 
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=False)
     procedure = relationship("ClaimProcedure", back_populates="procedure_details")
-
+    icd9_tindakan = Column(String, nullable=False)               # ICD9
+    icd9_deskripsi_tindakan = Column(String, nullable=True)     # Deskripsi ICD9
     validitas_tindakan = Column(String, nullable=False)         # valid / invalid
     status_tindakan = Column(String, nullable=True)              # status tindakan
     ina_cbg_tindakan = Column(Text, nullable=True)        # INA-CBG

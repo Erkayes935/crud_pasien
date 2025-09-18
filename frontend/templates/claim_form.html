@@ -327,12 +327,21 @@
 
     <!-- Modal -->
     <div x-show="modalOpen"
-        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <h3 class="font-bold mb-4" x-text="modalTitle"></h3>
-        <div x-html="modalContent"></div>
+     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        
+        <!-- Tombol X -->
         <button type="button" @click="modalOpen=false"
-                class="mt-4 bg-gray-600 text-white px-4 py-2 rounded">Close</button>
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+          ✕
+        </button>
+
+        <!-- Judul -->
+        <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+            x-text="modalTitle"></h3>
+
+        <!-- Konten -->
+        <div class="p-6" x-html="modalContent"></div>
       </div>
     </div>
   </div>
