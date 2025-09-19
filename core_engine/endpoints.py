@@ -8,7 +8,7 @@ import asyncio
 # import services
 from services.predict_ddx_service import process_predict_ddx
 from services.analyze_diagnosis_service import process_analyze_diagnosis
-from services.analyze_claim_service import process_analyze_claim
+from services.analyze_procedure_service import process_analyze_procedure
 from services.generate_claim_combos_service import process_generate_claim_combos
 from services.resume_service import process_resume_medis
 
@@ -71,12 +71,10 @@ async def analyze_diagnosis(payload: dict):
     out["engine_version"] = "analyze_diagnosis@2025-09-16"
     return out
 
-@router.post("/analyze_claim")
-async def analyze_claim(data: ClaimEvalInput):
+@router.post("/analyze_procedure")
+async def analyze_procedure(payload: dict):
     await asyncio.sleep(1)
-    return process_analyze_claim(data)
-
-
+    return process_analyze_procedure(payload)
 
 @router.post("/generate_claim_combos")
 async def generate_claim_combos(payload: dict):

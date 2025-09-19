@@ -2678,9 +2678,55 @@ def generate_ai_predict_ddx(payload: dict = Body(...), db: Session = Depends(get
 async def analyze_diagnosis(payload: dict = Body(None)):
     return await proxy_core_engine("/analyze_diagnosis", payload)
 
-@app.post("/analyze_claim")
-async def analyze_claim(payload: dict = Body(None)):
-    return await proxy_core_engine("/analyze_claim", payload)
+@app.post("/analyze_procedure")
+async def analyze_procedure(payload: dict = Body(...), db: Session = Depends(get_db)):
+    """
+    Input minimal dari FE:
+      { "claim_id": 56, "procedure_name": "Ventilasi Mekanik", "stage": "admission" }
+
+    Endpoint ini:
+    - Ambil konteks dari claims.simulasi_draft[stage] (jika ada) → primary/secondary claim & actions.
+    - Bangun payload ke core_engine.
+    - Proxy ke /analyze_procedure (core_engine) pakai proxy_core_engine.
+    - Return hasil JSON siap render untuk modal.
+    """
+    claim_id = payload.get("claim_id")
+    proc_name = payload.get("procedure_name") or payload.get("procedure")
+    stage = (payload.get("stage") or "admission").strip()
+
+    if not claim_id:
+        raise HTTPException(status_code=422, detail="claim_id required")
+    if not proc_name or not str(proc_name).strip():
+        raise HTTPException(status_code=422, detail="procedure_name required")
+
+    # Ambil klaim untuk optional context (boleh kosong kalau tidak ada)
+    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    sim = (claim.simulasi_draft or {}).get(stage) or {}
+    context = {
+        "primary_claim": (sim.get("utama") or {}).get("name"),
+        "secondary_claims": [s.get("name") for s in sim.get("sekunder", [])],
+        "primary_action": (sim.get("tindakanUtama") or {}).get("name"),
+        "secondary_actions": [s.get("name") for s in sim.get("tindakanSekunder", [])],
+        # Tambahkan kalau kamu punya info ini:
+        # "hospital_level": claim.hospital.level if hasattr(claim, "hospital") else None,
+        # "patient_context": "...",  # misal ringkasan vital penting
+    }
+    # bersihkan None/empty
+    context = {k: v for k, v in context.items() if v and (not isinstance(v, list) or len(v))}
+
+    core_payload = {
+        "claim_id": claim_id,
+        "procedure_name": proc_name,
+        "stage": stage
+    }
+    if context:
+        core_payload["context"] = context
+
+    # forward ke core_engine, konsisten dengan endpoint lain
+    return await proxy_core_engine("/analyze_procedure", core_payload)
 
 @app.post("/generate_claim_combos")
 def generate_claim_combos(payload: dict = Body(...), db: Session = Depends(get_db)):
