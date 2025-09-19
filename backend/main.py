@@ -555,7 +555,10 @@ def make_modal(icd: str, db: Session, claim_id: int):
     - Kalau sudah ada -> ambil langsung dari DB
     """
     # ===== 1. Cek apakah sudah ada procedure untuk claim ini =====
-    existing_procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id, is_deleted=False).all()
+    existing_procs = db.query(models.ClaimProcedure) \
+    .options(joinedload(models.ClaimProcedure.procedure_details)) \
+    .filter(models.ClaimProcedure.claim_id == claim_id) \
+    .all()
 
     if not existing_procs:
         # ===== 2. Insert dummy hanya sekali =====
@@ -777,6 +780,8 @@ def make_modal(icd: str, db: Session, claim_id: int):
                 description=d["deskripsi"],
                 procedure_type="utama",      # default, bisa diubah
                 requirement_flag=False,
+                created_at=datetime.now()-timedelta(days=1),
+                updated_at=datetime.now(),
                 is_dummy=True,
                 is_deleted=False
             )
@@ -811,7 +816,7 @@ def make_modal(icd: str, db: Session, claim_id: int):
             "detail": [
                 {
                     "icd9": d.icd9_tindakan,
-                    "deskripsi": d.icd9_deskripsi_tindakan,
+                    "deskripsi": f"{d.icd9_tindakan or ''} | {d.status_tindakan or ''} | {d.ina_cbg_tindakan or ''}",
                     "validitas": d.validitas_tindakan,
                     "status": d.status_tindakan,
                     "ina_cbg": d.ina_cbg_tindakan,
@@ -824,7 +829,7 @@ def make_modal(icd: str, db: Session, claim_id: int):
         })
 
     return {
-        "aspek_klinis": {
+        "klinis": {
             "justifikasi": "GFR 15-29, BMI 30-40",
             "bukti_klinis": "Belum ada bukti, namun GFR 15-29, BMI 30-40",
             "syarat_klinis": "Belum ditentukan, namun GFR 15-29, BMI 30-40"
@@ -1046,7 +1051,11 @@ def ai_recommendation_detail_get(
             return {"status": "ok", "data": {
                 "id": diag.id,
                 "kategori": diag.diagnosis_text,
-                "klinis": diag.justifikasi,
+                "klinis": ", ".join(filter(None, [
+                    diag.justifikasi,
+                    diag.bukti_klinis,
+                    diag.syarat_klinis
+                ])),
                 "icd10": {
                     "kode_icd": diag.icd10_code,
                     "struktur_kode": diag.struktur_icd10
@@ -1061,14 +1070,28 @@ def ai_recommendation_detail_get(
             return {"status": "ok", "data": make_modal("A41.9",db, claim_id)}
 
     elif rec_type == "procedure":
-        proc = db.query(models.ClaimProcedure).filter_by(id=item_id, claim_id=claim_id).first()
+        proc = db.query(models.ClaimProcedure)\
+            .options(joinedload(models.ClaimProcedure.procedure_details))\
+            .filter_by(id=item_id, claim_id=claim_id).first()
         if proc:
+            details = [
+                {
+                    "icd9": d.icd9_tindakan,
+                    "deskripsi": d.icd9_deskripsi_tindakan,
+                    "validitas": d.validitas_tindakan,
+                    "status": d.status_tindakan,
+                    "ina_cbg": d.ina_cbg_tindakan,
+                    "faskes": d.faskes_tindakan,
+                    "rawat_inap": d.rawat_inap_tindakan,
+                    "syarat_klinis": d.syarat_klinis_tindakan,
+                }
+                for d in proc.procedure_details if not d.is_deleted
+            ]
             return {"status": "ok", "data": {
                 "id": proc.id,
                 "procedure_text": proc.procedure_text,
                 "description": proc.description,
-                # Jangan kirim tindakan_detail lagi, cukup kosongin
-                "tindakan": []  
+                "tindakan": details
             }}
         else:
             # fallback kalau kosong
@@ -1118,7 +1141,11 @@ def ai_recommendation_detail(payload: dict = Body(...), db: Session = Depends(ge
         return {"status": "ok", "data": {
             "id": diag.id,
             "kategori": diag.diagnosis_text,
-            "klinis": diag.justifikasi,
+            "klinis": ", ".join(filter(None, [
+                diag.justifikasi,
+                diag.bukti_klinis,
+                diag.syarat_klinis
+            ])),
             "icd10_code": diag.icd10_code,
             "struktur_icd10": diag.struktur_icd10
         }}
@@ -1132,6 +1159,8 @@ def ai_recommendation_detail(payload: dict = Body(...), db: Session = Depends(ge
                 claim_id=claim_id,
                 procedure_type="utama",
                 requirement_flag=False,
+                created_at=datetime.now()-timedelta(days=1),
+                updated_at=datetime.now(),
                 is_dummy=False,
                 is_deleted=False
             )
@@ -1213,24 +1242,10 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
 
     # === Kombinasi Tindakan ===
     for v in evaluasi["kombinasi_tindakan"]["validasi_verifikator"]:
-        proc = models.ClaimProcedure(
-            claim_id=claim_id,
-            procedure_type=v.get("status") or "unspecified",  # 🔹 status jadi type
-            procedure_text=v["tindakan"],                     # label tindakan
-            description="dummy evaluasi tindakan",            # atau None kalau nullable
-            requirement_flag=False,
-            is_dummy=True,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(proc)
-        db.flush()
-
         # link evaluasi ke procedure
         proc_eval = models.ClaimProcedureEvaluation(
             claim_id=claim_id,
-            procedure_id=proc.id,
+            procedure_id=None,
             validitas=parse_validitas(v.get("status")),
             status_tindakan=v.get("status"),
             is_dummy=True,

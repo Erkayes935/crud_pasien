@@ -42,6 +42,8 @@ function claimData(init) {
     modalOpen: false,
     modalTitle: '',
     modalContent: '',
+    hideDefaultClose: false,
+    currentDiagnosis: null,
 
     init() {
       const role = this.role;
@@ -148,7 +150,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
   }
 
-  // filter AI vs manual
+  // === Filter AI vs Manual ===
   const oldItems = state.simulasi[tab][type] || []
   const oldAiItems = oldItems.filter(it => !it.isManual)
   const manualItems = oldItems.filter(it => it.isManual)
@@ -158,7 +160,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
 
   let merged = [...aiItems, ...manualItems]
 
-  // hindari duplikat
+  // === Hindari duplikat ===
   const seen = new Set()
   merged = merged.filter(it => {
     const key = `${it.kategori}-${it.icd10_code || it.icd9_code}-${it.tindakan || it.procedure_text}`
@@ -173,19 +175,32 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   if (!target) return
   target.innerHTML = ""
 
-  // grup parent-child
+  // === Grouping Parent & Child ===
   let grouped = []
-  let currentParent = null
+  let parentMap = {}
+
   merged.forEach(it => {
-    if (!it.child) {
-      currentParent = { ...it, children: [] }
-      grouped.push(currentParent)
-    } else if (currentParent) {
-      currentParent.children.push(it)
+    if (!it.kategori) return
+    const name = it.kategori.trim()
+
+    if (name.startsWith("→")) {
+      // Child
+      const cleanName = name.replace("→", "").trim()
+      const match = cleanName.match(/(\D+)\s+(\d+)/i) // misal "Diagnosis 2a" → ambil "Diagnosis 2"
+      if (match) {
+        const parentKey = `${match[1]} ${match[2]}`
+        if (parentMap[parentKey]) {
+          parentMap[parentKey].children.push(it)
+        }
+      }
+    } else {
+      // Parent
+      parentMap[name] = { ...it, children: [] }
+      grouped.push(parentMap[name])
     }
   })
 
-  // header table
+  // === Header Table ===
   const table = target.closest("table")
   if (table && !table.querySelector("thead")) {
     const thead = document.createElement("thead")
@@ -196,86 +211,93 @@ function renderTable(targetId, items, type, tab, dayId = null) {
         <th class="border px-3 py-2">Klinis</th>
         <th class="border px-3 py-2">ICD</th>
         <th class="border px-3 py-2">Tindakan</th>
-        <th class="border px-3 py-2 text-center">Score</th>
-        ${state.role === "doctor" ? `<th class="border px-3 py-2 text-center">Mapping</th>` : ``}
+        <th class="border px-3 py-2">Score</th>
+        ${state.role === "doctor" ? `<th class="border px-3 py-2">Mapping</th>` : ``}
       </tr>`
     table.insertBefore(thead, table.firstChild)
   }
 
+  // === Render Parent & Child ===
   grouped.forEach((parent, idx) => {
-    const counter = 1 + (parent.children ? parent.children.length : 0)
-    const tbody = document.createElement("tbody")
-    tbody.setAttribute("x-data", "{ open:false }")
+  const counter = 1 + (parent.children ? parent.children.length : 0)
 
-    // parent row
+  // <tbody> jadi scope Alpine
+  const tbody = document.createElement("tbody")
+  tbody.setAttribute("x-data", "{ open:false }")
+
+  // parent row
+  tbody.insertAdjacentHTML("beforeend", `
+    <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
+    data-id="parent-${idx}">
+      <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+        <span @click="open=!open" class="mr-1 cursor-pointer">
+          <span x-show="!open" x-cloak>▶</span>
+          <span x-show="open" x-cloak>▼</span>
+        </span>
+        <span class="cursor-pointer"
+              onclick="openModalFromAttr(this)"
+              data-item='${JSON.stringify(parent)}'
+              data-type="${type}">
+         ${parent.kategori || parent.category || parent.nama_kategori || "-"}
+        </span>
+        <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
+      </td>
+      <td class="col-klinis border px-6 py-2">
+        <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
+          ${parent.klinis || "-"}
+        </div>
+      </td>
+      <td class="col-icd border px-[19px] py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
+      <td class="col-tindakan border px-6 py-2">
+        <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
+        ${parent.tindakan || parent.procedure_text || "-"}</div>
+      </td>
+      <td class="border px-[18px] py-2 text-center">${parent.score || "-"}</div></td>
+      ${state.role === "doctor" ? `
+      <td class="border px-3 py-2 text-center">
+        ${renderMappingSelect(parent, tab, type, idx)}
+      </td>` : ``}
+    </tr>
+  `)
+
+  // child rows ikut scope open
+  parent.children.forEach(child => {
     tbody.insertAdjacentHTML("beforeend", `
-      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm">
-        <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
-            data-item='${JSON.stringify(parent)}'
+      <tr x-show="open" x-cloak
+          class="bg-gray-50 dark:bg-gray-800 italic text-sm"
+          data-id="child-${idx}-${child.kategori}">
+        <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"
+            onclick="openModalFromAttr(this)"
+            data-item='${JSON.stringify(child)}'
             data-type="${type}">
-          <span @click.stop="open=!open" class="mr-1 cursor-pointer">
-            <span x-show="!open" x-cloak>▶</span>
-            <span x-show="open" x-cloak>▼</span>
-          </span>
-          <span class="cursor-pointer" onclick="openModalFromAttr(this)" 
-                data-item='${JSON.stringify(parent)}' data-type="${type}">
-            ${parent.kategori || parent.category || parent.nama_kategori || "-"}
-          </span>
-          <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
+          → ${child.kategori || "-"}
         </td>
-        <td class="border px-3 py-2 text-ellipsis max-w-[200px]" title="${parent.klinis || ""}">
-          ${parent.klinis ? truncateText(parent.klinis, 20) : "…"}
+        <td class="col-klinis border px-6 py-2">
+          <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
+          ${child.klinis || "-"}</div>
         </td>
-        <td class="border px-3 py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
-        <td class="border px-3 py-2 text-ellipsis max-w-[200px]" 
-            title="${parent.tindakan || parent.procedure_text || ""}">
-          ${parent.tindakan ? truncateText(parent.tindakan, 20) 
-                           : parent.procedure_text ? truncateText(parent.procedure_text, 20) 
-                           : "…"}
+        <td class="col-icd border px-[19px] py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
+        <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
+          <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
+          ${child.tindakan || child.procedure_text || "-"}
+          </div>
         </td>
-        <td class="border px-3 py-2 text-center">${parent.score || "-"}</td>
+        <td class="border px-[18px] py-2 text-center">${child.score || "-"}</td>
         ${state.role === "doctor" ? `
         <td class="border px-3 py-2 text-center">
-          ${renderMappingSelect(parent, tab, type, idx)}
+          ${renderMappingSelect(child, tab, type, idx)}
         </td>` : ``}
       </tr>
     `)
-
-    // children
-    parent.children.forEach(child => {
-      tbody.insertAdjacentHTML("beforeend", `
-        <tr x-show="open" x-cloak
-            class="bg-gray-50 dark:bg-gray-800 italic text-sm">
-          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
-              data-item='${JSON.stringify(child)}'
-              data-type="${type}"
-              onclick="openModalFromAttr(this)">
-            → ${child.kategori || "-"}
-          </td>
-          <td class="border px-3 py-2 text-ellipsis max-w-[200px]" title="${child.klinis || ""}">
-            ${child.klinis ? truncateText(child.klinis, 20) : "…"}
-          </td>
-          <td class="border px-3 py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
-          <td class="border px-3 py-2 text-ellipsis max-w-[200px]" 
-              title="${child.tindakan || child.procedure_text || ""}">
-            ${child.tindakan ? truncateText(child.tindakan, 20) 
-                             : child.procedure_text ? truncateText(child.procedure_text, 20) 
-                             : "…"}
-          </td>
-          <td class="border px-3 py-2 text-center">${child.score || "-"}</td>
-          ${state.role === "doctor" ? `
-          <td class="border px-3 py-2 text-center">
-            ${renderMappingSelect(child, tab, type, idx)}
-          </td>` : ``}
-        </tr>
-      `)
-    })
-
-    target.appendChild(tbody)
-    Alpine.initTree(tbody)
   })
 
-  // update counter
+  target.appendChild(tbody)
+  Alpine.initTree(tbody)
+})
+
+
+
+  // === Update Counter ===
   const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
   const countEl = document.getElementById(counterId)
   if (countEl) {
@@ -283,7 +305,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     countEl.textContent = total
   }
 
-  // manual row tetap ada
+  // === Manual Row Input ===
   if (state.role === "doctor") {
     if (tab === "admission" || tab === "discharge" || tab.startsWith("daily-")) {
       const manualTbody = document.createElement("tbody")
@@ -293,21 +315,25 @@ function renderTable(targetId, items, type, tab, dayId = null) {
 
       manualTbody.insertAdjacentHTML("beforeend", `
         <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-          <td class="border px-3 py-2"><input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="border px-3 py-2"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="border px-3 py-2"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" onclick="openModalFromAttr(this)"></td>
+          <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="col-icd border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="col-tindakan border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
           <td class="border px-3 py-2"><input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
           <td class="border px-3 py-2 text-center">
             <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
           </td>
         </tr>
       `)
+
       target.appendChild(manualTbody)
       Alpine.initTree(manualTbody)
     }
   }
 }
+
+
+
 
 // helper untuk potong teks + tooltip
 function truncateText(text, max) {
@@ -430,52 +456,140 @@ function addManual(type, tab) {
   .catch(err => console.error("AI enrichment failed", err))
 }
 function addManualTindakan() {
-  const nama = document.getElementById("manualNamaTindakan").value.trim();
-  const deskripsi = document.getElementById("manualDeskripsiTindakan").value.trim();
+  const namaEl = document.getElementById("manualNamaTindakan");
+  if (!namaEl) return alert("Input manual tindakan tidak ditemukan");
 
+  const nama = namaEl.value.trim();
   if (!nama) {
     alert("Nama tindakan wajib diisi");
     return;
   }
 
-  const newTd = { nama, deskripsi, source: "Manual" };
+  // 🔹 object manual tanpa id (id nanti dari DB saat Save Draft)
+  const newTd = {
+    nama,
+    deskripsi: "-",       // sementara kosong, nanti bisa diisi autocomplete/bridging
+    source: "Manual",
+    isManual: true
+  };
 
-  // 🔹 Simpan ke state (modal sekarang pakai claimState)
+  // 🔹 simpan ke state FE
   const state = window.claimState;
   if (!state.manualTindakan) state.manualTindakan = [];
   state.manualTindakan.push(newTd);
 
-  // 🔹 Tambahkan ke tampilan modal
-  const listContainer = document.querySelector("#modalContent .tindakan-list");
+  // 🔹 ambil index array manual terbaru (buat referensi openManualDetailModal)
+  const idx = state.manualTindakan.length - 1;
+
+  // 🔹 render ke UI (pakai index, bukan id)
+  const listContainer = document.querySelector(".tindakan-list");
   if (listContainer) {
-    listContainer.insertAdjacentHTML("beforeend", `
-      <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2">
-        <div>
-          <div class="font-semibold">${newTd.nama}</div>
-          <div class="text-xs text-gray-500">${newTd.deskripsi}</div>
+    listContainer.insertAdjacentHTML("afterbegin", `
+      <div class="grid grid-cols-3 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2 gap-4">
+
+        <!-- Nama tindakan -->
+        <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+            onclick="openManualNestedProcedureModal(${idx})">
+          ${newTd.nama}
+        </div>
+
+        <!-- Deskripsi -->
+        <div class="px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
+                    text-gray-900 dark:text-gray-100 rounded shadow-sm truncate"
+            title="${(newTd.deskripsi && newTd.deskripsi.includes('ICD-9:')) ? newTd.deskripsi : '-'}">
+          ${(newTd.deskripsi && newTd.deskripsi.includes("ICD-9:")) ? newTd.deskripsi : '-'}
+        </div>
+
+        <!-- Tombol -->
+        <div class="flex space-x-2 justify-end">
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Primary','${newTd.nama}','Manual', window.claimState.tab)"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Secondary','${newTd.nama}','Manual', window.claimState.tab)"
+                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
         </div>
       </div>
+
+
     `);
   }
 
-  // Reset input
-  document.getElementById("manualNamaTindakan").value = "";
-  document.getElementById("manualDeskripsiTindakan").value = "";
+  // reset input
+  namaEl.value = "";
 }
-
-
 
 // ==================== Modal ====================
 
-function openModal(title, content) {
+function openModal(title, content, { hideDefaultClose = false } = {}) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   state.modalOpen = true
   state.modalTitle = title
   state.modalContent = content
+  state.hideDefaultClose = hideDefaultClose
 }
+
+function updateRingkasanFromDiagnosis(itemId, dx) {
+  if (!dx || !itemId) return;
+
+  // cari row berdasarkan atribut data-id
+  const row = document.querySelector(`[data-id="${itemId}"]`);
+  if (!row) return;
+
+  // === update kolom Klinis ===
+  const klinisCell = row.querySelector(".col-klinis");
+  if (klinisCell) {
+    let text = "";
+
+    if (Array.isArray(dx.klinis)) {
+      text = dx.klinis.filter(Boolean).join(", ");
+    } else if (typeof dx.klinis === "string") {
+      text = dx.klinis;
+    } else if (typeof dx.klinis === "object" && dx.klinis !== null) {
+      // gabungkan semua field object
+      text = [
+        dx.klinis.justifikasi,
+        dx.klinis.bukti_klinis,
+        dx.klinis.syarat_klinis
+      ].filter(Boolean).join(", ");
+    }
+
+    klinisCell.innerHTML = text
+      ? `<span title="${text}">${truncateText(text, 20)}</span>`
+      : "-";
+  }
+
+
+  // === update kolom ICD ===
+  const icdCell = row.querySelector(".col-icd");
+  if (icdCell) {
+    if (dx.icd10 && dx.icd10.kode_icd) {
+      icdCell.innerText = dx.icd10.kode_icd;
+    } else if (dx.icd9_code) {
+      icdCell.innerText = dx.icd9_code;
+    } else {
+      icdCell.innerText = "-";
+    }
+  }
+
+  // === update kolom Tindakan ===
+  const tindakanCell = row.querySelector(".col-tindakan");
+  if (tindakanCell) {
+    if (dx.tindakan && dx.tindakan.length > 0) {
+      const text = dx.tindakan.map(t => t.procedure_text || t.nama).join(", ");
+      tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 20)}</span>`;
+    } else {
+      tindakanCell.innerText = "-";
+    }
+  }
+}
+
 
 async function openModalFromAttr(el) {
   const it = JSON.parse(el.dataset.item);
+  if (!it.id) {
+    return openManualDetailModal(it);
+  }
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=diagnosis&item_id=${it.id}`;
 
@@ -483,29 +597,80 @@ async function openModalFromAttr(el) {
     const res = await fetch(url);
     if (!res.ok) throw new Error("Server error " + res.status);
     const data = await res.json();
-
+    window.claimState.currentDiagnosis = data.data;
     const title = `Detail Diagnosis (${it.kategori || '-'})`;
     openModal(title, buildModalContent(data.data));
+
+    // ambil id row dari parent <tr>
+    const itemId = el.closest("tr")?.dataset.id;
+    if (itemId) {
+      updateRingkasanFromDiagnosis(itemId, data.data);
+    }
   } catch (err) {
     console.error("❌ Gagal load modal detail diagnosis:", err);
     alert("Gagal load detail diagnosis");
   }
 }
 
+function openManualDetailModal(it) {
+  // bikin payload mirip hasil backend supaya bisa diproses buildModalContent
+  const dummy = {
+    kategori: it.kategori || "Manual",
+    klinis: it.klinis || "-",
+    icd10: {
+      kode_icd: it.icd10_code || "-",
+      deskripsi: "-"
+    },
+    tindakan: it.procedure_text ? [{ procedure_text: it.procedure_text }] : [],
+    // field tambahan sesuai struktur asli
+    validitas: "-",
+    status: "-",
+    ina_cbg: "-",
+    faskes: "-",
+    rawat_inap: "-",
+    syarat_klinis: "-"
+  }
+
+  const title = `Detail Diagnosis (${dummy.kategori})`
+  openModal(title, buildModalContent(dummy))
+
+  // update ringkasan biar kolom Klinis / ICD / Tindakan juga keisi
+  updateRingkasanFromDiagnosis(dummy)
+}
+
+
 function buildModalContent(it) {
-  const klinis = it.aspek_klinis || { justifikasi: it.klinis || "-" };
+  return renderDiagnosisDetail(it);
+}
+
+function renderDiagnosisDetail(it) {
+  const klinisRaw = it.klinis || {};
+  let klinis = {};
+  if (typeof klinisRaw === "string") {
+    klinis = { justifikasi: klinisRaw, bukti_klinis: "-", syarat_klinis: "-" };
+  } else if (Array.isArray(klinisRaw)) {
+    klinis = { justifikasi: klinisRaw.join(", "), bukti_klinis: "-", syarat_klinis: "-" };
+  } else if (typeof klinisRaw === "object" && klinisRaw !== null) {
+    klinis = {
+      justifikasi: klinisRaw.justifikasi || "-",
+      bukti_klinis: klinisRaw.bukti_klinis || "-",
+      syarat_klinis: klinisRaw.syarat_klinis || "-"
+    };
+  } else {
+    klinis = { justifikasi: "-", bukti_klinis: "-", syarat_klinis: "-" };
+  }
+
   const icd10 = it.icd10 || { kode_icd: it.icd10_code || "-" };
   const tindakan = it.tindakan || [];
   const rawat = it.rawat_inap || {};
   const faskes = it.faskes || {};
   const rujukan = it.rujukan || {};
 
-  // helper: box 2 kolom label-value
+  // helper box 2 kolom
   const renderBox = (label, value, status = "default") => {
     let colorClass = "bg-gray-200 text-gray-800"; // default abu
     if (status === "valid") colorClass = "bg-green-600 text-white";
     if (status === "invalid") colorClass = "bg-red-600 text-white";
-
     const safeValue = value || "-";
     return `
       <div class="grid grid-cols-2">
@@ -513,48 +678,6 @@ function buildModalContent(it) {
         <div class="${colorClass} px-3 py-2">${safeValue}</div>
       </div>
     `;
-  };
-
-  // helper: render tindakan AI + form manual
-  const renderTindakan = (list) => {
-    const aiList = list && list.length > 0
-      ? list.map(td => `
-        <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2">
-          <!-- Nama + deskripsi -->
-          <div>
-            <div class="font-semibold text-blue-600 underline cursor-pointer mb-1"
-                onclick="openProcedureModal('${td.id || ''}')">
-              ${td.nama}
-            </div>
-            <div class="text-xs text-gray-500">${td.deskripsi || ""}</div>
-          </div>
-          <!-- Tombol pindah ke kanan -->
-          <div class="flex gap-2">
-            <button type="button" 
-                    onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
-                    class="bg-blue-600 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-            <button type="button" 
-                    onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
-                    class="bg-purple-600 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-          </div>
-        </div>
-      `).join("")
-      : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
-
-    // input manual tetap sama
-    const manualForm = `
-      <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
-        <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-        <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
-              class="w-full px-2 py-1 mb-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
-        <textarea id="manualDeskripsiTindakan" placeholder="Deskripsi" 
-                  class="w-full px-2 py-1 mb-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></textarea>
-        <button type="button" onclick="addManualTindakan()" 
-                class="bg-green-600 text-white px-3 py-1 rounded text-sm">➕ Tambah</button>
-      </div>
-    `;
-
-    return aiList + manualForm;
   };
 
   return `
@@ -622,64 +745,176 @@ function buildModalContent(it) {
 }
 
 
+function renderTindakan(list) {
+  const tindakanList = list && list.length > 0 
+    ? list.map(td => `
+      <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+          data-procid="${td.id}">
+        <!-- Nama Tindakan -->
+        <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+            onclick="openProcedureModal('${td.id || ''}')">
+          ${td.nama}
+        </div>
+
+        <!-- Deskripsi -->
+        <div>
+          <span
+            class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+            title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
+            ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
+          </span>
+        </div>
+
+        <!-- Tombol -->
+        <div class="flex justify-end space-x-2">
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs shadow">
+            Pilih Utama
+          </button>
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
+                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs shadow">
+            Pilih Sekunder
+          </button>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
+
+  const manualForm = `
+    <div class="tindakan-list mt-4"></div>
+    <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
+      <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
+      <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
+            class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
+      <button type="button" onclick="addManualTindakan()" 
+              class="mt-2 bg-green-600 text-white px-3 py-1 rounded">➕ Tambah</button>
+    </div>
+  `;
+  
+  return tindakanList + manualForm;
+}
+
+
+
+
 async function openProcedureModal(procId) {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
 
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Server error " + res.status);
-    const data = await res.json();
-    const procDetail = data.data;
+    const { data } = await res.json();
+    const d = (data.tindakan && data.tindakan[0]) || {};
 
-    // pakai renderer baru 2 kolom
-    const content = buildProcedureModalContent(procDetail);
+    const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
 
-    openModal(
-      `Detail Tindakan (${procDetail.procedure_text || procDetail.nama || "-"})`,
-      content
-    );
+    const dx = window.claimState.currentDiagnosis;
+    if (dx && Array.isArray(dx.tindakan)) {
+      dx.tindakan.forEach(td => {
+        if (td.id == procId) {
+          td.deskripsi = deskripsiGabungan;
+        }
+      });
+    }
+    // tampilkan nested modal
+    const content = `
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold">Detail Tindakan (${data.procedure_text || '-'})</h3>
+        <button type="button" onclick="closeNestedModal()" class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.icd9 || '-'}</div>
+        
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
+        <div class="bg-gray-800 px-3 py-2 rounded">${deskripsiGabungan}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.validitas || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.status || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.ina_cbg || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.faskes || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.rawat_inap || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.syarat_klinis || '-'}</div>
+      </div>
+    `;
+    openModal(`Detail Tindakan (${data.procedure_text || '-'})`, content, { hideDefaultClose: true });
+
+    // ✅ update DOM langsung (biar instant)
+    const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
+    if (itemEl) itemEl.textContent = deskripsiGabungan;
+
   } catch (err) {
-    console.error("❌ Gagal load modal detail tindakan:", err);
-    alert("Gagal load detail tindakan");
+    console.error("Gagal load detail tindakan", err);
   }
 }
 
-function buildProcedureModalContent(td) {
-  const renderRow = (label, value) => {
-    const safeValue = value || "-";
-    return `
-      <div class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-600 text-white px-3 py-2 rounded font-medium">
-          ${label}
-        </div>
-        <div class="bg-white dark:bg-gray-800 px-3 py-2 rounded">
-          ${safeValue}
-        </div>
-      </div>
-    `;
-  };
 
-  return `
-    <div class="space-y-3">
-      <h2 class="text-xl font-bold text-center text-yellow-400 mb-4">
-        ${td.procedure_text || td.nama || "Detail Tindakan"}
-      </h2>
+function openManualNestedProcedureModal(idx) {
+  const td = window.claimState.manualTindakan[idx] || {};
 
-      <div class="space-y-2">
-        ${renderRow("Kode ICD-9", td.icd9_tindakan)}
-        ${renderRow("Deskripsi", td.icd9_deskripsi_tindakan)}
-        ${renderRow("Validitas", td.validitas_tindakan)}
-        ${renderRow("Status Tindakan", td.status_tindakan)}
-        ${renderRow("INA-CBG / Tarif", td.ina_cbg_tindakan)}
-        ${renderRow("Faskes", td.faskes_tindakan)}
-        ${renderRow("Rawat Inap", td.rawat_inap_tindakan)}
-        ${renderRow("Syarat Klinis", td.syarat_klinis_tindakan)}
-      </div>
+  const content = `
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="text-lg font-bold">Detail Tindakan (${td.nama} - Manual)</h3>
+      <button type="button" onclick="closeNestedModal()" 
+              class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-icd9">${td.icd9 || '-'}</div>
+      
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.deskripsi || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.validitas || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-status">${td.status || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-inacbg">${td.ina_cbg || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.faskes || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.rawat_inap || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.syarat_klinis || '-'}</div>
     </div>
   `;
+
+  openModal(`Detail Tindakan (${td.nama} - Manual)`, content);
 }
 
+
+function closeNestedModal() {
+  const dx = window.claimState.currentDiagnosis;
+  if (dx) {
+    // panggil ulang modal diagnosis
+    const title = `Detail Diagnosis (${dx.kategori || '-'})`;
+    openModal(title, buildModalContent(dx));
+  } else {
+    // fallback: kalau nggak ada data, baru beneran nutup modal
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    state.modalOpen = false;
+  }
+}
 
 // ==================== Simulasi ====================
 function normalizeOpt(opt) {
@@ -908,6 +1143,7 @@ function onMappingChange(event, tab, type, idx) {
   }
 }
 
+// ==================== Generate Summary ====================
 async function generateSummary() {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   if (!claimId) {
@@ -916,10 +1152,8 @@ async function generateSummary() {
   }
 
   try {
-    // Ambil state simulasi dari Alpine
     const state = Alpine.$data(document.getElementById("claimRoot"));
 
-    // Payload minimal: mapping utama/sekunder dari simulasi
     const payload = {
       claim_id: claimId,
       simulasi: state.simulasi,
@@ -936,98 +1170,126 @@ async function generateSummary() {
 
     console.log("📥 Summary dari BE:", data);
 
-    // Render evaluasi hasil summary
-    renderEvaluasiDiagnosis(data.diagnosis || []);
-    renderEvaluasiProcedure(data.procedure || []);
+    // Render ke panel
+    renderEvaluasiDiagnosis(data.diagnosis || {});
+    renderEvaluasiProcedure(data.procedure || {});
     renderAlternatifKombinasi(data.alternatif || []);
 
-    // Trigger Alpine untuk update rekomendasi
-    window.dispatchEvent(new CustomEvent("update-rekom", {
-      detail: {
-        medis: data.diagnosis || [],
-        regulasi: data.procedure || [],
-        tarif: data.alternatif || []
-      }
-    }));
-
     alert("✅ Summary berhasil digenerate");
-
   } catch (err) {
     console.error("Error generate summary:", err);
     alert("❌ Gagal generate summary");
   }
 }
 
-
-
-// ==================== Panel Evaluasi & Alternatif ====================
-
-function renderEvaluasiDiagnosis(items) {
+// ==================== Panel Evaluasi Diagnosis ====================
+function renderEvaluasiDiagnosis(data) {
   const target = document.getElementById("evaluasi-diagnosis");
   if (!target) return;
   target.innerHTML = "";
 
-  (items || [])
-    .filter(it => it.kategori || it.klinis || it.score)  // 🚨 filter yang kosong
-    .forEach(it => {
-      target.insertAdjacentHTML("beforeend", `
-        <div class="p-2 border-b">
-          <b>${it.kategori || "-"}</b> - ${it.klinis || "-"}
-          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
-        </div>
-      `);
-    });
-
-  if (target.innerHTML.trim() === "") {
+  if (!data || Object.keys(data).length === 0) {
     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi</div>`;
+    return;
   }
+
+  target.innerHTML = `
+    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Validitas Klinis Kombinasi</th>
+          <td class="px-3 py-2">${statusIcon(data.validitas)}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Severity</th>
+          <td class="px-3 py-2">${data.severity || "-"}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Kode INA-CBG</th>
+          <td class="px-3 py-2">${data.ina_cbg || "-"}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Estimasi Tarif</th>
+          <td class="px-3 py-2">${formatRupiah(data.tarif)}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Syarat Klinis</th>
+          <td class="px-3 py-2">${data.syarat || "-"}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Evaluasi Faskes</th>
+          <td class="px-3 py-2">${data.faskes || "-"}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Rawat Inap</th>
+          <td class="px-3 py-2">${data.rawat_inap || "-"}</td></tr>
+    </table>
+  `;
 }
 
-function renderEvaluasiProcedure(items) {
+// ==================== Panel Evaluasi Tindakan ====================
+function renderEvaluasiProcedure(data) {
   const target = document.getElementById("evaluasi-procedure");
   if (!target) return;
   target.innerHTML = "";
 
-  (items || [])
-    .filter(it => it.kategori || it.tindakan || it.score) // filter kosong
-    .forEach(it => {
-      target.insertAdjacentHTML("beforeend", `
-        <div class="p-2 border-b">
-          <b>${it.kategori || "-"}</b> - ${it.tindakan || "-"}
-          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
-        </div>
-      `);
-    });
-
-  if (target.innerHTML.trim() === "") {
+  if (!data || Object.keys(data).length === 0) {
     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
+    return;
   }
+
+  target.innerHTML = `
+    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Tindakan Wajib Kombinasi</th>
+          <td class="px-3 py-2">${statusIcon(data.tindakan_wajib)}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Validasi Pilihan Verifikator</th>
+          <td class="px-3 py-2">${statusIcon(data.validasi)}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Dampak INA-CBG / Tarif</th>
+          <td class="px-3 py-2">${data.dampak || "-"}</td></tr>
+      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Konflik / Duplikasi</th>
+          <td class="px-3 py-2">${data.konflik || "-"}</td></tr>
+    </table>
+  `;
 }
 
-
+// ==================== Panel Alternatif Kombinasi ====================
 function renderAlternatifKombinasi(items) {
   const target = document.getElementById("alternatif");
   if (!target) return;
   target.innerHTML = "";
 
-  (items || [])
-    .filter(it => it.nama || it.deskripsi || it.score) // filter kosong
-    .forEach(it => {
-      target.insertAdjacentHTML("beforeend", `
-        <div class="p-2 border-b">
-          <b>${it.nama || "Alternatif"}</b> - ${it.deskripsi || "-"}
-          <span class="ml-2">${confidenceBadge(it.score || 0)}</span>
-        </div>
-      `);
-    });
-
-  if (target.innerHTML.trim() === "") {
+  if (!items || items.length === 0) {
     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada alternatif kombinasi</div>`;
+    return;
   }
+
+  items.forEach((alt, i) => {
+    target.insertAdjacentHTML("beforeend", `
+      <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
+        <h4 class="font-bold text-blue-600 mb-2">Alternatif ${i + 1}: ${alt.nama || "-"}</h4>
+        <div class="text-sm">
+          <div><b>Severity:</b> ${alt.severity || "-"}</div>
+          <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>
+          <div><b>Tarif:</b> ${formatRupiah(alt.tarif)}</div>
+          <div><b>Syarat Klinis:</b> ${alt.syarat || "-"}</div>
+          <div><b>Evaluasi Faskes:</b> ${alt.faskes || "-"}</div>
+          <div><b>Rawat Inap:</b> ${alt.rawat_inap || "-"}</div>
+          <div><b>Tindakan Wajib:</b> ${alt.tindakan_wajib || "-"}</div>
+        </div>
+      </div>
+    `);
+  });
 }
+
+// ==================== Helper ====================
+function statusIcon(val) {
+  if (!val) return `<span class="text-gray-400">-</span>`;
+  if (val.toLowerCase().includes("valid"))
+    return `<span class="text-green-600 font-bold">✔️ ${val}</span>`;
+  if (val.toLowerCase().includes("tidak"))
+    return `<span class="text-red-600 font-bold">❌ ${val}</span>`;
+  if (val.toLowerCase().includes("warning") || val.toLowerCase().includes("butuh"))
+    return `<span class="text-yellow-600 font-bold">⚠️ ${val}</span>`;
+  return val;
+}
+
+function formatRupiah(num) {
+  if (!num) return "-";
+  return "Rp " + Number(num).toLocaleString("id-ID");
+}
+
+// Expose ke global
 
 
 window.addManual = addManual
+window.openProcedureModal = openProcedureModal;
+window.closeNestedModal = closeNestedModal;
 window.generateSummary = generateSummary;
 window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
 window.renderEvaluasiProcedure = renderEvaluasiProcedure;
