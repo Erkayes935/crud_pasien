@@ -42,9 +42,9 @@
       <div x-show="tab==='admission'" class="space-y-4">
 
         <!-- Diagnosis -->
-        <details open class="border rounded">
+        <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Diagnosis Admission</span>
+            <span class="font-semibold">Diagnosis</span>
             <span id="count-diagnosis-admission" 
                   class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
           </summary>
@@ -118,9 +118,9 @@
       <div x-show="tab==='discharge'" class="space-y-4">
 
         <!-- Diagnosis -->
-        <details open class="border rounded">
+        <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Diagnosis Discharge</span>
+            <span class="font-semibold">Diagnosis</span>
             <span id="count-diagnosis-discharge" 
                   class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
           </summary>
@@ -302,6 +302,9 @@
           <h3 class="font-semibold">Alternatif Kombinasi</h3>
           <div id="alternatif" class="text-xs"></div>
         </div>
+
+        <!-- Hidden inputs -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <!-- Tombol Recalculate + Save Draft/Final -->
         <div class="space-y-3">

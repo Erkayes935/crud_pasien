@@ -1045,7 +1045,7 @@ def ai_recommendation_detail_get(
     - diagnosis → ClaimDiagnosis (kalau belum ada, dummy modal)
     - procedure → ClaimProcedure + ClaimProcedureDetail
     """
-    if rec_type == "diagnosis":
+    if rec_type in ["diagnosis", "komorbid", "komplikasi"]:
         diag = db.query(models.ClaimDiagnosis).filter_by(id=item_id, claim_id=claim_id).first()
         if diag:
             return {"status": "ok", "data": {
@@ -1166,7 +1166,7 @@ def ai_recommendation_detail(payload: dict = Body(...), db: Session = Depends(ge
             )
 
         proc.procedure_text = payload.get("procedure_text", proc.procedure_text)
-        proc.icd9_code = payload.get("icd9_code", proc.icd9_code)
+        proc.icd10_code = payload.get("icd10_code", proc.icd10_code)
 
         db.add(proc)
         db.flush()
@@ -1198,7 +1198,7 @@ def ai_recommendation_detail(payload: dict = Body(...), db: Session = Depends(ge
         return {"status": "ok", "data": {
             "id": proc.id,
             "procedure_text": proc.procedure_text,
-            "icd9_code": proc.icd9_code
+            "icd10_code": proc.icd10_code
         }}
 
     return {"error": f"Tipe {rec_type} tidak dikenali"}
@@ -2047,7 +2047,7 @@ def update_claim_draft(
 
     db.commit()
     db.refresh(claim)
-
+    flash(request, "Draft klaim berhasil diperbarui", "success")
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
