@@ -1,15 +1,15 @@
 function ensureDaily(dayId) {
-  if (!window.manualInput) window.manualInput = { daily: {} };
-  if (!manualInput.daily) manualInput.daily = {};
-  if (!manualInput.daily[dayId]) {
-    manualInput.daily[dayId] = {
-      diagnosis:   { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
-      komorbid:    { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
-      komplikasi:  { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  if (!state.manualInput.daily) state.manualInput.daily = {};
+  if (!state.manualInput.daily[dayId]) {
+    state.manualInput.daily[dayId] = {
+      diagnosis: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komorbid:  { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komplikasi:{ kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
     };
   }
-  return manualInput.daily[dayId];
 }
+
 
 // ==================== Generate AI ====================
 function claimData(init) {
@@ -58,6 +58,7 @@ function claimData(init) {
     modalContent: '',
     hideDefaultClose: false,
     currentDiagnosis: null,
+    currentProcedure: null,
 
     init() {
       const role = this.role;
@@ -218,11 +219,11 @@ function renderAI(rows) {
 
 
 // ==================== Render Table ====================
-function renderTable(targetId, items, type, tab, dayId = null) {
+function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
   const state = Alpine.$data(document.getElementById("claimRoot"))
 
   if (!state.simulasi[tab]) {
-    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [] }
   }
 
   // === Filter AI vs Manual ===
@@ -233,7 +234,13 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   const newAiItems = (items || []).filter(it => !it.isManual)
   const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
 
-  let merged = [...aiItems, ...manualItems]
+  if (type === "tindakan") {
+  // manual tindakan dihandle terpisah
+    merged = [...aiItems]
+  } else {
+    // selain itu (diagnosis/komorbid/komplikasi) tetap digabung manual
+    merged = [...aiItems, ...manualItems]
+  }
 
   // === Hindari duplikat ===
   const seen = new Set()
@@ -390,7 +397,7 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   }
 
   // === Manual Row Input ===
-  if (state.role === "doctor") {
+  if (!skipManualRow && state.role === "doctor") {
     if (tab === "admission" || tab === "discharge" || tab.startsWith("daily-")) {
       const manualTbody = document.createElement("tbody")
       const tabPath = tab.startsWith("daily-") 
@@ -422,13 +429,13 @@ function truncateText(text, max) {
 }
 
 // helper untuk mapping select
-function renderMappingSelect(item, tab, type, idx, isChild=false) {
+function renderMappingSelect(item, tab, type) {
   const disabled = window.claimState.role !== 'doctor' ? 'disabled' : ''
   return `
-    <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
+    <select onchange="onMappingChange(event, '${tab}', '${type}', ${item.id})"
             class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
             ${disabled}>
-      <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
+      <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
       <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
       <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
       <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
@@ -438,27 +445,22 @@ function renderMappingSelect(item, tab, type, idx, isChild=false) {
 }
 
 
+
 // ==================== Add Manual ====================
 function addManual(type, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const state = Alpine.$data(document.getElementById('claimRoot'));
 
-  // Pastikan manualInput daily ada
-  if (tab.startsWith("daily-") && !state.manualInput.daily[tab]) {
-    state.manualInput.daily[tab] = {
-      diagnosis: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
-      komorbid:  { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
-      komplikasi:{ kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
-    }
-  }
+  // Daily setup
+  if (tab.startsWith("daily-")) ensureDaily(tab);
 
   // Ambil input
   const input = tab.startsWith("daily-")
     ? state.manualInput.daily[tab][type]
-    : state.manualInput[tab][type]
+    : state.manualInput[tab][type];
 
   if (!input) {
-    console.warn("❌ manualInput kosong:", tab, type)
-    return
+    console.warn("❌ manualInput kosong:", tab, type);
+    return;
   }
 
   // Buat item manual
@@ -471,20 +473,20 @@ function addManual(type, tab) {
     mapping: "",
     isManual: true,
     source: "Manual"
-  }
+  };
 
-  // Pastikan simulasi[tab][type] ada
+  // Pastikan simulasi[tab] ada
   if (!state.simulasi[tab]) {
-    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[] }
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[] };
   }
   if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
+    state.simulasi[tab][type] = [];
   }
 
-  // Tambahkan item ke simulasi per-tab
-  state.simulasi[tab][type].push(newItem)
+  // Push ke simulasi per-tab
+  state.simulasi[tab][type].push(newItem);
 
-  // Sinkronisasi daily summary
+  // ✅ Sinkronisasi daily summary
   if (tab.startsWith("daily-")) {
     const idx = parseInt(tab.split("-")[1], 10);
     if (!state.simulasi.daily) state.simulasi.daily = { days: [], utama:null, sekunder:[] };
@@ -494,34 +496,23 @@ function addManual(type, tab) {
     state.simulasi.daily.utama = null;
     state.simulasi.daily.sekunder = [];
     allDays.forEach(d => {
-      if (d.utama && !state.simulasi.daily.utama) state.simulasi.daily.utama = d.utama;
-      if (Array.isArray(d.sekunder)) state.simulasi.daily.sekunder.push(...d.sekunder);
+      if (d?.utama && !state.simulasi.daily.utama) state.simulasi.daily.utama = d.utama;
+      if (Array.isArray(d?.sekunder)) state.simulasi.daily.sekunder.push(...d.sekunder);
     });
   }
 
-  ensureDaily(dayId);
+  // ✅ Render ulang table tanpa manual row
+  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab, null, true);
 
-  // Render ulang tabel
-  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
+  // ✅ Reset input
+  Object.keys(input).forEach(k => input[k] = "");
 
-  // 🚨 Enrichment BE kalau endpoint memang ada
-
-  fetch("/ai/recommendation/detail", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      claim_id: state.claimId,
-      type,
-      ...newItem
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    Object.assign(newItem, data.data || {})
-    renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
-  })
-  .catch(err => console.error("AI enrichment failed", err))
+  // ✅ Tambah lagi row input manual supaya bisa isi lagi
+  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab);
 }
+
+
+
 
 function addManualTindakan() {
   const namaEl = document.getElementById("manualNamaTindakan");
@@ -533,59 +524,76 @@ function addManualTindakan() {
     return;
   }
 
-  // 🔹 object manual tanpa id (id nanti dari DB saat Save Draft)
-  const newTd = {
-    nama,
-    deskripsi: "-",       // sementara kosong, nanti bisa diisi autocomplete/bridging
+  const state = window.claimState;
+  if (!state.manualTindakan) state.manualTindakan = [];
+
+  // cari index lama
+  const idx = state.manualTindakan.findIndex(td => td.nama === nama);
+
+  let newTd = {
+    nama: nama,
+    deskripsi: "-",
     source: "Manual",
     isManual: true
   };
+  newTd = normalizeProcedure(newTd);
 
-  // 🔹 simpan ke state FE
+  if (idx !== -1) {
+    // 🔄 replace langsung, jangan push
+    state.manualTindakan[idx] = newTd;
+  } else {
+    state.manualTindakan.push(newTd);
+  }
+
+  renderManualTindakanList();
+  namaEl.value = "";
+}
+
+
+
+
+
+function renderManualTindakanList() {
   const state = window.claimState;
-  if (!state.manualTindakan) state.manualTindakan = [];
-  state.manualTindakan.push(newTd);
-
-  // 🔹 ambil index array manual terbaru (buat referensi openManualDetailModal)
-  const idx = state.manualTindakan.length - 1;
-
-  // 🔹 render ke UI (pakai index, bukan id)
   const listContainer = document.querySelector(".tindakan-list");
-  if (listContainer) {
-    listContainer.insertAdjacentHTML("afterbegin", `
+  if (!listContainer) return;
+
+  state.manualTindakan = (state.manualTindakan || []).filter(td => td.nama && td.nama !== "-" && td.nama !== "undefined");
+
+  listContainer.innerHTML = ""; // bersihin dulu
+
+  (state.manualTindakan || []).forEach((td, idx) => {
+    listContainer.insertAdjacentHTML("beforeend", `
       <div class="grid grid-cols-3 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2 gap-4">
 
         <!-- Nama tindakan -->
         <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
             onclick="openManualNestedProcedureModal(${idx})">
-          ${newTd.nama}
+          ${td.nama}
         </div>
 
         <!-- Deskripsi -->
         <div class="px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
                     text-gray-900 dark:text-gray-100 rounded shadow-sm truncate"
-            title="${(newTd.deskripsi && newTd.deskripsi.includes('ICD-9:')) ? newTd.deskripsi : '-'}">
-          ${(newTd.deskripsi && newTd.deskripsi.includes("ICD-9:")) ? newTd.deskripsi : '-'}
+            title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
+          ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
         </div>
 
         <!-- Tombol -->
         <div class="flex space-x-2 justify-end">
           <button type="button"
-                  onclick="updateSimulasi('tindakan','Primary','${newTd.nama}','Manual', window.claimState.tab)"
+                  onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
                   class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
           <button type="button"
-                  onclick="updateSimulasi('tindakan','Secondary','${newTd.nama}','Manual', window.claimState.tab)"
+                  onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
                   class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
         </div>
       </div>
-
-
     `);
-  }
-
-  // reset input
-  namaEl.value = "";
+  });
 }
+
+
 
 // ==================== Modal ====================
 
@@ -660,6 +668,16 @@ async function openModalFromAttr(el, type) {
 
   try {
     let dx;
+    if ((!dbId || isNaN(Number(dbId))) && tr?.dataset.row) {
+      dx = JSON.parse(tr.dataset.row);
+
+      // simpan judul diagnosis manual
+      window.claimState.currentDiagnosis = dx;
+      window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
+
+      openModal(`Detail Diagnosis (${window.claimState.currentDiagnosisTitle})`, buildModalContent(dx));
+      return;
+    }
     if (dbId && !isNaN(Number(dbId))) {
       const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
       const res = await fetch(url);
@@ -670,10 +688,26 @@ async function openModalFromAttr(el, type) {
       dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
     }
 
-    // 🔹 tampilkan modal
-    openModal(`Detail ${type}`, buildModalContent(dx));
+    // 🔹 tampilkan modal (selalu pakai format "Detail Diagnosis (nama penyakit)")
+    let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
+    // buang segitiga dan angka di ujung
+    rawText = rawText.replace(/^▶|^▼/, "").trim(); // hapus ikon di awal
+    rawText = rawText.replace(/\s+\d+$/, "");
+    const namaPenyakit =
+    dx?.kategori ||
+    dx?.nama_kategori ||
+    dx?.diagnosis ||
+    dx?.komorbid ||
+    dx?.komplikasi ||
+    rawText ||
+    "-";
+    openModal(`Detail Diagnosis (${namaPenyakit})`, buildModalContent(dx));
+    // set current diagnosis dulu
+    window.claimState.currentDiagnosis = dx;
+    window.claimState.currentDiagnosisTitle = namaPenyakit;
 
-    // 🔹 baru update ringkasan (kolom tabel)
+
+    // update ringkasan tabel
     updateRingkasanFromRow(uiId, dx);
 
   } catch (err) {
@@ -705,6 +739,7 @@ function openManualDetailModal(it) {
 
   const title = `Detail Diagnosis (${dummy.kategori})`
   openModal(title, buildModalContent(dummy))
+  window.claimState.currentProcedure = dummy
 
   // update ringkasan biar kolom Klinis / ICD / Tindakan juga keisi
   updateRingkasanFromRow(dummy)
@@ -712,8 +747,22 @@ function openManualDetailModal(it) {
 
 
 function buildModalContent(it) {
-  return renderDiagnosisDetail(it);
+  let content = renderDiagnosisDetail(it);
+
+  // slot untuk list manual, terpisah dari tindakan AI/DB
+  content += `
+    <div class="tindakan-list mt-4"></div>
+  `;
+
+  // render manual setelah modal terbuka
+  setTimeout(() => {
+    renderManualTindakanList();
+  }, 0);
+
+  return content;
 }
+
+
 
 function renderDiagnosisDetail(it) {
   const klinisRaw = it.klinis || {};
@@ -819,7 +868,7 @@ function renderDiagnosisDetail(it) {
 
 function renderTindakan(list) {
   const tindakanList = list && list.length > 0 
-    ? list.map(td => `
+    ? list.filter(td => td.nama && td.nama !== "undefined").map(td => `
       <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
           data-procid="${td.id}">
         <!-- Nama Tindakan -->
@@ -858,10 +907,19 @@ function renderTindakan(list) {
     <div class="tindakan-list mt-4"></div>
     <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
       <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-      <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
-            class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
-      <button type="button" onclick="addManualTindakan()" 
-              class="mt-2 bg-green-600 text-white px-3 py-1 rounded">➕ Tambah</button>
+
+      <!-- Flex container -->
+      <div class="flex gap-2">
+        <!-- Input -->
+        <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
+              class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
+
+        <!-- Button -->
+        <button type="button" onclick="addManualTindakan()" 
+                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center">
+          ➕ Tambah
+        </button>
+      </div>
     </div>
   `;
   
@@ -890,9 +948,12 @@ async function openProcedureModal(procId) {
     }
     // tampilkan nested modal
     const content = `
-      <div class="flex justify-between items-center mb-3">
-        <h3 class="text-lg font-bold">Detail Tindakan (${data.procedure_text || '-'})</h3>
-        <button type="button" onclick="closeNestedModal()" class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      <div class="flex justify-end items-start mb-3">
+        <button type="button"
+                onclick="closeNestedModal()"
+                class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">
+          ✕
+        </button>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
@@ -933,11 +994,10 @@ async function openProcedureModal(procId) {
 
 
 function openManualNestedProcedureModal(idx) {
-  const td = window.claimState.manualTindakan[idx] || {};
+  let td = normalizeProcedure(window.claimState.manualTindakan[idx] || {});
 
   const content = `
-    <div class="flex justify-between items-center mb-3">
-      <h3 class="text-lg font-bold">Detail Tindakan (${td.nama} - Manual)</h3>
+    <div class="flex justify-end items-start mb-3">
       <button type="button" onclick="closeNestedModal()" 
               class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
     </div>
@@ -969,22 +1029,27 @@ function openManualNestedProcedureModal(idx) {
     </div>
   `;
 
-  openModal(`Detail Tindakan (${td.nama} - Manual)`, content);
+  const titleNama = td?.nama || td?.procedure_text || "Manual";
+  openModal(`Detail Tindakan (${titleNama} - Manual)`, content);
+  window.claimState.currentProcedure = td;
 }
 
 
 function closeNestedModal() {
   const dx = window.claimState.currentDiagnosis;
   if (dx) {
-    // panggil ulang modal diagnosis
-    const title = `Detail Diagnosis (${dx.kategori || '-'})`;
-    openModal(title, buildModalContent(dx));
+    const nama = window.claimState.currentDiagnosisTitle 
+          || dx?.kategori 
+          || "-";
+    openModal(`Detail Diagnosis (${nama})`, buildModalContent(dx));
+
   } else {
-    // fallback: kalau nggak ada data, baru beneran nutup modal
     const state = Alpine.$data(document.getElementById('claimRoot'));
     state.modalOpen = false;
   }
 }
+
+
 
 // ==================== Simulasi ====================
 function normalizeOpt(opt) {
@@ -1101,6 +1166,14 @@ function updateSimulasi(type, opt, value, source, tab) {
   console.log("🟢 Simulasi updated:", state.simulasi);
 }
 
+function normalizeProcedure(td) {
+  if (!td) return { nama: "-" };
+  return {
+    ...td,
+    nama: td.nama || td.name || td.procedure_text || td.kategori || "-"
+  };
+}
+
 
 // ==================== Helpers ====================
 
@@ -1197,13 +1270,13 @@ function mapRecommendation(r) {
   };
 }
 
-function onMappingChange(event, tab, type, idx) {
+function onMappingChange(event, tab, type, itemId) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   const arr = state.simulasi?.[tab]?.[type] || []
-  const item = arr[idx]
+  const item = arr.find(it => it.id == itemId)
 
   if (!item) {
-    console.warn("❌ onMappingChange: item not found", { tab, type, idx })
+    console.warn("❌ onMappingChange: item not found", { tab, type, itemId })
     return
   }
 
@@ -1230,6 +1303,7 @@ function onMappingChange(event, tab, type, idx) {
     })
   }
 }
+
 
 // ==================== Generate Summary ====================
 async function generateSummary() {
