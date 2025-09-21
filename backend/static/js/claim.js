@@ -1355,25 +1355,24 @@ function renderEvaluasiDiagnosis(data) {
     return;
   }
 
-  target.innerHTML = `
-    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Validitas Klinis Kombinasi</th>
-          <td class="px-3 py-2">${statusIcon(data.validitas)}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Severity</th>
-          <td class="px-3 py-2">${data.severity || "-"}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Kode INA-CBG</th>
-          <td class="px-3 py-2">${data.ina_cbg || "-"}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Estimasi Tarif</th>
-          <td class="px-3 py-2">${formatRupiah(data.tarif)}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Syarat Klinis</th>
-          <td class="px-3 py-2">${data.syarat || "-"}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Evaluasi Faskes</th>
-          <td class="px-3 py-2">${data.faskes || "-"}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Rawat Inap</th>
-          <td class="px-3 py-2">${data.rawat_inap || "-"}</td></tr>
-    </table>
-  `;
+  target.insertAdjacentHTML("beforeend", `
+    <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Diagnosis</h3>
+    <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
+      <div class="text-sm space-y-1">
+        <div><b>Validitas Klinis:</b> ${statusIcon(data.validitas)}</div>
+        <div><b>Severity:</b> ${data.severity || "-"}</div>
+        <div><b>INA-CBG:</b> ${data.kode_ina_cbg || "-"}</div>
+        <div><b>Estimasi Tarif:</b> ${formatRupiah(data.estimasi_tarif)}</div>
+        <div><b>Syarat Klinis:</b> ${data.syarat || "-"}</div>
+        <div><b>Evaluasi Faskes:</b> ${data.evaluasi_faskes || "-"}</div>
+        <div><b>Rawat Inap:</b> ${data.rawat_inap || "-"}</div>
+      </div>
+    </div>
+  `);
 }
+
+
+
 
 // ==================== Panel Evaluasi Tindakan ====================
 function renderEvaluasiProcedure(data) {
@@ -1386,19 +1385,21 @@ function renderEvaluasiProcedure(data) {
     return;
   }
 
-  target.innerHTML = `
-    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Tindakan Wajib Kombinasi</th>
-          <td class="px-3 py-2">${statusIcon(data.tindakan_wajib)}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Validasi Pilihan Verifikator</th>
-          <td class="px-3 py-2">${statusIcon(data.validasi)}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Dampak INA-CBG / Tarif</th>
-          <td class="px-3 py-2">${data.dampak || "-"}</td></tr>
-      <tr><th class="bg-gray-200 dark:bg-gray-700 px-3 py-2 text-left">Konflik / Duplikasi</th>
-          <td class="px-3 py-2">${data.konflik || "-"}</td></tr>
-    </table>
-  `;
+  target.insertAdjacentHTML("beforeend", `
+    <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
+    <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
+      <div class="text-sm space-y-1">
+        <div><b>Tindakan Wajib:</b> ${statusIcon(data.tindakan_wajib)}</div>
+        <div><b>Validasi Pilihan Verifikator:</b> Verifikator memilih: ${data.validasi || "-"}</div>
+        <div><b>Dampak INA-CBG/Tarif:</b> Terpengaruh tarif: ${formatRupiah(data.dampak)}</div>
+        <div><b>Konflik/Duplikasi:</b> Catatan: ${data.konflik || "-"}</div>
+      </div>
+    </div>
+  `);
 }
+
+
+
 
 // ==================== Panel Alternatif Kombinasi ====================
 function renderAlternatifKombinasi(items) {
@@ -1410,6 +1411,13 @@ function renderAlternatifKombinasi(items) {
     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada alternatif kombinasi</div>`;
     return;
   }
+
+  // 🔹 Tambahin judul dengan counter
+  target.insertAdjacentHTML("beforeend", `
+    <h3 class="font-bold text-lg mb-2 text-yellow-500">
+      Alternatif Kombinasi (${items.length})
+    </h3>
+  `);
 
   items.forEach((alt, i) => {
     target.insertAdjacentHTML("beforeend", `
@@ -1428,6 +1436,8 @@ function renderAlternatifKombinasi(items) {
     `);
   });
 }
+
+
 
 // ==================== Helper ====================
 function statusIcon(val) {

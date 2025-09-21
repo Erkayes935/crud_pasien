@@ -286,20 +286,19 @@
         </div>
       
         <!-- Tombol Generate Summary -->
-        <button type="button" onclick="generateSummary()" 
-                class="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold">
-          Generate Summary
-        </button>
+        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4"></div>
+          <button type="button" onclick="generateSummary()" 
+                  class="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold">
+            Generate Summary
+          </button>
+        </div>
 
         <!-- Evaluasi -->
         <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
-          <h3 class="font-semibold">Evaluasi Kombinasi Diagnosis</h3>
           <div id="evaluasi-diagnosis" class="text-xs"></div>
 
-          <h3 class="font-semibold">Evaluasi Kombinasi Tindakan</h3>
           <div id="evaluasi-procedure" class="text-xs"></div>
 
-          <h3 class="font-semibold">Alternatif Kombinasi</h3>
           <div id="alternatif" class="text-xs"></div>
         </div>
 
@@ -307,7 +306,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <!-- Tombol Recalculate + Save Draft/Final -->
-        <div class="space-y-3">
+        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
           <button type="button" onclick="generateAI()" 
                   class="w-full bg-yellow-600 text-white px-4 py-2 rounded font-semibold">
             Recalculate
