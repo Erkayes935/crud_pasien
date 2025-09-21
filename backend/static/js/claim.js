@@ -71,9 +71,13 @@ function claimData(init) {
     },
 
     statusIcon(s) {
-      if (s === 'valid') return "✅";
-      if (s === 'warning') return "⚠️";
-      if (s === 'invalid') return "❌";
+      if (!s) return "";
+      const val = String(s).toLowerCase();
+
+      if (val.includes("invalid")) return "❌";
+      if (val.includes("warning") || val.includes("optional")) return "⚠️";
+      if (val.includes("valid")) return "✅";
+
       return "";
     },
   };

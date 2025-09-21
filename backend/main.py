@@ -1171,11 +1171,11 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             return None
         raw_lower = raw.lower()
 
-        if "valid" in raw_lower:
+        if raw_lower == "valid":
             return "valid"
-        if "invalid" in raw_lower:
+        if raw_lower == "invalid":
             return "invalid"
-        if "warning" and "medium" in raw_lower:
+        if raw_lower == "warning":
             return "warning"
         return None
 
