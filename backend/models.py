@@ -318,6 +318,7 @@ class ClaimDiagnosisEvaluation(Base):
     diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"))
 
     validitas = Column(Enum("valid", "invalid", "warning", name="eval_status"), nullable=True)
+    validitas_detail = Column(String(255), nullable=True)
     severity = Column(String(50), nullable=True)
     kode_ina_cbg = Column(String(50), nullable=True)
     estimasi_tarif = Column(Numeric(18, 2), nullable=True)
@@ -341,6 +342,8 @@ class ClaimProcedureEvaluation(Base):
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"))
 
     validitas = Column(Enum("valid", "invalid", "warning", name="eval_status_proc"), nullable=True)
+    validitas_detail = Column(String(255), nullable=True)
+
     status_tindakan = Column(String(50), nullable=True)   # wajib / opsional / minor
     tarif_impact = Column(Numeric(18, 2), nullable=True)
     faskes = Column(Text, nullable=True)

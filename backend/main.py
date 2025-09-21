@@ -865,7 +865,8 @@ def make_dummy(tab):
         },
         "evaluasi": {
             "kombinasi_diagnosis": {
-                "validitas": "Sepsis + DM valid (komorbid umum)",
+                "validitas": "valid",
+                "validitas_detail": "Sepsis + DM valid (komorbid umum)",
                 "severity": "Medium (Sepsis + DM)",
                 "kode_ina_cbg": "D-04-12",
                 "estimasi_tarif": "Rp 7.500.000",
@@ -873,21 +874,28 @@ def make_dummy(tab):
                 "evaluasi_faskes": "Minimal RS Tipe B",
                 "rawat_inap": "Minimal 3 hari rawat"
             },
-            "kombinasi_tindakan": {
-                "tindakan_wajib": "Sepsis + ARDS valid",
-                "validasi_verifikator": [
-                    {"tindakan": "Antibiotik IV", "status": "optional"},
-                    {"tindakan": "Ventilasi Mekanik", "status": "wajib"}
-                ],
-                "dampak_tarif": [
-                    {"kombinasi": "Sepsis + DM", "tarif": "Rp 7.500.000"},
-                    {"kombinasi": "Sepsis + ARDS", "tarif": "Rp 12.500.000"}
-                ],
-                "konflik_duplikasi": [
-                    {"isu": "Infus IV tercatat ganda", "efek": "tidak pengaruh"},
-                    {"isu": "PCI + CABG bersamaan", "efek": "tidak lazim"}
-                ]
-            },
+            "kombinasi_tindakan": [
+                {
+                    "tindakan": "Antibiotik IV",
+                    "validitas": "invalid",
+                    "validitas_detail": "Antibiotik IV",
+                    "status": "optional",
+                    "tarif_impact": "Rp 7.500.000",
+                    "faskes": "RS Tipe B",
+                    "rawat_inap": "≥ 3 hari",
+                    "syarat_klinis": "Infus IV tercatat ganda - tidak pengaruh"
+                },
+                {
+                    "validitas": "valid",
+                    "validitas_detail": "Ventilasi Mekanik",
+                    "tindakan": "Ventilasi Mekanik",
+                    "status": "wajib",
+                    "tarif_impact": "Rp 12.500.000",
+                    "faskes": "RS Tipe C",
+                    "rawat_inap": "≥ 5 hari",
+                    "syarat_klinis": "PCI + CABG bersamaan - tidak lazim"
+                }
+            ],
             "alternatif": [
                 {
                     "kombinasi": "Sepsis + ARDS",
@@ -1162,23 +1170,32 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
         if not raw:
             return None
         raw_lower = raw.lower()
+
         if "valid" in raw_lower:
             return "valid"
         if "invalid" in raw_lower:
             return "invalid"
-        if "warning" in raw_lower:
+        if "warning" and "medium" in raw_lower:
             return "warning"
         return None
+
 
     # === Kombinasi Diagnosis ===
     diag_eval = models.ClaimDiagnosisEvaluation(
         claim_id=claim_id,
         validitas=parse_validitas(evaluasi["kombinasi_diagnosis"].get("validitas")),
+        validitas_detail=evaluasi["kombinasi_diagnosis"].get("validitas_detail"),
         severity=evaluasi["kombinasi_diagnosis"].get("severity"),
         kode_ina_cbg=evaluasi["kombinasi_diagnosis"].get("kode_ina_cbg"),
         estimasi_tarif=(
             None if not evaluasi["kombinasi_diagnosis"].get("estimasi_tarif")
-            else float(str(evaluasi["kombinasi_diagnosis"]["estimasi_tarif"]).replace("Rp", "").replace(".", "").strip())
+            else float(
+                str(evaluasi["kombinasi_diagnosis"]["estimasi_tarif"])
+                .replace("Rp", "")
+                .replace(".", "")
+                .replace("jt", "000000")
+                .strip()
+            )
         ),
         syarat_klinis=evaluasi["kombinasi_diagnosis"].get("syarat_klinis"),
         evaluasi_faskes=evaluasi["kombinasi_diagnosis"].get("evaluasi_faskes"),
@@ -1190,60 +1207,25 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
     db.add(diag_eval)
 
     # === Kombinasi Tindakan ===
-    # === Kombinasi Tindakan ===
-    # 1. Validasi Verifikator
-    for v in evaluasi["kombinasi_tindakan"].get("validasi_verifikator", []):
+    for td in evaluasi.get("kombinasi_tindakan", []):
         proc_eval = models.ClaimProcedureEvaluation(
             claim_id=claim_id,
             procedure_id=None,
-            validitas=parse_validitas(v.get("status")),
-            status_tindakan=v.get("status"),
-            is_dummy=True,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-        )
-        db.add(proc_eval)
-
-    # 2. Dampak Tarif
-    for d in evaluasi["kombinasi_tindakan"].get("dampak_tarif", []):
-        proc_eval = models.ClaimProcedureEvaluation(
-            claim_id=claim_id,
-            procedure_id=None,
+            validitas=parse_validitas(td.get("validitas")),
+            validitas_detail=td.get("validitas_detail"),
+            status_tindakan=td.get("status"),
             tarif_impact=(
-                None if not d.get("tarif")
-                else float(str(d["tarif"]).replace("Rp", "").replace(".", "").replace("jt", "000000").strip())
+                None if not td.get("tarif_impact")
+                else float(str(td["tarif_impact"]).replace("Rp", "").replace(".", "").replace("jt", "000000").strip())
             ),
+            faskes=td.get("faskes"),
+            rawat_inap=td.get("rawat_inap"),
+            syarat_klinis=td.get("syarat_klinis"),
             is_dummy=True,
             is_deleted=False,
             created_at=datetime.utcnow(),
         )
         db.add(proc_eval)
-
-    # 3. Konflik / Duplikasi
-    for k in evaluasi["kombinasi_tindakan"].get("konflik_duplikasi", []):
-        proc_eval = models.ClaimProcedureEvaluation(
-            claim_id=claim_id,
-            procedure_id=None,
-            syarat_klinis=f"{k.get('isu')} - {k.get('efek')}",
-            is_dummy=True,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-        )
-        db.add(proc_eval)
-
-    # 4. Faskes & Rawat Inap (opsional di dummy)
-    if evaluasi["kombinasi_tindakan"].get("faskes") or evaluasi["kombinasi_tindakan"].get("rawat_inap"):
-        proc_eval = models.ClaimProcedureEvaluation(
-            claim_id=claim_id,
-            procedure_id=None,
-            faskes=evaluasi["kombinasi_tindakan"].get("faskes"),
-            rawat_inap=evaluasi["kombinasi_tindakan"].get("rawat_inap"),
-            is_dummy=True,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-        )
-        db.add(proc_eval)
-
 
     # === Alternatif Kombinasi ===
     severity_default = evaluasi["kombinasi_diagnosis"].get("severity")
@@ -1251,7 +1233,7 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
         comb = models.ClaimCombinationAlternative(
             claim_id=claim_id,
             kombinasi_nama=alt.get("kombinasi"),
-            severity=alt.get("severity") or severity_default,
+            severity=severity_default,
             kode_ina_cbg=alt.get("kode_ina_cbg"),
             estimasi_tarif=(
                 None if not alt.get("tarif")
@@ -1380,7 +1362,11 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
     db.commit()
 
 @app.post("/ai/summary/{claim_id}")
-def ai_summary(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+def ai_summary(
+    claim_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
     """
     Terima mapping dari FE (simulasi utama/sekunder).
     Lalu generate evaluasi & simpan ke tabel evaluasi.
@@ -1397,30 +1383,17 @@ def ai_summary(claim_id: int, payload: dict = Body(...), db: Session = Depends(g
     store_ai_evaluations(db, claim_id, evaluasi)
 
     # Ambil hasil yang baru disimpan
-    diag = db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).first()
-    proc = db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).all()
-    alts = db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).limit(2).all()
-
-    procedure_summary = {
-        "tindakan_wajib": "-",
-        "validasi": "-",
-        "dampak": "-",
-        "konflik": "-"
-    }
-
-    for p in proc:
-        if p.status_tindakan in ["wajib", "mandatory"]:
-            procedure_summary["tindakan_wajib"] = p.status_tindakan
-        elif p.status_tindakan:  # validasi verifikator
-            procedure_summary["validasi"] = p.status_tindakan
-        if p.tarif_impact:
-            procedure_summary["dampak"] = p.tarif_impact
-        if p.syarat_klinis:
-            procedure_summary["konflik"] = p.syarat_klinis
+    diag = db.query(models.ClaimDiagnosisEvaluation)\
+             .filter_by(claim_id=claim_id).first()
+    procs = db.query(models.ClaimProcedureEvaluation)\
+              .filter_by(claim_id=claim_id).all()
+    alts = db.query(models.ClaimCombinationAlternative)\
+             .filter_by(claim_id=claim_id).limit(2).all()
 
     return {
         "diagnosis": {
             "validitas": diag.validitas if diag else "-",
+            "validitas_detail": diag.validitas_detail if diag else "-",
             "severity": diag.severity if diag else "-",
             "kode_ina_cbg": diag.kode_ina_cbg if diag else "-",
             "estimasi_tarif": diag.estimasi_tarif if diag else "-",
@@ -1428,11 +1401,23 @@ def ai_summary(claim_id: int, payload: dict = Body(...), db: Session = Depends(g
             "evaluasi_faskes": diag.evaluasi_faskes if diag else "-",
             "rawat_inap": diag.rawat_inap if diag else "-"
         },
-        "procedure": procedure_summary,
+        "procedure": [
+            {
+                "validitas": p.validitas or "-",
+                "validitas_detail": p.validitas_detail or "-",
+                "tindakan": p.validitas_detail or p.status_tindakan or "-",
+                "status_tindakan": p.status_tindakan or "-",
+                "tarif_impact": f"Rp {int(p.tarif_impact):,}" if p.tarif_impact else "-",
+                "faskes": p.faskes or "-",
+                "rawat_inap": p.rawat_inap or "-",
+                "syarat_klinis": p.syarat_klinis or "-"
+            }
+            for p in procs
+        ],
         "alternatif": [
             {
                 "nama": a.kombinasi_nama,
-                "severity": getattr(a, "severity", "-"),
+                "severity_detail": diag.severity if not a.severity else a.severity,
                 "ina_cbg": a.kode_ina_cbg,
                 "tarif": a.estimasi_tarif,
                 "syarat": a.syarat_klinis,
@@ -1444,6 +1429,7 @@ def ai_summary(claim_id: int, payload: dict = Body(...), db: Session = Depends(g
         ],
         "alternatif_count": len(alts)
     }
+
 
 
 # ------------------------

@@ -1351,52 +1351,125 @@ function renderEvaluasiDiagnosis(data) {
   target.innerHTML = "";
 
   if (!data || Object.keys(data).length === 0) {
-    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi</div>`;
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi diagnosis</div>`;
     return;
   }
 
-  target.insertAdjacentHTML("beforeend", `
+  // pakai detail (misal: "Sepsis + DM valid (komorbid umum)")
+  const validitasIcon = statusIcon(data.validitas);
+  const validitasText = data.validitas_detail || "-";
+
+  target.innerHTML = `
     <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Diagnosis</h3>
-    <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
-      <div class="text-sm space-y-1">
-        <div><b>Validitas Klinis:</b> ${statusIcon(data.validitas)}</div>
-        <div><b>Severity:</b> ${data.severity || "-"}</div>
-        <div><b>INA-CBG:</b> ${data.kode_ina_cbg || "-"}</div>
-        <div><b>Estimasi Tarif:</b> ${formatRupiah(data.estimasi_tarif)}</div>
-        <div><b>Syarat Klinis:</b> ${data.syarat || "-"}</div>
-        <div><b>Evaluasi Faskes:</b> ${data.evaluasi_faskes || "-"}</div>
-        <div><b>Rawat Inap:</b> ${data.rawat_inap || "-"}</div>
-      </div>
-    </div>
-  `);
+    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+      <tr>
+        <th class="border px-4 py-2">Validitas Klinis Kombinasi</th>
+        <td class="border px-4 py-2">
+          ${validitasIcon} - ${validitasText}
+        </td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Severity</th>
+        <td class="border px-4 py-2">📊 ${data.severity || "-"}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Kode INA-CBG</th>
+        <td class="border px-4 py-2">${data.kode_ina_cbg || "-"}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Estimasi Tarif</th>
+        <td class="border px-4 py-2">${formatRupiah(data.estimasi_tarif) || "-"}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Syarat Klinis (Kombinasi)</th>
+        <td class="border px-4 py-2">${data.syarat || "-"}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Evaluasi Faskes</th>
+        <td class="border px-4 py-2">${data.evaluasi_faskes || "-"}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Rawat Inap</th>
+        <td class="border px-4 py-2">${data.rawat_inap || "-"}</td>
+      </tr>
+    </table>
+  `;
 }
+
 
 
 
 
 // ==================== Panel Evaluasi Tindakan ====================
-function renderEvaluasiProcedure(data) {
+function renderEvaluasiProcedure(rows) {
   const target = document.getElementById("evaluasi-procedure");
   if (!target) return;
   target.innerHTML = "";
 
-  if (!data || Object.keys(data).length === 0) {
+  if (!rows || rows.length === 0) {
     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
     return;
   }
 
-  target.insertAdjacentHTML("beforeend", `
+  const wajib = [];
+  const validasi = [];
+  const dampak = [];
+  const konflik = [];
+
+  rows.forEach(p => {
+    const icon = statusIcon(p.validitas); // ✅ pakai validitas utk icon
+    const tindakan = p.tindakan || p.validitas_detail || p.status_tindakan || "-";
+
+    // Wajib
+    if (p.status_tindakan && ["wajib","mandatory"].includes(p.status_tindakan.toLowerCase())) {
+      wajib.push(`${icon} - ${tindakan}`);
+    }
+
+    // Validasi Verifikator
+    if (p.status_tindakan && !["wajib","mandatory"].includes(p.status_tindakan.toLowerCase())) {
+      validasi.push(`${icon} - ${tindakan}`);
+    }
+
+    // Dampak tarif
+    if (p.tarif_impact && p.tarif_impact !== "-") {
+      dampak.push(`${icon} ${tindakan} → ${p.tarif_impact}`);
+    }
+
+    // Konflik
+    if (p.syarat_klinis && p.syarat_klinis !== "-") {
+      konflik.push(`${icon} - ${p.syarat_klinis}`);
+    }
+  });
+
+  const listify = (arr) => arr.length ? arr.map(v=>`<div>${v}</div>`).join("") : "-";
+
+  target.innerHTML = `
     <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
-    <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
-      <div class="text-sm space-y-1">
-        <div><b>Tindakan Wajib:</b> ${statusIcon(data.tindakan_wajib)}</div>
-        <div><b>Validasi Pilihan Verifikator:</b> Verifikator memilih: ${data.validasi || "-"}</div>
-        <div><b>Dampak INA-CBG/Tarif:</b> Terpengaruh tarif: ${formatRupiah(data.dampak)}</div>
-        <div><b>Konflik/Duplikasi:</b> Catatan: ${data.konflik || "-"}</div>
-      </div>
-    </div>
-  `);
+    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+      <tr>
+        <th class="border px-4 py-2">Tindakan Wajib Kombinasi</th>
+        <td class="border px-4 py-2">${listify(wajib)}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Validasi Pilihan Verifikator</th>
+        <td class="border px-4 py-2">${listify(validasi)}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Dampak INA-CBG / Tarif</th>
+        <td class="border px-4 py-2">${listify(dampak)}</td>
+      </tr>
+      <tr>
+        <th class="border px-4 py-2">Konflik / Duplikasi</th>
+        <td class="border px-4 py-2">${listify(konflik)}</td>
+      </tr>
+    </table>
+  `;
 }
+
+
+
+
+
 
 
 
@@ -1422,9 +1495,9 @@ function renderAlternatifKombinasi(items) {
   items.forEach((alt, i) => {
     target.insertAdjacentHTML("beforeend", `
       <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
-        <h4 class="font-bold text-blue-600 mb-2">Alternatif ${i + 1}: ${alt.nama || "-"}</h4>
+        <h4 class="font-bold text-blue-600 mb-2">Alternatif ${i + 1}: ${statusIcon(alt.nama) || "-"}</h4>
         <div class="text-sm">
-          <div><b>Severity:</b> ${alt.severity || "-"}</div>
+          <div><b>Severity:</b>${alt.severity_detail || "-"} </div></div>
           <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>
           <div><b>Tarif:</b> ${formatRupiah(alt.tarif)}</div>
           <div><b>Syarat Klinis:</b> ${alt.syarat || "-"}</div>
