@@ -81,7 +81,7 @@ claim_medical_record_fields = [
 
     # --- Daily ---
     {"name": "notes_date", "label": "Tanggal Catatan", "type": "date", "record_type": "daily"},
-    {"name": "td", "label": "Tekanan Darah", "type": "text", "record_type": "daily"},
+    {"name": "tekanan_darah", "label": "Tekanan Darah", "type": "text", "record_type": "daily"},
     {"name": "nadi", "label": "Nadi", "type": "text", "record_type": "daily"},
     {"name": "pernapasan", "label": "Pernapasan", "type": "text", "record_type": "daily"},
     {"name": "suhu", "label": "Suhu", "type": "text", "record_type": "daily"},

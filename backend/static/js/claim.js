@@ -1,3 +1,5 @@
+console.log("👤 Role dari Alpine:", window.claimState?.role)
+
 function ensureDaily(dayId) {
   const state = Alpine.$data(document.getElementById("claimRoot"));
   if (!state.manualInput.daily) state.manualInput.daily = {};
@@ -67,23 +69,25 @@ function claimData(init) {
       if (role === 'verifikator' && claimId) {
         // 🔹 langsung load dari DB (BE pecahan)
         loadRecommendations(claimId);
+        loadSimulations(claimId);
       }
     },
 
     statusIcon(s) {
       if (!s) return "";
-      const val = String(s).toLowerCase();
+      const val = String(s).trim().toLowerCase();
+      console.log("statusIcon input:", s, "→ parsed:", val);
 
-      if (val.includes("invalid")) return "❌";
-      if (val.includes("warning") || val.includes("optional")) return "⚠️";
-      if (val.includes("valid")) return "✅";
-
+      if (val === "invalid") return "❌";
+      if (val === "warning" || val.includes("optional")) return "⚠️";
+      if (val === "valid") return "✅";
       return "";
-    },
+    }
   };
   window.claimState = state;
   return state;
 }
+
 
 // 1. wrapper yang fetch data dari BE
 async function generateAI() {
@@ -317,13 +321,11 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
   tbody.insertAdjacentHTML("beforeend", `
     <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
         data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
-        <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+        <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]" onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
           <span @click="open=!open" class="mr-1 cursor-pointer">
             <span x-show="!open" x-cloak>▶</span>
             <span x-show="open" x-cloak>▼</span>
           </span>
-          <span class="cursor-pointer"
-                onclick="openModalFromAttr(this, '${type}')">
           ${parent.kategori || parent.category || parent.nama_kategori || "-"}
           </span>
           <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
@@ -354,7 +356,7 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
           data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
           data-db-id="${child.id}">
         <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"
-            onclick="openModalFromAttr(this, '${type}')">
+            onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
           → ${child.kategori || "-"}
         </td>
         <td class="col-klinis border px-6 py-2">
@@ -584,14 +586,16 @@ function renderManualTindakanList() {
         </div>
 
         <!-- Tombol -->
-        <div class="flex space-x-2 justify-end">
-          <button type="button"
-                  onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-          <button type="button"
-                  onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
-                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-        </div>
+        ${role === "doctor" ? `
+          <div class="flex space-x-2 justify-end">
+            <button type="button"
+                    onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+            <button type="button"
+                    onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+          </div>
+        ` : ''}
       </div>
     `);
   });
@@ -602,12 +606,16 @@ function renderManualTindakanList() {
 // ==================== Modal ====================
 
 function openModal(title, content, { hideDefaultClose = false } = {}) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
+  const root = document.getElementById('claimRoot')
+  const state = Alpine.$data(root)   // 👈 ambil instance Alpine aktif
+  console.log("🔥 openModal called, state:", state)
   state.modalOpen = true
   state.modalTitle = title
   state.modalContent = content
   state.hideDefaultClose = hideDefaultClose
 }
+
+
 
 function updateRingkasanFromRow(itemId, dx) {
   if (!dx || !itemId) return;
@@ -665,6 +673,7 @@ function updateRingkasanFromRow(itemId, dx) {
 
 
 async function openModalFromAttr(el, type) {
+  console.log("🔥 openModalFromAttr terpanggil", el, type);
   const tr = el.closest("tr");
   const dbId = tr?.dataset.dbId;
   const uiId = tr?.dataset.id;
@@ -672,6 +681,18 @@ async function openModalFromAttr(el, type) {
 
   try {
     let dx;
+    // 🔹 ambil data dari database
+    if (dbId && !isNaN(Number(dbId))) {
+      const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      dx = result.data;
+    } else {
+      dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
+    }
+
+    // 🔹 tampilkan modal dummy (jika tidak ada data di database)
     if ((!dbId || isNaN(Number(dbId))) && tr?.dataset.row) {
       dx = JSON.parse(tr.dataset.row);
 
@@ -682,15 +703,7 @@ async function openModalFromAttr(el, type) {
       openModal(`Detail Diagnosis (${window.claimState.currentDiagnosisTitle})`, buildModalContent(dx));
       return;
     }
-    if (dbId && !isNaN(Number(dbId))) {
-      const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const result = await res.json();
-      dx = result.data;
-    } else {
-      dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
-    }
+    
 
     // 🔹 tampilkan modal (selalu pakai format "Detail Diagnosis (nama penyakit)")
     let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
@@ -891,23 +904,22 @@ function renderTindakan(list) {
         </div>
 
         <!-- Tombol -->
-        <div class="flex justify-end space-x-2">
-          <button type="button"
-                  onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs shadow">
-            Pilih Utama
-          </button>
-          <button type="button"
-                  onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
-                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs shadow">
-            Pilih Sekunder
-          </button>
-        </div>
+        ${window.claimState.role === "doctor" ? `
+          <div class="flex space-x-2 justify-end">
+            <button type="button"
+                    onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+            <button type="button"
+                    onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+          </div>
+        ` : ''}
       </div>
     `).join("")
     : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
-
+  
   const manualForm = `
+  ${window.claimState.role === "doctor" ? `
     <div class="tindakan-list mt-4"></div>
     <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
       <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
@@ -925,7 +937,7 @@ function renderTindakan(list) {
         </button>
       </div>
     </div>
-  `;
+  ` : ''}`
   
   return tindakanList + manualForm;
 }
@@ -1098,11 +1110,17 @@ function updateSimulasi(type, opt, value, source, tab) {
   if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
   if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
   if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = [];
-  if (!("tarifDraft" in sim)) sim.tarifDraft = null;
 
   const item = typeof value === "string"
-  ? { name: value.split(" [")[0], label: "", source: "Manual", isManual: true }
-  : { ...value };
+  ? { name: value.split(" [")[0] || "", label: "", source: "Manual", isManual: true, id: null }
+  : {
+      ...value,
+      id: value.id || null,
+      name: value.name || value.diagnosis_utama_name || value.diagnosis_sekunder_name || 
+            value.tindakan_utama_name || value.tindakan_sekunder_name || "(tanpa nama)",
+      label: value.label || ""
+    };
+
 
 
   if (source) {
@@ -1116,13 +1134,14 @@ function updateSimulasi(type, opt, value, source, tab) {
     if (finalOpt === "Primary") {
       const oldPrimary = sim.utama;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
-      sim.utama = item;
+      sim.utama = { diagnosis_utama_id: item.id, ...item };
       if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
     } else if (finalOpt.startsWith("Secondary")) {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
-      if (idx === -1) sim.sekunder.push(item);
-      else sim.sekunder[idx] = item;
+      const secItem = { diagnosis_sekunder_id: item.id, ...item };
+      if (idx === -1) sim.sekunder.push(secItem);
+      else sim.sekunder[idx] = secItem;
     } else if (finalOpt === "None") {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
@@ -1130,17 +1149,22 @@ function updateSimulasi(type, opt, value, source, tab) {
   }
 
   // Tindakan
+  const nama = typeof value === "string" 
+    ? value 
+    : (value.name || value.label || "(tanpa nama)");
+  const id = typeof value === "string" ? null : (value.id || null);
+   // ambil ID kalau ada
+
   if (type === "tindakan") {
-    const nama = typeof value === "string" ? value : value.name;
     if (finalOpt === "Primary") {
       const oldPrimary = sim.tindakanUtama;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
-      sim.tindakanUtama = { name: nama };
+      sim.tindakanUtama = { tindakan_utama_id: id, name: nama };   // ⬅️ inject ID
       if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
     } else if (finalOpt === "Secondary") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       if (!sim.tindakanSekunder.find(td => td.name === nama)) {
-        sim.tindakanSekunder.push({ name: nama });
+        sim.tindakanSekunder.push({ tindakan_sekunder_id: id, name: nama });  // ⬅️ inject ID
       }
     } else if (finalOpt === "None") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
@@ -1154,21 +1178,21 @@ function updateSimulasi(type, opt, value, source, tab) {
     if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
     state.simulasi.daily.days[idxDay] = state.simulasi[tab];
 
-    // rebuild summary daily
-    state.simulasi.daily.utama = null;
-    state.simulasi.daily.sekunder = [];
-    state.simulasi.daily.days.forEach(d => {
-      if (d?.utama && !state.simulasi.daily.utama) {
-        state.simulasi.daily.utama = d.utama;
-      }
-      if (Array.isArray(d?.sekunder)) {
-        state.simulasi.daily.sekunder.push(...d.sekunder);
-      }
-    });
+    // rebuild summary harian
+    state.simulasi.daily.summary = state.simulasi.daily.days.map((d, i) => {
+      if (!d) return null;
+      return {
+        dayIndex: i,
+        utama: d.utama || null,
+        sekunder: Array.isArray(d.sekunder) ? d.sekunder : []
+      };
+    }).filter(Boolean);
   }
 
+  syncHiddenInputs();
   console.log("🟢 Simulasi updated:", state.simulasi);
 }
+
 
 function normalizeProcedure(td) {
   if (!td) return { nama: "-" };
@@ -1191,18 +1215,17 @@ async function loadRecommendations(claimId) {
   try {
     const res = await fetch(`/claims/${claimId}/recommendations`)
     if (!res.ok) {
-      console.error("❌ Gagal load rekomendasi dari DB")
-      return
+      return console.error("❌ Gagal load rekomendasi dari DB")
     }
-    const recs = await res.json()
+    const body = await res.json()
+    const recs = body.data || []
     console.log("📥 Data rekomendasi dari DB:", recs)
 
     // Grouping per stage & category
     const grouped = { admission: {}, discharge: {}, daily: {} }
     recs.forEach(r => {
-      const parts = r.category.split("_", 2)
-      const stage = parts[0]
-      const cat = parts[1] || "unknown"
+      let stage = r.stage || "admission"   // fallback kalau DB gak kasih prefix
+      let cat = r.category || "unknown"
 
       if (stage === "admission") {
         grouped.admission[cat] = grouped.admission[cat] || []
@@ -1216,6 +1239,7 @@ async function loadRecommendations(claimId) {
         grouped.daily[stage][cat].push(r)
       }
     })
+
 
     // === Admission ===
     renderTable("diagnosis-admission", (grouped.admission.diagnosis || []).map(mapRecommendation), "diagnosis", "admission")
@@ -1260,6 +1284,63 @@ async function loadRecommendations(claimId) {
     console.error("❌ Error loadRecommendations:", err)
   }
 }
+
+async function loadSimulations(claimId) {
+  const res = await fetch(`/claims/${claimId}/simulations`)
+  if (!res.ok) return
+  const body = await res.json()
+  const sims = body.data || []
+  console.log("📥 Simulasi dari DB:", sims)
+
+  sims.forEach(s => {
+    // Diagnosis utama
+    if (s.diagnosis_utama_id) {
+      setTimeout(() => {
+        updateSimulasi("diagnosis", "Primary", { 
+          id: s.diagnosis_utama_id, 
+          name: s.diagnosis_utama_name || "(tanpa nama)",  // ⬅️ fallback
+          mapping: "Primary"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Diagnosis sekunder
+    if (s.diagnosis_sekunder_id) {
+      setTimeout(() => {
+        updateSimulasi("diagnosis", "Secondary-Komorbid", { 
+          id: s.diagnosis_sekunder_id, 
+          name: s.diagnosis_sekunder_name || "(tanpa nama)", // ⬅️ fallback
+          mapping: "Secondary-Komorbid"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Tindakan utama
+    if (s.tindakan_utama_id) {
+      setTimeout(() => {
+        updateSimulasi("tindakan", "Primary", { 
+          id: s.tindakan_utama_id, 
+          name: s.tindakan_utama_name || "(tanpa nama)", // ⬅️ fallback
+          mapping: "Primary"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Tindakan sekunder
+    if (s.tindakan_sekunder_id) {
+      setTimeout(() => {
+        updateSimulasi("tindakan", "Secondary", { 
+          id: s.tindakan_sekunder_id, 
+          name: s.tindakan_sekunder_name,   // ⬅ langsung pakai string
+          mapping: "Secondary"
+        }, true, s.stage)
+      }, 0)
+    }
+  })
+}
+
+
+
 
 function mapRecommendation(r) {
   return {
@@ -1341,11 +1422,18 @@ async function generateSummary() {
     renderEvaluasiProcedure(data.procedure || {});
     renderAlternatifKombinasi(data.alternatif || []);
 
+    const summaryField = document.getElementById("summaryField");
+    if (summaryField) {
+      summaryField.value = JSON.stringify(data); // ⬅️ dari AI BE
+    }
+    window.claimState.summary = data; // sync juga ke state global
+
     alert("✅ Summary berhasil digenerate");
   } catch (err) {
     console.error("Error generate summary:", err);
     alert("❌ Gagal generate summary");
   }
+  syncHiddenInputs();
 }
 
 // ==================== Panel Evaluasi Diagnosis ====================
@@ -1399,10 +1487,6 @@ function renderEvaluasiDiagnosis(data) {
     </table>
   `;
 }
-
-
-
-
 
 // ==================== Panel Evaluasi Tindakan ====================
 function renderEvaluasiProcedure(rows) {
@@ -1470,14 +1554,6 @@ function renderEvaluasiProcedure(rows) {
   `;
 }
 
-
-
-
-
-
-
-
-
 // ==================== Panel Alternatif Kombinasi ====================
 function renderAlternatifKombinasi(items) {
   const target = document.getElementById("alternatif");
@@ -1534,12 +1610,26 @@ function formatRupiah(num) {
 }
 
 // Expose ke global
+function syncHiddenInputs() {
+  const simInput = document.getElementById("simulasiField");
+  const summInput = document.getElementById("summaryField");
+
+  if (simInput) {
+    simInput.value = JSON.stringify(window.claimState.simulasi || {});
+  }
+  if (summInput) {
+    summInput.value = JSON.stringify(window.claimState.summary || {});
+  }
+}
 
 
 window.addManual = addManual
+window.openModalFromAttr = openModalFromAttr;
 window.openProcedureModal = openProcedureModal;
 window.closeNestedModal = closeNestedModal;
 window.generateSummary = generateSummary;
 window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
 window.renderEvaluasiProcedure = renderEvaluasiProcedure;
 window.renderAlternatifKombinasi = renderAlternatifKombinasi;
+document.querySelector("#claimForm")
+  .addEventListener("submit", syncHiddenInputs);

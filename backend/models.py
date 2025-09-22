@@ -188,7 +188,11 @@ class ClaimAIRecommendation(Base):
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+    diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
+    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
 
+    diagnosis = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_id])
+    procedure = relationship("ClaimProcedure", foreign_keys=[procedure_id])
     claim = relationship("Claim", back_populates="ai_recommendations")
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
     is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
@@ -327,6 +331,7 @@ class ClaimDiagnosisEvaluation(Base):
     rawat_inap = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=text("now()"))
+    updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))
     is_deleted = Column(Boolean, default=False)
     is_dummy = Column(Boolean, default=False)
 
@@ -351,6 +356,7 @@ class ClaimProcedureEvaluation(Base):
     syarat_klinis = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=text("now()"))
+    updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))
     is_deleted = Column(Boolean, default=False)
     is_dummy = Column(Boolean, default=False)
 
@@ -374,6 +380,7 @@ class ClaimCombinationAlternative(Base):
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=text("now()"))
+    updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))
     is_deleted = Column(Boolean, default=False)
     is_dummy = Column(Boolean, default=False)
 
@@ -450,7 +457,7 @@ class MedicalRecord(Base):
     gejala_lain = Column(Text, nullable=True)
 
     # Pemeriksaan Fisik
-    td = Column(String(100), nullable=True)
+    tekanan_darah = Column(String(100), nullable=True)
     nadi = Column(String(100), nullable=True)
     pernapasan = Column(String(100), nullable=True)
     suhu = Column(String(100), nullable=True)
