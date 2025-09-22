@@ -1612,6 +1612,16 @@ def finalize_claim(
                     diag.rujukan = stage_data["utama"].get("rujukan")
                     diag.struktur_icd10 = stage_data["utama"].get("struktur_icd10")
                     diag.updated_at = datetime.utcnow()
+                if not diag:
+                    diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_text=stage_data["utama"]["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(diag)
+                    db.flush()
 
             # diagnosis sekunder
             for sec in stage_data.get("sekunder", []):
@@ -1631,6 +1641,16 @@ def finalize_claim(
                     diag.rujukan = sec.get("rujukan") or diag.rujukan
                     diag.struktur_icd10 = sec.get("struktur_icd10") or diag.struktur_icd10
                     diag.updated_at = datetime.utcnow()
+                if not diag:
+                    diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_text=stage_data["utama"]["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(diag)
+                    db.flush()
 
 
             # Tindakan utama & sekunder
@@ -1647,6 +1667,28 @@ def finalize_claim(
                         detail.icd9_tindakan = stage_data["tindakanUtama"].get("icd") or detail.icd9_tindakan
                         detail.icd9_deskripsi_tindakan = stage_data["tindakanUtama"].get("deskripsi") or detail.icd9_deskripsi_tindakan
                         detail.updated_at = datetime.utcnow()
+                if not proc:
+                    proc = models.ClaimProcedure(
+                        claim_id=claim.id,
+                        procedure_text=td["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(proc)
+                    db.flush()
+
+                    detail = models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=td.get("icd"),
+                        icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False
+                    )
+                    db.add(detail)
+                    db.flush()
+        
 
             for td in stage_data.get("tindakanSekunder", []):
                 proc = db.query(models.ClaimProcedure)\
@@ -1660,6 +1702,27 @@ def finalize_claim(
                         detail.icd9_tindakan = td.get("icd") or detail.icd9_tindakan
                         detail.icd9_deskripsi_tindakan = td.get("deskripsi") or detail.icd9_deskripsi_tindakan
                         detail.updated_at = datetime.utcnow()
+                if not proc:
+                    proc = models.ClaimProcedure(
+                        claim_id=claim.id,
+                        procedure_text=td["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(proc)
+                    db.flush()
+
+                    detail = models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=td.get("icd"),
+                        icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False
+                    )
+                    db.add(detail)
+                    db.flush()
         db.flush()
     except Exception as e:
         print("❌ Gagal update ClaimDiagnosis & ClaimProcedure:", e)
@@ -2205,6 +2268,17 @@ def update_claim_draft(
                     diag.rujukan = stage_data["utama"].get("rujukan")
                     diag.struktur_icd10 = stage_data["utama"].get("struktur_icd10")
                     diag.updated_at = datetime.utcnow()
+                if not diag:
+                    diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_text=stage_data["utama"]["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(diag)
+                    db.flush()
+
 
             for sec in stage_data.get("sekunder", []):
                 diag = db.query(models.ClaimDiagnosis)\
@@ -2223,6 +2297,17 @@ def update_claim_draft(
                     diag.rujukan = stage_data["utama"].get("rujukan")
                     diag.struktur_icd10 = stage_data["utama"].get("struktur_icd10")
                     diag.updated_at = datetime.utcnow()
+                if not diag:
+                    diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_text=stage_data["utama"]["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(diag)
+                    db.flush()
+
 
             # Tindakan utama & sekunder
             if "tindakanUtama" in stage_data and stage_data["tindakanUtama"]:
@@ -2238,6 +2323,28 @@ def update_claim_draft(
                         detail.icd9_tindakan = stage_data["tindakanUtama"].get("icd") or detail.icd9_tindakan
                         detail.icd9_deskripsi_tindakan = stage_data["tindakanUtama"].get("deskripsi") or detail.icd9_deskripsi_tindakan
                         detail.updated_at = datetime.utcnow()
+                if not proc:
+                    proc = models.ClaimProcedure(
+                        claim_id=claim.id,
+                        procedure_text=td["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(proc)
+                    db.flush()
+
+                    detail = models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=td.get("icd"),
+                        icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False
+                    )
+                    db.add(detail)
+                    db.flush()
+
 
             for td in stage_data.get("tindakanSekunder", []):
                 proc = db.query(models.ClaimProcedure)\
@@ -2251,6 +2358,28 @@ def update_claim_draft(
                         detail.icd9_tindakan = td.get("icd") or detail.icd9_tindakan
                         detail.icd9_deskripsi_tindakan = td.get("deskripsi") or detail.icd9_deskripsi_tindakan
                         detail.updated_at = datetime.utcnow()
+                if not proc:
+                    proc = models.ClaimProcedure(
+                        claim_id=claim.id,
+                        procedure_text=td["name"],
+                        source="Manual",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(proc)
+                    db.flush()
+
+                    detail = models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=td.get("icd"),
+                        icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False
+                    )
+                    db.add(detail)
+                    db.flush()
+
         db.flush()                
     except Exception as e:
         print("❌ Gagal update ClaimDiagnosis/ClaimProcedure:", e)
