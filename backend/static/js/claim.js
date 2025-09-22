@@ -586,7 +586,7 @@ function renderManualTindakanList() {
         </div>
 
         <!-- Tombol -->
-        ${role === "doctor" ? `
+        ${state.role === "doctor" ? `
           <div class="flex space-x-2 justify-end">
             <button type="button"
                     onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
