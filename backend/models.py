@@ -278,6 +278,8 @@ class ClaimProcedureDetail(Base):
     is_deleted = Column(Boolean, default=False)
     is_dummy = Column(Boolean, default=False)
 
+    sim_details = relationship("ClaimSimulation", back_populates="sim_details")
+
 
 # =========================================
 # Claim AI Simulations
