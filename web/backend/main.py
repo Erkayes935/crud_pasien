@@ -1077,32 +1077,47 @@ def ai_recommendation_detail_get(
             return {"status": "ok", "data": make_modal("A41.9",db, claim_id)}
 
     elif rec_type == "procedure":
-        proc = db.query(models.ClaimProcedure)\
-            .options(joinedload(models.ClaimProcedure.procedure_details))\
-            .filter_by(id=item_id, claim_id=claim_id).first()
-        if proc:
-            details = [
-                {
-                    "icd9": d.icd9_tindakan,
-                    "deskripsi": d.icd9_deskripsi_tindakan,
-                    "validitas": d.validitas_tindakan,
-                    "status": d.status_tindakan,
-                    "ina_cbg": d.ina_cbg_tindakan,
-                    "faskes": d.faskes_tindakan,
-                    "rawat_inap": d.rawat_inap_tindakan,
-                    "syarat_klinis": d.syarat_klinis_tindakan,
-                }
-                for d in proc.procedure_details if not d.is_deleted
-            ]
-            return {"status": "ok", "data": {
-                "id": proc.id,
-                "procedure_text": proc.procedure_text,
-                "description": proc.description,
-                "tindakan": details
-            }}
-        else:
-            # fallback kalau kosong
-            return {"status": "ok", "data": make_modal("A41.9",db, claim_id)}
+            import requests
+            try:
+                # Request ke granular engine (core_engine)
+                core_url = f"http://core_engine:8002/analyze_procedure"
+                payload = {"claim_id": claim_id, "item_id": item_id}
+                resp = requests.post(core_url, json=payload, timeout=10)
+                if resp.status_code == 200:
+                    result = resp.json()
+                    # Pastikan format sesuai FE
+                    if result.get("status") == "ok" and result.get("data"):
+                        return {"status": "ok", "data": result["data"]}
+            except Exception as e:
+                pass  # log error jika perlu
+
+            # Fallback ke DB jika granular engine gagal
+            proc = db.query(models.ClaimProcedure)\
+                .options(joinedload(models.ClaimProcedure.procedure_details))\
+                .filter_by(id=item_id, claim_id=claim_id).first()
+            if proc:
+                details = [
+                    {
+                        "icd9": d.icd9_tindakan,
+                        "deskripsi": d.icd9_deskripsi_tindakan,
+                        "validitas": d.validitas_tindakan,
+                        "status": d.status_tindakan,
+                        "ina_cbg": d.ina_cbg_tindakan,
+                        "faskes": d.faskes_tindakan,
+                        "rawat_inap": d.rawat_inap_tindakan,
+                        "syarat_klinis": d.syarat_klinis_tindakan,
+                    }
+                    for d in proc.procedure_details if not d.is_deleted
+                ]
+                return {"status": "ok", "data": {
+                    "id": proc.id,
+                    "procedure_text": proc.procedure_text,
+                    "description": proc.description,
+                    "tindakan": details
+                }}
+            else:
+                # fallback: return kosong
+                return {"status": "not_found", "data": None}
 
 
     return {"error": f"Tipe {rec_type} tidak dikenali"}

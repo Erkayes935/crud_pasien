@@ -753,7 +753,7 @@ function renderTindakan(list) {
           data-procid="${td.id}">
         <!-- Nama Tindakan -->
         <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-            onclick="openProcedureModal('${td.id || ''}')">
+            onclick="openProcedureModal('${td.id}', '${td.nama}')">
           ${td.nama}
         </div>
 
@@ -798,65 +798,49 @@ function renderTindakan(list) {
 }
 
 
-async function openProcedureModal(procId) {
+async function openProcedureModal(procId, procedureName) {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-  const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
-
+  // Pastikan procedureName diterima dari argumen
+  if (!claimId || !procedureName) {
+    alert("Claim ID atau nama tindakan tidak ditemukan.");
+    return;
+  }
   try {
-    const res = await fetch(url);
-    const { data } = await res.json();
-    const d = (data.tindakan && data.tindakan[0]) || {};
-
-    const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
-
-    const dx = window.claimState.currentDiagnosis;
-    if (dx && Array.isArray(dx.tindakan)) {
-      dx.tindakan.forEach(td => {
-        if (td.id == procId) {
-          td.deskripsi = deskripsiGabungan;
-        }
-      });
-    }
-    // tampilkan nested modal
+    const res = await fetch("/analyze_procedure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id: claimId, procedure_name: procedureName })
+    });
+    const result = await res.json();
+    const d = result.data || result;
     const content = `
       <div class="flex justify-between items-center mb-3">
-        <h3 class="text-lg font-bold">Detail Tindakan (${data.procedure_text || '-'})</h3>
+        <h3 class="text-lg font-bold">Detail Tindakan (${d.procedure || procedureName || '-'})</h3>
         <button type="button" onclick="closeNestedModal()" class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
       </div>
       <div class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.icd9 || '-'}</div>
-        
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
-        <div class="bg-gray-800 px-3 py-2 rounded">${deskripsiGabungan}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.validitas || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.status || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.ina_cbg || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.faskes || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.rawat_inap || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.syarat_klinis || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.icd9_code || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.icd9_desc || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.validitas || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.status_tindakan || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.ina_cbg_tarif || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.faskes || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.rawat_inap || '-'}</div>
+  <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+  <div class="bg-gray-800 px-3 py-2 rounded text-white">${d.syarat_klinis || '-'}</div>
       </div>
     `;
-    openModal(`Detail Tindakan (${data.procedure_text || '-'})`, content, { hideDefaultClose: true });
-
-    // ✅ update DOM langsung (biar instant)
-    const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
-    if (itemEl) itemEl.textContent = deskripsiGabungan;
-
+    openModal(`Detail Tindakan (${d.procedure || procedureName || '-'})`, content, { hideDefaultClose: true });
   } catch (err) {
-    console.error("Gagal load detail tindakan", err);
+    console.error("Gagal load detail granular tindakan", err);
+    alert("Gagal load detail granular tindakan");
   }
 }
 
