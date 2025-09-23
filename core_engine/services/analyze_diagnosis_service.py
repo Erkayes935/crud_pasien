@@ -73,57 +73,74 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     disease_name = input_data.get("disease_name", "")
     rekam_medis = input_data.get("rekam_medis", [])
 
-    # --- 1. Ambil hasil GPT (narasi klinis + ICD utama)
-    gpt_result = gpt_analyze_diagnosis(disease_name, rekam_medis)
-    aspek_klinis = gpt_result.get("aspek_klinis", {})
+    # --- 1. Ambil rules spesifik diagnosis (misal pneumonia.json, asmabronkial.json, dll.)
+    rule_data = load_diagnosis_rule(disease_name)
 
-    # --- 2. Mapping ICD utama ke rules lokal
-    icd_code = gpt_result.get("icd10", {}).get("utama", "")
+    # --- 2. Ambil aspek klinis dari rules, fallback ke OpenAI jika kosong
+    aspek_klinis = rule_data.get("aspek_klinis", {})
+    gpt_result = None
+    if not aspek_klinis or not aspek_klinis.get("justifikasi"):
+        gpt_result = gpt_analyze_diagnosis(disease_name, rekam_medis)
+        aspek_klinis = gpt_result.get("aspek_klinis", aspek_klinis)
+
+    # --- 3. ICD-10, BPJS, catatan BPJS dari rules mapping
+    icd_code = aspek_klinis.get("icd10_code") or (gpt_result.get("icd10", {}).get("utama", "") if gpt_result else "")
     icd10_info = icd10_rules.get(icd_code, {
         "who": icd_code,
         "bpjs": icd_code,
         "catatan_bpjs": ""
     })
 
-    # --- 3. Ambil tindakan dari CP/PNPK rules
-    tindakan = []
-    for t in cp_pnpk_rules.get(disease_name, []):
-        icd9_code = icd9_rules.get(t, None)
-        tindakan_item = {
-            "nama": t,
-            "icd9": icd9_code,
-            "status": "wajib" if "Antibiotik" in t or "X-ray" in t else "opsional"
-        }
-        if icd9_code is None:
-            tindakan_item["catatan"] = "Terapi obat, tidak ada kode ICD-9 (cek Fornas)"
-        tindakan.append(tindakan_item)
+    # --- 4. Tindakan dari rules CP/PNPK, fallback ke OpenAI jika rules kosong
+    tindakan = rule_data.get("tindakan", [])
+    if not tindakan and gpt_result:
+        tindakan = gpt_result.get("tindakan", [])
+    # Format tindakan agar sesuai UI
+    tindakan_ui = []
+    for t in tindakan:
+        if isinstance(t, dict):
+            tindakan_ui.append({
+                "nama": t.get("nama", "-"),
+                "icd9": t.get("icd9", "-"),
+                "status": t.get("status", "-"),
+                "kategori": t.get("kategori", "-"),
+                "regulasi": t.get("regulasi", "-"),
+                "fornas": ", ".join(t.get("fornas", [])) if isinstance(t.get("fornas", []), list) else t.get("fornas", "")
+            })
+        else:
+            tindakan_ui.append({"nama": str(t)})
 
-    # --- 4. Ambil obat Fornas
-    obat_fornas = fornas_rules.get(disease_name, [])
+    # --- 5. Fornas, rawat inap, faskes, rujukan, INA-CBG dari rules
+    obat_fornas = rule_data.get("fornas", [])
+    rawat_inap = rule_data.get("rawat_inap", {})
+    faskes = rule_data.get("faskes", {})
+    rujukan = rule_data.get("rujukan", {})
+    ina_cbg_info = rule_data.get("ina_cbg", {})
 
-    # --- 5. Ambil tarif INA-CBG
-    ina_cbg_info = {}
-    for k, v in inacbg_rules.items():
-        if disease_name.lower() in v["deskripsi"].lower():
-            ina_cbg_info = v.copy()
-            ina_cbg_info["kode"] = k
-            break
-
-    # --- 6. Ambil tambahan rules spesifik diagnosis (misal pneumonia.json, asmabronkial.json, dll.)
-    rule_data = load_diagnosis_rule(disease_name)
-
-    # --- 7. Merge semua hasil
-    return {
-        "claim_id": claim_id,
-        "disease_name": disease_name,
-        "aspek_klinis": aspek_klinis or rule_data.get("aspek_klinis", {}),
-        "icd10": icd10_info,
-        "tindakan": tindakan or rule_data.get("tindakan", []),
-        "fornas": obat_fornas,
-        "rawat_inap": rule_data.get("rawat_inap", {}),
-        "faskes": rule_data.get("faskes", {}),
-        "rujukan": rule_data.get("rujukan", {}),
+    # --- 6. Build response sesuai struktur UI/modal
+    result = {
+        "kategori": disease_name,
+        "justifikasi": aspek_klinis.get("justifikasi", "-"),
+        "bukti_klinis": "; ".join(aspek_klinis.get("bukti", [])) if isinstance(aspek_klinis.get("bukti", []), list) else aspek_klinis.get("bukti", "-"),
+        "syarat_klinis": "; ".join(aspek_klinis.get("syarat_medis", [])) if isinstance(aspek_klinis.get("syarat_medis", []), list) else aspek_klinis.get("syarat_medis", "-"),
+        "icd10_code": icd10_info.get("who", "-"),
+        "kode_bpjs_khusus": icd10_info.get("bpjs", "-"),
+        "catatan_bpjs": icd10_info.get("catatan_bpjs", "-"),
+        "tindakan": tindakan_ui,
+        "rawat_inap": {
+            "indikasi": "; ".join(rawat_inap.get("indikasi", [])) if isinstance(rawat_inap.get("indikasi", []), list) else rawat_inap.get("indikasi", "-"),
+            "lama_rawat": rawat_inap.get("lama_rawat", "-"),
+            "perpanjangan": rawat_inap.get("perpanjangan", "-")
+        },
+        "faskes": {
+            "kesesuaian_rs": faskes.get("kesesuaian", faskes.get("level", "-"))
+        },
+        "rujukan": {
+            "syarat": rujukan.get("syarat", "-"),
+            "kelayakan": rujukan.get("kelayakan", "-")
+        },
         "ina_cbg": ina_cbg_info,
         "source": "AI+Rule",
-        "engine_version": "analyze_diagnosis@2025-09-17"
+        "engine_version": "analyze_diagnosis@2025-09-22"
     }
+    return result

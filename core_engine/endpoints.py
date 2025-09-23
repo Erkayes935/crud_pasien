@@ -53,11 +53,16 @@ class DiagnosisInput(BaseModel):
 @router.post("/predict_ddx")
 async def predict_ddx(payload: dict):
     """
-    Expects: { "rekam_medis": [ {...}, {...} ] }
-    Returns: { "utama": [...], "komorbid": [...], "komplikasi": [...], "engine_version": ... }
+    Expects: { "global_record": {...}, "stage": "admission"|"daily"|"discharge", ... }
+    Backward-compat: { "rekam_medis": [ {...} ] }
+    Returns: { "diagnosis": [...], "komorbid": [...], "komplikasi": [...], "engine_version": ... }
     """
+    print(f"[CORE_ENGINE] Payload diterima di /predict_ddx: {payload}")
     out = process_predict_ddx(payload)
-    out["engine_version"] = "predict_ddx@2025-09-16"
+    # engine_version set by service, fallback if missing
+    if "engine_version" not in out:
+        from datetime import date
+        out["engine_version"] = f"predict_ddx@{date.today().isoformat()}"
     return out
 
 
@@ -68,7 +73,8 @@ async def analyze_diagnosis(payload: dict):
     Returns: JSON detail + engine_version
     """
     out = process_analyze_diagnosis(payload)
-    out["engine_version"] = "analyze_diagnosis@2025-09-16"
+    from datetime import date
+    out["engine_version"] = f"analyze_diagnosis@{date.today().isoformat()}"
     return out
 
 @router.post("/analyze_procedure")

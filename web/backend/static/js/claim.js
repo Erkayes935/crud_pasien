@@ -1,170 +1,43 @@
+function ensureDaily(dayId) {
+  if (!window.manualInput) window.manualInput = { daily: {} };
+  if (!manualInput.daily) manualInput.daily = {};
+  if (!manualInput.daily[dayId]) {
+    manualInput.daily[dayId] = {
+      diagnosis:   { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komorbid:    { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komplikasi:  { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
+    };
+  }
+  return manualInput.daily[dayId];
+}
+
 // ==================== Generate AI ====================
-// ==================== Workflow Baru Predict DDX & Analyze Diagnosis ====================
-// Generate AI: hanya render kategori (parent + child), kolom lain kosong
-async function generateAI_new() {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId || document.getElementById("claimIdHidden")?.value;
-  if (!claimId) {
-    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
-    return;
-  }
-  try {
-    const res = await fetch("/generate_ai/predict_ddx", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ claim_id: claimId })
-    });
-    const data = await res.json();
-    console.log("📥 Data predict_ddx diterima:", data);
-    renderPredictDDX(data);
-  } catch (err) {
-    console.error("❌ Error Generate AI:", err);
-    alert("Gagal generate AI: " + err);
-  }
-}
-
-// Render parent & child di kolom kategori, kolom lain kosong
-function renderPredictDDX(ddx) {
-  const sections = [
-    { key: "diagnosis", sel: "diagnosis-admission" },
-    { key: "komorbid", sel: "komorbid-admission" },
-    { key: "komplikasi", sel: "komplikasi-admission" }
-  ];
-
-  sections.forEach(({ key, sel }) => {
-    const tbody = document.getElementById(sel);
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    (ddx[key] || []).forEach(item => {
-      // parent row
-      const row = document.createElement("tr");
-      row.innerHTML = [
-        `<td class="border px-2 py-1 text-blue-600 underline cursor-pointer parent-disease" data-disease="${item.parent}">${item.parent}</td>`,
-        `<td class="border px-2 py-1 klinis">-</td>`,
-        `<td class="border px-2 py-1 icd">-</td>`,
-        `<td class="border px-2 py-1 tindakan">-</td>`,
-        `<td class="border px-2 py-1 score">${item.confidence ? (item.confidence * 100).toFixed(0) + "%" : "-"}</td>`,
-        `<td>
-          <select class="border px-2 py-1 rounded mapping-dropdown">
-            <option value="">Pilih</option>
-            <option value="Diagnosis Utama">Diagnosis Utama</option>
-            <option value="Komorbid">Komorbid</option>
-            <option value="Komplikasi">Komplikasi</option>
-            <option value="None">None</option>
-          </select>
-        </td>`
-      ].join("");
-      tbody.appendChild(row);
-
-      // children
-      (item.children || []).forEach(ch => {
-        const childRow = document.createElement("tr");
-        childRow.innerHTML = [
-          `<td class="border px-6 py-1 text-blue-500 underline cursor-pointer child-disease" data-disease="${ch.name}">↳ ${ch.name}</td>`,
-          `<td class="border px-2 py-1 klinis">-</td>`,
-          `<td class="border px-2 py-1 icd">-</td>`,
-          `<td class="border px-2 py-1 tindakan">-</td>`,
-          `<td class="border px-2 py-1 score">${ch.confidence ? (ch.confidence * 100).toFixed(0) + "%" : "-"}</td>`,
-          `<td>
-            <select class="border px-2 py-1 rounded mapping-dropdown">
-              <option value="">Pilih</option>
-              <option value="Diagnosis Utama">Diagnosis Utama</option>
-              <option value="Komorbid">Komorbid</option>
-              <option value="Komplikasi">Komplikasi</option>
-              <option value="None">None</option>
-            </select>
-          </td>`
-        ].join("");
-        tbody.appendChild(childRow);
-      });
-    });
-  });
-
-  // attach click handler
-  document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
-    el.addEventListener("click", () => onClickAnalyzeDiagnosis_new(el.dataset.disease));
-  });
-
-  // attach mapping change handler for all dropdowns (parent & child)
-  document.querySelectorAll(".mapping-dropdown").forEach((dropdown, i) => {
-    dropdown.addEventListener("change", function(e) {
-      // Cari parent/child disease name
-      const tr = dropdown.closest("tr");
-      const diseaseCell = tr.querySelector(".parent-disease, .child-disease");
-      const diseaseName = diseaseCell ? diseaseCell.dataset.disease : null;
-      if (!diseaseName) return;
-      // Update simulasi panel
-      updateSimulasi("diagnosis", e.target.value, { name: diseaseName }, "AI", "admission");
-    });
-  });
-}
-
-// Handler analyze_diagnosis: isi detail di baris + modal
-async function onClickAnalyzeDiagnosis_new(diseaseName) {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId 
-                || document.getElementById("claimIdHidden")?.value;
-
-  try {
-    const res = await fetch("/analyze_diagnosis", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        claim_id: claimId,
-        disease_name: diseaseName
-      })
-    });
-    const detail = await res.json();
-    console.log("📥 Hasil analyze_diagnosis:", detail);
-
-    fillRowWithDetail_new(diseaseName, detail);
-    openModal(diseaseName, buildModalContent({
-      modal_detail: detail,
-      kategori: diseaseName
-    }));
-  } catch (err) {
-    console.error("❌ Gagal analyze_diagnosis:", err);
-  }
-}
-
-function fillRowWithDetail_new(diseaseName, detail) {
-  document.querySelectorAll(".parent-disease,.child-disease").forEach(el => {
-    if (el.dataset.disease === diseaseName) {
-      const tr = el.closest("tr");
-
-      // isi kolom klinis
-      tr.querySelector(".klinis").textContent = [
-        detail.aspek_klinis?.justifikasi,
-        detail.aspek_klinis?.bukti,
-        detail.aspek_klinis?.syarat
-      ].filter(Boolean).join(". ");
-
-      // isi kolom ICD dari struktur icd10
-      tr.querySelector(".icd").textContent = detail.icd10?.kode || "-";
-
-      // isi kolom tindakan
-      tr.querySelector(".tindakan").textContent =
-        (detail.tindakan || []).map(t => t.nama).join(", ") || "-";
-
-      // isi score (kalau ada, kalau nggak tetap "-")
-      tr.querySelector(".score").textContent =
-        detail.score ? detail.score + "%" : "-";
-    }
-  });
-}
-
 function claimData(init) {
-  return {
+  const state = {
     role: init.role || 'doctor', // doctor, verifikator, coder
     tab: init.tab || 'admission',
+    form: {},
+
+    // 🔹 Simulasi hasil AI (utama/sekunder) → dari ClaimSimulation
     simulasi: init.sim || {
       admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      daily: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-      discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
+      "daily-0": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      "daily-1": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+      daily: { days: [], utama: null, sekunder: [] }
     },
-    summary: init.summ || {
-      admission: { klinis:[], regulasi:[], tarif:[] },
-      daily: { klinis:[], regulasi:[], tarif:[] },
-      discharge: { klinis:[], regulasi:[], tarif:[] }
+
+
+    // 🔹 Evaluasi hasil klaim → dari ClaimDiagnosisEvaluation / ClaimProcedureEvaluation / ClaimCombinationAlternative
+    evaluasiDiagnosis: [],
+    evaluasiProcedure: [],
+    alternatifKombinasi: [],
+
+    // 🔹 Manual input tetap ada
+    showManual: {
+      admission: { diagnosis:false, komorbid:false, komplikasi:false },
+      daily: {},
+      discharge: { diagnosis:false, komorbid:false, komplikasi:false }
     },
     manualInput: {
       admission: {
@@ -177,551 +50,869 @@ function claimData(init) {
         komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
         komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
       },
-      daily: {} // akan diisi dinamis pakai dayId
+      daily: {}
     },
-    recommendations: { medis:[], regulasi:[], tarif:[] },
-    combos: {
-      dx: {
-        validitas: "",
-        severity: "",
-        kode_cbg: "",
-        estimasi_tarif: "",
-        syarat_klinis: "",
-        evaluasi_faskes: "",
-        rawat_inap: ""
-      },
-      tdk: {
-        wajib: "",
-        validasi: "",
-        dampak: "",
-        konflik: ""
-      },
-      alternatif: [
-        {judul:"", catatan:"", syarat:"", tindakan:[]},
-        {judul:"", catatan:"", syarat:"", tindakan:[]}
-      ]
-    },
+
     modalOpen: false,
     modalTitle: '',
     modalContent: '',
-    async generateCombos() {
+    hideDefaultClose: false,
+    currentDiagnosis: null,
+
+    init() {
+      const role = this.role;
       const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-      if (!claimId) {
-        alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
-        return;
-      }
-      const payload = { claim_id: claimId, stage: "admission" };
-      console.log("📦 Payload Generate Kombinasi Klaim:", payload);
-      try {
-        const res = await fetch("/generate_claim_combos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        console.log("📥 Data Kombinasi Klaim dari BE:", data);
-        if (!data.result) {
-          alert("Gagal generate kombinasi klaim: " + (data.detail || "Unknown error"));
-          return;
-        }
-        // Update combos state dengan hasil dari backend
-        this.combos = {
-          dx: data.result.evaluasi_diagnosis,
-          tdk: data.result.evaluasi_tindakan,
-          alternatif: data.result.alternatif
-        };
-      } catch (err) {
-        console.error("❌ Error Generate Kombinasi Klaim:", err);
-        alert("Gagal generate kombinasi klaim: " + err);
-      }
-    },
-    init(){
-      window.addEventListener('update-rekom', e => {
-        this.recommendations = e.detail
-      })
-      const role = this.role
-      const claimId = document.getElementById("claimRoot")?.dataset.claimId
 
       if (role === 'verifikator' && claimId) {
-        loadRecommendations(claimId)   // otomatis load dari DB
+        // 🔹 langsung load dari DB (BE pecahan)
+        loadRecommendations(claimId);
       }
     },
-    statusIcon(s){
-      if(s==='valid') return "✅"
-      if(s==='warning') return "⚠️"
-      if(s==='invalid') return "❌"
-      return ""
+
+    statusIcon(s) {
+      if (s === 'valid') return "✅";
+      if (s === 'warning') return "⚠️";
+      if (s === 'invalid') return "❌";
+      return "";
     },
-  }
+      async saveSimulasiDraft() {
+        const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+        if (!claimId) {
+          alert("❌ Claim ID tidak ditemukan.");
+          return;
+        }
+        const state = this;
+        try {
+          const res = await fetch(`/claims/${claimId}/save_simulasi`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ simulasi: state.simulasi })
+          });
+          if (!res.ok) throw new Error("Gagal simpan draft simulasi");
+          alert("✅ Draft simulasi berhasil disimpan.");
+        } catch (err) {
+          console.error("❌ Error simpan draft simulasi:", err);
+          alert("❌ Gagal simpan draft simulasi");
+        }
+      },
+  };
+  window.claimState = state;
+  return state;
 }
+
+// 1. wrapper yang fetch data dari BE
 async function generateAI() {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId
-                 || document.getElementById("claimIdHidden")?.value
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   if (!claimId) {
-    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.")
-    return
+    alert("❌ Claim ID tidak ditemukan.");
+    return;
   }
-  // Ambil Alpine state dulu
-  const state = Alpine.$data(document.getElementById('claimRoot'));
-  // Baru bikin payload pakai state
-  const payload = {
-    claim_id: claimId,
-    patient_uuid: state.pasien?.uuid || state.pasien?.patient_uuid || '',
-    visit_uuid: state.visit?.uuid || state.visit?.visit_uuid || '',
-    context: "all",
-    notes: "generate by AI"
-  }
-  console.log("📦 Payload yg dikirim:", payload)
 
   try {
-    const res = await fetch("/predict_ddx", {
+    // PATCH: Use new endpoint and granular payload
+    const state = Alpine.$data(document.getElementById("claimRoot"));
+    const stage = state.tab || "admission";
+    const res = await fetch("/generate_ai/predict_ddx", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-
-    const data = await res.json()
-    console.log("📥 Data yg diterima:", data)
-    if (!Array.isArray(data.daily)) {
-      data.daily = data.daily ? [data.daily] : []
-    }
-    const state = Alpine.$data(document.getElementById('claimRoot'))
-      // Admission
-      renderTable("diagnosis-admission", data.admission?.diagnosis || [],  "diagnosis", "admission")
-      renderTable("komorbid-admission", data.admission?.komorbid || [],  "komorbid", "admission")
-      renderTable("komplikasi-admission", data.admission?.komplikasi || [], "komplikasi", "admission")
-      Object.assign(state.simulasi.admission, data.admission?.simulasi || {})
-      state.summary.admission = data.admission?.summary || {}
-      // Daily
-      if (Array.isArray(data.daily)) {
-        const dailyContainer = document.getElementById("daily-accordion")
-        dailyContainer.innerHTML = ""
-        data.daily.forEach((hari, idx) => {
-          hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
-          const dayId = `daily-${idx}`
-          if (!state.manualInput.daily[dayId]) {
-            state.manualInput.daily[dayId] = {
-              diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"" },
-              komorbid:  { kategori:"", klinis:"", icd:"", tindakan:"" },
-              komplikasi:{ kategori:"", klinis:"", icd:"", tindakan:"" }
-            }
-          }
-          dailyContainer.insertAdjacentHTML("beforeend", `
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-          <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2 space-y-2">
-
-          <!-- Diagnosis -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Diagnosis
-                <span id="count-diagnosis-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
-                  </tr>
-                </thead>
-                <tbody id="diagnosis-${dayId}"></tbody>
-                <tbody id="diagnosis-manual-${dayId}">
-                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" :value="manualInput.daily[dayId].diagnosis.kategori" placeholder="Nama penyakit"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
-                            class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td>
-                    <button type ="button" @click="addManual('diagnosis','${dayId}')"
-                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                  </td>
-                </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Komorbid -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Komorbid
-                <span id="count-komorbid-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                  </tr>
-                </thead>
-                <tbody id="komorbid-${dayId}"></tbody>
-                <tbody id="komorbid-manual-${dayId}">
-                <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400 readonly"></td>
-                <td>
-                  <button type ="button" @click="addManual('komorbid','${dayId}')"
-                          class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                </td>
-              </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Komplikasi -->
-          <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-            <button type="button" @click="open=!open"
-                    class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-              <span>
-                Komplikasi
-                <span id="count-komplikasi-${dayId}"
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </span>
-              <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-            </button>
-            <div x-show="open" class="p-2">
-              <table class="w-full text-xs border">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                    <th>Tindakan</th><th>Score</th><th>Mapping</th>
-                  </tr>
-                </thead>
-                <tbody id="komplikasi-${dayId}"></tbody>
-                <tbody id="komplikasi-manual-${dayId}">
-                  <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
-                            class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                  <td>
-                    <button type ="button" @click="addManual('komplikasi','${dayId}')"
-                            class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-                  </td>
-                </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    `)
-    console.log("✅ accordion harusnya dibuat, cek DOM:", document.getElementById("daily-accordion").innerHTML)
-    const tmpl = document.getElementById("daily-form-template")
-    if (tmpl) {
-      const clone = tmpl.content.cloneNode(true)
-      dailyContainer.lastElementChild.querySelector(".p-2.space-y-2").appendChild(clone)
-    }
-    // render tabel per bagian
-    renderTable(`diagnosis-${dayId}`, hari.diagnosis || [], "diagnosis", "daily")
-    renderTable(`komorbid-${dayId}`, hari.komorbid || [], "komorbid", "daily")
-    renderTable(`komplikasi-${dayId}`, hari.komplikasi || [] , "komplikasi", "daily")
-      })
-    } else {
-      // fallback lama kalau backend masih kirim 1 blok
-      renderTable("diagnosis-daily", data.daily?.diagnosis || [], "diagnosis", "daily")
-      renderTable("komorbid-daily", data.daily?.komorbid || [], "komorbid", "daily")
-      renderTable("komplikasi-daily", data.daily?.komplikasi || [], "komplikasi", "daily")
-    }
-    Object.assign(state.simulasi.daily, {
-      utama: (data.daily[0] && data.daily[0].utama) || null,
-      sekunder: data.daily.flatMap(d => d.sekunder || []),
-      tindakanUtama: (data.daily[0] && data.daily[0].tindakanUtama) || null,
-      tindakanSekunder: data.daily.flatMap(d => d.tindakanSekunder || []),
-      tarifDraft: null
-    })
-    Object.assign(state.summary.daily, {
-      klinis: data.daily.flatMap(d => d.summary?.klinis || []),
-      regulasi: data.daily.flatMap(d => d.summary?.regulasi || []),
-      tarif: data.daily.flatMap(d => d.summary?.tarif || [])
-    })
-
-
-    // === Discharge ===
-    renderTable("diagnosis-discharge", data.discharge?.diagnosis || [] ,"diagnosis", "discharge")
-    renderTable("komorbid-discharge", data.discharge?.komorbid || [], "komorbid", "discharge")
-    renderTable("komplikasi-discharge", data.discharge?.komplikasi || [], "komplikasi", "discharge")
-    Object.assign(state.simulasi.discharge, data.discharge?.simulasi || {})
-    state.summary.discharge = data.discharge?.summary || {}
-
-    // === Panel kanan (SARAN SIMULASI) ===
-    window.dispatchEvent(new CustomEvent('update-rekom', {
-      detail: {
-        medis: [
-          ...(data.discharge?.summary?.klinis || [])
-        ],
-        regulasi: [
-          ...(data.discharge?.summary?.regulasi || [])
-        ],
-        tarif: [
-          ...(data.discharge?.summary?.tarif || [])
-        ]
-      }
-    }))
-
+      body: JSON.stringify({ claim_id: claimId, stage })
+    });
+  const result = await res.json();
+  console.log("📥 Data pecahan dari BE:", result);
+  // Patch: render each category separately
+  if (result.diagnosis) renderAI(result.diagnosis, "diagnosis", stage);
+  if (result.komorbid) renderAI(result.komorbid, "komorbid", stage);
+  if (result.komplikasi) renderAI(result.komplikasi, "komplikasi", stage);
   } catch (err) {
-    console.error("❌ Error Generate AI: ", err)
-    alert("Gagal generate AI: " + err)
+    console.error("❌ Error generate AI:", err);
+    alert("Gagal generate AI");
   }
 }
+
+// 2. pure renderer (kayak kodeku sebelumnya)
+function renderAI(rows, type, tab) {
+  // rows: array of diagnosis/komorbid/komplikasi
+  // type: "diagnosis" | "komorbid" | "komplikasi"
+  // tab: "admission" | "daily" | "discharge"
+  if (!Array.isArray(rows)) return;
+  // Map AI result to expected table row format
+  const mappedRows = rows.map(item => ({
+    kategori: item.parent || "-",
+    klinis: "-", // parent klinis always strip
+    icd10_code: item.icd10_code || item.icd || "-",
+    icd9_code: item.icd9_code || "-",
+    procedure_text: item.tindakan || item.procedure_text || "-",
+    score: item.confidence || "-",
+    mapping: "", // Fill if needed
+    children: (item.children && Array.isArray(item.children)) ? item.children.map(child => ({
+      kategori: `→ ${child.name || '-'}`,
+      klinis: '-', // always strip for child
+      icd10_code: child.icd10_code || child.icd || '-',
+      icd9_code: child.icd9_code || '-',
+      procedure_text: child.tindakan || child.procedure_text || '-',
+      score: child.confidence || '-',
+      mapping: ""
+    })) : []
+  }));
+  // Admission
+  if (tab === "admission") {
+    renderTable(`${type}-admission`, mappedRows, type, tab);
+  }
+  // Discharge
+  if (tab === "discharge") {
+    renderTable(`${type}-discharge`, mappedRows, type, tab);
+  }
+  // Daily (future: handle daily tabs)
+}
+
 
 
 // ==================== Render Table ====================
 function renderTable(targetId, items, type, tab, dayId = null) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))  // ✅ ambil Alpine state
+  const state = Alpine.$data(document.getElementById("claimRoot"))
+
   if (!state.simulasi[tab]) {
     state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
   }
 
-  // force isi array di state
-  if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
-  }
-  state.simulasi[tab][type].splice(
-    0,
-    state.simulasi[tab][type].length,
-    ...(items || []).map(it => ({
-      ...it,
-      mapping: it.mapping || ""
-    }))
-  )
+  // === Filter AI vs Manual ===
+  const oldItems = state.simulasi[tab][type] || []
+  const oldAiItems = oldItems.filter(it => !it.isManual)
+  const manualItems = oldItems.filter(it => it.isManual)
 
-  const target = document.getElementById(targetId)
-  if (!target) return
+  const newAiItems = (items || []).filter(it => !it.isManual)
+  const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
 
-  // render semua item AI/rekomendasi
-  state.simulasi[tab][type].forEach((item, idx) => {
-    target.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td class="border px-2 py-1 cursor-pointer text-blue-600 underline"
-            data-item='${JSON.stringify(item)}'
-            onclick="openModalFromAttr(this)">
-          ${item.kategori || "-"}
-        </td>
-        <td class="border px-2 py-1">${item.klinis || "-"}</td>
-        <td class="border px-2 py-1">${item.icd || "-"}</td>
-        <td class="border px-2 py-1">${item.tindakan || "-"}</td>
-        <td class="border px-2 py-1">${item.score || "-"}</td>
-        <td ${type === "tindakan" ? 'style="display:none"' : ""}>
-          <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
-                  class="border px-2 py-1 rounded 
-                         bg-white dark:bg-gray-700 
-                         text-gray-900 dark:text-gray-200 
-                         focus:ring-2 focus:ring-blue-400"
-                  ${state.role !== 'doctor' ? 'disabled' : ''}>
-            <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
-            <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
-            <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
-            <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
-            <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
-          </select>
-        </td>
-      </tr>
-    `)
+  let merged = [...aiItems, ...manualItems]
+
+  // === Hindari duplikat ===
+  const seen = new Set()
+  merged = merged.filter(it => {
+    const key = `${it.kategori}-${it.icd10_code || it.icd9_code}-${it.tindakan || it.procedure_text}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
   })
 
+    // Define grouped for counter calculation
+    const grouped = merged;
+    state.simulasi[tab][type] = merged;
 
-  // update counter di header
-  let counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
+  const target = document.getElementById(targetId)
+  if (!target) {
+    console.warn("⚠️ Target tbody tidak ditemukan:", targetId)
+    return
+  }
+  target.innerHTML = ""
+
+  // === Header Table ===
+  const table = target.closest("table")
+  if (table) {
+    table.classList.add("table-fixed")
+    if (!table.querySelector("thead")) {
+      const thead = document.createElement("thead")
+      thead.className = "bg-gray-100 dark:bg-gray-800"
+      thead.innerHTML = `
+        <tr>
+          <th class="border px-4 py-2 w-40">Kategori</th>
+          <th class="border px-4 py-2 w-40">Klinis</th>
+          <th class="border px-4 py-2 w-24 text-center">ICD</th>
+          <th class="border px-4 py-2 w-40">Tindakan</th>
+          <th class="border px-4 py-2 w-20 text-center">Score</th>
+          ${state.role === "doctor" ? `<th class="border px-4 py-2 w-32 text-center">Mapping</th>` : ``}
+        </tr>`
+      table.insertBefore(thead, table.firstChild)
+    }
+  }
+
+  // === Render Parent & Child ===
+  (items || []).forEach((parent, idx) => {
+    const counter = 1 + (parent.children ? parent.children.length : 0)
+  const tbody = document.createElement("tbody")
+  tbody.setAttribute("x-data", "{ open:false }")
+  // Debug: log tipe dan value tbody
+  console.log("[DEBUG] tbody type:", typeof tbody, "constructor:", tbody.constructor.name, tbody)
+    // parent row
+    tbody.innerHTML += `
+      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
+          data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
+          <td class="border px-4 py-2 w-40">
+            <span @click="open=!open" class="mr-1 cursor-pointer">
+              <span x-show="!open" x-cloak>▶</span>
+              <span x-show="open" x-cloak>▼</span>
+            </span>
+            <span class="cursor-pointer"
+                  onclick="openModalFromAttr(this, '${type}')">
+            ${parent.kategori || parent.category || parent.nama_kategori || "-"}
+            </span>
+            <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
+          </td>
+          <td class="border px-4 py-2 w-40">${parent.klinis || "-"}</td>
+          <td class="border px-4 py-2 w-24 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
+          <td class="border px-4 py-2 w-40">${parent.tindakan || parent.procedure_text || "-"}</td>
+          <td class="border px-4 py-2 w-20 text-center">${parent.score || "-"}</td>
+          ${state.role === "doctor" ? `
+          <td class="border px-4 py-2 w-32 text-center">
+            ${renderMappingSelect(parent, tab, type, idx)}
+          </td>` : ``}
+        </tr>
+    `;
+    // child rows ikut scope open
+    (parent.children || []).forEach((child, cIdx) => {
+      tbody.innerHTML += `
+        <tr x-show="open" x-cloak
+            class="bg-gray-50 dark:bg-gray-800 italic text-sm"
+            data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
+            data-db-id="${child.id}">
+          <td class="border px-4 py-2 w-40 cursor-pointer"
+              onclick="openModalFromAttr(this, '${type}')">
+            → → ${child.kategori || "-"}
+          </td>
+          <td class="border px-4 py-2 w-40">-</td>
+          <td class="border px-4 py-2 w-24 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
+          <td class="border px-4 py-2 w-40">${child.tindakan || child.procedure_text || "-"}</td>
+          <td class="border px-4 py-2 w-20 text-center">${child.score || "-"}</td>
+          ${state.role === "doctor" ? `
+          <td class="border px-4 py-2 w-32 text-center">
+            ${renderMappingSelect(child, tab, type, idx)}
+          </td>` : ``}
+        </tr>
+      `;
+    })
+    target.appendChild(tbody)
+    Alpine.initTree(tbody)
+  })
+
+  // === Update Counter ===
+  const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
   const countEl = document.getElementById(counterId)
-  if (countEl) countEl.textContent = items.length
+  if (countEl) {
+    let total = grouped.reduce((sum, p) => sum + 1 + p.children.length, 0)
+    countEl.textContent = total
+  }
+  if (dayId) {
+  const dailyCounter = document.getElementById(`count-daily-${dayId}`);
+    if (dailyCounter) {
+      // hitung total dari semua kategori (diagnosis + komorbid + komplikasi)
+      const totalDaily =
+      (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent) || 0) +
+      (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent) || 0) +
+      (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent) || 0);
 
-  console.log("✅ renderTable synced", tab, type, state.simulasi[tab][type])
+      dailyCounter.textContent = totalDaily;
+    }
+  }
+
+  // === Manual Row Input ===
+  if (state.role === "doctor") {
+    if (tab === "admission" || tab === "discharge" || tab.startsWith("daily-")) {
+      const manualTbody = document.createElement("tbody")
+      const tabPath = tab.startsWith("daily-") 
+        ? `manualInput.daily['${tab}'].${type}`
+        : `manualInput.${tab}.${type}`
+
+      manualTbody.insertAdjacentHTML("beforeend", `
+        <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="col-icd border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="col-tindakan border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2"><input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2 text-center">
+            <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+          </td>
+        </tr>
+      `)
+
+      target.appendChild(manualTbody)
+      Alpine.initTree(manualTbody)
+    }
+  }
+}
+
+// helper untuk potong teks + tooltip
+function truncateText(text, max) {
+  return text && text.length > max ? text.substring(0, max) + "…" : text
+}
+
+// helper untuk mapping select
+function renderMappingSelect(item, tab, type, idx, isChild=false) {
+  const disabled = window.claimState.role !== 'doctor' ? 'disabled' : ''
+  return `
+    <select onchange="onMappingChange(event, '${tab}', '${type}', ${idx})"
+            class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
+            ${disabled}>
+      <option value="" ${item.mapping===""?"selected":""}>Pilih</option>
+      <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
+      <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
+      <option value="Komplikasi" ${item.mapping==="Komplikasi"?"selected":""}>Komplikasi</option>
+      <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
+    </select>
+  `
 }
 
 
+// ==================== Add Manual ====================
+function addManual(type, tab) {
+  const state = Alpine.$data(document.getElementById('claimRoot'))
+
+  // Pastikan manualInput daily ada
+  if (tab.startsWith("daily-") && !state.manualInput.daily[tab]) {
+    state.manualInput.daily[tab] = {
+      diagnosis: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komorbid:  { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+      komplikasi:{ kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
+    }
+  }
+
+  // Ambil input
+  const input = tab.startsWith("daily-")
+    ? state.manualInput.daily[tab][type]
+    : state.manualInput[tab][type]
+
+  if (!input) {
+    console.warn("❌ manualInput kosong:", tab, type)
+    return
+  }
+
+  // Buat item manual
+  const newItem = {
+    kategori: input.kategori || "",
+    klinis: input.klinis || "",
+    icd10_code: input.icd10_code || "",
+    procedure_text: input.procedure_text || "",
+    score: input.score || 0,
+    mapping: "",
+    isManual: true,
+    source: "Manual"
+  }
+
+  // Pastikan simulasi[tab][type] ada
+  if (!state.simulasi[tab]) {
+    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[] }
+  }
+  if (!Array.isArray(state.simulasi[tab][type])) {
+    state.simulasi[tab][type] = []
+  }
+
+  // Tambahkan item ke simulasi per-tab
+  state.simulasi[tab][type].push(newItem)
+
+  // Sinkronisasi daily summary
+  if (tab.startsWith("daily-")) {
+    const idx = parseInt(tab.split("-")[1], 10);
+    if (!state.simulasi.daily) state.simulasi.daily = { days: [], utama:null, sekunder:[] };
+    state.simulasi.daily.days[idx] = state.simulasi[tab];
+
+    const allDays = state.simulasi.daily.days || [];
+    state.simulasi.daily.utama = null;
+    state.simulasi.daily.sekunder = [];
+    allDays.forEach(d => {
+      if (d.utama && !state.simulasi.daily.utama) state.simulasi.daily.utama = d.utama;
+      if (Array.isArray(d.sekunder)) state.simulasi.daily.sekunder.push(...d.sekunder);
+    });
+  }
+
+  ensureDaily(dayId);
+
+  // Render ulang tabel
+  renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
+
+  // 🚨 Enrichment BE kalau endpoint memang ada
+
+  fetch("/ai/recommendation/detail", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      claim_id: state.claimId,
+      type,
+      ...newItem
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    Object.assign(newItem, data.data || {})
+    renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab)
+  })
+  .catch(err => console.error("AI enrichment failed", err))
+}
+
+function addManualTindakan() {
+  const namaEl = document.getElementById("manualNamaTindakan");
+  if (!namaEl) return alert("Input manual tindakan tidak ditemukan");
+
+  const nama = namaEl.value.trim();
+  if (!nama) {
+    alert("Nama tindakan wajib diisi");
+    return;
+  }
+
+  // 🔹 object manual tanpa id (id nanti dari DB saat Save Draft)
+  const newTd = {
+    nama,
+    deskripsi: "-",       // sementara kosong, nanti bisa diisi autocomplete/bridging
+    source: "Manual",
+    isManual: true
+  };
+
+  // 🔹 simpan ke state FE
+  const state = window.claimState;
+  if (!state.manualTindakan) state.manualTindakan = [];
+  state.manualTindakan.push(newTd);
+
+  // 🔹 ambil index array manual terbaru (buat referensi openManualDetailModal)
+  const idx = state.manualTindakan.length - 1;
+
+  // 🔹 render ke UI (pakai index, bukan id)
+  const listContainer = document.querySelector(".tindakan-list");
+  if (listContainer) {
+    listContainer.insertAdjacentHTML("afterbegin", `
+      <div class="grid grid-cols-3 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2 gap-4">
+
+        <!-- Nama tindakan -->
+        <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+            onclick="openManualNestedProcedureModal(${idx})">
+          ${newTd.nama}
+        </div>
+
+        <!-- Deskripsi -->
+        <div class="px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
+                    text-gray-900 dark:text-gray-100 rounded shadow-sm truncate"
+            title="${(newTd.deskripsi && newTd.deskripsi.includes('ICD-9:')) ? newTd.deskripsi : '-'}">
+          ${(newTd.deskripsi && newTd.deskripsi.includes("ICD-9:")) ? newTd.deskripsi : '-'}
+        </div>
+
+        <!-- Tombol -->
+        <div class="flex space-x-2 justify-end">
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Primary','${newTd.nama}','Manual', window.claimState.tab)"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Secondary','${newTd.nama}','Manual', window.claimState.tab)"
+                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+        </div>
+      </div>
+
+
+    `);
+  }
+
+  // reset input
+  namaEl.value = "";
+}
+
 // ==================== Modal ====================
 
-function openModal(title, content) {
+function openModal(title, content, { hideDefaultClose = false } = {}) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
   state.modalOpen = true
   state.modalTitle = title
   state.modalContent = content
+  state.hideDefaultClose = hideDefaultClose
 }
 
-function openModalFromAttr(el) {
-  const it = JSON.parse(el.dataset.item)
-  // Request ke core_engine/analyze_diagnosis untuk detail modal
-  fetch('/analyze_diagnosis', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ diagnosis_text: it.klinis || it.icd || '-' })
-  })
-    .then(res => res.json())
-    .then(detail => {
-      it.modal_detail = detail
-      openModal(it.kategori, buildModalContent(it))
-    })
-    .catch(err => {
-      openModal(it.kategori, buildModalContent(it))
-    })
+function updateRingkasanFromRow(itemId, dx) {
+  if (!dx || !itemId) return;
+
+  const row = document.querySelector(`[data-id="${itemId}"]`);
+  if (!row) return;
+
+  // === update kolom Klinis ===
+  const klinisCell = row.querySelector(".col-klinis");
+  if (klinisCell) {
+    let text = "";
+
+    if (Array.isArray(dx.klinis)) {
+      text = dx.klinis.filter(Boolean).join(", ");
+    } else if (typeof dx.klinis === "string") {
+      text = dx.klinis;
+    } else if (typeof dx.klinis === "object" && dx.klinis !== null) {
+      text = [
+        dx.klinis.justifikasi,
+        dx.klinis.bukti_klinis,
+        dx.klinis.syarat_klinis
+      ].filter(Boolean).join(", ");
+    }
+
+    klinisCell.innerHTML = text
+      ? `<span title="${text}">${truncateText(text, 20)}</span>`
+      : "-";
+  }
+
+  // === update kolom ICD ===
+  const icdCell = row.querySelector(".col-icd");
+  if (icdCell) {
+    if (dx.icd10_code) {
+      icdCell.innerText = dx.icd10_code;
+    } else if (dx.icd10 && dx.icd10.kode_icd) {
+      icdCell.innerText = dx.icd10.kode_icd;
+    } else if (dx.icd9_code) {
+      icdCell.innerText = dx.icd9_code;
+    } else {
+      icdCell.innerText = "-";
+    }
+  }
+
+  // === update kolom Tindakan ===
+  const tindakanCell = row.querySelector(".col-tindakan");
+  if (tindakanCell) {
+    if (dx.tindakan && dx.tindakan.length > 0) {
+      const text = dx.tindakan.map(t => t.procedure_text || t.nama).join(", ");
+      tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 20)}</span>`;
+    } else {
+      tindakanCell.innerText = "-";
+    }
+  }
 }
+
+
+async function openModalFromAttr(el, type) {
+
+  const tr = el.closest("tr");
+  const dbId = tr?.dataset.dbId;
+  const uiId = tr?.dataset.id;
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  // Ambil nama penyakit dari cell yang diklik
+  let diseaseName = "";
+  // Cek parent/child: ambil dari cell yang diklik
+  if (el.textContent) {
+    diseaseName = el.textContent.replace(/^→+\s*/, "").trim();
+  } else {
+    diseaseName = tr?.querySelector(".kategori-cell")?.textContent?.trim() || tr?.dataset.nama || "";
+  }
+
+  try {
+    let dx = {};
+    // Patch: jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis
+    if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
+      // Debug log
+      console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
+      const res = await fetch("/analyze_diagnosis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claim_id: claimId, disease_name: diseaseName })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      console.log("[RESP] /analyze_diagnosis", result);
+      // Gunakan langsung response JSON untuk modal
+      dx = result;
+    } else if (dbId && !isNaN(Number(dbId))) {
+      // fallback legacy detail
+      const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      dx = result.data;
+    } else {
+      dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
+    }
+
+    // 🔹 tampilkan modal
+    openModal(`Detail ${type}`, buildModalContent(dx));
+
+    // 🔹 update ringkasan (kolom tabel)
+    updateRingkasanFromRow(uiId, dx);
+
+  } catch (err) {
+    console.error("❌ Gagal load modal detail:", err);
+  }
+}
+
+
+
+
+function openManualDetailModal(it) {
+  // bikin payload mirip hasil backend supaya bisa diproses buildModalContent
+  const dummy = {
+    kategori: it.kategori || "Manual",
+    klinis: it.klinis || "-",
+    icd10: {
+      kode_icd: it.icd10_code || "-",
+      deskripsi: "-"
+    },
+    tindakan: it.procedure_text ? [{ procedure_text: it.procedure_text }] : [],
+    // field tambahan sesuai struktur asli
+    validitas: "-",
+    status: "-",
+    ina_cbg: "-",
+    faskes: "-",
+    rawat_inap: "-",
+    syarat_klinis: "-"
+  }
+
+  const title = `Detail Diagnosis (${dummy.kategori})`
+  openModal(title, buildModalContent(dummy))
+
+  // update ringkasan biar kolom Klinis / ICD / Tindakan juga keisi
+  updateRingkasanFromRow(dummy)
+}
+
 
 function buildModalContent(it) {
-  const d = it.modal_detail || {}
-  if (it.tindakan && !d.tindakan) {
-    d.tindakan = [{ nama: it.tindakan }]
-  }
+  return renderDiagnosisDetail(it);
+}
+
+function renderDiagnosisDetail(it) {
+  // Patch: ambil langsung dari response JSON
+  const klinis = {
+    justifikasi: it.justifikasi || "-",
+    bukti_klinis: it.bukti_klinis || "-",
+    syarat_klinis: it.syarat_klinis || "-"
+  };
+
+  const icd10 = it.icd10 || { kode_icd: it.icd10_code || "-" };
+  const tindakan = it.tindakan || [];
+  const rawat = it.rawat_inap || {};
+  const faskes = it.faskes || {};
+  const rujukan = it.rujukan || {};
+
+  // helper box 2 kolom
+  const renderBox = (label, value, status = "default") => {
+    let colorClass = "bg-gray-200 text-gray-800"; // default abu
+    if (status === "valid") colorClass = "bg-green-600 text-white";
+    if (status === "invalid") colorClass = "bg-red-600 text-white";
+    const safeValue = value || "-";
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="${colorClass} px-3 py-2">${safeValue}</div>
+      </div>
+    `;
+  };
+
   return `
-    <div class="space-y-4 text-sm">
+    <div class="space-y-6 text-sm">
 
-      <!-- Aspek Klinis -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Aspek Klinis</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Justifikasi:</b> ${d.aspek_klinis?.justifikasi || '-'}</li>
-          <li><b>Bukti:</b> ${d.aspek_klinis?.bukti || '-'}</li>
-          <li><b>Syarat:</b> ${d.aspek_klinis?.syarat || '-'}</li>
-        </ul>
-      </section>
-
-      <!-- ICD-10 -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">ICD-10</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Struktur Kode:</b> ${d.icd10?.struktur_kode || '-'}</li>
-          <li><b>Kode Ganda:</b> ${d.icd10?.kode_ganda || '-'}</li>
-          <li><b>Z-Code:</b> ${d.icd10?.z_code || '-'}</li>
-          <li><b>Kode BPJS Khusus:</b> ${d.icd10?.kode_bpjs_khusus || '-'}</li>
-        </ul>
-      </section>
-
-      <!-- Tindakan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Tindakan</h4>
-        <div class="mt-2 space-y-1">
-          ${(d.tindakan || []).map(td => `
-            <div class="flex justify-between items-center border p-2 rounded">
-              <span>${td.nama}</span>
-              <div x-show="role !== 'verifikator'" class="space-x-1">
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="(function(){
-                  const state = Alpine.$data(document.getElementById('claimRoot'));
-                  updateSimulasi('tindakan','Primary','${td.nama}','', state.tab);
-                })()"
-                  class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Utama</button>
-                <button type="button" x-bind:disabled="role === 'verifikator'" onclick="(function(){
-                  const state = Alpine.$data(document.getElementById('claimRoot'));
-                  updateSimulasi('tindakan','Secondary','${td.nama}','', state.tab);
-                })()"
-                  class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Pilih Sekunder</button>
-              </div>
-            </div>
-          `).join('')}
+      <!-- KLINIS -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderBox("Justifikasi", klinis.justifikasi, klinis.status)}
+          ${renderBox("Bukti Klinis", klinis.bukti || klinis.bukti_klinis, klinis.status_bukti)}
+          ${renderBox("Syarat Klinis", klinis.syarat || klinis.syarat_klinis, klinis.status_syarat)}
         </div>
       </section>
 
-      <!-- Rawat Inap -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Rawat Inap</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Indikasi:</b> ${d.rawat_inap?.indikasi || '-'}</li>
-          <li><b>Lama Rawat:</b> ${d.rawat_inap?.lama_rawat || '-'}</li>
-          <li><b>Perpanjangan:</b> ${d.rawat_inap?.perpanjangan || '-'}</li>
-        </ul>
+      <!-- ICD-10 -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd)}
+          ${renderBox("Struktur ICD", icd10.struktur_kode, icd10.status)}
+          ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_ganda)}
+          ${renderBox("Z-Code", icd10.z_code, icd10.status_z)}
+          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_bpjs)}
+        </div>
       </section>
 
-      <!-- Faskes -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Faskes</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Kesesuaian RS:</b> ${d.faskes?.kesesuaian_rs || '-'}</li>
-        </ul>
+      <!-- TINDAKAN -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
+        <div class="p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderTindakan(tindakan)}
+        </div>
       </section>
 
-      <!-- Rujukan -->
-      <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <h4 class="font-semibold mb-2">Rujukan</h4>
-        <ul class="list-disc list-inside space-y-1">
-          <li><b>Syarat:</b> ${d.rujukan?.syarat || '-'}</li>
-          <li><b>Kelayakan:</b> ${d.rujukan?.kelayakan || '-'}</li>
-        </ul>
+      <!-- RAWAT INAP -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi)}
+          ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama)}
+          ${renderBox("Perpanjangan", rawat.perpanjangan, rawat.status_perpanjangan)}
+        </div>
+      </section>
+
+      <!-- FASKES -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">FASKES</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderBox("Kesesuaian RS", faskes.kesesuaian_rs, faskes.status)}
+        </div>
+      </section>
+
+      <!-- RUJUKAN -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderBox("Syarat", rujukan.syarat, rujukan.status_syarat)}
+          ${renderBox("Kelayakan", rujukan.kelayakan, rujukan.status_kelayakan)}
+        </div>
       </section>
 
     </div>
-  `
+  `;
+}
+
+
+function renderTindakan(list) {
+  const tindakanList = list && list.length > 0 
+    ? list.map(td => `
+      <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+          data-procid="${td.id}">
+        <!-- Nama Tindakan -->
+        <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+            onclick="openProcedureModal('${td.id || ''}')">
+          ${td.nama}
+        </div>
+
+        <!-- Deskripsi -->
+        <div>
+          <span
+            class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+            title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
+            ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
+          </span>
+        </div>
+
+        <!-- Tombol -->
+        <div class="flex justify-end space-x-2">
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Primary','${td.nama}','', window.claimState.tab)"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs shadow">
+            Pilih Utama
+          </button>
+          <button type="button"
+                  onclick="updateSimulasi('tindakan','Secondary','${td.nama}','', window.claimState.tab)"
+                  class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs shadow">
+            Pilih Sekunder
+          </button>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
+
+  const manualForm = `
+    <div class="tindakan-list mt-4"></div>
+    <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
+      <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
+      <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
+            class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
+      <button type="button" onclick="addManualTindakan()" 
+              class="mt-2 bg-green-600 text-white px-3 py-1 rounded">➕ Tambah</button>
+    </div>
+  `;
+  
+  return tindakanList + manualForm;
+}
+
+
+async function openProcedureModal(procId) {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
+
+  try {
+    const res = await fetch(url);
+    const { data } = await res.json();
+    const d = (data.tindakan && data.tindakan[0]) || {};
+
+    const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
+
+    const dx = window.claimState.currentDiagnosis;
+    if (dx && Array.isArray(dx.tindakan)) {
+      dx.tindakan.forEach(td => {
+        if (td.id == procId) {
+          td.deskripsi = deskripsiGabungan;
+        }
+      });
+    }
+    // tampilkan nested modal
+    const content = `
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold">Detail Tindakan (${data.procedure_text || '-'})</h3>
+        <button type="button" onclick="closeNestedModal()" class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.icd9 || '-'}</div>
+        
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
+        <div class="bg-gray-800 px-3 py-2 rounded">${deskripsiGabungan}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.validitas || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.status || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.ina_cbg || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.faskes || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.rawat_inap || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${d.syarat_klinis || '-'}</div>
+      </div>
+    `;
+    openModal(`Detail Tindakan (${data.procedure_text || '-'})`, content, { hideDefaultClose: true });
+
+    // ✅ update DOM langsung (biar instant)
+    const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
+    if (itemEl) itemEl.textContent = deskripsiGabungan;
+
+  } catch (err) {
+    console.error("Gagal load detail tindakan", err);
+  }
+}
+
+
+function openManualNestedProcedureModal(idx) {
+  const td = window.claimState.manualTindakan[idx] || {};
+
+  const content = `
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="text-lg font-bold">Detail Tindakan (${td.nama} - Manual)</h3>
+      <button type="button" onclick="closeNestedModal()" 
+              class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-icd9">${td.icd9 || '-'}</div>
+      
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.deskripsi || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.validitas || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-status">${td.status || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded field-inacbg">${td.ina_cbg || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.faskes || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.rawat_inap || '-'}</div>
+
+      <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+      <div class="bg-gray-800 px-3 py-2 rounded">${td.syarat_klinis || '-'}</div>
+    </div>
+  `;
+
+  openModal(`Detail Tindakan (${td.nama} - Manual)`, content);
+}
+
+
+function closeNestedModal() {
+  const dx = window.claimState.currentDiagnosis;
+  if (dx) {
+    // panggil ulang modal diagnosis
+    const title = `Detail Diagnosis (${dx.kategori || '-'})`;
+    openModal(title, buildModalContent(dx));
+  } else {
+    // fallback: kalau nggak ada data, baru beneran nutup modal
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    state.modalOpen = false;
+  }
 }
 
 // ==================== Simulasi ====================
@@ -736,84 +927,109 @@ function normalizeOpt(opt) {
 
 function normalizeItem(val) {
   if (typeof val === "string") {
-    return { name: val.split(" [")[0] || "-", label: "" }
+    return { 
+      name: val.split(" [")[0] || "-", 
+      label: "", 
+      mapping: "", 
+      source: "Manual", 
+      isManual: true 
+    }
   }
   return {
+    ...val,  // jaga semua field biar tetap ada
     name: val.name || val.kategori || val.icd || "-",
     label: val.label || "",
+    mapping: val.mapping || ""
   }
 }
 
-
 function updateSimulasi(type, opt, value, source, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-  if (!tab) tab = 'admission'
-  opt = normalizeOpt(opt)
-  console.log("updateSimulasi", { type, opt, tab, current: state.simulasi[tab] })
-  let sim = state.simulasi[tab]
-  if (!sim || typeof sim !== 'object' || Array.isArray(sim)) {
-    sim = { utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null }
-    state.simulasi[tab] = sim
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  if (!tab) tab = "admission";
+  const finalOpt = normalizeOpt(opt || value.mapping || "");
+
+  // --- pastikan struktur simulasi[tab] selalu ada & lengkap ---
+  if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
+    state.simulasi[tab] = {};
   }
+  let sim = state.simulasi[tab];
 
-  if (!Array.isArray(sim.sekunder)) sim.sekunder = []
-  if (!('utama' in sim)) sim.utama = null
-  if (!('tindakanUtama' in sim)) sim.tindakanUtama = null
-  if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = []
-  if (!('tarifDraft' in sim)) sim.tarifDraft = null
-  // pastikan object {name,label}
-  const item = (typeof value === 'string')
-    ? { name: value.split(' [')[0], label: '' }
-    : { name: value.name, label: value.label || '' }
+  if (!("utama" in sim)) sim.utama = null;
+  if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
+  if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
+  if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = [];
+  if (!("tarifDraft" in sim)) sim.tarifDraft = null;
 
-  // mapping label berdasar dropdown mapping (accordion kiri)
+  const item = typeof value === "string"
+  ? { name: value.split(" [")[0], label: "", source: "Manual", isManual: true }
+  : { ...value };
+
+
   if (source) {
-    if (opt === "Primary") item.label = "Utama Klinis"
-    else if (opt === "Secondary-Komorbid") item.label = "Komorbid"
-    else if (opt === "Secondary-Komplikasi") item.label = "Komplikasi"
+    if (finalOpt === "Primary") item.label = "Utama Klinis";
+    else if (finalOpt === "Secondary-Komorbid") item.label = "Komorbid";
+    else if (finalOpt === "Secondary-Komplikasi") item.label = "Komplikasi";
   }
 
-  // ========== DIAGNOSIS ==========
-  if (type === 'diagnosis' || type === 'komorbid' || type === 'komplikasi') { // admission / daily / discharge
-    if (opt === "Primary") {
-      const oldPrimary = sim.utama
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
-      sim.utama = item
-      if (oldPrimary && oldPrimary.name !== item.name) {
-        sim.sekunder.unshift(oldPrimary)
-      }
-    }
-    else if (opt === "Secondary" || opt === "Secondary-Komorbid" || opt === "Secondary-Komplikasi") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      const idx = sim.sekunder.findIndex(dx => dx.name === item.name)
-      if (idx === -1) sim.sekunder.push(item)
-      else sim.sekunder[idx] = item
-    }
-    else if (opt === "None") {
-      if (sim.utama && sim.utama.name === item.name) sim.utama = null
-      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name)
+  // Diagnosis, Komorbid, Komplikasi
+  if (type === "diagnosis" || type === "komorbid" || type === "komplikasi") {
+    if (finalOpt === "Primary") {
+      const oldPrimary = sim.utama;
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
+      sim.utama = item;
+      if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
+    } else if (finalOpt.startsWith("Secondary")) {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null;
+      const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
+      if (idx === -1) sim.sekunder.push(item);
+      else sim.sekunder[idx] = item;
+    } else if (finalOpt === "None") {
+      if (sim.utama && sim.utama.name === item.name) sim.utama = null;
+      sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
     }
   }
 
-  // ========== TINDAKAN ==========
+  // Tindakan
   if (type === "tindakan") {
     const nama = typeof value === "string" ? value : value.name;
-    if (opt === "Primary") {
+    if (finalOpt === "Primary") {
       const oldPrimary = sim.tindakanUtama;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
       sim.tindakanUtama = { name: nama };
       if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
-    } else if (opt === "Secondary") {
+    } else if (finalOpt === "Secondary") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       if (!sim.tindakanSekunder.find(td => td.name === nama)) {
         sim.tindakanSekunder.push({ name: nama });
       }
-    } else if (opt === "None") {
+    } else if (finalOpt === "None") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
     }
   }
+
+  // 🔄 khusus untuk daily, sync ke summary
+  if (tab.startsWith("daily-")) {
+    const idxDay = parseInt(tab.split("-")[1], 10);
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
+    state.simulasi.daily.days[idxDay] = state.simulasi[tab];
+
+    // rebuild summary daily
+    state.simulasi.daily.utama = null;
+    state.simulasi.daily.sekunder = [];
+    state.simulasi.daily.days.forEach(d => {
+      if (d?.utama && !state.simulasi.daily.utama) {
+        state.simulasi.daily.utama = d.utama;
+      }
+      if (Array.isArray(d?.sekunder)) {
+        state.simulasi.daily.sekunder.push(...d.sekunder);
+      }
+    });
+  }
+
+  console.log("🟢 Simulasi updated:", state.simulasi);
 }
+
 
 // ==================== Helpers ====================
 
@@ -868,204 +1084,23 @@ async function loadRecommendations(claimId) {
       const dayId = `daily-${idx}`
 
       dailyContainer.insertAdjacentHTML("beforeend", `
-  <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-    <button type="button" @click="open=!open"
-            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-      <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
-      <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-    </button>
-    <div x-show="open" class="p-2 space-y-2">
-
-      <!-- Diagnosis -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Diagnosis
-            <span id="count-diagnosis-daily-${idx}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.diagnosis || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th x-show="role === 'doctor'">Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="diagnosis-${dayId}"></tbody>
-            <tbody id="diagnosis-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.kategori" placeholder="Nama penyakit"
-                        class="border px-2 py-1 w-full rounded 
-                                bg-white dark:bg-gray-700 
-                                text-gray-900 dark:text-gray-100 
-                                focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.klinis" placeholder="Klinis"
-                        class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.icd" placeholder="ICD"
-                        class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.tindakan" placeholder="Tindakan"
-                        class="border px-2 py-1 w-full rounded 
-                                bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td><input x-model="manualInput.daily['${dayId}'].diagnosis.score" placeholder="Score"
-                        class="border px-2 py-1 w-full rounded 
-                                    bg-white dark:bg-gray-700 
-                                    text-gray-900 dark:text-gray-100 
-                                    focus:ring-2 focus:ring-blue-400" readonly></td>
-              <td>
-                <button @click="addManual('diagnosis','${dayId}')"
-                        class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-              </td>
-            </tr>
-            </tbody>
-          </table>
+        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
+          <button type="button" @click="open=!open"
+                  class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
+            <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
+          </button>
+          <div x-show="open" class="p-2 space-y-2">
+            <div><table class="w-full text-xs border table-fixed"><tbody id="diagnosis-${dayId}"></tbody></table></div>
+            <div><table class="w-full text-xs border table-fixed"><tbody id="komorbid-${dayId}"></tbody></table></div>
+            <div><table class="w-full text-xs border table-fixed"><tbody id="komplikasi-${dayId}"></tbody></table></div>
+          </div>
         </div>
-      </div>
+      `)
 
-      <!-- Komorbid -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button type="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komorbid
-            <span id="count-komorbid-daily-${idx}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.komorbid || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="komorbid-${dayId}"></tbody>
-            <tbody id="komorbid-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.kategori" placeholder="Komorbid"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komorbid.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td>
-                  <button @click="addManual('komorbid','${dayId}')"
-                          class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Komplikasi -->
-      <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:true}">
-        <button type ="button" @click="open=!open"
-                class="w-full flex justify-between px-4 py-1 bg-gray-100 dark:bg-gray-600 font-semibold text-sm">
-          <span>
-            Komplikasi
-            <span id="count-komplikasi-daily-${idx}"
-            class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-              ${(hari.komplikasi || []).length}
-            </span>
-          <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-        </button>
-        <div x-show="open" class="p-2">
-          <table class="w-full text-xs border">
-            <thead class="bg-gray-100 dark:bg-gray-800">
-              <tr>
-                <th>Kategori</th><th>Klinis</th><th>ICD</th>
-                <th>Tindakan</th><th>Score</th><th>Mapping</th>
-              </tr>
-            </thead>
-            <tbody id="komplikasi-${dayId}"></tbody>
-            <tbody id="komplikasi-manual-${dayId}">
-            <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.kategori" placeholder="Komplikasi"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" @click="openModalFromAttr(item)"></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.klinis" placeholder="Klinis"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.icd" placeholder="ICD"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.tindakan" placeholder="Tindakan"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td><input x-model="manualInput.daily['${dayId}'].komplikasi.score" placeholder="Score"
-                           class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400" readonly></td>
-                <td>
-                  <button @click="addManual('komplikasi','${dayId}')"
-                          class="border px-2 py-1 w-full rounded 
-       bg-white dark:bg-gray-700 
-       text-gray-900 dark:text-gray-100 
-       focus:ring-2 focus:ring-blue-400">➕</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-  </div>
-`)
-
-      renderTable(`diagnosis-${dayId}`, Array.isArray(hari.diagnosis) ? hari.diagnosis.map(mapRecommendation) : [], "diagnosis", "daily")
-      renderTable(`komorbid-${dayId}`, Array.isArray(hari.komorbid) ? hari.komorbid.map(mapRecommendation) : [], "komorbid", "daily")
-      renderTable(`komplikasi-${dayId}`, Array.isArray(hari.komplikasi) ? hari.komplikasi.map(mapRecommendation) : [], "komplikasi", "daily")
+      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId)
+      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId)
+      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId)
     })
 
     // === Discharge ===
@@ -1080,95 +1115,16 @@ async function loadRecommendations(claimId) {
 
 function mapRecommendation(r) {
   return {
-    kategori: r.sim_text || "-",
-    klinis: r.regulation_refs?.klinis || "-",
-    icd: r.icd10_code || r.icd9_code || "-",
-    tindakan: r.icd9_code || r.regulation_refs?.tindakan || "-",
-    score: r.confidence_score || 0,
-    child: r.regulation_refs?.child || false,
-    name: r.sim_text || "-",  // biar updateSimulasi aman
-    modal_detail: r.regulation_refs?.modal_detail || {}
-  }
+    id: r.id,
+    kategori: r.nama_kategori || r.kategori || r.category || r.nama || "-",
+    klinis: r.klinis || r.justifikasi || "-",
+    icd10_code: r.icd10_code || r.icd || "-",
+    procedure_text: r.tindakan || r.procedure_text || "-",
+    score: r.confidence_score || r.score || 0,
+    child: r.child || false,
+    isManual: r.is_manual || false,
+  };
 }
-
-
-function addManual(type, tab) {
-  const state = Alpine.$data(document.getElementById('claimRoot'))
-
-  if (!state.simulasi[tab]) {
-    state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] }
-  }
-  if (!Array.isArray(state.simulasi[tab][type])) {
-    state.simulasi[tab][type] = []
-  }
-  
-  let input
-  if (tab.startsWith("daily-")) {
-    input = state.manualInput.daily[tab][type]
-  } else {
-    input = state.manualInput[tab][type]
-  }
-
-
-  // Buat object baru dari input manual
-  // PERBAIKAN
-  const newItem = {
-    name: input.kategori || "-",
-    kategori: input.kategori || "",
-    klinis: input.klinis || "-",
-    icd: input.icd || "-",
-    tindakan: input.tindakan || "-",
-    score: 0,
-    mapping: ""
-  }
-
-
-  // Masukkan ke simulasi
-  state.simulasi[tab][type].push(newItem)
-
-  const manualBody = document.getElementById(`${type}-manual-${tab}`)
-  manualBody.insertAdjacentHTML("beforeend", `
-    <tr class="bg-gray-50 dark:bg-gray-800">
-      <td>${newItem.kategori}</td>
-      <td>${newItem.klinis}</td>
-      <td>${newItem.icd}</td>
-      <td>${newItem.tindakan}</td>
-      <td>${newItem.score}</td>
-      <td>-</td>
-    </tr>
-  `)
-
-  // Reset input manual (jangan ganti object)
-  // PERBAIKAN
-  if (tab.startsWith("daily-")) {
-  state.manualInput.daily[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
-  } else {
-    state.manualInput[tab][type] = { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
-  }
-
-
-
-  // Trigger AI recommendation
-  // Ganti ke endpoint core_engine yang sesuai
-  fetch("/analyze_claim", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kategori: newItem.kategori })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const idx = state.simulasi[tab][type].length - 1
-    state.simulasi[tab][type][idx].klinis   = data.klinis   || state.simulasi[tab][type][idx].klinis
-    state.simulasi[tab][type][idx].icd      = data.icd      || state.simulasi[tab][type][idx].icd
-    state.simulasi[tab][type][idx].tindakan = data.tindakan || state.simulasi[tab][type][idx].tindakan
-    state.simulasi[tab][type][idx].score    = data.score    ?? state.simulasi[tab][type][idx].score
-  })
-  .catch(err => console.error("AI recommendation failed", err))
-}
-
-
-
-
 
 function onMappingChange(event, tab, type, idx) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
@@ -1181,143 +1137,273 @@ function onMappingChange(event, tab, type, idx) {
   }
 
   const opt = event.target.value
-  updateSimulasi("diagnosis", opt, normalizeItem(item), "AI", tab)
+  item.mapping = opt
+  updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab)
+
+  // 🔄 sinkronisasi tambahan untuk Daily
+  if (tab.startsWith("daily-")) {
+    const idxDay = parseInt(tab.split("-")[1], 10)
+    if (!state.simulasi.daily.days) state.simulasi.daily.days = []
+    state.simulasi.daily.days[idxDay] = state.simulasi[tab]
+
+    // rebuild summary daily
+    state.simulasi.daily.utama = null
+    state.simulasi.daily.sekunder = []
+    state.simulasi.daily.days.forEach(d => {
+      if (d?.utama && !state.simulasi.daily.utama) {
+        state.simulasi.daily.utama = d.utama
+      }
+      if (Array.isArray(d?.sekunder)) {
+        state.simulasi.daily.sekunder.push(...d.sekunder)
+      }
+    })
+  }
 }
 
-// ==================== Resume Medis ====================
-function generateResumeMedis() {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId || document.getElementById("claimIdHidden")?.value;
+// ==================== Generate Summary ====================
+async function generateSummary() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   if (!claimId) {
-    alert("❌ Claim ID tidak ditemukan. Pastikan buka halaman klaim yang valid.");
+    alert("❌ Claim ID tidak ditemukan.");
     return;
   }
+
+  try {
+    const state = Alpine.$data(document.getElementById("claimRoot"));
+
+    const payload = {
+      claim_id: claimId,
+      simulasi: state.simulasi,
+    };
+
+    const res = await fetch(`/ai/summary/${claimId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Gagal request summary");
+    const data = await res.json();
+
+    console.log("📥 Summary dari BE:", data);
+
+    // Render ke panel
+    renderEvaluasiDiagnosis(data.diagnosis || {});
+    renderEvaluasiProcedure(data.procedure || {});
+    renderAlternatifKombinasi(data.alternatif || []);
+
+    alert("✅ Summary berhasil digenerate");
+  } catch (err) {
+    console.error("Error generate summary:", err);
+    alert("❌ Gagal generate summary");
+  }
+}
+
+// ==================== Panel Evaluasi Diagnosis ====================
+function renderEvaluasiDiagnosis(data) {
+  const target = document.getElementById("evaluasi-diagnosis");
+  if (!target) return;
+  target.innerHTML = "";
+
+  if (!data || Object.keys(data).length === 0) {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi</div>`;
+    return;
+  }
+
+  target.innerHTML = `
+  <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+    <tr><th class="bg-green-100 dark:bg-green-700 px-3 py-2 text-left">Validitas Klinis Kombinasi</th>
+      <td class="px-3 py-2">${statusIcon(data.validitas)} ${data.validitas || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Severity</th>
+      <td class="px-3 py-2">${data.severity || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Kode INA-CBG</th>
+      <td class="px-3 py-2">${data.kode_cbg || data.kode_ina_cbg || data.ina_cbg || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Estimasi Tarif</th>
+      <td class="px-3 py-2">${data.estimasi_tarif || formatRupiah(data.tarif) || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Syarat Klinis (Kombinasi)</th>
+      <td class="px-3 py-2">${data.syarat_klinis || data.syarat || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Evaluasi Faskes</th>
+      <td class="px-3 py-2">${data.evaluasi_faskes || data.faskes || "-"}</td></tr>
+    <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Rawat Inap</th>
+      <td class="px-3 py-2">${data.rawat_inap || "-"}</td></tr>
+  </table>
+  `;
+}
+
+// ==================== Panel Evaluasi Tindakan ====================
+function renderEvaluasiProcedure(data) {
+  const target = document.getElementById("evaluasi-procedure");
+  if (!target) return;
+  target.innerHTML = "";
+
+  if (!data || Object.keys(data).length === 0) {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
+    return;
+  }
+
+  target.innerHTML = `
+    <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+      <tr><th class="bg-green-100 dark:bg-green-700 px-3 py-2 text-left">Tindakan Wajib Kombinasi</th>
+          <td class="px-3 py-2">${statusIcon(data.wajib || data.tindakan_wajib)} ${data.wajib || data.tindakan_wajib || "-"}</td></tr>
+      <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Validasi Pilihan Verifikator</th>
+          <td class="px-3 py-2">${statusIcon(data.validasi)} ${data.validasi || "-"}</td></tr>
+      <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Dampak INA-CBG / Tarif</th>
+          <td class="px-3 py-2">${data.dampak || "-"}</td></tr>
+      <tr><th class="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-left">Konflik / Duplikasi</th>
+          <td class="px-3 py-2">${data.konflik || "-"}</td></tr>
+    </table>
+  `;
+}
+
+// ==================== Panel Alternatif Kombinasi ====================
+function renderAlternatifKombinasi(items) {
+  const target = document.getElementById("alternatif");
+  if (!target) return;
+  target.innerHTML = "";
+  if (!items || items.length === 0) {
+    target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada alternatif kombinasi</div>`;
+    return;
+  }
+  items.forEach((alt, idx) => {
+    target.innerHTML += `
+      <div class="mb-3 p-3 rounded shadow bg-white border">
+        <div class="font-semibold text-blue-700 mb-1">${alt.judul ? alt.judul : `Alternatif ${idx + 1}`}</div>
+        <div><b>Severity:</b> ${alt.severity || "-"}</div>
+        <div><b>INA-CBG:</b> ${alt.kode_ina_cbg || alt.kode_cbg || alt.ina_cbg || "-"}</div>
+        <div><b>Tarif:</b> ${alt.estimasi_tarif || formatRupiah(alt.tarif) || "-"}</div>
+        <div><b>Syarat Klinis:</b> ${alt.syarat_klinis || alt.syarat || "-"}</div>
+        <div><b>Evaluasi Faskes:</b> ${alt.faskes || "-"}</div>
+        <div><b>Rawat Inap:</b> ${alt.rawat_inap || "-"}</div>
+        <div><b>Tindakan:</b> ${(Array.isArray(alt.tindakan) ? alt.tindakan.join(", ") : alt.tindakan_wajib || "-")}</div>
+        <div class="mt-1 text-gray-600 text-xs">${alt.catatan || ""}</div>
+      </div>
+    `;
+  });
+}
+
+// ==================== Helper ====================
+function statusIcon(val) {
+  if (!val) return `<span class="text-gray-400">-</span>`;
+  if (val.toLowerCase().includes("valid"))
+    return `<span class="text-green-600 font-bold">✔️ ${val}</span>`;
+  if (val.toLowerCase().includes("tidak"))
+    return `<span class="text-red-600 font-bold">❌ ${val}</span>`;
+  if (val.toLowerCase().includes("warning") || val.toLowerCase().includes("butuh"))
+    return `<span class="text-yellow-600 font-bold">⚠️ ${val}</span>`;
+  return val;
+}
+
+function formatRupiah(num) {
+  if (!num) return "-";
+  return "Rp " + Number(num).toLocaleString("id-ID");
+}
+
+// Expose ke global
+
+// --- PATCH: New API handlers for granular AI claim workflow ---
+
+async function analyzeDiagnosis() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  const stage = state.tab || "admission";
+  try {
+    const res = await fetch("/analyze_diagnosis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id: claimId, stage })
+    });
+    const result = await res.json();
+    console.log("📥 Diagnosis analysis:", result);
+    renderEvaluasiDiagnosis(result.data || result);
+  } catch (err) {
+    console.error("❌ Error analyze diagnosis:", err);
+    alert("Gagal analisa diagnosis");
+  }
+}
+
+async function analyzeProcedure(procedureName) {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  const stage = state.tab || "admission";
+  try {
+    const res = await fetch("/analyze_procedure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id: claimId, procedure_name: procedureName, stage })
+    });
+    const result = await res.json();
+    console.log("📥 Procedure analysis:", result);
+    renderEvaluasiProcedure(result.data || result);
+  } catch (err) {
+    console.error("❌ Error analyze procedure:", err);
+    alert("Gagal analisa tindakan");
+  }
+}
+
+async function generateClaimCombos() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  const stage = state.tab || "admission";
+  // Build granular payload from simulasi
+  const sim = state.simulasi[stage] || {};
   const payload = {
     claim_id: claimId,
-    mode: "list",
-    settings: {}
+    stage,
+    primary_claim: sim.utama?.name || "",
+    secondary_claims: Array.isArray(sim.sekunder) ? sim.sekunder.map(dx => dx.name) : [],
+    primary_action: sim.tindakanUtama?.name || "",
+    secondary_actions: Array.isArray(sim.tindakanSekunder) ? sim.tindakanSekunder.map(td => td.name) : []
   };
-  console.log('📦 Payload Resume Medis (minimal):', payload);
-  fetch('/resume_medis', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then(res => res.json())
-    .then(data => {
-      console.log('📥 Data Resume Medis dari BE:', data);
-      openModal('Resume Medis', buildResumeMedisModal(data));
-    })
-    .catch(err => {
-      alert('Gagal generate Resume Medis: ' + err);
+  try {
+    const res = await fetch("/generate_claim_combos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
+    const result = await res.json();
+    console.log("📥 Claim combos:", result);
+    // Ambil granular dari result.result jika ada
+    const granular = result.result || {};
+    renderEvaluasiDiagnosis(granular.evaluasi_diagnosis || {});
+    renderEvaluasiProcedure(granular.evaluasi_tindakan || {});
+    renderAlternatifKombinasi(granular.alternatif || []);
+    alert("✅ Summary berhasil digenerate");
+  } catch (err) {
+    console.error("❌ Error generate claim combos:", err);
+    alert("Gagal generate kombinasi klaim");
+  }
 }
 
-function buildResumeMedisModal(data) {
-  // --- Patch: Normalisasi diagnosis & tindakan, support array dan fallback ---
-  let utamaDx = [];
-  let sekunderDx = [];
-  let utamaTdk = [];
-  let sekunderTdk = [];
-  let obatArr = Array.isArray(data?.obat) ? data.obat : [];
-
-  // Diagnosis utama: support array atau object
-  if (Array.isArray(data?.diagnosis?.utama)) {
-    utamaDx = data.diagnosis.utama;
-  } else if (data?.diagnosis?.utama) {
-    utamaDx = [data.diagnosis.utama];
+async function resumeMedis() {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  const state = Alpine.$data(document.getElementById("claimRoot"));
+  const stage = state.tab || "admission";
+  try {
+    const res = await fetch("/resume_medis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claim_id: claimId, stage })
+    });
+    const result = await res.json();
+    console.log("📥 Resume medis:", result);
+    // You can add a renderer for resume if needed
+    alert("Resume medis berhasil digenerate");
+  } catch (err) {
+    console.error("❌ Error resume medis:", err);
+    alert("Gagal generate resume medis");
   }
-  // Diagnosis sekunder: support array
-  if (Array.isArray(data?.diagnosis?.sekunder)) {
-    sekunderDx = data.diagnosis.sekunder;
-  }
-
-  // Tindakan utama: support array atau object
-  if (Array.isArray(data?.tindakan?.utama)) {
-    utamaTdk = data.tindakan.utama;
-  } else if (data?.tindakan?.utama) {
-    utamaTdk = [data.tindakan.utama];
-  }
-  // Tindakan sekunder: support array
-  if (Array.isArray(data?.tindakan?.sekunder)) {
-    sekunderTdk = data.tindakan.sekunder;
-  }
-
-  // Fallback jika diagnosis/tindakan kosong
-  if (!utamaDx.length) utamaDx = [{ kategori: '-', klinis: '-', icd: '-' }];
-  if (!sekunderDx.length) sekunderDx = [];
-  if (!utamaTdk.length) utamaTdk = [{ nama: '-', kode: '-' }];
-  if (!sekunderTdk.length) sekunderTdk = [];
-
-  // --- Patch: fallback identitas pasien ke data.pasien jika data.identitas kosong ---
-  const identitas = {
-    nama: data.identitas?.nama || data.pasien?.nama || '-',
-    no_rm: data.identitas?.no_rm || data.pasien?.no_rm || '-',
-    umur: data.identitas?.umur || data.pasien?.umur || '-',
-    jk: data.identitas?.jk || data.pasien?.jk || '-',
-    keluhan: data.identitas?.keluhan || data.pasien?.keluhan || '-',
-  };
-
-  return `
-    <div class="space-y-4 text-sm">
-      <div class="flex justify-end gap-2 mb-3">
-        <button type="button" onclick="switchResumeMode('list')" class="px-3 py-1 rounded bg-blue-600 text-white">📄 List</button>
-        <button type="button" onclick="switchResumeMode('naratif')" class="px-3 py-1 rounded bg-green-600 text-white">📝 Naratif</button>
-      </div>
-      <div id="resume-list" style="display:block">
-        <!-- Identitas Pasien -->
-        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <h3 class="font-bold text-lg">🧍 Identitas Pasien</h3>
-          <p>Nama: ${identitas.nama}<br>No RM: ${identitas.no_rm}<br>Umur: ${identitas.umur}<br>Jenis Kelamin: ${identitas.jk}<br>Keluhan: ${identitas.keluhan}</p>
-        </section>
-        <!-- Kunjungan -->
-        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <h3 class="font-bold text-lg">🏥 Kunjungan</h3>
-          <p>Tanggal Masuk: ${data.visit?.tgl_masuk || data.visit?.tanggal_masuk || '-'}<br>Tanggal Keluar: ${data.visit?.tgl_keluar || data.visit?.tanggal_keluar || '-'}</p>
-        </section>
-        <!-- Diagnosis -->
-        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <h3 class="font-bold text-lg">🩺 Diagnosis</h3>
-          <h4 class="font-semibold mt-2">Utama</h4>
-          <ul class="list-disc list-inside">
-            ${utamaDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('')}
-          </ul>
-          <h4 class="font-semibold mt-2">Sekunder</h4>
-          <ul class="list-disc list-inside">
-            ${sekunderDx.length ? sekunderDx.map(d => `<li>${d.kategori || '-'} - ${d.klinis || '-'} [${d.icd || '-'}]</li>`).join('') : '<li>-</li>'}
-          </ul>
-        </section>
-        <!-- Tindakan -->
-        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <h3 class="font-bold text-lg">💉 Tindakan</h3>
-          <h4 class="font-semibold mt-2">Utama</h4>
-          <ul class="list-disc list-inside">
-            ${utamaTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('')}
-          </ul>
-          <h4 class="font-semibold mt-2">Sekunder</h4>
-          <ul class="list-disc list-inside">
-            ${sekunderTdk.length ? sekunderTdk.map(t => `<li>${t.nama || '-'} ${t.kode ? `[${t.kode}]` : ''}</li>`).join('') : '<li>-</li>'}
-          </ul>
-        </section>
-        <!-- Obat -->
-        <section class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
-          <h3 class="font-bold text-lg">💊 Obat</h3>
-          <ul class="list-disc list-inside">
-            ${obatArr.length
-              ? obatArr.map(o => `<li>${o.nama || '-'} ${o.dosis ? `(${o.dosis})` : ''}</li>`).join('')
-              : '<li>-</li>'}
-          </ul>
-        </section>
-      </div>
-      <div id="resume-naratif" style="display:none">
-        <h3 class="font-bold text-lg">Resume Naratif</h3>
-        <p class="p-3 bg-gray-100 dark:bg-gray-700 rounded">${data.naratif || '-'}</p>
-      </div>
-    </div>
-  `
 }
 
+window.analyzeDiagnosis = analyzeDiagnosis;
+window.analyzeProcedure = analyzeProcedure;
+window.generateClaimCombos = generateClaimCombos;
+window.resumeMedis = resumeMedis;
 
-function switchResumeMode(mode) {
-  document.getElementById("resume-list").style.display = (mode === "list" ? "block" : "none")
-  document.getElementById("resume-naratif").style.display = (mode === "naratif" ? "block" : "none")
-}
+
+window.addManual = addManual
+window.openProcedureModal = openProcedureModal;
+window.closeNestedModal = closeNestedModal;
+window.generateSummary = generateSummary;
+window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
+window.renderEvaluasiProcedure = renderEvaluasiProcedure;
+window.renderAlternatifKombinasi = renderAlternatifKombinasi;

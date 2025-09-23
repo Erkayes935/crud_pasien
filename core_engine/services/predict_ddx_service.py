@@ -2,109 +2,174 @@
 import os
 import json
 import random
+from datetime import date
+from typing import Any, Dict, List
 from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# ---------- helpers ----------
+def _json(x: Any) -> str:
+    try:
+        return json.dumps(x, ensure_ascii=False, separators=(",", ": "))
+    except Exception:
+        return str(x)
+
+def _rand(a=0.6, b=0.95) -> float:
+    return round(random.uniform(a, b), 2)
+
+def _as_list(x, default=None):
+    return x if isinstance(x, list) else (default or [])
+
+# ---------- main ----------
 def process_predict_ddx(payload: dict) -> dict:
     """
-    Generate daftar diagnosis, komorbid, komplikasi dari rekam medis.
-    Output format:
-    {
-      "diagnosis": [
-        { "parent": "...", "confidence": 0.9,
-          "children": [ {"name":"...", "confidence":0.8}, ... ] }
-      ],
-      "komorbid": [...],
-      "komplikasi": [...],
-      "engine_version": "predict_ddx@2025-09-17"
+    NEW (preferred):
+      {
+        "global_record": {
+          "admission": {...},
+          "daily": [ {...}, ... ],
+          "discharge": {...}
+        },
+        "stage": "admission"|"daily"|"discharge"
+      }
+
+    BACKWARD-COMPAT (old):
+      { "rekam_medis": [ {...} ] }
+
+    Output schema (unchanged):
+      {
+        "diagnosis": [ { "parent": str, "confidence": float, "children": [ {"name": str, "confidence": float}, ... ] }, ... ],
+        "komorbid":  [ ... ],
+        "komplikasi":[ ... ],
+        "engine_version": "predict_ddx@YYYY-MM-DD"
+      }
+    """
+
+    # --- read input (global first, fallback to old) ---
+    global_record = payload.get("global_record")
+    if not global_record:
+        rm_list = _as_list(payload.get("rekam_medis"), [])
+        global_record = rm_list[0] if rm_list else {}
+
+    admission = global_record.get("admission") or {}
+    daily = _as_list(global_record.get("daily"), [])
+    discharge = global_record.get("discharge") or {}
+    stage = (payload.get("stage") or "admission").strip()
+
+    # brief daily to save tokens (can be refined later)
+    daily_brief = {
+        "n_days": len(daily),
+        "last_entry": daily[-1] if daily else {}
     }
-    """
 
-    rekam_medis = payload.get("rekam_medis", [])
-
+    # --- prompt (schema output tetap sama) ---
     prompt = f"""
-    Berdasarkan data rekam medis berikut:
-    {rekam_medis}
+Kamu adalah AI medis Indonesia. Jawab HANYA JSON VALID sesuai skema.
 
-    Hasilkan daftar:
-    - diagnosis utama (3 parent)
-    - komorbid (3 parent)
-    - komplikasi (3 parent)
+Gunakan REKAM MEDIS GLOBAL berikut (STAGE aktif: {stage}):
 
-    Setiap parent WAJIB punya field:
-    - "parent": nama penyakit
-    - "confidence": angka float 0.0–1.0
-    - "children": daftar anak penyakit (boleh lebih dari 1)
+# ADMISSION
+{_json(admission)}
 
-    Setiap child WAJIB punya:
-    - "name": nama penyakit turunan
-    - "confidence": angka float 0.0–1.0
+# DAILY (ringkasan)
+{_json(daily_brief)}
 
-    Format JSON ketat, tanpa teks tambahan di luar JSON:
-    {{
-      "diagnosis": [
-        {{"parent": "...", "confidence": 0.9, "children":[{{"name":"...", "confidence":0.8}}]}}
-      ],
-      "komorbid": [...],
-      "komplikasi": [...]
-    }}
-    """
+# DISCHARGE
+{_json(discharge)}
 
-    # Request ke OpenAI
+Tugas:
+- Hasilkan masing-masing 3 item untuk:
+  • diagnosis utama
+  • komorbid
+  • komplikasi
+
+Aturan setiap parent:
+- "parent": string (nama penyakit)
+- "confidence": float 0.0–1.0
+- "children": list anak (boleh kosong), tiap anak: {{"name": string, "confidence": float}}
+
+Catatan:
+- Pertimbangkan seluruh data (admission+daily+discharge), namun tekankan konteks sesuai STAGE:
+  • admission: fokus keluhan/temuan awal,
+  • daily: fokus tren TTV/lab/radiologi & respons terapi,
+  • discharge: fokus diagnosis akhir/outcome.
+- Jangan ada teks di luar JSON.
+- Keluarkan persis dengan kunci berikut:
+
+{{
+  "diagnosis": [
+    {{"parent":"...", "confidence":0.9, "children":[{{"name":"...", "confidence":0.8}}]}}
+  ],
+  "komorbid": [
+    {{"parent":"...", "confidence":0.8, "children":[]}}
+  ],
+  "komplikasi": [
+    {{"parent":"...", "confidence":0.7, "children":[]}}
+  ]
+}}
+    """.strip()
+
+    # --- call OpenAI ---
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Kamu adalah AI medis. Jawab hanya JSON valid."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ],
-        temperature=0.3
+        temperature=0.3,
     )
+    raw_output = (response.choices[0].message.content or "").strip()
 
-    raw_output = response.choices[0].message.content.strip()
-
-    # --- Logging supaya bisa debug kalau parsing gagal ---
-    print("==== RAW OUTPUT PREDICT_DDX ====")
+    # logging untuk debug
+    print("==== RAW OUTPUT PREDICT_DDX (global/stage) ====")
     print(raw_output)
-    print("================================")
+    print("===============================================")
 
+    # --- parse ---
     try:
         ai_result = json.loads(raw_output)
     except json.JSONDecodeError:
         ai_result = {"diagnosis": [], "komorbid": [], "komplikasi": []}
 
-    # ==== fallback cleaning ====
-    def fix_item(item):
-        # parent confidence
+    # --- post-processing: children minimal 1, isi confidence jika kosong, top-3 ---
+    def fix_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        # confidence parent
         if not isinstance(item.get("confidence"), (int, float)):
-            item["confidence"] = round(random.uniform(0.6, 0.95), 2)
+            item["confidence"] = _rand(0.6, 0.95)
 
-        # children
+        # children list
         children = item.get("children", [])
         if not isinstance(children, list):
             children = []
-        fixed_children = []
+
+        fixed_children: List[Dict[str, Any]] = []
         for ch in children:
             if not isinstance(ch, dict):
                 continue
             if not isinstance(ch.get("confidence"), (int, float)):
-                ch["confidence"] = round(random.uniform(0.6, 0.9), 2)
-            fixed_children.append(ch)
-        # kalau kosong → tambahkan dummy
+                ch["confidence"] = _rand(0.6, 0.9)
+            if "name" in ch and isinstance(ch["name"], str) and ch["name"].strip():
+                fixed_children.append({"name": ch["name"].strip(), "confidence": ch["confidence"]})
+
+        # fallback: minimal 1 anak
         if not fixed_children:
+            parent_name = item.get("parent") or "Unspecified"
             fixed_children.append({
-                "name": f"{item['parent']} - Unspecified subtype",
-                "confidence": round(random.uniform(0.6, 0.8), 2)
+                "name": f"{parent_name} - Unspecified subtype",
+                "confidence": _rand(0.6, 0.8)
             })
-        item["children"] = fixed_children
+
+        item["children"] = fixed_children[:3]  # batasi anak juga kalau perlu
         return item
 
+    out = {"diagnosis": [], "komorbid": [], "komplikasi": []}
     for section in ["diagnosis", "komorbid", "komplikasi"]:
         items = ai_result.get(section, [])
         if isinstance(items, list):
-            ai_result[section] = [fix_item(it) for it in items[:3]]  # max 3 parent
+            out[section] = [fix_item(it) for it in items[:3]]  # max 3 parent
         else:
-            ai_result[section] = []
+            out[section] = []
 
-    ai_result["engine_version"] = "predict_ddx@2025-09-17"
-    return ai_result
+    out["engine_version"] = f"predict_ddx@{date.today().isoformat()}"
+    return out
