@@ -1615,10 +1615,12 @@ def finalize_claim(
                 if not diag:
                     diag = models.ClaimDiagnosis(
                         claim_id=claim.id,
+                        diagnosis_type="utama",
                         diagnosis_text=stage_data["utama"]["name"],
-                        source="Manual",
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True,
                     )
                     db.add(diag)
                     db.flush()
@@ -1644,10 +1646,12 @@ def finalize_claim(
                 if not diag:
                     diag = models.ClaimDiagnosis(
                         claim_id=claim.id,
+                        diagnosis_type="sekunder",
                         diagnosis_text=stage_data["utama"]["name"],
-                        source="Manual",
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True,
                     )
                     db.add(diag)
                     db.flush()
@@ -1670,10 +1674,13 @@ def finalize_claim(
                 if not proc:
                     proc = models.ClaimProcedure(
                         claim_id=claim.id,
+                        procedure_type="utama",
                         procedure_text=td["name"],
-                        source="Manual",
+                        requirement_flag=False,
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(proc)
                     db.flush()
@@ -1705,10 +1712,13 @@ def finalize_claim(
                 if not proc:
                     proc = models.ClaimProcedure(
                         claim_id=claim.id,
+                        procedure_type="sekunder",
                         procedure_text=td["name"],
-                        source="Manual",
+                        requirement_flag=False,
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(proc)
                     db.flush()
@@ -1731,25 +1741,50 @@ def finalize_claim(
     save_simulation_and_summary(db, claim.id, sim_data, summ_data)
 
     # 🔹 Update simulasi
-    for stage, stage_data in sim_data.items():        
+    for stage, stage_data in sim_data.items():
         sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim.id).all()
         for sim in sims:
+            # Diagnosis utama
             if stage_data.get("utama"):
                 utama_diag = db.query(models.ClaimDiagnosis)\
-                            .filter_by(claim_id=claim.id, diagnosis_text=stage_data["utama"]["name"])\
-                            .first()
-                if utama_diag:
-                    sim.diagnosis_utama_id = utama_diag.id
+                    .filter_by(claim_id=claim.id, diagnosis_text=stage_data["utama"]["name"])\
+                    .first()
+                if not utama_diag:
+                    utama_diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_type="utama",
+                        diagnosis_text=stage_data["utama"]["name"],
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
+                    )
+                    db.add(utama_diag)
+                    db.flush()
+                sim.diagnosis_utama_id = utama_diag.id
+                # Diagnosis sekunder
             if stage_data.get("sekunder"):
                 ids = []
                 for sec in stage_data["sekunder"]:
                     sec_diag = db.query(models.ClaimDiagnosis)\
-                                 .filter_by(claim_id=claim.id, diagnosis_text=sec["name"])\
-                                 .first()
-                    if sec_diag:
-                        ids.append(sec_diag.id)
+                        .filter_by(claim_id=claim.id, diagnosis_text=sec["name"])\
+                        .first()
+                    if not sec_diag:
+                        sec_diag = models.ClaimDiagnosis(
+                            claim_id=claim.id,
+                            diagnosis_type="sekunder",
+                            diagnosis_text=sec["name"],
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                            is_deleted=False,
+                            is_dummy=True
+                            )
+                        db.add(sec_diag)
+                        db.flush()
+                    ids.append(sec_diag.id)
                 sim.diagnosis_sekunder_ids = ids
             sim.updated_at = datetime.utcnow()
+
         
 
     # 🔹 Update klaim → finalize
@@ -2271,10 +2306,12 @@ def update_claim_draft(
                 if not diag:
                     diag = models.ClaimDiagnosis(
                         claim_id=claim.id,
+                        diagnosis_type="utama",
                         diagnosis_text=stage_data["utama"]["name"],
-                        source="Manual",
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True,
                     )
                     db.add(diag)
                     db.flush()
@@ -2300,10 +2337,12 @@ def update_claim_draft(
                 if not diag:
                     diag = models.ClaimDiagnosis(
                         claim_id=claim.id,
-                        diagnosis_text=stage_data["utama"]["name"],
-                        source="Manual",
+                        diagnosis_type="sekunder",
+                        diagnosis_text=sec["name"],
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True,
                     )
                     db.add(diag)
                     db.flush()
@@ -2326,21 +2365,26 @@ def update_claim_draft(
                 if not proc:
                     proc = models.ClaimProcedure(
                         claim_id=claim.id,
-                        procedure_text=td["name"],
-                        source="Manual",
+                        procedure_type="utama",
+                        procedure_text=stage_data["tindakanUtama"]["name"],
+                        requirement_flag=False,
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(proc)
                     db.flush()
 
                     detail = models.ClaimProcedureDetail(
                         procedure_id=proc.id,
-                        icd9_tindakan=td.get("icd"),
-                        icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        icd9_tindakan=stage_data["tindakanUtama"].get("icd") or "47.09",
+                        icd9_deskripsi_tindakan=stage_data["tindakanUtama"].get("deskripsi"),
+                        validitas_tindakan=stage_data["tindakanUtama"].get("validitas") or "valid",
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
-                        is_deleted=False
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(detail)
                     db.flush()
@@ -2361,21 +2405,26 @@ def update_claim_draft(
                 if not proc:
                     proc = models.ClaimProcedure(
                         claim_id=claim.id,
+                        procedure_type="sekunder",
                         procedure_text=td["name"],
-                        source="Manual",
+                        requirement_flag=False,
                         created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(proc)
                     db.flush()
 
                     detail = models.ClaimProcedureDetail(
                         procedure_id=proc.id,
-                        icd9_tindakan=td.get("icd"),
+                        icd9_tindakan=td.get("icd") or "47.09",
                         icd9_deskripsi_tindakan=td.get("deskripsi"),
+                        validitas_tindakan=td.get("validitas") or "valid",
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
-                        is_deleted=False
+                        is_deleted=False,
+                        is_dummy=True
                     )
                     db.add(detail)
                     db.flush()
@@ -2387,27 +2436,53 @@ def update_claim_draft(
     # 🔹 Simpan simulasi & summary via helper
     save_simulation_and_summary(db, claim.id, sim_data, summ_data)
 
+    # 🔹 Update ClaimSimulation
     for stage, stage_data in sim_data.items():
         sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim.id).all()
         for sim in sims:
+            # Diagnosis utama
             if stage_data.get("utama"):
-                utama_diag = db.query(models.ClaimDiagnosis).filter_by(
-                    claim_id=claim.id,
-                    diagnosis_text=stage_data["utama"]["name"]
-                ).first()
-                if utama_diag:
-                    sim.diagnosis_utama_id = utama_diag.id
+                utama_diag = db.query(models.ClaimDiagnosis)\
+                    .filter_by(claim_id=claim.id, diagnosis_text=stage_data["utama"]["name"])\
+                    .first()
+                if not utama_diag:
+                    utama_diag = models.ClaimDiagnosis(
+                        claim_id=claim.id,
+                        diagnosis_type="utama",
+                        diagnosis_text=stage_data["utama"]["name"],
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=True
+                    )
+                    db.add(utama_diag)
+                    db.flush()
+                sim.diagnosis_utama_id = utama_diag.id
+
+            # Diagnosis sekunder
             if stage_data.get("sekunder"):
                 ids = []
                 for sec in stage_data["sekunder"]:
-                    sec_diag = db.query(models.ClaimDiagnosis).filter_by(
-                        claim_id=claim.id,
-                        diagnosis_text=sec["name"]
-                    ).first()
-                    if sec_diag:
-                        ids.append(sec_diag.id)
+                    sec_diag = db.query(models.ClaimDiagnosis)\
+                        .filter_by(claim_id=claim.id, diagnosis_text=sec["name"])\
+                        .first()
+                    if not sec_diag:
+                        sec_diag = models.ClaimDiagnosis(
+                            claim_id=claim.id,
+                            diagnosis_type="sekunder",
+                            diagnosis_text=sec["name"],
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                            is_deleted=False,
+                            is_dummy=True
+                        )
+                        db.add(sec_diag)
+                        db.flush()
+                    ids.append(sec_diag.id)
                 sim.diagnosis_sekunder_ids = ids
+
             sim.updated_at = datetime.utcnow()
+
 
     # 🔹 Update draft claim
     claim.is_final = False
