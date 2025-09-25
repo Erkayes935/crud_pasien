@@ -323,12 +323,17 @@ def add_patient(
             "no_ktp": no_ktp or None,
             "no_bpjs": no_bpjs or None,
             "no_rm": no_rm or None,
+            "hospital_id": user.hospital_id,
             "nama": nama,
             "tanggal_lahir": tanggal_lahir or None,
             "jenis_kelamin": jenis_kelamin or None,
             "alamat": alamat or None,
             "email": email or None,
-            "no_hp": no_hp or None
+            "no_hp": no_hp or None,
+            "created_at": datetime.now()-timedelta(days=7),
+            "updated_at": datetime.now(),
+            "is_deleted": False,
+            "is_dummy": True
         })
         flash(request, "Pasien berhasil ditambahkan!", "success")
         return RedirectResponse(url="/patients", status_code=303)
@@ -345,10 +350,15 @@ def add_patient(
                 "jenis_kelamin": jenis_kelamin,
                 "alamat": alamat,
                 "email": email,
+                "hospital_id": user.hospital_id,
                 "no_hp": no_hp,
                 "no_ktp": no_ktp,
                 "no_bpjs": no_bpjs,
-                "no_rm": no_rm
+                "no_rm": no_rm,
+                "created_at": datetime.now()-timedelta(days=7),
+                "updated_at": datetime.now(),
+                "is_deleted": False,
+                "is_dummy": True
             },
             "user": user,
             "current_user": user,
@@ -406,12 +416,14 @@ def update_patient(
             "no_ktp": no_ktp or None,
             "no_bpjs": no_bpjs or None,
             "no_rm": no_rm or None,
+            "hospital_id": user.hospital_id,
             "nama": nama,
             "tanggal_lahir": tanggal_lahir or None,
             "alamat": alamat or None,
             "jenis_kelamin": jenis_kelamin or None,
             "email": email or None,
-            "no_hp": no_hp or None
+            "no_hp": no_hp or None,
+            "updated_at": datetime.now()
         })
         flash(request, "Pasien berhasil diperbarui!", "success")
         return RedirectResponse(url="/patients", status_code=303)
@@ -427,12 +439,14 @@ def update_patient(
                 "no_ktp": no_ktp,
                 "no_bpjs": no_bpjs,
                 "no_rm": no_rm,
+                "hospital_id": user.hospital_id,
                 "nama": nama,
                 "tanggal_lahir": tanggal_lahir,
                 "jenis_kelamin": jenis_kelamin,
                 "alamat": alamat,
                 "email": email,
-                "no_hp": no_hp
+                "no_hp": no_hp,
+                "updated_at": datetime.now()
             },
             "user": user,
             "current_user": user,
@@ -548,7 +562,19 @@ def make_group(prefix, icd_prefix):
          "child": True},
     ]
 
-def make_modal(icd: str, db: Session, claim_id: int):
+def make_modal(icd: str, db: Session, claim_id: int, stage: str):
+    sim = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).first()
+    if not sim:
+        sim = models.ClaimSimulation(
+            claim_id=claim_id,
+            stage=stage,
+            is_dummy=True,
+            is_deleted=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(sim)
+        db.flush()  # dapat sim.id
     """
     Hybrid make_modal:
     - Kalau claim_id belum punya procedure -> isi dummy sekali
@@ -565,11 +591,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
         dummy_procs = [
             {
                 "nama": "Operasi Apendektomi",
-                "deskripsi": "Prosedur usus buntu",
                 "detail_dummy": [
                     {
                         "icd9": "47.09",
-                        "deskripsi": "Apendektomi sederhana",
                         "validitas": "valid",
                         "status": "utama",
                         "ina_cbg": "C-04-12",
@@ -581,11 +605,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "CT Scan Abdomen",
-                "deskripsi": "Imaging perut",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -597,27 +619,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "CT Scan Paha",
-                "deskripsi": "Imaging paha",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap",
-                        "validitas": "valid",
-                        "status": "sekunder",
-                        "ina_cbg": "C-04-15",
-                        "faskes": "RS Tipe B",
-                        "rawat_inap": "Tidak wajib",
-                        "syarat_klinis": "Indikasi abdominal pain"
-                    }
-                ]
-            },
-            {
-                "nama": "CT Scan Abdomen", 
-                "deskripsi": "Imaging perut",
-                "detail_dummy": [
-                    {
-                        "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 2",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -629,11 +633,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "Pemeriksaan Laboratorium", 
-                "deskripsi": "Pemeriksaan laboratorium perut",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 2",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -645,27 +647,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "USG Abdomen", 
-                "deskripsi": "Ultrasonografi perut",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 3",
-                        "validitas": "valid",
-                        "status": "sekunder",
-                        "ina_cbg": "C-04-15",
-                        "faskes": "RS Tipe B",
-                        "rawat_inap": "Tidak wajib",
-                        "syarat_klinis": "Indikasi abdominal pain"
-                    }
-                ]
-            },
-            {
-                "nama": "Pemeriksaan Laboratorium", 
-                "deskripsi": "Pemeriksaan laboratorium perut",
-                "detail_dummy": [
-                    {
-                        "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 4",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -677,11 +661,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "MRI Kepala", 
-                "deskripsi": "Magnetic Resonance Imaging kepala",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 4",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -693,11 +675,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "Pemasangan Infus", 
-                "deskripsi": "Pemasangan infus",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 5",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -709,11 +689,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "Pemberian Oksigen", 
-                "deskripsi": "Pemberian oksigen",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 6",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -724,12 +702,10 @@ def make_modal(icd: str, db: Session, claim_id: int):
                 ]
             },
             {
-                "nama": "Terapi Nebulizer", 
-                "deskripsi": "Terapi nebulizer",
+                "nama": "Terapi Nebulizer",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 7",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -741,11 +717,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "Transfusi Darah",
-                "deskripsi": "Transfusi darah",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 8",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -757,11 +731,9 @@ def make_modal(icd: str, db: Session, claim_id: int):
             },
             {
                 "nama": "Terapi Infus", 
-                "deskripsi": "Terapi infus",
                 "detail_dummy": [
                     {
                         "icd9": "88.01",
-                        "deskripsi": "CT Scan abdomen lengkap 9",
                         "validitas": "valid",
                         "status": "sekunder",
                         "ina_cbg": "C-04-15",
@@ -777,7 +749,6 @@ def make_modal(icd: str, db: Session, claim_id: int):
             proc = models.ClaimProcedure(
                 claim_id=claim_id,
                 procedure_text=d["nama"],
-                description=d["deskripsi"],
                 procedure_type="utama",      # default, bisa diubah
                 requirement_flag=False,
                 created_at=datetime.now()-timedelta(days=1),
@@ -791,18 +762,19 @@ def make_modal(icd: str, db: Session, claim_id: int):
             for det in d["detail_dummy"]:
                 det_model = models.ClaimProcedureDetail(
                     procedure_id=proc.id,
-                    icd9_tindakan=det["icd9"],
-                    icd9_deskripsi_tindakan=det["deskripsi"],
-                    validitas_tindakan=det["validitas"],
-                    status_tindakan=det["status"],
-                    ina_cbg_tindakan=det["ina_cbg"],
-                    faskes_tindakan=det["faskes"],
-                    rawat_inap_tindakan=det["rawat_inap"],
-                    syarat_klinis_tindakan=det["syarat_klinis"],
+                    claim_simulation_id=sim.id,   # jangan lupa isi biar NOT NULL
+                    icd9_tindakan=det.get("icd9"),
+                    validitas_tindakan=det.get("validitas"),
+                    status_tindakan=det.get("status"),
+                    ina_cbg_tindakan=det.get("ina_cbg"),
+                    faskes_tindakan=det.get("faskes"),
+                    rawat_inap_tindakan=det.get("rawat_inap"),
+                    syarat_klinis_tindakan=det.get("syarat_klinis"),
                     is_dummy=True,
                     is_deleted=False
                 )
                 db.add(det_model)
+
         db.commit()
         existing_procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id, is_deleted=False).all()
 
@@ -828,28 +800,7 @@ def make_modal(icd: str, db: Session, claim_id: int):
             ]
         })
 
-    return {
-        "klinis": {
-            "justifikasi": "GFR 15-29, BMI 30-40",
-            "bukti_klinis": "Belum ada bukti, namun GFR 15-29, BMI 30-40",
-            "syarat_klinis": "Belum ditentukan, namun GFR 15-29, BMI 30-40"
-        },
-        "icd10": {
-            "kode_icd": icd,
-            "struktur_kode": icd,
-            "kode_ganda": icd,
-            "z_code": "Tidak",
-            "kode_bpjs_khusus": "Jika ada",
-        },
-        "tindakan": tindakan,   # 🔹 Sekarang dari DB (dummy sekali aja)
-        "rawat_inap": {
-            "indikasi": "Tidak ada indikasi khusus",
-            "lama_rawat": "3 hari",
-            "perpanjangan": "Tidak"
-        },
-        "faskes": {"kesesuaian_rs": "Tipe C"},
-        "rujukan": {"syarat": "Tidak ada", "kelayakan": "Layak"}
-    }
+    return tindakan
 
 
 def make_dummy(tab):
@@ -857,6 +808,28 @@ def make_dummy(tab):
         "diagnosis": make_group("Diagnosis", f"{tab.upper()}DX"),
         "komorbid": make_group("Komorbid", f"{tab.upper()}KM"),
         "komplikasi": make_group("Komplikasi", f"{tab.upper()}KP"),
+        "modal": {
+            "klinis": {
+            "justifikasi": "GFR 15-29, BMI 30-40",
+            "bukti_klinis": "Belum ada bukti klinis",
+            "syarat_klinis": "Belum ada syarat klinis",
+            },
+            "icd10": {
+                "kode_icd": "E11.24",
+                "struktur_icd10": "D42.5",
+                "kode_ganda": "A4.10",
+                "z_code": "Z18",
+                "kode_bpjs_khusus": "K1",
+            },
+            "tindakan": [],  # 🔹 Sekarang dari DB (dummy sekali aja)
+            "rawat_inap": {
+                "indikasi": "Tidak ada indikasi khusus",
+                "lama_rawat": "3 hari",
+                "perpanjangan": "Tidak"
+            },
+            "faskes": {"kesesuaian_rs": "Tipe C"},
+            "rujukan": {"syarat": "Tidak ada", "kelayakan": "Layak"}
+        },
         "simulasi": {
             "utama": None,
             "sekunder": [],
@@ -921,23 +894,46 @@ def make_dummy(tab):
 
 def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage: str):
     """
-    Simpan hasil generate AI ke 3 tabel:
+    Simpan hasil generate AI ke 2 tabel utama:
+    - ClaimDiagnosis        → kategori diagnosis (tanpa detail dulu)
     - ClaimAIRecommendation → untuk tampilan rekomendasi awal
-    - ClaimDiagnosis        → supaya ada FK valid di ClaimSimulation
-    - ClaimProcedure        → kalau dummy_data punya tindakan
+    Catatan: ClaimProcedure & ClaimProcedureDetail dummy sudah diisi via make_modal()
     """
+    # 🔹 Pastikan ada ClaimSimulation
+    sim = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id, stage=stage).first()
+    if not sim:
+        sim = models.ClaimSimulation(
+            claim_id=claim_id,
+            stage=stage,
+            is_dummy=True,
+            is_deleted=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(sim)
+        db.flush()
+
+    # 1️⃣ Diagnosis / Komorbid / Komplikasi
     for category in ["diagnosis", "komorbid", "komplikasi"]:
         for item in dummy_data.get(category, []):
-            # 1️⃣ Simpan ke ClaimAIRecommendation
+            diag = models.ClaimDiagnosis(
+                claim_id=claim_id,
+                diagnosis_type=category,
+                diagnosis_text=item.get("kategori"),
+                is_dummy=True,
+                is_deleted=False,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(diag)
+            db.flush()
+
             rec = models.ClaimAIRecommendation(
                 claim_id=claim_id,
                 stage=stage,
                 category=category,
-                nama_kategori=item.get("kategori") or "-",
                 confidence_score=item.get("score"),
-                klinis=None,
-                icd10_code=None,
-                tindakan=None,
+                diagnosis_id=diag.id,
                 child=item.get("child", False),
                 is_dummy=True,
                 is_deleted=False,
@@ -945,70 +941,52 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
                 updated_at=datetime.utcnow()
             )
             db.add(rec)
-            db.flush()  # langsung dapat rec.id
 
-            # 2️⃣ Seed juga ke ClaimDiagnosis
-            diag = models.ClaimDiagnosis(
-                claim_id=claim_id,
-                diagnosis_type=category,
-                diagnosis_text=item.get("kategori"),
-                subtype=None,
-                icd10_code=None,
-                struktur_icd10=None,
-                justifikasi=None,
-                bukti_klinis=None,
-                syarat_klinis=None,
-                kode_ganda=None,
-                kode_bpjs_khusus=None,
-                z_code=None,
-                faskes=None,
-                rawat_inap=None,
-                rujukan=None,
-                is_dummy=True,
-                is_deleted=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            db.add(diag)
-            db.flush()  # penting: supaya diag.id langsung ada
+    # 2️⃣ Tindakan → ambil yang sudah ada di DB, jangan insert ulang
+    existing_procs = db.query(models.ClaimProcedure).filter_by(
+        claim_id=claim_id, is_deleted=False
+    ).all()
 
-            # 🔹 Optional: link balik ke AIRecommendation
-            rec.diagnosis_id = diag.id
-
-    # 3️⃣ Optional → kalau dummy_data punya tindakan
-    for item in dummy_data.get("tindakan", []):
-        proc = models.ClaimProcedure(
+    for proc in existing_procs:
+        rec = models.ClaimAIRecommendation(
             claim_id=claim_id,
-            procedure_type="utama",  # default
-            procedure_text=item.get("nama"),
-            requirement_flag=False,
+            stage=stage,
+            category="tindakan",
+            confidence_score=None,   # dummy → bisa diisi nanti
+            procedure_id=proc.id,
+            child=False,
             is_dummy=True,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
-        db.add(proc)
-        db.flush()
-
-        # kalau mau bisa seed ClaimProcedureDetail juga:
-        if "detail_dummy" in item:
-            for det in item["detail_dummy"]:
-                detail = models.ClaimProcedureDetail(
-                    procedure_id=proc.id,
-                    icd9_tindakan=det.get("icd9"),
-                    icd9_deskripsi_tindakan=det.get("deskripsi"),
-                    validitas_tindakan=det.get("validitas"),
-                    status_tindakan=det.get("status"),
-                    ina_cbg_tindakan=det.get("ina_cbg"),
-                    faskes_tindakan=det.get("faskes"),
-                    rawat_inap_tindakan=det.get("rawat_inap"),
-                    syarat_klinis_tindakan=det.get("syarat_klinis"),
-                    is_dummy=True,
-                    is_deleted=False
-                )
-                db.add(detail)
+        db.add(rec)
 
     db.commit()
+
+def store_ai_modal_details(db: Session, diag_id: int, modal_data: dict):
+    diag = db.query(models.ClaimDiagnosis).filter_by(id=diag_id, is_deleted=False).first()
+    if diag and modal_data:
+        diag.icd10_code = (modal_data.get("icd10") or {}).get("kode_icd")
+        diag.struktur_icd10 = (modal_data.get("icd10") or {}).get("struktur_icd10")
+        diag.kode_ganda = (modal_data.get("icd10") or {}).get("kode_ganda")
+        diag.z_code = (modal_data.get("icd10") or {}).get("z_code")
+        diag.kode_bpjs_khusus = (modal_data.get("icd10") or {}).get("kode_bpjs_khusus")
+        diag.justifikasi = (modal_data.get("klinis") or {}).get("justifikasi")
+        diag.bukti_klinis = (modal_data.get("klinis") or {}).get("bukti_klinis")
+        diag.syarat_klinis = (modal_data.get("klinis") or {}).get("syarat_klinis")
+        diag.indikasi = (modal_data.get("rawat_inap") or {}).get("indikasi")
+        diag.lama_rawat = (modal_data.get("rawat_inap") or {}).get("lama_rawat")
+        diag.perpanjangan = (modal_data.get("rawat_inap") or {}).get("perpanjangan")
+        diag.kesesuaian_rs = (modal_data.get("faskes") or {}).get("kesesuaian_rs")
+        diag.syarat = (modal_data.get("rujukan") or {}).get("syarat")
+        diag.kelayakan = (modal_data.get("rujukan") or {}).get("kelayakan")
+        diag.updated_at = datetime.utcnow()
+        db.add(diag)
+        db.commit()
+
+
+
 
 @app.post("/ai/recommendation")
 def ai_recommendation(payload: dict = Body(None), db: Session = Depends(get_db)):
@@ -1019,45 +997,65 @@ def ai_recommendation(payload: dict = Body(None), db: Session = Depends(get_db))
     discharge = make_dummy("discharge")
 
     if claim_id:
+        # 🔹 Bersihkan data lama
         db.query(models.ClaimProcedureDetail).filter(
             models.ClaimProcedureDetail.procedure_id.in_(
                 db.query(models.ClaimProcedure.id).filter_by(claim_id=claim_id)
             )
         ).delete(synchronize_session=False)
 
-        # 🔹 Hapus data lama biar tidak numpuk
-        db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimDiagnosis).filter_by(claim_id=claim_id).delete()
-        db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).delete()
         db.commit()
 
-        # 🔹 Simpan ke helper (sekalian isi ClaimDiagnosis/ClaimProcedure)
+        # 🔹 Seed dummy via make_modal + store rekomendasi
+        admission["tindakan"] = make_modal("A41", db, claim_id, "admission")
         store_ai_recommendations(db, claim_id, admission, "admission")
+
         for idx, day in enumerate(daily):
+            day["tindakan"] = make_modal("A41", db, claim_id, f"daily{idx+1}")
             store_ai_recommendations(db, claim_id, day, f"daily{idx+1}")
+
+        discharge["tindakan"] = make_modal("A41", db, claim_id, "discharge")
         store_ai_recommendations(db, claim_id, discharge, "discharge")
 
-    # 🔹 Ambil lagi dari ClaimAIRecommendation untuk ditampilkan
-    recs = db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id).all()
+    # 🔹 Ambil ClaimAIRecommendation (diagnosis + tindakan)
+    recs = db.query(models.ClaimAIRecommendation)\
+        .options(
+            joinedload(models.ClaimAIRecommendation.diagnosis),
+            joinedload(models.ClaimAIRecommendation.procedure)
+        )\
+        .filter_by(claim_id=claim_id).all()
 
-    return {
-        "status": "ok",
-        "data": [
-            {
-                "id": rec.id,
-                "stage": rec.stage,
-                "category": rec.category,
-                "kategori": rec.nama_kategori or "-",
-                "score": rec.confidence_score,
-                "klinis": rec.klinis or "-",
-                "icd10_code": rec.icd10_code or "-",
-                "tindakan": rec.tindakan or "-",
-                "diagnosis_id": getattr(rec, "diagnosis_id", None)
-            }
-            for rec in recs
-        ]
-    }
+    data = []
+    for rec in recs:
+        item = {
+            "id": rec.id,
+            "stage": rec.stage,
+            "category": rec.category,
+            "score": rec.confidence_score,
+            "diagnosis_id": rec.diagnosis_id,
+            "procedure_id": rec.procedure_id,
+            "kategori": (
+                rec.diagnosis.diagnosis_text if rec.diagnosis
+                else (rec.procedure.procedure_text if rec.procedure else "-")
+            ),
+            "klinis": ", ".join(filter(None, [
+                rec.diagnosis.justifikasi if rec.diagnosis else None,
+                rec.diagnosis.bukti_klinis if rec.diagnosis else None,
+                rec.diagnosis.syarat_klinis if rec.diagnosis else None
+            ])) if rec.diagnosis else "-",
+            "icd10_code": rec.diagnosis.icd10_code if rec.diagnosis else "-",
+            "tindakan": rec.procedure.procedure_text if rec.procedure else None,
+            "description": "-"  # detail baru diambil di endpoint /detail
+        }
+        data.append(item)
+
+    return {"status": "ok", "data": data}
+
+
 
 
 
@@ -1070,42 +1068,123 @@ def ai_recommendation_detail_get(
 ):
     """
     Ambil detail rekomendasi untuk isi modal:
-    - diagnosis → ClaimDiagnosis (kalau belum ada, dummy modal)
-    - procedure → ClaimProcedure + ClaimProcedureDetail
+    - diagnosis/komorbid/komplikasi → resolve lewat ClaimAIRecommendation → ClaimDiagnosis
+    - procedure → ClaimAIRecommendation → ClaimProcedure + ClaimProcedureDetail
     """
+
     if rec_type in ["diagnosis", "komorbid", "komplikasi"]:
-        diag = db.query(models.ClaimDiagnosis).filter_by(id=item_id, claim_id=claim_id).first()
-        if diag:
-            return {"status": "ok", "data": {
-                "id": diag.id,
-                "kategori": diag.diagnosis_text,
-                "klinis": ", ".join(filter(None, [
-                    diag.justifikasi,
-                    diag.bukti_klinis,
-                    diag.syarat_klinis
-                ])),
-                "icd10": {
-                    "kode_icd": diag.icd10_code,
-                    "struktur_kode": diag.struktur_icd10
-                },
-                "rawat_inap": diag.rawat_inap,
-                "faskes": diag.faskes,
-                "rujukan": diag.rujukan,
-                "tindakan": []  # tindakan muncul di modal tersendiri
-            }}
-        else:
-            # fallback → dummy
-            return {"status": "ok", "data": make_modal("A41.9",db, claim_id)}
+        rec = db.query(models.ClaimAIRecommendation).filter_by(
+            id=item_id, claim_id=claim_id, category=rec_type
+        ).first()
+
+        if not rec or not rec.diagnosis_id:
+            return {"status": "error", "msg": "Recommendation/Diagnosis not found"}
+
+        diag = db.query(models.ClaimDiagnosis).filter_by(
+            id=rec.diagnosis_id, claim_id=claim_id
+        ).first()
+
+        modal_data = make_dummy("A41.9")["modal"]
+
+        if not diag.icd10_code:
+            diag.icd10_code = modal_data["icd10"]["kode_icd"]
+
+        if not diag.struktur_icd10:
+            diag.struktur_icd10 = modal_data["icd10"]["struktur_icd10"]
+
+        if not diag.kode_ganda:
+            diag.kode_ganda = modal_data["icd10"]["kode_ganda"]
+
+        if not diag.z_code:
+            diag.z_code = modal_data["icd10"]["z_code"]
+
+        if not diag.kode_bpjs_khusus:
+            diag.kode_bpjs_khusus = modal_data["icd10"]["kode_bpjs_khusus"]
+        
+        if not diag.justifikasi:
+            diag.justifikasi = modal_data["klinis"]["justifikasi"]
+
+        if not diag.bukti_klinis:
+            diag.bukti_klinis = modal_data["klinis"]["bukti_klinis"]
+
+        if not diag.syarat_klinis:
+            diag.syarat_klinis = modal_data["klinis"]["syarat_klinis"]
+
+        if not diag.indikasi:
+            diag.indikasi = modal_data["rawat_inap"]["indikasi"]
+
+        if not diag.lama_rawat:
+            diag.lama_rawat = modal_data["rawat_inap"]["lama_rawat"]
+
+        if not diag.perpanjangan:
+            diag.perpanjangan = modal_data["rawat_inap"]["perpanjangan"]
+
+        if not diag.kesesuaian_rs:
+            diag.kesesuaian_rs = modal_data["faskes"]["kesesuaian_rs"]
+
+        if not diag.syarat:
+            diag.syarat = modal_data["rujukan"]["syarat"]
+
+        if not diag.kelayakan:
+            diag.kelayakan = modal_data["rujukan"]["kelayakan"]
+
+        diag.updated_at = datetime.utcnow()
+        db.add(diag)
+        db.commit()
+
+        return {"status": "ok", "data": {
+            "id": diag.id,
+            "kategori": diag.diagnosis_text,
+            "klinis": {
+                "justifikasi": diag.justifikasi,
+                "bukti_klinis": diag.bukti_klinis,
+                "syarat_klinis": diag.syarat_klinis
+            },
+            "icd10": {
+                "kode_icd": diag.icd10_code,
+                "struktur_icd10": diag.struktur_icd10,
+                "kode_ganda": diag.kode_ganda,
+                "z_code": diag.z_code,
+                "kode_bpjs_khusus": diag.kode_bpjs_khusus
+            },
+            "tindakan": [],
+            "rawat_inap": {
+                "indikasi": diag.indikasi,
+                "lama_rawat": diag.lama_rawat,
+                "perpanjangan": diag.perpanjangan,
+            },
+            "faskes": {
+                "kesesuaian_rs": diag.kesesuaian_rs,
+            },
+            "rujukan": {
+                "syarat": diag.syarat,
+                "kelayakan": diag.kelayakan,
+            }
+        }}
+
+        return {"status": "error", "msg": "Diagnosis not found"}
 
     elif rec_type == "procedure":
+        rec = db.query(models.ClaimAIRecommendation).filter_by(
+            id=item_id, claim_id=claim_id, category="tindakan"
+        ).first()
+
+        if not rec or not rec.procedure_id:
+            return {"status": "error", "msg": "Recommendation/Procedure not found"}
+
         proc = db.query(models.ClaimProcedure)\
             .options(joinedload(models.ClaimProcedure.procedure_details))\
-            .filter_by(id=item_id, claim_id=claim_id).first()
+            .filter_by(id=rec.procedure_id, claim_id=claim_id).first()
+
         if proc:
             details = [
                 {
                     "icd9": d.icd9_tindakan,
-                    "deskripsi": d.icd9_deskripsi_tindakan,
+                    "deskripsi": " | ".join(filter(None, [
+                        d.icd9_tindakan,
+                        d.ina_cbg_tindakan,
+                        d.status_tindakan
+                    ])),
                     "validitas": d.validitas_tindakan,
                     "status": d.status_tindakan,
                     "ina_cbg": d.ina_cbg_tindakan,
@@ -1115,18 +1194,25 @@ def ai_recommendation_detail_get(
                 }
                 for d in proc.procedure_details if not d.is_deleted
             ]
+            description = "; ".join([d["deskripsi"] for d in details]) if details else "-"
             return {"status": "ok", "data": {
                 "id": proc.id,
                 "procedure_text": proc.procedure_text,
-                "description": proc.description,
+                "description": description,
                 "tindakan": details
             }}
-        else:
-            # fallback kalau kosong
-            return {"status": "ok", "data": make_modal("A41.9",db, claim_id)}
 
+        tindakan = make_modal("A41.9", db, claim_id, "admission") or []
+        return {"status": "ok", "data": {
+            "id": None,
+            "procedure_text": None,
+            "description": "-",
+            "tindakan": tindakan
+        }}
 
     return {"error": f"Tipe {rec_type} tidak dikenali"}
+
+
 
 def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
     """Simpan hasil evaluasi kombinasi ke tabel sesuai model"""
@@ -1153,6 +1239,7 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
     # === Kombinasi Diagnosis ===
     diag_eval = models.ClaimDiagnosisEvaluation(
         claim_id=claim_id,
+        diagnosis_id=evaluasi["kombinasi_diagnosis"].get("diagnosis_id"),
         validitas=parse_validitas(evaluasi["kombinasi_diagnosis"].get("validitas")),
         validitas_detail=evaluasi["kombinasi_diagnosis"].get("validitas_detail"),
         severity=evaluasi["kombinasi_diagnosis"].get("severity"),
@@ -1487,7 +1574,6 @@ def get_claim_recommendations(
                 "id": rec.id,
                 "stage": rec.stage,
                 "category": rec.category,
-                "kategori": rec.nama_kategori or "-",
                 "score": rec.confidence_score,
                 "klinis": rec.klinis or "",
                 "icd10_code": rec.icd10_code or "",
@@ -2378,6 +2464,7 @@ def update_claim_draft(
 
                     detail = models.ClaimProcedureDetail(
                         procedure_id=proc.id,
+                        claim_simulation_id=claim.simulation_id,
                         icd9_tindakan=stage_data["tindakanUtama"].get("icd") or "47.09",
                         icd9_deskripsi_tindakan=stage_data["tindakanUtama"].get("deskripsi"),
                         validitas_tindakan=stage_data["tindakanUtama"].get("validitas") or "valid",
@@ -3040,17 +3127,21 @@ def add_visit(
     _=Depends(require_csrf_dep)
 ):
     visit = models.Visit(
-        patient_id=patient_id or None,
-        hospital_id=hospital_id or None,
-        eksternal_id=eksternal_id or None,
-        sumber=sumber or None,
-        poli=poli or None,
-        doctor_id=doctor_id or None,
-        doctor_name=doctor_name or None,
-        tanggal_kunjungan=tanggal_kunjungan or None,
-        jenis_kunjungan=jenis_kunjungan or None,
-        created_at=created_at or datetime.utcnow(),
+        patient_id=patient_id,
+        hospital_id=current_user.hospital_id,
+        eksternal_id=eksternal_id,
+        sumber=sumber,
+        poli=poli,
+        doctor_id=current_user.id,
+        doctor_name=current_user.name,   # snapshot nama saat itu
+        tanggal_kunjungan=tanggal_kunjungan,
+        jenis_kunjungan=jenis_kunjungan,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
     )
+
     db.add(visit)
     db.commit()
     db.refresh(visit)
@@ -3100,6 +3191,9 @@ def edit_visit(
     tanggal_kunjungan: Optional[date] = Form(None),
     jenis_kunjungan: Optional[str] = Form(None),
     created_at: Optional[datetime] = Form(None),
+    updated_at: Optional[datetime] = Form(None),
+    is_deleted: Optional[bool] = Form(False),
+    is_dummy: Optional[bool] = Form(True),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor", "admin_rs")),
     _=Depends(require_csrf_dep)
@@ -3108,15 +3202,18 @@ def edit_visit(
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
     visit.patient_id = patient_id or None
-    visit.hospital_id = hospital_id or None
+    visit.hospital_id = current_user.hospital_id,
     visit.eksternal_id = eksternal_id or None
     visit.sumber = sumber or None
     visit.poli = poli or None
-    visit.doctor_id = doctor_id or None
-    visit.doctor_name = doctor_name or None
+    visit.doctor_id = current_user.id
+    visit.doctor_name = current_user.name
     visit.tanggal_kunjungan = tanggal_kunjungan or None
     visit.jenis_kunjungan = jenis_kunjungan or None
     visit.created_at = created_at or datetime.utcnow()
+    visit.updated_at = datetime.utcnow()
+    visit.is_deleted = False
+    visit.is_dummy = True
     db.commit()
     db.refresh(visit)
     flash(request, "Kunjungan berhasil diperbarui!", "success")
@@ -3382,16 +3479,13 @@ def update_medical_record(
     )
     new_version = (last_version[0] + 1) if last_version else 1
 
-    # Simpan snapshot lama ke log
-    snapshot = {col.name: getattr(record, col.name) for col in record.__table__.columns}
-
     log = models.MedicalRecordLog(
     medical_record_id=record.id,
     action="UPDATED",
     description="Rekam medis diperbarui",
     updated_by=user.id,
     updated_at=datetime.utcnow(),
-    data_snapshot=snapshot   # optional: json.dumps(record.to_dict())
+    data_snapshot=json.dumps(record.to_dict(), ensure_ascii=False)
     )
     db.add(log)
 

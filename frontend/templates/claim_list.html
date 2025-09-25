@@ -107,7 +107,6 @@
           <th class="px-4 py-2">Tindakan</th>
           <th class="px-4 py-2">Obat</th>
           <th class="px-4 py-2">Status</th>
-          <th class="px-4 py-2">Hasil</th>
           <th class="px-4 py-2">Dibuat</th>
           {% if user and user.role == 'doctor' %}
           <th class="px-4 py-2">Aksi</th>
@@ -122,14 +121,13 @@
           <td class="px-4 py-2">{{ claim.visit.id if claim.visit else '-' }}</td>
           <td class="px-4 py-2">{{ claim.hospital.id if claim.hospital else '-' }}</td>
           <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.tanggal_kunjungan or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.visit.tanggal_kunjungan or '-' }}</td>
           <td class="px-4 py-2">{{ claim.doctor_name or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.medical_record.diagnosis_awal or '-' }}</td>
           <td class="px-4 py-2">{{ claim.kode_icd or '-' }}</td>
           <td class="px-4 py-2">{{ claim.tindakan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.obat or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.medical_record.obat or '-' }}</td>
           <td class="px-4 py-2">{{ claim.status or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.hasil or '-' }}</td>
           <td class="px-4 py-2 whitespace-nowrap">{{ claim.created_at.strftime("%Y-%m-%d %H:%M") if claim.created_at else '-' }}</td>
           <td class="px-4 py-2 text-center whitespace-nowrap">
             <a href="/claims/{{ claim.id }}" 

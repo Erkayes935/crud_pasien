@@ -227,7 +227,7 @@ function renderAI(rows) {
 
 
 // ==================== Render Table ====================
-function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
+function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) { 
   const state = Alpine.$data(document.getElementById("claimRoot"))
 
   if (!state.simulasi[tab]) {
@@ -242,8 +242,9 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
   const newAiItems = (items || []).filter(it => !it.isManual)
   const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems
 
+  let merged
   if (type === "tindakan") {
-  // manual tindakan dihandle terpisah
+    // manual tindakan dihandle terpisah
     merged = [...aiItems]
   } else {
     // selain itu (diagnosis/komorbid/komplikasi) tetap digabung manual
@@ -253,7 +254,7 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
   // === Hindari duplikat ===
   const seen = new Set()
   merged = merged.filter(it => {
-    const key = `${it.kategori}-${it.icd10_code || it.icd9_code}-${it.tindakan || it.procedure_text}`
+    const key = `${(it.nama_kategori || it.kategori || "").trim()}-${it.icd10_code || it.icd9_code || ""}-${it.tindakan || it.procedure_text || ""}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -271,26 +272,27 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
   let lastParentKey = null;
 
   merged.forEach(it => {
-    if (!it.kategori) return;
-    const name = it.kategori.trim();
-    const type = it.type || "diagnosis"; // pastikan tiap item punya field type
+    const name = (it.nama_kategori || it.kategori || "").trim()
+    if (!name) return
+    const itemType = it.type || type || "diagnosis"
 
     if (name.startsWith("→")) {
       // === Child ===
       if (lastParentKey && parentMap[lastParentKey]) {
         parentMap[lastParentKey].children.push({
           ...it,
-          kategori: name.replace("→", "").trim()
-        });
+          kategori: name.replace("→", "").trim(),
+          nama_kategori: name.replace("→", "").trim()
+        })
       }
     } else {
       // === Parent ===
-      const parentKey = `${type}:${name}`; // gabungkan type biar unik
-      parentMap[parentKey] = { ...it, children: [] };
-      grouped.push(parentMap[parentKey]);
-      lastParentKey = parentKey;
+      const parentKey = `${itemType}:${name}`
+      parentMap[parentKey] = { ...it, kategori: name, nama_kategori: name, children: [] }
+      grouped.push(parentMap[parentKey])
+      lastParentKey = parentKey
     }
-  });
+  })
 
   // === Header Table ===
   const table = target.closest("table")
@@ -311,76 +313,77 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
 
   // === Render Parent & Child ===
   grouped.forEach((parent, idx) => {
-  const counter = 1 + (parent.children ? parent.children.length : 0)
+    const counter = 1 + (parent.children ? parent.children.length : 0)
 
-  // <tbody> jadi scope Alpine
-  const tbody = document.createElement("tbody")
-  tbody.setAttribute("x-data", "{ open:false }")
+    // <tbody> jadi scope Alpine
+    const tbody = document.createElement("tbody")
+    tbody.setAttribute("x-data", "{ open:false }")
 
-  // parent row
-  tbody.insertAdjacentHTML("beforeend", `
-    <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
-        data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
-        <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]" onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
-          <span @click="open=!open" class="mr-1 cursor-pointer">
-            <span x-show="!open" x-cloak>▶</span>
-            <span x-show="open" x-cloak>▼</span>
-          </span>
-          ${parent.kategori || parent.category || parent.nama_kategori || "-"}
-          </span>
-          <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
-        </td>
-        <td class="col-klinis border px-6 py-2">
-          <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
-            ${parent.klinis || "-"}
-          </div>
-        </td>
-        <td class="col-icd border px-[19px] py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
-        <td class="col-tindakan border px-6 py-2">
-          <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
-          ${parent.tindakan || parent.procedure_text || "-"}</div>
-        </td>
-        <td class="border px-[18px] py-2 text-center">${parent.score || "-"}</div></td>
-        ${state.role === "doctor" ? `
-        <td class="border px-3 py-2 text-center">
-          ${renderMappingSelect(parent, tab, type, idx)}
-        </td>` : ``}
-      </tr>
-    `)
-
-  // child rows ikut scope open
-  parent.children.forEach((child, cIdx) => {
+    // parent row
     tbody.insertAdjacentHTML("beforeend", `
-      <tr x-show="open" x-cloak
-          class="bg-gray-50 dark:bg-gray-800 italic text-sm"
-          data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
-          data-db-id="${child.id}">
-        <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"
-            onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
-          → ${child.kategori || "-"}
-        </td>
-        <td class="col-klinis border px-6 py-2">
-          <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
-          ${child.klinis || "-"}</div>
-        </td>
-        <td class="col-icd border px-[19px] py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
-        <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
-          <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
-          ${child.tindakan || child.procedure_text || "-"}
-          </div>
-        </td>
-        <td class="border px-[18px] py-2 text-center">${child.score || "-"}</td>
-        ${state.role === "doctor" ? `
-        <td class="border px-3 py-2 text-center">
-          ${renderMappingSelect(child, tab, type, idx)}
-        </td>` : ``}
-      </tr>
-    `)
-  })
+      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
+          data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
+          <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+            <span @click="open=!open" class="mr-1 cursor-pointer">
+              <span x-show="!open" x-cloak>▶</span>
+              <span x-show="open" x-cloak>▼</span>
+            </span>
+            <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || "-"}</span>
+            <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
+          </td>
+          <td class="col-klinis border px-6 py-2">
+            <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis" title="${parent.klinis || ""}">
+              ${parent.klinis || "-"}
+            </div>
+          </td>
+          <td class="col-icd border px-[19px] py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
+          <td class="col-tindakan border px-6 py-2">
+            <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis" title="${parent.tindakan || parent.procedure_text || ""}">
+              ${parent.tindakan || parent.procedure_text || "-"}
+            </div>
+          </td>
+          <td class="border px-[18px] py-2 text-center">${parent.score || "-"}</td>
+          ${state.role === "doctor" ? `
+          <td class="border px-3 py-2 text-center">
+            ${renderMappingSelect(parent, tab, type, idx)}
+          </td>` : ``}
+        </tr>
+      `)
 
-  target.appendChild(tbody)
-  Alpine.initTree(tbody)
-})
+    // child rows ikut scope open
+    parent.children.forEach((child, cIdx) => {
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr x-show="open" x-cloak
+            class="bg-gray-50 dark:bg-gray-800 italic text-sm"
+            data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
+            data-db-id="${child.id}">
+          <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"
+              onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
+            → ${child.nama_kategori || child.kategori || "-"}
+          </td>
+          <td class="col-klinis border px-6 py-2">
+            <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis" title="${child.klinis || ""}">
+              ${child.klinis || "-"}
+            </div>
+          </td>
+          <td class="col-icd border px-[19px] py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
+          <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${child.tindakan || child.procedure_text || ""}">
+            <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
+              ${child.tindakan || child.procedure_text || "-"}
+            </div>
+          </td>
+          <td class="border px-[18px] py-2 text-center">${child.score || "-"}</td>
+          ${state.role === "doctor" ? `
+          <td class="border px-3 py-2 text-center">
+            ${renderMappingSelect(child, tab, type, idx)}
+          </td>` : ``}
+        </tr>
+      `)
+    })
+
+    target.appendChild(tbody)
+    Alpine.initTree(tbody)
+  })
 
   // === Update Counter ===
   const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`
@@ -390,13 +393,13 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
     countEl.textContent = total
   }
   if (dayId) {
-  const dailyCounter = document.getElementById(`count-daily-${dayId}`);
+    const dailyCounter = document.getElementById(`count-daily-${dayId}`);
     if (dailyCounter) {
       // hitung total dari semua kategori (diagnosis + komorbid + komplikasi)
       const totalDaily =
-      (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent) || 0) +
-      (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent) || 0) +
-      (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent) || 0);
+        (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent) || 0) +
+        (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent) || 0) +
+        (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent) || 0);
 
       dailyCounter.textContent = totalDaily;
     }
@@ -412,11 +415,21 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
 
       manualTbody.insertAdjacentHTML("beforeend", `
         <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="col-icd border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="col-tindakan border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
-          <td class="border px-3 py-2"><input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"></td>
+          <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+            <input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          </td>
+          <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+            <input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          </td>
+          <td class="col-icd border px-3 py-2">
+            <input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          </td>
+          <td class="col-tindakan border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
+            <input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          </td>
+          <td class="border px-3 py-2">
+            <input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          </td>
           <td class="border px-3 py-2 text-center">
             <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
           </td>
@@ -428,6 +441,7 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
     }
   }
 }
+
 
 // helper untuk potong teks + tooltip
 function truncateText(text, max) {
@@ -798,11 +812,28 @@ function renderDiagnosisDetail(it) {
     klinis = { justifikasi: "-", bukti_klinis: "-", syarat_klinis: "-" };
   }
 
-  const icd10 = it.icd10 || { kode_icd: it.icd10_code || "-" };
+  const icd10 = it.icd10 || { 
+    kode_icd: it.icd10_code || "-",
+    struktur_icd10: it.struktur_icd10 || "-",
+    kode_ganda: it.kode_ganda || "-",
+    z_code: it.z_code || "-",
+    kode_bpjs_khusus: it.kode_bpjs_khusus || "-"
+  };
   const tindakan = it.tindakan || [];
-  const rawat = it.rawat_inap || {};
-  const faskes = it.faskes || {};
-  const rujukan = it.rujukan || {};
+  const rawat = {
+    indikasi: it.rawat_inap?.indikasi || "-",
+    lama_rawat: it.rawat_inap?.lama_rawat || "-",
+    perpanjangan: it.rawat_inap?.perpanjangan || "-"
+  };
+
+  const faskes = {
+    kesesuaian_rs: it.faskes?.kesesuaian_rs || "-"
+  };
+
+  const rujukan = {
+    syarat: it.rujukan?.syarat || "-",
+    kelayakan: it.rujukan?.kelayakan || "-"
+  };
 
   // helper box 2 kolom
   const renderBox = (label, value, status = "default") => {
@@ -826,8 +857,8 @@ function renderDiagnosisDetail(it) {
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
           ${renderBox("Justifikasi", klinis.justifikasi, klinis.status)}
-          ${renderBox("Bukti Klinis", klinis.bukti || klinis.bukti_klinis, klinis.status_bukti)}
-          ${renderBox("Syarat Klinis", klinis.syarat || klinis.syarat_klinis, klinis.status_syarat)}
+          ${renderBox("Bukti Klinis", klinis.bukti_klinis)}
+          ${renderBox("Syarat Klinis", klinis.syarat_klinis)}
         </div>
       </section>
 
@@ -836,10 +867,10 @@ function renderDiagnosisDetail(it) {
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
           ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd)}
-          ${renderBox("Struktur ICD", icd10.struktur_kode, icd10.status)}
-          ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_ganda)}
-          ${renderBox("Z-Code", icd10.z_code, icd10.status_z)}
-          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_bpjs)}
+          ${renderBox("Struktur ICD 10", icd10.struktur_icd10)}
+          ${renderBox("Kode Ganda", icd10.kode_ganda)}
+          ${renderBox("Z-Code", icd10.z_code)}
+          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus)}
         </div>
       </section>
 
@@ -885,52 +916,54 @@ function renderDiagnosisDetail(it) {
 
 function renderTindakan(list) {
   const tindakanList = list && list.length > 0 
-    ? list.filter(td => td.nama && td.nama !== "undefined").map(td => `
-      <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
-          data-procid="${td.id}">
-        <!-- Nama Tindakan -->
-        <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-            onclick="openProcedureModal('${td.id || ''}')">
-          ${td.nama}
-        </div>
+    ? list.map(td => {
+        // fallback: BE kirim "tindakan", FE expect "nama"
+        const nama = td.nama || td.tindakan || "-";
+        const deskripsi = td.deskripsi || td.description || "-";
 
-        <!-- Deskripsi -->
-        <div>
-          <span
-            class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-            title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
-            ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
-          </span>
-        </div>
+        return `
+          <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+              data-procid="${td.id || ''}">
+            
+            <!-- Nama Tindakan -->
+            <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+                onclick="openProcedureModal('${td.id || ''}')">
+              ${nama}
+            </div>
 
-        <!-- Tombol -->
-        ${window.claimState.role === "doctor" ? `
-          <div class="flex space-x-2 justify-end">
-            <button type="button"
-                    onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-            <button type="button"
-                    onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+            <!-- Deskripsi -->
+            <div>
+              <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                title="${deskripsi}">
+                ${deskripsi}
+              </span>
+            </div>
+
+            <!-- Tombol -->
+            ${window.claimState.role === "doctor" ? `
+              <div class="flex space-x-2 justify-end">
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+              </div>
+            ` : ''}
           </div>
-        ` : ''}
-      </div>
-    `).join("")
+        `;
+      }).join("")
     : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
   
+  // form manual tetap sama
   const manualForm = `
   ${window.claimState.role === "doctor" ? `
     <div class="tindakan-list mt-4"></div>
     <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
       <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-
-      <!-- Flex container -->
       <div class="flex gap-2">
-        <!-- Input -->
         <input id="manualNamaTindakan" placeholder="Nama Tindakan" 
               class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
-
-        <!-- Button -->
         <button type="button" onclick="addManualTindakan()" 
                 class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center">
           ➕ Tambah
@@ -941,6 +974,7 @@ function renderTindakan(list) {
   
   return tindakanList + manualForm;
 }
+
 
 
 async function openProcedureModal(procId) {
