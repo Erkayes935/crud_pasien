@@ -660,8 +660,6 @@ function openModal(title, content, { hideDefaultClose = false } = {}) {
   state.hideDefaultClose = hideDefaultClose
 }
 
-
-
 function updateRingkasanFromRow(itemId, dx) {
   if (!dx || !itemId) return;
 
@@ -781,8 +779,6 @@ async function openModalFromAttr(el, type) {
 }
 
 
-
-
 function openManualDetailModal(it) {
   // bikin payload mirip hasil backend supaya bisa diproses buildModalContent
   const dummy = {
@@ -872,18 +868,30 @@ function renderDiagnosisDetail(it) {
   };
 
   // helper box 2 kolom
-  const renderBox = (label, value, status = "default") => {
+  const renderBox = (label, value, status = "default", diagnosisId = null) => {
     let colorClass = "bg-gray-200 text-gray-800"; // default abu
     if (status === "valid") colorClass = "bg-green-600 text-white";
     if (status === "invalid") colorClass = "bg-red-600 text-white";
     const safeValue = value || "-";
+
+    // kalau ada diagnosisId → aktifkan tooltip + klik regulasi
+    const content = diagnosisId
+    ? `<span 
+        class="cursor-pointer"
+        title="PNPK Sepsis 2020"
+        onclick="openRegulationModal(${diagnosisId}, 'diagnosis')"
+      >${safeValue}</span>`
+    : safeValue;
+
+
     return `
       <div class="grid grid-cols-2">
         <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="${colorClass} px-3 py-2">${safeValue}</div>
+        <div class="${colorClass} px-3 py-2">${content}</div>
       </div>
     `;
   };
+
 
   return `
     <div class="space-y-6 text-sm">
@@ -892,9 +900,10 @@ function renderDiagnosisDetail(it) {
       <section class="rounded shadow overflow-hidden">
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-          ${renderBox("Justifikasi", klinis.justifikasi, klinis.status)}
+          ${renderBox("Justifikasi", klinis.justifikasi, klinis.status, it.id)}
           ${renderBox("Bukti Klinis", klinis.bukti_klinis)}
-          ${renderBox("Syarat Klinis", klinis.syarat_klinis)}
+          ${renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, it.id)}
+          
         </div>
       </section>
 
@@ -902,11 +911,11 @@ function renderDiagnosisDetail(it) {
       <section class="rounded shadow overflow-hidden">
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-          ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd)}
-          ${renderBox("Struktur ICD 10", icd10.struktur_icd10)}
-          ${renderBox("Kode Ganda", icd10.kode_ganda)}
-          ${renderBox("Z-Code", icd10.z_code)}
-          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus)}
+          ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, it.id)}
+          ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, it.id)}
+          ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, it.id)}
+          ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, it.id)}
+          ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, it.id)}
         </div>
       </section>
 
@@ -922,9 +931,9 @@ function renderDiagnosisDetail(it) {
       <section class="rounded shadow overflow-hidden">
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-          ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi)}
-          ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama)}
-          ${renderBox("Perpanjangan", rawat.perpanjangan, rawat.status_perpanjangan)}
+          ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, it.id)}
+          ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, it.id)}
+          ${renderBox("Perpanjangan", rawat.perpanjangan, rawat.status_perpanjangan, it.id)}
         </div>
       </section>
 
@@ -932,7 +941,7 @@ function renderDiagnosisDetail(it) {
       <section class="rounded shadow overflow-hidden">
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">FASKES</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-          ${renderBox("Kesesuaian RS", faskes.kesesuaian_rs, faskes.status)}
+          ${renderBox("Kesesuaian RS", faskes.kesesuaian_rs, faskes.status, it.id)}
         </div>
       </section>
 
@@ -940,8 +949,8 @@ function renderDiagnosisDetail(it) {
       <section class="rounded shadow overflow-hidden">
         <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
         <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-          ${renderBox("Syarat", rujukan.syarat, rujukan.status_syarat)}
-          ${renderBox("Kelayakan", rujukan.kelayakan, rujukan.status_kelayakan)}
+          ${renderBox("Syarat", rujukan.syarat, rujukan.status_syarat, it.id)}
+          ${renderBox("Kelayakan", rujukan.kelayakan, rujukan.status_kelayakan, it.id)}
         </div>
       </section>
 
@@ -1014,9 +1023,6 @@ function renderTindakan(list) {
   return tindakanList + manualForm;
 }
 
-
-
-
 async function openProcedureModal(procId) {
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
   const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
@@ -1036,6 +1042,21 @@ async function openProcedureModal(procId) {
         }
       });
     }
+
+    // 🔹 helper mirip renderBox
+    const renderProcBox = (label, value, skipReg = false) => {
+      const safeValue = value || "-";
+      const content = (!skipReg)
+        ? `<span class="cursor-pointer" title="PNPK Sepsis 2020"
+                 onclick="openRegulationModal(${procId}, 'procedure')">${safeValue}</span>`
+        : safeValue;
+
+      return `
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${content}</div>
+      `;
+    };
+
     // tampilkan nested modal
     const content = `
       <div class="flex justify-end items-start mb-3">
@@ -1046,31 +1067,17 @@ async function openProcedureModal(procId) {
         </button>
       </div>
       <div class="grid grid-cols-2 gap-2">
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.icd9 || '-'}</div>
-        
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
-        <div class="bg-gray-800 px-3 py-2 rounded">${deskripsiGabungan}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.validitas || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.status || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.ina_cbg || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.faskes || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.rawat_inap || '-'}</div>
-
-        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${d.syarat_klinis || '-'}</div>
+        ${renderProcBox("Kode ICD-9", d.icd9)}
+        ${renderProcBox("Deskripsi", deskripsiGabungan)}
+        ${renderProcBox("Validitas", d.validitas, true)}   <!-- ❌ regulasi skip -->
+        ${renderProcBox("Status", d.status)}
+        ${renderProcBox("INA-CBG", d.ina_cbg)}
+        ${renderProcBox("Faskes", d.faskes)}
+        ${renderProcBox("Rawat Inap", d.rawat_inap)}
+        ${renderProcBox("Syarat Klinis", d.syarat_klinis)}
       </div>
     `;
+
     openModal(`Detail Tindakan (${data.procedure_text || '-'})`, content, { hideDefaultClose: true });
 
     // ✅ update DOM langsung (biar instant)
@@ -1124,7 +1131,6 @@ function openManualNestedProcedureModal(idx) {
   window.claimState.currentProcedure = td;
 }
 
-
 function closeNestedModal() {
   const dx = window.claimState.currentDiagnosis;
   if (dx) {
@@ -1136,6 +1142,46 @@ function closeNestedModal() {
   } else {
     const state = Alpine.$data(document.getElementById('claimRoot'));
     state.modalOpen = false;
+  }
+}
+
+async function openRegulationModal(id, type = "diagnosis") {
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+
+  // bedakan param di URL
+  const paramKey = type === "procedure" ? "procedure_id" : "diagnosis_id";
+  const url = `/claims/${claimId}/regulations?${paramKey}=${id}`;
+
+  try {
+    const res = await fetch(url);
+    const { data } = await res.json();
+
+    if (!data || data.length === 0) {
+      alert("Tidak ada regulasi untuk field ini");
+      return;
+    }
+
+    const r = data[0]; // ambil 1 dulu
+    const content = `
+      <div class="space-y-4 text-sm">
+        <div class="grid grid-cols-2 gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded">
+          <div class="bg-gray-700 text-white px-3 py-2">Judul Regulasi</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.judul_regulasi || '-'}</div>
+
+          <div class="bg-gray-700 text-white px-3 py-2">Dasar Hukum</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.dasar_hukum || '-'}</div>
+
+          <div class="bg-gray-700 text-white px-3 py-2">Bab/Pasal</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.bab_pasal || '-'}</div>
+
+          <div class="bg-gray-700 text-white px-3 py-2">Isi</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.isi || '-'}</div>
+        </div>
+      </div>
+    `;
+    openModal("Detail Regulasi", content);
+  } catch (e) {
+    console.error("❌ Gagal load regulasi", e);
   }
 }
 

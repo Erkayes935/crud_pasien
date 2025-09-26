@@ -164,6 +164,8 @@ class Claim(Base):
     procedure_evaluations = relationship("ClaimProcedureEvaluation", back_populates="claim", cascade="all, delete-orphan")
     combination_alternatives = relationship("ClaimCombinationAlternative", back_populates="claim", cascade="all, delete-orphan")
     simulations = relationship("ClaimSimulation", back_populates="claim", cascade="all, delete-orphan")
+    regulation_details = relationship("ClaimRegulationDetail",back_populates="claim",cascade="all, delete-orphan")
+
     # logs sebaiknya tanpa delete-orphan, hanya back_populates
     logs = relationship("ClaimLog", back_populates="claim")
 
@@ -314,6 +316,32 @@ class ClaimProcedureDetail(Base):
             f"INA-CBG: {self.ina_cbg_tindakan}" if self.ina_cbg_tindakan else ""
         ]
         return ", ".join([p for p in parts if p])
+
+# =========================================
+# Claim Detail Regulations
+# =========================================
+class ClaimRegulationDetail(Base):
+    __tablename__ = "claim_regulation_details"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+    diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
+    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
+
+    judul_regulasi = Column(String(255), nullable=False)   # contoh: PNPK Sepsis 2020
+    dasar_hukum    = Column(String(255), nullable=True)    # contoh: Permenkes, PNPK, ICD-10, INA-CBG
+    bab_pasal      = Column(String(255), nullable=True)    # contoh: Bab II, Pasal 4 ayat (2)
+    isi            = Column(Text, nullable=True)           # isi/penjelasan regulasi
+
+    created_at = Column(DateTime, server_default=text("now()"))
+    updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+    claim = relationship("Claim", back_populates="regulation_details")
+    diagnosis = relationship("ClaimDiagnosis")
+    procedure = relationship("ClaimProcedure")
+
 
 # =========================================
 # Claim AI Simulations
