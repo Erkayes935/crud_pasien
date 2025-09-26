@@ -1163,6 +1163,10 @@ async function openRegulationModal(id, type = "diagnosis") {
 
     const r = data[0]; // ambil 1 dulu
     const content = `
+      <div class="flex justify-end items-start mb-3">
+        <button type="button" onclick="closeNestedModal()" 
+                class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
       <div class="space-y-4 text-sm">
         <div class="grid grid-cols-2 gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded">
           <div class="bg-gray-700 text-white px-3 py-2">Judul Regulasi</div>
@@ -1179,7 +1183,7 @@ async function openRegulationModal(id, type = "diagnosis") {
         </div>
       </div>
     `;
-    openModal("Detail Regulasi", content);
+    openModal("Detail Regulasi", content, { hideDefaultClose: true });
   } catch (e) {
     console.error("❌ Gagal load regulasi", e);
   }
