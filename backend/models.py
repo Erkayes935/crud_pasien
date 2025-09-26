@@ -9,11 +9,11 @@ Defines the SQLAlchemy ORM models used by the application:
 - Visit: stores visit information linked to a patient.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text, Numeric
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, DateTime, Boolean, Enum, JSON, Float, text, Numeric, inspect
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from .database import Base
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 
 # =========================================
@@ -178,11 +178,10 @@ class ClaimAIRecommendation(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
     stage = Column(String(50), nullable=False)     # admission / daily / discharge
-    category = Column(String(50), nullable=False)  # diagnosis / komorbid / komplikasi / tindakan
+    category = Column(String(50), nullable=False)  # diagnosis / komorbid / komplikasi
 
     # Tidak lagi simpan klinis/ICD/tindakan mentah2 → gunakan relasi
     diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
-    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
 
     confidence_score = Column(Integer, nullable=True)
     child = Column(Boolean, nullable=False, server_default=text("false"))
@@ -192,7 +191,6 @@ class ClaimAIRecommendation(Base):
 
     # Relasi
     diagnosis = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_id])
-    procedure = relationship("ClaimProcedure", foreign_keys=[procedure_id])
     claim = relationship("Claim", back_populates="ai_recommendations")
 
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))
@@ -553,7 +551,7 @@ class MedicalRecord(Base):
         def normalize(val):
             if isinstance(val, uuid.UUID):
                 return str(val)                   # UUID jadi string
-            if isinstance(val, (datetime.datetime, datetime.date)):
+            if isinstance(val, (datetime, date)):
                 return val.isoformat()            # Date/Datetime ke ISO string
             return val
 

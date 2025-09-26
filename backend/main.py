@@ -776,7 +776,7 @@ def make_modal(icd: str, db: Session, claim_id: int, stage: str):
                 db.add(det_model)
 
         db.commit()
-        existing_procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id, is_deleted=False).all()
+        existing_procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).all()
 
     # ===== 3. Ambil semua procedure yang ada di DB =====
     tindakan = []
@@ -943,28 +943,17 @@ def store_ai_recommendations(db: Session, claim_id: int, dummy_data: dict, stage
             db.add(rec)
 
     # 2️⃣ Tindakan → ambil yang sudah ada di DB, jangan insert ulang
-    existing_procs = db.query(models.ClaimProcedure).filter_by(
-        claim_id=claim_id, is_deleted=False
-    ).all()
-
-    for proc in existing_procs:
-        rec = models.ClaimAIRecommendation(
-            claim_id=claim_id,
-            stage=stage,
-            category="tindakan",
-            confidence_score=None,   # dummy → bisa diisi nanti
-            procedure_id=proc.id,
-            child=False,
-            is_dummy=True,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(rec)
+    print("💾 Simpan claim:", claim_id, "stage:", stage)
+    existing_procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).all()
+    for p in existing_procs:
+        print("PROC:", p.id, p.procedure_text)
+    for d in p.procedure_details:
+        print("DETAIL:", d.icd9_tindakan, d.ina_cbg_tindakan)
 
     db.commit()
 
 def store_ai_modal_details(db: Session, diag_id: int, modal_data: dict):
+    
     diag = db.query(models.ClaimDiagnosis).filter_by(id=diag_id, is_deleted=False).first()
     if diag and modal_data:
         diag.icd10_code = (modal_data.get("icd10") or {}).get("kode_icd")
@@ -997,67 +986,86 @@ def ai_recommendation(payload: dict = Body(None), db: Session = Depends(get_db))
     discharge = make_dummy("discharge")
 
     if claim_id:
-        # 🔹 Bersihkan data lama
+    # 1️⃣ Hapus dulu detail procedure
         db.query(models.ClaimProcedureDetail).filter(
             models.ClaimProcedureDetail.procedure_id.in_(
                 db.query(models.ClaimProcedure.id).filter_by(claim_id=claim_id)
             )
         ).delete(synchronize_session=False)
 
-        db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).delete()
+        # 2️⃣ Hapus AIRecommendation (supaya foreign key ke procedure aman)
         db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id).delete()
+
+        # 3️⃣ Baru hapus ClaimProcedure
+        db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).delete()
+
+        # 4️⃣ Terakhir hapus diagnosis & simulation
         db.query(models.ClaimDiagnosis).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).delete()
+
         db.commit()
 
-        # 🔹 Seed dummy via make_modal + store rekomendasi
+        print(f"🧹 Bersihkan data lama untuk claim_id={claim_id}")
+
+        # 🔹 Seed dummy → make_modal isi ClaimProcedure
         admission["tindakan"] = make_modal("A41", db, claim_id, "admission")
+        print(f"✅ make_modal admission hasil: {admission['tindakan']}")
         store_ai_recommendations(db, claim_id, admission, "admission")
 
         for idx, day in enumerate(daily):
             day["tindakan"] = make_modal("A41", db, claim_id, f"daily{idx+1}")
+            print(f"✅ make_modal daily{idx+1} hasil: {day['tindakan']}")
             store_ai_recommendations(db, claim_id, day, f"daily{idx+1}")
 
         discharge["tindakan"] = make_modal("A41", db, claim_id, "discharge")
+        print(f"✅ make_modal discharge hasil: {discharge['tindakan']}")
         store_ai_recommendations(db, claim_id, discharge, "discharge")
 
-    # 🔹 Ambil ClaimAIRecommendation (diagnosis + tindakan)
-    recs = db.query(models.ClaimAIRecommendation)\
+    # 🔹 Ambil ClaimAIRecommendation
+    recs = (
+        db.query(models.ClaimAIRecommendation)
         .options(
-            joinedload(models.ClaimAIRecommendation.diagnosis),
-            joinedload(models.ClaimAIRecommendation.procedure)
-        )\
-        .filter_by(claim_id=claim_id).all()
+            joinedload(models.ClaimAIRecommendation.diagnosis)
+        )
+        .filter_by(claim_id=claim_id)
+        .all()
+    )
 
     data = []
     for rec in recs:
+        # Debug log untuk setiap record
+        print(f"📌 rec.id={rec.id}, stage={rec.stage}, cat={rec.category}, "
+              f"diag_id={rec.diagnosis_id}")
+
+        kategori = "-"
+        if rec.diagnosis:
+            kategori = rec.diagnosis.diagnosis_text
+
+        klinis = "-"
+        if rec.diagnosis:
+            klinis = ", ".join(
+                filter(None, [
+                    getattr(rec.diagnosis, "justifikasi", None),
+                    getattr(rec.diagnosis, "bukti_klinis", None),
+                    getattr(rec.diagnosis, "syarat_klinis", None),
+                ])
+            ) or "-"
+
         item = {
             "id": rec.id,
             "stage": rec.stage,
             "category": rec.category,
             "score": rec.confidence_score,
             "diagnosis_id": rec.diagnosis_id,
-            "procedure_id": rec.procedure_id,
-            "kategori": (
-                rec.diagnosis.diagnosis_text if rec.diagnosis
-                else (rec.procedure.procedure_text if rec.procedure else "-")
-            ),
-            "klinis": ", ".join(filter(None, [
-                rec.diagnosis.justifikasi if rec.diagnosis else None,
-                rec.diagnosis.bukti_klinis if rec.diagnosis else None,
-                rec.diagnosis.syarat_klinis if rec.diagnosis else None
-            ])) if rec.diagnosis else "-",
-            "icd10_code": rec.diagnosis.icd10_code if rec.diagnosis else "-",
-            "tindakan": rec.procedure.procedure_text if rec.procedure else None,
-            "description": "-"  # detail baru diambil di endpoint /detail
+            "child": rec.child,
+            "kategori": kategori,
+            "klinis": klinis,
+            "icd10_code": getattr(rec.diagnosis, "icd10_code", "-") if rec.diagnosis else "-",
+            "description": "-",
         }
         data.append(item)
 
     return {"status": "ok", "data": data}
-
-
-
-
 
 @app.get("/ai/recommendation/detail")
 def ai_recommendation_detail_get(
@@ -1080,10 +1088,9 @@ def ai_recommendation_detail_get(
         if not rec or not rec.diagnosis_id:
             return {"status": "error", "msg": "Recommendation/Diagnosis not found"}
 
-        diag = db.query(models.ClaimDiagnosis).filter_by(
-            id=rec.diagnosis_id, claim_id=claim_id
-        ).first()
-
+        diag = db.query(models.ClaimDiagnosis).filter_by(id=rec.diagnosis_id, claim_id=claim_id).first()
+        tindakan = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).all()
+        tindakan_list = [{"id": p.id, "tindakan": p.procedure_text} for p in tindakan]
         modal_data = make_dummy("A41.9")["modal"]
 
         if not diag.icd10_code:
@@ -1147,7 +1154,7 @@ def ai_recommendation_detail_get(
                 "z_code": diag.z_code,
                 "kode_bpjs_khusus": diag.kode_bpjs_khusus
             },
-            "tindakan": [],
+            "tindakan": tindakan_list,
             "rawat_inap": {
                 "indikasi": diag.indikasi,
                 "lama_rawat": diag.lama_rawat,
@@ -1165,49 +1172,36 @@ def ai_recommendation_detail_get(
         return {"status": "error", "msg": "Diagnosis not found"}
 
     elif rec_type == "procedure":
-        rec = db.query(models.ClaimAIRecommendation).filter_by(
-            id=item_id, claim_id=claim_id, category="tindakan"
-        ).first()
-
-        if not rec or not rec.procedure_id:
-            return {"status": "error", "msg": "Recommendation/Procedure not found"}
-
         proc = db.query(models.ClaimProcedure)\
             .options(joinedload(models.ClaimProcedure.procedure_details))\
-            .filter_by(id=rec.procedure_id, claim_id=claim_id).first()
+            .filter_by(id=item_id, claim_id=claim_id).first()
 
-        if proc:
-            details = [
-                {
-                    "icd9": d.icd9_tindakan,
-                    "deskripsi": " | ".join(filter(None, [
-                        d.icd9_tindakan,
-                        d.ina_cbg_tindakan,
-                        d.status_tindakan
-                    ])),
-                    "validitas": d.validitas_tindakan,
-                    "status": d.status_tindakan,
-                    "ina_cbg": d.ina_cbg_tindakan,
-                    "faskes": d.faskes_tindakan,
-                    "rawat_inap": d.rawat_inap_tindakan,
-                    "syarat_klinis": d.syarat_klinis_tindakan,
-                }
-                for d in proc.procedure_details if not d.is_deleted
-            ]
-            description = "; ".join([d["deskripsi"] for d in details]) if details else "-"
-            return {"status": "ok", "data": {
-                "id": proc.id,
-                "procedure_text": proc.procedure_text,
-                "description": description,
-                "tindakan": details
-            }}
+        if not proc:
+            return {"status": "error", "msg": "Procedure not found"}
 
-        tindakan = make_modal("A41.9", db, claim_id, "admission") or []
+        details = [
+            {
+                "icd9": d.icd9_tindakan,
+                "deskripsi": " | ".join(filter(None, [
+                    d.icd9_tindakan,
+                    d.ina_cbg_tindakan,
+                    d.status_tindakan
+                ])),
+                "validitas": d.validitas_tindakan,
+                "status": d.status_tindakan,
+                "ina_cbg": d.ina_cbg_tindakan,
+                "faskes": d.faskes_tindakan,
+                "rawat_inap": d.rawat_inap_tindakan,
+                "syarat_klinis": d.syarat_klinis_tindakan,
+            }
+            for d in proc.procedure_details if not d.is_deleted
+        ]
+        description = "; ".join([d["deskripsi"] for d in details]) if details else "-"
         return {"status": "ok", "data": {
-            "id": None,
-            "procedure_text": None,
-            "description": "-",
-            "tindakan": tindakan
+            "id": proc.id,
+            "procedure_text": proc.procedure_text,
+            "description": description,
+            "tindakan": details
         }}
 
     return {"error": f"Tipe {rec_type} tidak dikenali"}
@@ -1575,9 +1569,7 @@ def get_claim_recommendations(
                 "stage": rec.stage,
                 "category": rec.category,
                 "score": rec.confidence_score,
-                "klinis": rec.klinis or "",
-                "icd10_code": rec.icd10_code or "",
-                "tindakan": rec.tindakan or ""
+                "child": rec.child
             }
             for rec in recs
         ]

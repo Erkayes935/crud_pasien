@@ -1,5 +1,3 @@
-console.log("👤 Role dari Alpine:", window.claimState?.role)
-
 function ensureDaily(dayId) {
   const state = Alpine.$data(document.getElementById("claimRoot"));
   if (!state.manualInput.daily) state.manualInput.daily = {};
@@ -105,6 +103,7 @@ async function generateAI() {
     });
     const result = await res.json();
     console.log("📥 Data pecahan dari BE:", result);
+    console.log("🔍 Semua tindakan:", (result.data || []).filter(r => r.category === "tindakan"));
 
     renderAI(result.data || []);   // 👉 lempar ke renderer
   } catch (err) {
@@ -115,12 +114,16 @@ async function generateAI() {
 
 // 2. pure renderer (kayak kodeku sebelumnya)
 function renderAI(rows) {
+  console.log("🔍 renderAI rows:", rows);
+
+  // 🔥 injeksi tindakan ke tiap diagnosis sebelum render
+  attachTindakan(rows);
+
   const state = Alpine.$data(document.getElementById("claimRoot"));
 
   const admission = rows.filter(r => r.stage === "admission");
   const daily = rows.filter(r => r.stage.startsWith("daily"));
   const discharge = rows.filter(r => r.stage === "discharge");
-
 
   // Admission
   renderTable("diagnosis-admission", admission.filter(r => r.category==="diagnosis"), "diagnosis", "admission");
@@ -200,20 +203,18 @@ function renderAI(rows) {
       </div>
     `);
 
-
     // render kategori
     renderTable(`diagnosis-${dayId}`, hari.filter(r => r.category==="diagnosis"), "diagnosis", dayId);
     renderTable(`komorbid-${dayId}`, hari.filter(r => r.category==="komorbid"), "komorbid", dayId);
     renderTable(`komplikasi-${dayId}`, hari.filter(r => r.category==="komplikasi"), "komplikasi", dayId);
 
-
-    // hitung total counter daily
+    // hitung total counter daily (fix: diagnosis + komorbid + komplikasi)
     const dailyCounter = document.getElementById(`count-daily-${dayId}`);
     if (dailyCounter) {
       const totalDaily =
-        document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0 +
-        document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0 +
-        document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0;
+        (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0)) +
+        (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent || 0)) +
+        (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent || 0));
       dailyCounter.textContent = totalDaily;
     }
   });
@@ -224,6 +225,18 @@ function renderAI(rows) {
   renderTable("komplikasi-discharge", discharge.filter(r => r.category==="komplikasi"), "komplikasi", "discharge");
 }
 
+
+// 🔑 Definisi attachTindakan (wajib ada)
+function attachTindakan(rows) {
+  const tindakanAll = rows.filter(r => r.category === "tindakan");
+  console.log("🔗 Semua tindakan:", tindakanAll);
+
+  rows.forEach(d => {
+    const arr = tindakanAll.filter(t => t.stage === d.stage && t.category === d.category);
+    d.tindakan = arr.length ? arr : "-";
+  });
+
+}
 
 
 // ==================== Render Table ====================
@@ -254,13 +267,24 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
   // === Hindari duplikat ===
   const seen = new Set()
   merged = merged.filter(it => {
-    const key = `${(it.nama_kategori || it.kategori || "").trim()}-${it.icd10_code || it.icd9_code || ""}-${it.tindakan || it.procedure_text || ""}`
+    const key = `${it.id}-${(it.nama_kategori || it.kategori || "").trim()}-${it.icd10_code || it.icd9_code || ""}-${it.tindakan || it.procedure_text || ""}-${it.child ? "child" : "parent"}`
     if (seen.has(key)) return false
     seen.add(key)
+    console.log("Dedup key:", key, "→ child?", it.child, it)
     return true
   })
 
+
+
   state.simulasi[tab][type] = merged
+
+  console.log("🟢 renderTable merged:", merged.map(it => ({
+    id: it.id,
+    kategori: it.kategori || it.nama_kategori,
+    icd10: it.icd10_code,
+    tindakan: it.tindakan || it.procedure_text,
+    score: it.score
+  })));
 
   const target = document.getElementById(targetId)
   if (!target) return
@@ -276,13 +300,13 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
     if (!name) return
     const itemType = it.type || type || "diagnosis"
 
-    if (name.startsWith("→")) {
+    if (it.child === true) {
       // === Child ===
       if (lastParentKey && parentMap[lastParentKey]) {
         parentMap[lastParentKey].children.push({
           ...it,
-          kategori: name.replace("→", "").trim(),
-          nama_kategori: name.replace("→", "").trim()
+          kategori: `${name} ${String.fromCharCode(97 + parentMap[lastParentKey].children.length)}`,
+          nama_kategori: name
         })
       }
     } else {
@@ -293,6 +317,13 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
       lastParentKey = parentKey
     }
   })
+
+  console.log("📌 Grouped parent-child:", grouped.map(g => ({
+  parent: g.kategori,
+  children: g.children.map(c => c.kategori)
+  })));
+
+
 
   // === Header Table ===
   const table = target.closest("table")
@@ -338,7 +369,7 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
           </td>
           <td class="col-icd border px-[19px] py-2 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
           <td class="col-tindakan border px-6 py-2">
-            <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis" title="${parent.tindakan || parent.procedure_text || ""}">
+            <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis" title="${parent.tindakan || parent.procedure_text || "-"}">
               ${parent.tindakan || parent.procedure_text || "-"}
             </div>
           </td>
@@ -367,7 +398,7 @@ function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = f
             </div>
           </td>
           <td class="col-icd border px-[19px] py-2 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
-          <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${child.tindakan || child.procedure_text || ""}">
+          <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${child.tindakan || child.procedure_text || "-"}">
             <div class="w-full max-w-[180px] truncate whitespace-nowrap overflow-hidden text-ellipsis">
               ${child.tindakan || child.procedure_text || "-"}
             </div>
@@ -677,7 +708,7 @@ function updateRingkasanFromRow(itemId, dx) {
   const tindakanCell = row.querySelector(".col-tindakan");
   if (tindakanCell) {
     if (dx.tindakan && dx.tindakan.length > 0) {
-      const text = dx.tindakan.map(t => t.procedure_text || t.nama).join(", ");
+      const text = dx.tindakan.map(t => t.procedure_text || t.tindakan).join(", ");
       tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 20)}</span>`;
     } else {
       tindakanCell.innerText = "-";
@@ -702,6 +733,9 @@ async function openModalFromAttr(el, type) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = await res.json();
       dx = result.data;
+      console.log("🔎 Detail DX dari BE:", dx);
+      console.log("🔎 Tindakan di DX:", dx?.tindakan);
+
     } else {
       dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
     }
@@ -778,6 +812,8 @@ function openManualDetailModal(it) {
 
 
 function buildModalContent(it) {
+  console.log("🔍 Passing ke renderDiagnosisDetail:", it);
+
   let content = renderDiagnosisDetail(it);
 
   // slot untuk list manual, terpisah dari tindakan AI/DB
@@ -915,19 +951,22 @@ function renderDiagnosisDetail(it) {
 
 
 function renderTindakan(list) {
+  console.log("🛠 renderTindakan list:", list);
+
   const tindakanList = list && list.length > 0 
     ? list.map(td => {
-        // fallback: BE kirim "tindakan", FE expect "nama"
+        // fallback: BE bisa kirim nama/tindakan, description/deskripsi
         const nama = td.nama || td.tindakan || "-";
         const deskripsi = td.deskripsi || td.description || "-";
+        const procId = td.id || td.procedure_id || "";
 
         return `
           <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
-              data-procid="${td.id || ''}">
+              data-procid="${procId}">
             
             <!-- Nama Tindakan -->
             <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-                onclick="openProcedureModal('${td.id || ''}')">
+                onclick="openProcedureModal('${procId}')">
               ${nama}
             </div>
 
@@ -974,6 +1013,7 @@ function renderTindakan(list) {
   
   return tindakanList + manualForm;
 }
+
 
 
 
@@ -1247,53 +1287,77 @@ function confidenceBadge(val){
 
 async function loadRecommendations(claimId) {
   try {
-    const res = await fetch(`/claims/${claimId}/recommendations`)
+    const res = await fetch(`/claims/${claimId}/recommendations`);
     if (!res.ok) {
-      return console.error("❌ Gagal load rekomendasi dari DB")
+      return console.error("❌ Gagal load rekomendasi dari DB");
     }
-    const body = await res.json()
-    const recs = body.data || []
-    console.log("📥 Data rekomendasi dari DB:", recs)
+    const body = await res.json();
+    const recs = body.data || [];
+    console.log("📥 Data rekomendasi dari DB:", recs);
 
     // Grouping per stage & category
-    const grouped = { admission: {}, discharge: {}, daily: {} }
+    const grouped = { admission: {}, discharge: {}, daily: {} };
+
     recs.forEach(r => {
-      let stage = r.stage || "admission"   // fallback kalau DB gak kasih prefix
-      let cat = r.category || "unknown"
+      const stage = r.stage || "admission";   // fallback kalau kosong
+      const cat = r.category || "unknown";
 
       if (stage === "admission") {
-        grouped.admission[cat] = grouped.admission[cat] || []
-        grouped.admission[cat].push(r)
-      } else if (stage === "discharge") {
-        grouped.discharge[cat] = grouped.discharge[cat] || []
-        grouped.discharge[cat].push(r)
-      } else if (stage.startsWith("daily")) {
-        grouped.daily[stage] = grouped.daily[stage] || { diagnosis: [], komorbid: [], komplikasi: [] }
-        grouped.daily[stage][cat] = grouped.daily[stage][cat] || []
-        grouped.daily[stage][cat].push(r)
+        grouped.admission[cat] = grouped.admission[cat] || [];
+        grouped.admission[cat].push(r);
+      } 
+      else if (stage === "discharge") {
+        grouped.discharge[cat] = grouped.discharge[cat] || [];
+        grouped.discharge[cat].push(r);
+      } 
+      else if (stage.startsWith("daily")) {
+        if (!["diagnosis","komorbid","komplikasi"].includes(cat)) return; // skip category aneh
+        grouped.daily[stage] = grouped.daily[stage] || { diagnosis: [], komorbid: [], komplikasi: [] };
+        grouped.daily[stage][cat].push(r);
       }
-    })
+    });
 
+    // 🔍 Debug setelah grouping
+    console.log("🟢 Grouped Admission:", grouped.admission);
+    console.log("🟢 Grouped Discharge:", grouped.discharge);
+    console.log("🟢 Grouped Daily:", grouped.daily);
 
     // === Admission ===
-    renderTable("diagnosis-admission", (grouped.admission.diagnosis || []).map(mapRecommendation), "diagnosis", "admission")
-    renderTable("komorbid-admission", (grouped.admission.komorbid || []).map(mapRecommendation), "komorbid", "admission")
-    renderTable("komplikasi-admission", (grouped.admission.komplikasi || []).map(mapRecommendation), "komplikasi", "admission")
+    renderTable(
+      "diagnosis-admission",
+      (grouped.admission.diagnosis || []).map(mapRecommendation),
+      "diagnosis",
+      "admission"
+    );
+    renderTable(
+      "komorbid-admission",
+      (grouped.admission.komorbid || []).map(mapRecommendation),
+      "komorbid",
+      "admission"
+    );
+    renderTable(
+      "komplikasi-admission",
+      (grouped.admission.komplikasi || []).map(mapRecommendation),
+      "komplikasi",
+      "admission"
+    );
 
     // === Daily ===
-    const dailyContainer = document.getElementById("daily-accordion")
-    dailyContainer.innerHTML = ""
+    const dailyContainer = document.getElementById("daily-accordion");
+    dailyContainer.innerHTML = "";
 
     Object.keys(grouped.daily).forEach((stage, idx) => {
-      const hari = grouped.daily[stage]
-      hari.tanggal = hari.tanggal || `2025-09-${String(idx+1).padStart(2, "0")}`
-      const dayId = `daily-${idx}`
+      const hari = grouped.daily[stage];
+      hari.tanggal = hari.tanggal || `2025-09-${String(idx + 1).padStart(2, "0")}`;
+      const dayId = `daily-${idx}`;
 
-      dailyContainer.insertAdjacentHTML("beforeend", `
+      dailyContainer.insertAdjacentHTML(
+        "beforeend",
+        `
         <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
           <button type="button" @click="open=!open"
                   class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-            <span>Hari ${idx+1} (${hari.tanggal || '-'})</span>
+            <span>Hari ${idx + 1} (${hari.tanggal || '-'})</span>
             <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
           </button>
           <div x-show="open" class="p-2 space-y-2">
@@ -1302,22 +1366,39 @@ async function loadRecommendations(claimId) {
             <div><table class="w-full text-xs border table-fixed"><tbody id="komplikasi-${dayId}"></tbody></table></div>
           </div>
         </div>
-      `)
+      `
+      );
 
-      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId)
-      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId)
-      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId)
-    })
+      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId);
+      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId);
+      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId);
+    });
 
     // === Discharge ===
-    renderTable("diagnosis-discharge", (grouped.discharge.diagnosis || []).map(mapRecommendation), "diagnosis", "discharge")
-    renderTable("komorbid-discharge", (grouped.discharge.komorbid || []).map(mapRecommendation), "komorbid", "discharge")
-    renderTable("komplikasi-discharge", (grouped.discharge.komplikasi || []).map(mapRecommendation), "komplikasi", "discharge")
+    renderTable(
+      "diagnosis-discharge",
+      (grouped.discharge.diagnosis || []).map(mapRecommendation),
+      "diagnosis",
+      "discharge"
+    );
+    renderTable(
+      "komorbid-discharge",
+      (grouped.discharge.komorbid || []).map(mapRecommendation),
+      "komorbid",
+      "discharge"
+    );
+    renderTable(
+      "komplikasi-discharge",
+      (grouped.discharge.komplikasi || []).map(mapRecommendation),
+      "komplikasi",
+      "discharge"
+    );
 
   } catch (err) {
-    console.error("❌ Error loadRecommendations:", err)
+    console.error("❌ Error loadRecommendations:", err);
   }
 }
+
 
 async function loadSimulations(claimId) {
   const res = await fetch(`/claims/${claimId}/simulations`)
@@ -1377,17 +1458,24 @@ async function loadSimulations(claimId) {
 
 
 function mapRecommendation(r) {
-  return {
+  const mapped = {
     id: r.id,
-    kategori: r.nama_kategori || r.kategori || r.category || r.nama || "-",
-    klinis: r.klinis || r.justifikasi || "-",
-    icd10_code: r.icd10_code || r.icd || "-",
-    procedure_text: r.tindakan || r.procedure_text || "-",
+    kategori: r.diagnosis_text ?? r.nama_kategori ?? r.kategori ?? r.category ?? r.nama ?? "-",
+    nama_kategori: r.diagnosis_text ?? r.nama_kategori ?? r.kategori ?? r.category ?? r.nama ?? "-",
+    klinis: r.klinis ?? r.justifikasi ?? "-",
+    icd10_code: r.icd10_code ?? r.icd ?? "-",
+    procedure_text: r.tindakan ?? r.procedure_text ?? "-",
     score: r.confidence_score || r.score || 0,
-    child: r.child || false,
-    isManual: r.is_manual || false,
+    child: r.child === true,
+    isManual: r.is_manual ?? false,
   };
+
+  console.log("📥 Mapped recommendation:", mapped);
+
+  return mapped;
 }
+
+
 
 function onMappingChange(event, tab, type, itemId) {
   const state = Alpine.$data(document.getElementById('claimRoot'))
