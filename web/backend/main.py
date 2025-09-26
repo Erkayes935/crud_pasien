@@ -3190,9 +3190,6 @@ async def generate_ai_predict_ddx(payload: dict = Body(...), db: Session = Depen
     }
     return await proxy_core_engine("/predict_ddx", forward)
 
-# Endpoint lama /predict_ddx dinonaktifkan agar tidak terjadi proxy payload mentah.
-# Gunakan endpoint baru /generate_ai/predict_ddx untuk AI Claim.
-
 @app.post("/analyze_diagnosis")
 async def analyze_diagnosis(payload: dict = Body(None)):
     return await proxy_core_engine("/analyze_diagnosis", payload)

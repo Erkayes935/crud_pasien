@@ -8,7 +8,8 @@ services:
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgresql://postgres:user@0.tcp.ap.ngrok.io:10574/patients
+      DATABASE_URL: postgresql://postgres:user@27.112.78.243:5434/patients
+
       CORE_ENGINE_URL: http://core_engine:8002
     env_file:
       - .env
