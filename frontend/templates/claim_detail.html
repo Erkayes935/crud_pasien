@@ -87,10 +87,12 @@
     </a>
     {% if user and user.role == 'doctor' %}
     <div class="flex gap-2">
-      <a href="/claims/{{ claim.id }}/edit"
-         class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
-        ✏️ Edit
-      </a>
+      {% if claim.status == 'draft' %}
+        <a href="/claims/{{ claim.id }}/edit"
+          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
+          ✏️ Edit
+        </a>
+      {% endif %}
       <div>
         <form method="post" action="/claims/delete/{{ claim.id }}" onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -99,6 +101,7 @@
           </button>
         </form>
       </div>
+      
     {% endif %}
   </div>
 </div>

@@ -96,18 +96,11 @@
       <thead class="bg-gray-200 dark:bg-gray-700">
         <tr class="text-center">
           <th class="px-4 py-2">ID Klaim</th>
-          <th class="px-4 py-2">ID Pasien</th>
-          <th class="px-4 py-2">ID Visit</th>
-          <th class="px-4 py-2">ID RS</th>
           <th class="px-4 py-2">Nama Pasien</th>
+          <th class="px-4 py-2">Nomor Rekam Medis</th>
+          <th class="px-4 py-2">ID Kunjungan</th>
           <th class="px-4 py-2">Tanggal Kunjungan</th>
-          <th class="px-4 py-2">Dokter</th>
-          <th class="px-4 py-2">Diagnosis Awal</th>
-          <th class="px-4 py-2">Kode ICD</th>
-          <th class="px-4 py-2">Tindakan</th>
-          <th class="px-4 py-2">Obat</th>
           <th class="px-4 py-2">Status</th>
-          <th class="px-4 py-2">Dibuat</th>
           {% if user and user.role == 'doctor' %}
           <th class="px-4 py-2">Aksi</th>
           {% endif %}
@@ -117,18 +110,11 @@
         {% for claim in claims %}
         <tr class="border-b dark:border-gray-700">
           <td class="px-4 py-2">{{ claim.id }}</td>
-          <td class="px-4 py-2">{{ claim.patient.id if claim.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.visit.id if claim.visit else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.hospital.id if claim.hospital else '-' }}</td>
           <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
+          <td class="px-4 py-2">{{ claim.patient.no_rm or '-' }}</td>
+          <td class="px-4 py-2">{{ claim.visit.id or '-' }}</td>
           <td class="px-4 py-2">{{ claim.visit.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.doctor_name or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.medical_record.diagnosis_awal or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.kode_icd or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.tindakan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.medical_record.obat or '-' }}</td>
           <td class="px-4 py-2">{{ claim.status or '-' }}</td>
-          <td class="px-4 py-2 whitespace-nowrap">{{ claim.created_at.strftime("%Y-%m-%d %H:%M") if claim.created_at else '-' }}</td>
           <td class="px-4 py-2 text-center whitespace-nowrap">
             <a href="/claims/{{ claim.id }}" 
               class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
