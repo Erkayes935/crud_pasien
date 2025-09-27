@@ -327,6 +327,9 @@ class ClaimRegulationDetail(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
     diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"), nullable=True)
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
+    diagnosis_evaluation_id = Column(Integer, ForeignKey("claim_diagnosis_evaluations.id"), nullable=True)
+    procedure_evaluation_id = Column(Integer, ForeignKey("claim_procedure_evaluations.id"), nullable=True)
+
 
     judul_regulasi = Column(String(255), nullable=False)   # contoh: PNPK Sepsis 2020
     dasar_hukum    = Column(String(255), nullable=True)    # contoh: Permenkes, PNPK, ICD-10, INA-CBG
@@ -341,6 +344,8 @@ class ClaimRegulationDetail(Base):
     claim = relationship("Claim", back_populates="regulation_details")
     diagnosis = relationship("ClaimDiagnosis")
     procedure = relationship("ClaimProcedure")
+    diagnosis_evaluation = relationship("ClaimDiagnosisEvaluation")
+    procedure_evaluation = relationship("ClaimProcedureEvaluation")
 
 
 # =========================================
@@ -387,7 +392,6 @@ class ClaimDiagnosisEvaluation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"))
-    diagnosis_id = Column(Integer, ForeignKey("claim_diagnoses.id"))
 
     validitas = Column(Enum("valid", "invalid", "warning", name="eval_status"), nullable=True)
     validitas_detail = Column(String(255), nullable=True)
@@ -412,7 +416,6 @@ class ClaimProcedureEvaluation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"))
-    procedure_id = Column(Integer, ForeignKey("claim_procedures.id"))
 
     validitas = Column(Enum("valid", "invalid", "warning", name="eval_status_proc"), nullable=True)
     validitas_detail = Column(String(255), nullable=True)
@@ -445,7 +448,6 @@ class ClaimCombinationAlternative(Base):
     faskes = Column(Text, nullable=True)
     rawat_inap = Column(Text, nullable=True)
     tindakan_wajib = Column(Text, nullable=True)
-    notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=text("now()"))
     updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))

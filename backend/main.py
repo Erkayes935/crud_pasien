@@ -1237,13 +1237,31 @@ def get_regulations(
     claim_id: int,
     diagnosis_id: int = None,
     procedure_id: int = None,
+    diagnosis_evaluation_id: int = None,
+    procedure_evaluation_id: int = None,
     db: Session = Depends(get_db)
 ):
-    regs = db.query(models.ClaimRegulationDetail).filter_by(
+    print(f"📥 get_regulations dipanggil! claim_id={claim_id}, "
+          f"diagnosis_id={diagnosis_id}, procedure_id={procedure_id}, "
+          f"diagnosis_eval_id={diagnosis_evaluation_id}, "
+          f"procedure_eval_id={procedure_evaluation_id}")
+
+    query = db.query(models.ClaimRegulationDetail).filter_by(
         claim_id=claim_id,
-        diagnosis_id=diagnosis_id,
         is_deleted=False
-    ).all()
+    )
+
+    if diagnosis_id:
+        query = query.filter(models.ClaimRegulationDetail.diagnosis_id == diagnosis_id)
+    elif procedure_id:
+        query = query.filter(models.ClaimRegulationDetail.procedure_id == procedure_id)
+    elif diagnosis_evaluation_id:
+        query = query.filter(models.ClaimRegulationDetail.diagnosis_evaluation_id == diagnosis_evaluation_id)
+    elif procedure_evaluation_id:
+        query = query.filter(models.ClaimRegulationDetail.procedure_evaluation_id == procedure_evaluation_id)
+
+    regs = query.all()
+    print(f"🔎 Jumlah hasil regulasi: {len(regs)}")
 
     return {
         "status": "ok",
@@ -1259,10 +1277,12 @@ def get_regulations(
         ]
     }
 
+
 # -------------------------
 # --- AI Evaluations ---
 def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
     """Simpan hasil evaluasi kombinasi ke tabel sesuai model"""
+    db.query(models.ClaimRegulationDetail).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
@@ -1281,12 +1301,9 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             return "valid"
         return None
 
-
-
     # === Kombinasi Diagnosis ===
     diag_eval = models.ClaimDiagnosisEvaluation(
         claim_id=claim_id,
-        diagnosis_id=evaluasi["kombinasi_diagnosis"].get("diagnosis_id"),
         validitas=parse_validitas(evaluasi["kombinasi_diagnosis"].get("validitas")),
         validitas_detail=evaluasi["kombinasi_diagnosis"].get("validitas_detail"),
         severity=evaluasi["kombinasi_diagnosis"].get("severity"),
@@ -1309,12 +1326,27 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
         created_at=datetime.utcnow(),
     )
     db.add(diag_eval)
+    db.flush()
+
+    if diag_eval:
+        reg = models.ClaimRegulationDetail(
+            claim_id=claim_id,
+            diagnosis_evaluation_id=diag_eval.id,
+            judul_regulasi="PNPK Evaluasi Diagnosis 2020",
+            dasar_hukum="PNPK",
+            bab_pasal="Bab IV Pasal 8",
+            isi="Evaluasi kombinasi diagnosis harus berdasarkan kriteria klinis",
+            is_dummy=True,
+            is_deleted=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    db.add(reg)
 
     # === Kombinasi Tindakan ===
     for td in evaluasi.get("kombinasi_tindakan", []):
         proc_eval = models.ClaimProcedureEvaluation(
             claim_id=claim_id,
-            procedure_id=None,
             validitas=parse_validitas(td.get("validitas")),
             validitas_detail=td.get("validitas_detail"),
             status_tindakan=td.get("status"),
@@ -1330,7 +1362,22 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             created_at=datetime.utcnow(),
         )
         db.add(proc_eval)
+        db.flush()
 
+    for proc_eval in db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).all():
+        reg = models.ClaimRegulationDetail(
+            claim_id=claim_id,
+            procedure_evaluation_id=proc_eval.id,
+            judul_regulasi="PNPK Evaluasi Tindakan 2020",
+            dasar_hukum="PNPK",
+            bab_pasal="Bab V Pasal 12",
+            isi=f"Evaluasi regulasi terkait tindakan {proc_eval.status_tindakan or '-'}",
+            is_dummy=True,
+            is_deleted=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(reg)
     # === Alternatif Kombinasi ===
     severity_default = evaluasi["kombinasi_diagnosis"].get("severity")
     for alt in evaluasi["alternatif"][:2]:
@@ -1347,7 +1394,6 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             faskes=alt.get("faskes"),
             rawat_inap=alt.get("rawat_inap"),
             tindakan_wajib=alt.get("tindakan_wajib"),
-            notes=None,
             is_dummy=True,
             is_deleted=False,
             created_at=datetime.utcnow(),
@@ -1458,16 +1504,27 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
 
     # 🔹 Simpan Evaluasi
     if summ_data:
-        # Kombinasi Diagnosis
+        # === Kombinasi Diagnosis ===
+        diag_id = summ_data.get("kombinasi_diagnosis", {}).get("diagnosis_id")
+        if not diag_id:
+            diag_name = summ_data.get("kombinasi_diagnosis", {}).get("name") \
+                        or summ_data.get("kombinasi_diagnosis", {}).get("diagnosis_text")
+            if diag_name:
+                diag_row = db.query(models.ClaimDiagnosis).filter_by(
+                    claim_id=claim_id, diagnosis_text=diag_name
+                ).first()
+                diag_id = diag_row.id if diag_row else None
+                if not diag_id:
+                    print(f"[WARN] Evaluasi diagnosis '{diag_name}' tidak ditemukan untuk claim_id={claim_id}")
+
         diag_eval = models.ClaimDiagnosisEvaluation(
             claim_id=claim_id,
+            diagnosis_id=diag_id,
             validitas=summ_data.get("kombinasi_diagnosis", {}).get("validitas"),
             severity=summ_data.get("kombinasi_diagnosis", {}).get("severity"),
             validitas_detail=summ_data.get("kombinasi_diagnosis", {}).get("validitas_detail"),
             kode_ina_cbg=summ_data.get("kombinasi_diagnosis", {}).get("kode_ina_cbg"),
-            estimasi_tarif = parse_number(
-                summ_data.get("kombinasi_diagnosis", {}).get("estimasi_tarif")
-            ),
+            estimasi_tarif=parse_number(summ_data.get("kombinasi_diagnosis", {}).get("estimasi_tarif")),
             syarat_klinis=summ_data.get("kombinasi_diagnosis", {}).get("syarat_klinis"),
             evaluasi_faskes=summ_data.get("kombinasi_diagnosis", {}).get("evaluasi_faskes"),
             rawat_inap=summ_data.get("kombinasi_diagnosis", {}).get("rawat_inap"),
@@ -1477,15 +1534,18 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
         )
         db.add(diag_eval)
 
-        # Kombinasi Tindakan
+        # === Kombinasi Tindakan ===
         for v in summ_data.get("procedure", []):
             proc_id = v.get("procedure_id")
-            if not proc_id and v.get("tindakan"):
-                proc = db.query(models.ClaimProcedure).filter_by(
-                    claim_id=claim_id,
-                    procedure_text=v["tindakan"]
-                ).first()
-                proc_id = proc.id if proc else None
+            if not proc_id:
+                proc_name = v.get("tindakan") or v.get("name") or v.get("procedure_text")
+                if proc_name:
+                    proc = db.query(models.ClaimProcedure).filter_by(
+                        claim_id=claim_id, procedure_text=proc_name
+                    ).first()
+                    proc_id = proc.id if proc else None
+                    if not proc_id:
+                        print(f"[WARN] Evaluasi procedure '{proc_name}' tidak ditemukan untuk claim_id={claim_id}")
 
             proc_eval = models.ClaimProcedureEvaluation(
                 claim_id=claim_id,
@@ -1493,7 +1553,7 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
                 validitas=v.get("validitas"),
                 validitas_detail=v.get("validitas_detail"),
                 status_tindakan=v.get("status_tindakan"),
-                tarif_impact = parse_number(v.get("tarif_impact")),
+                tarif_impact=parse_number(v.get("tarif_impact")),
                 faskes=v.get("faskes"),
                 rawat_inap=v.get("rawat_inap"),
                 syarat_klinis=v.get("syarat_klinis"),
@@ -1557,6 +1617,7 @@ def ai_summary(
 
     return {
         "diagnosis": {
+            "id": diag.id if diag else "-",
             "validitas": diag.validitas if diag else "-",
             "validitas_detail": diag.validitas_detail if diag else "-",
             "severity": diag.severity if diag else "-",
@@ -1568,6 +1629,7 @@ def ai_summary(
         },
         "procedure": [
             {
+                "id": p.id,
                 "validitas": p.validitas or "-",
                 "validitas_detail": p.validitas_detail or "-",
                 "tindakan": p.validitas_detail or p.status_tindakan or "-",
@@ -1600,31 +1662,8 @@ def ai_summary(
 # ------------------------
 
 # ------------------------
-# Claim AI Recommendations and Simulations (Handling BE untuk Role Verifikator)
+# Claim AI Simulations (Handling BE untuk Role Verifikator)
 # ------------------------
-@app.get("/claims/{claim_id}/recommendations")
-def get_claim_recommendations(
-    claim_id: int,
-    db: Session = Depends(get_db)
-):
-    recs = db.query(models.ClaimAIRecommendation).filter_by(
-        claim_id=claim_id,
-        is_deleted=False
-    ).all()
-
-    return {
-        "status": "ok",
-        "data": [
-            {
-                "id": rec.id,
-                "stage": rec.stage,
-                "category": rec.category,
-                "score": rec.confidence_score,
-                "child": rec.child
-            }
-            for rec in recs
-        ]
-    }
 
 @app.get("/claims/{claim_id}/simulations")
 def get_simulations(claim_id: int, db: Session = Depends(get_db)):
@@ -2007,7 +2046,7 @@ def finalize_claim(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
-
+    csrf_token: str = Form(...),
     simulasi: str = Form(None),
     summary: str = Form(None),
 
@@ -2674,7 +2713,7 @@ def claim_form(
 
 
     return templates.TemplateResponse(
-        "claim_form.html",
+        "claim_left.html",
         {
             "request": request,
             "visit": visit,
@@ -2689,6 +2728,71 @@ def claim_form(
             "claim_medical_record_fields": fields,
         },
     )
+
+def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = True):
+    """Ambil ulang simulasi + evaluasi dari tabel pecahan"""
+    sim: dict = {}
+    summ: dict = {}
+
+    # === ClaimSimulation ===
+    sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).all()
+    for s in sims:
+        if s.stage not in sim:
+            sim[s.stage] = {
+                "utama_diagnosis": None,
+                "utama_tindakan": None,
+                "sekunder_diagnosis": [],
+                "sekunder_tindakan": []
+            }
+        if s.diagnosis_utama_id:
+            sim[s.stage]["utama_diagnosis"] = {"id": s.diagnosis_utama_id, "type": "diagnosis"}
+        if s.tindakan_utama_id:
+            sim[s.stage]["utama_tindakan"] = {"id": s.tindakan_utama_id, "type": "tindakan"}
+        if s.diagnosis_sekunder_id:
+            sim[s.stage]["sekunder_diagnosis"].append({"id": s.diagnosis_sekunder_id, "type": "diagnosis"})
+        if s.tindakan_sekunder_id:
+            sim[s.stage]["sekunder_tindakan"].append({"id": s.tindakan_sekunder_id, "type": "tindakan"})
+
+    # === Evaluasi (opsional) ===
+    if include_summary:
+        summ["diagnosis"] = [
+            {
+                "validitas": d.validitas,
+                "severity": d.severity,
+                "kode_ina_cbg": d.kode_ina_cbg,
+                "estimasi_tarif": float(d.estimasi_tarif) if d.estimasi_tarif else None,
+                "syarat_klinis": d.syarat_klinis,
+                "evaluasi_faskes": d.evaluasi_faskes,
+                "rawat_inap": d.rawat_inap,
+            }
+            for d in db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).all()
+        ]
+        summ["procedure"] = [
+            {
+                "validitas": p.validitas,
+                "status_tindakan": p.status_tindakan,
+                "tarif_impact": float(p.tarif_impact) if p.tarif_impact else None,
+                "faskes": p.faskes,
+                "rawat_inap": p.rawat_inap,
+                "syarat_klinis": p.syarat_klinis,
+            }
+            for p in db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).all()
+        ]
+        summ["alternatif"] = [
+            {
+                "kombinasi_nama": a.kombinasi_nama,
+                "severity": a.severity,
+                "kode_ina_cbg": a.kode_ina_cbg,
+                "estimasi_tarif": float(a.estimasi_tarif) if a.estimasi_tarif else None,
+                "syarat_klinis": a.syarat_klinis,
+                "faskes": a.faskes,
+                "rawat_inap": a.rawat_inap,
+                "tindakan_wajib": a.tindakan_wajib,
+            }
+            for a in db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).all()
+        ]
+
+    return sim, summ
 
 
 @app.get("/claims/{id}/edit")
@@ -2707,99 +2811,17 @@ def edit_claim_form(
     hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
     csrf_token = issue_csrf_token(request)
 
-    # 🔹 Ambil data simulasi & summary dari tabel pecahan
-    sim: dict = {}
-    summ: dict = {}
+    # === Load sim & summary sesuai role ===
+    is_doctor = (isinstance(user.role, str) and user.role == "doctor") or \
+                (isinstance(user.role, (list, tuple)) and "doctor" in user.role)
 
-    sims = db.query(models.ClaimSimulation).filter_by(claim_id=id).all()
-    for s in sims:
-        if s.stage not in sim:
-            sim[s.stage] = {
-                "utama_diagnosis": None,
-                "utama_tindakan": None,
-                "sekunder_diagnosis": [],
-                "sekunder_tindakan": []
-            }
+    include_summary = not is_doctor  # doctor tidak boleh lihat summary
+    sim, summ = load_sim_and_summary(db, id, include_summary=include_summary)
 
-        # --- Diagnosis utama
-        if s.diagnosis_utama_id:
-            sim[s.stage]["utama_diagnosis"] = {
-                "id": s.diagnosis_utama_id,
-                "type": "diagnosis"
-            }
+    # === Pilih template sesuai role ===
+    template_name = "claim_left.html" if is_doctor else "claim_right.html"
 
-        # --- Tindakan utama
-        if s.tindakan_utama_id:
-            sim[s.stage]["utama_tindakan"] = {
-                "id": s.tindakan_utama_id,
-                "type": "tindakan"
-            }
-
-        # --- Diagnosis sekunder
-        if s.diagnosis_sekunder_id:
-            sim[s.stage]["sekunder_diagnosis"].append({
-                "id": s.diagnosis_sekunder_id,
-                "type": "diagnosis"
-            })
-
-        # --- Tindakan sekunder
-        if s.tindakan_sekunder_id:
-            sim[s.stage]["sekunder_tindakan"].append({
-                "id": s.tindakan_sekunder_id,
-                "type": "tindakan"
-            })
-
-    # === Diagnosis Evaluations ===
-    summ["diagnosis"] = [
-        {
-            "validitas": d.validitas,
-            "severity": d.severity,
-            "kode_ina_cbg": d.kode_ina_cbg,
-            "estimasi_tarif": float(d.estimasi_tarif) if d.estimasi_tarif else None,
-            "syarat_klinis": d.syarat_klinis,
-            "evaluasi_faskes": d.evaluasi_faskes,
-            "rawat_inap": d.rawat_inap,
-        }
-        for d in db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=id).all()
-    ]
-
-    # === Procedure Evaluations ===
-    summ["procedure"] = [
-        {
-            "procedure_id": p.procedure_id,
-            "validitas": p.validitas,
-            "status_tindakan": p.status_tindakan,
-            "tarif_impact": float(p.tarif_impact) if p.tarif_impact else None,
-            "faskes": p.faskes,
-            "rawat_inap": p.rawat_inap,
-            "syarat_klinis": p.syarat_klinis,
-        }
-        for p in db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=id).all()
-    ]
-
-    # === Combination Alternatives ===
-    summ["alternatif"] = [
-        {
-            "kombinasi_nama": a.kombinasi_nama,
-            "severity": a.severity,
-            "kode_ina_cbg": a.kode_ina_cbg,
-            "estimasi_tarif": float(a.estimasi_tarif) if a.estimasi_tarif else None,
-            "syarat_klinis": a.syarat_klinis,
-            "faskes": a.faskes,
-            "rawat_inap": a.rawat_inap,
-            "tindakan_wajib": a.tindakan_wajib,
-            "notes": a.notes,
-        }
-        for a in db.query(models.ClaimCombinationAlternative).filter_by(claim_id=id).all()
-    ]
-
-    # 🔹 kalau role doctor → kosongkan sim/summary (biar dokter gak lihat evaluasi verifikator)
-    if (isinstance(user.role, str) and user.role == "doctor") or \
-       (isinstance(user.role, (list, tuple)) and "doctor" in user.role):
-        sim = {}
-        summ = {}
-
-    # --- Siapkan fields (tetap sama eksisting) …
+    # === Siapkan fields form ===
     fields = form_configs["claim_medical_record"].copy()
     for f in fields:
         if f["name"] == "patient_id":
@@ -2817,7 +2839,7 @@ def edit_claim_form(
         if claim.medical_record and f["name"] in claim.medical_record.__dict__:
             f["value"] = getattr(claim.medical_record, f["name"])
 
-    return templates.TemplateResponse("claim_form.html", {
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "mode": "edit",
         "record": claim,
@@ -2825,11 +2847,11 @@ def edit_claim_form(
         "current_user": user,
         "user": user,
         "role": user.role if isinstance(user.role, str) else user.role[0],
-        "isDoctor": (user.role == "doctor") if isinstance(user.role, str) else ("doctor" in user.role),
+        "isDoctor": is_doctor,
         "isVerifikator": (user.role == "verifikator") if isinstance(user.role, str) else ("verifikator" in user.role),
         "fields": fields,
-        "sim": sim,
-        "summ": summ,
+        "sim": sim,      # dokter & verifikator sama-sama dapat sim
+        "summ": summ,    # summ kosong untuk doctor
         "claim_medical_record_fields": fields,
     })
 
@@ -3486,7 +3508,7 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
             f["options"] = [(p.id, p.nama) for p in patients]
             f["type"] = "select"
 
-    return templates.TemplateResponse("claim_form.html", {
+    return templates.TemplateResponse("claim_left.html", {
         "request": request,
         "mode": "edit",
         "record_id": record_id,

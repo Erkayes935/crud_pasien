@@ -66,7 +66,6 @@ function claimData(init) {
 
       if (role === 'verifikator' && claimId) {
         // 🔹 langsung load dari DB (BE pecahan)
-        loadRecommendations(claimId);
         loadSimulations(claimId);
       }
     },
@@ -1146,50 +1145,82 @@ function closeNestedModal() {
 }
 
 async function openRegulationModal(id, type = "diagnosis") {
+  console.log("📥 openRegulationModal called:", { id, type });
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+  let url = `/claims/${claimId}/regulations?`;
 
-  // bedakan param di URL
-  const paramKey = type === "procedure" ? "procedure_id" : "diagnosis_id";
-  const url = `/claims/${claimId}/regulations?${paramKey}=${id}`;
+  if (type === "diagnosis") url += `diagnosis_id=${id}`;
+  else if (type === "procedure") url += `procedure_id=${id}`;
+  else if (type === "diagnosis_eval") url += `diagnosis_evaluation_id=${id}`;
+  else if (type === "procedure_eval") url += `procedure_evaluation_id=${id}`;
 
   try {
     const res = await fetch(url);
-    const { data } = await res.json();
+    const json = await res.json();
+    console.log("📦 Data regulasi JSON:", json);
 
+    const { data } = json;
     if (!data || data.length === 0) {
       alert("Tidak ada regulasi untuk field ini");
       return;
     }
 
-    const r = data[0]; // ambil 1 dulu
-    const content = `
-      <div class="flex justify-end items-start mb-3">
-        <button type="button" onclick="closeNestedModal()" 
-                class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
-      </div>
+    const rows = data.map(r => `
+      <tr>
+        <td class="border px-2 py-1">${r.judul_regulasi}</td>
+        <td class="border px-2 py-1">${r.dasar_hukum}</td>
+        <td class="border px-2 py-1">${r.bab_pasal}</td>
+        <td class="border px-2 py-1">${r.isi}</td>
+      </tr>
+    `).join("");
+
+      const content = `
       <div class="space-y-4 text-sm">
-        <div class="grid grid-cols-2 gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded">
-          <div class="bg-gray-700 text-white px-3 py-2">Judul Regulasi</div>
-          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.judul_regulasi || '-'}</div>
 
-          <div class="bg-gray-700 text-white px-3 py-2">Dasar Hukum</div>
-          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.dasar_hukum || '-'}</div>
+        <!-- Body -->
+        <div class="grid grid-cols-2 gap-y-2 text-sm">
+          <div class="bg-gray-700 text-white font-semibold px-3 py-2 rounded-l">
+            Dasar Hukum
+          </div>
+          <div class="bg-white dark:bg-gray-800 dark:text-gray-100 px-3 py-2 rounded-r text-gray-800">
+            ${data[0].dasar_hukum}
+          </div>
 
-          <div class="bg-gray-700 text-white px-3 py-2">Bab/Pasal</div>
-          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.bab_pasal || '-'}</div>
+          <div class="bg-gray-700 text-white font-semibold px-3 py-2 rounded-l">
+            Judul Regulasi
+          </div>
+          <div class="bg-white dark:bg-gray-800 dark:text-gray-100 px-3 py-2 rounded-r text-gray-800">
+            ${data[0].judul_regulasi}
+          </div>
 
-          <div class="bg-gray-700 text-white px-3 py-2">Isi</div>
-          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${r.isi || '-'}</div>
+          <div class="bg-gray-700 text-white font-semibold px-3 py-2 rounded-l">
+            Pasal / Ayat / Bab
+          </div>
+          <div class="bg-white dark:bg-gray-800 dark:text-gray-100 px-3 py-2 rounded-r italic text-gray-800">
+            ${data[0].bab_pasal}
+          </div>
+
+          <div class="bg-gray-700 text-white font-semibold px-3 py-2 rounded-l">
+            Isi / Penjelasan
+          </div>
+          <div class="bg-white dark:bg-gray-800 dark:text-gray-100 px-3 py-2 rounded-r text-gray-800">
+            ${data[0].isi}
+          </div>
         </div>
       </div>
     `;
-    openModal("Detail Regulasi", content, { hideDefaultClose: true });
+
+
+
+    if (typeof openModal === "function") {
+      openModal("Detail Regulasi", content, { hideDefaultClose: false });
+    } else {
+      console.error("❌ openModal is not defined");
+    }
   } catch (e) {
     console.error("❌ Gagal load regulasi", e);
   }
 }
-
-
 
 // ==================== Simulasi ====================
 function normalizeOpt(opt) {
@@ -1333,120 +1364,6 @@ function confidenceBadge(val){
   val=parseInt(val)
   let c=val>=80?'bg-green-600':val>=60?'bg-yellow-500':'bg-red-600'
   return `<span class="px-2 py-0.5 rounded text-white text-xs ${c}">${val}%</span>`
-}
-
-async function loadRecommendations(claimId) {
-  try {
-    const res = await fetch(`/claims/${claimId}/recommendations`);
-    if (!res.ok) {
-      return console.error("❌ Gagal load rekomendasi dari DB");
-    }
-    const body = await res.json();
-    const recs = body.data || [];
-    console.log("📥 Data rekomendasi dari DB:", recs);
-
-    // Grouping per stage & category
-    const grouped = { admission: {}, discharge: {}, daily: {} };
-
-    recs.forEach(r => {
-      const stage = r.stage || "admission";   // fallback kalau kosong
-      const cat = r.category || "unknown";
-
-      if (stage === "admission") {
-        grouped.admission[cat] = grouped.admission[cat] || [];
-        grouped.admission[cat].push(r);
-      } 
-      else if (stage === "discharge") {
-        grouped.discharge[cat] = grouped.discharge[cat] || [];
-        grouped.discharge[cat].push(r);
-      } 
-      else if (stage.startsWith("daily")) {
-        if (!["diagnosis","komorbid","komplikasi"].includes(cat)) return; // skip category aneh
-        grouped.daily[stage] = grouped.daily[stage] || { diagnosis: [], komorbid: [], komplikasi: [] };
-        grouped.daily[stage][cat].push(r);
-      }
-    });
-
-    // 🔍 Debug setelah grouping
-    console.log("🟢 Grouped Admission:", grouped.admission);
-    console.log("🟢 Grouped Discharge:", grouped.discharge);
-    console.log("🟢 Grouped Daily:", grouped.daily);
-
-    // === Admission ===
-    renderTable(
-      "diagnosis-admission",
-      (grouped.admission.diagnosis || []).map(mapRecommendation),
-      "diagnosis",
-      "admission"
-    );
-    renderTable(
-      "komorbid-admission",
-      (grouped.admission.komorbid || []).map(mapRecommendation),
-      "komorbid",
-      "admission"
-    );
-    renderTable(
-      "komplikasi-admission",
-      (grouped.admission.komplikasi || []).map(mapRecommendation),
-      "komplikasi",
-      "admission"
-    );
-
-    // === Daily ===
-    const dailyContainer = document.getElementById("daily-accordion");
-    dailyContainer.innerHTML = "";
-
-    Object.keys(grouped.daily).forEach((stage, idx) => {
-      const hari = grouped.daily[stage];
-      hari.tanggal = hari.tanggal || `2025-09-${String(idx + 1).padStart(2, "0")}`;
-      const dayId = `daily-${idx}`;
-
-      dailyContainer.insertAdjacentHTML(
-        "beforeend",
-        `
-        <div class="bg-white dark:bg-gray-700 rounded shadow-sm" x-data="{open:false}">
-          <button type="button" @click="open=!open"
-                  class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-            <span>Hari ${idx + 1} (${hari.tanggal || '-'})</span>
-            <span x-show="open">⬆️</span><span x-show="!open">⬇️</span>
-          </button>
-          <div x-show="open" class="p-2 space-y-2">
-            <div><table class="w-full text-xs border table-fixed"><tbody id="diagnosis-${dayId}"></tbody></table></div>
-            <div><table class="w-full text-xs border table-fixed"><tbody id="komorbid-${dayId}"></tbody></table></div>
-            <div><table class="w-full text-xs border table-fixed"><tbody id="komplikasi-${dayId}"></tbody></table></div>
-          </div>
-        </div>
-      `
-      );
-
-      renderTable(`diagnosis-${dayId}`, (hari.diagnosis || []).map(mapRecommendation), "diagnosis", dayId);
-      renderTable(`komorbid-${dayId}`, (hari.komorbid || []).map(mapRecommendation), "komorbid", dayId);
-      renderTable(`komplikasi-${dayId}`, (hari.komplikasi || []).map(mapRecommendation), "komplikasi", dayId);
-    });
-
-    // === Discharge ===
-    renderTable(
-      "diagnosis-discharge",
-      (grouped.discharge.diagnosis || []).map(mapRecommendation),
-      "diagnosis",
-      "discharge"
-    );
-    renderTable(
-      "komorbid-discharge",
-      (grouped.discharge.komorbid || []).map(mapRecommendation),
-      "komorbid",
-      "discharge"
-    );
-    renderTable(
-      "komplikasi-discharge",
-      (grouped.discharge.komplikasi || []).map(mapRecommendation),
-      "komplikasi",
-      "discharge"
-    );
-
-  } catch (err) {
-    console.error("❌ Error loadRecommendations:", err);
-  }
 }
 
 
@@ -1608,8 +1525,22 @@ async function generateSummary() {
   syncHiddenInputs();
 }
 
+function renderEvalCell(value, evalId = null, type = "diagnosis_eval") {
+  console.log("📥 renderEvalCell:", value, evalId, type);
+  const safeValue = value || "-";
+  return evalId
+    ? `<span 
+        class="cursor-pointer"
+        title="PNPK Evaluasi ${type === 'diagnosis_eval' ? 'Diagnosis' : 'Tindakan'} 2020"
+        onclick="openRegulationModal(${evalId}, '${type}')"
+      >${safeValue}</span>`
+    : safeValue;
+}
+
+
 // ==================== Panel Evaluasi Diagnosis ====================
 function renderEvaluasiDiagnosis(data) {
+  console.log("📥 Render Evaluasi Diagnosis:", data);
   const target = document.getElementById("evaluasi-diagnosis");
   if (!target) return;
   target.innerHTML = "";
@@ -1619,7 +1550,6 @@ function renderEvaluasiDiagnosis(data) {
     return;
   }
 
-  // pakai detail (misal: "Sepsis + DM valid (komorbid umum)")
   const validitasIcon = statusIcon(data.validitas);
   const validitasText = data.validitas_detail || "-";
 
@@ -1629,16 +1559,16 @@ function renderEvaluasiDiagnosis(data) {
       <tr>
         <th class="border px-4 py-2">Validitas Klinis Kombinasi</th>
         <td class="border px-4 py-2">
-          ${validitasIcon} - ${validitasText}
+          ${validitasIcon} - ${renderEvalCell(validitasText, data.id, "diagnosis_eval")}
         </td>
       </tr>
       <tr>
         <th class="border px-4 py-2">Severity</th>
-        <td class="border px-4 py-2">📊 ${data.severity || "-"}</td>
+        <td class="border px-4 py-2">${renderEvalCell(data.severity, data.id, "diagnosis_eval")}</td>
       </tr>
       <tr>
         <th class="border px-4 py-2">Kode INA-CBG</th>
-        <td class="border px-4 py-2">${data.kode_ina_cbg || "-"}</td>
+        <td class="border px-4 py-2">${renderEvalCell(data.kode_ina_cbg, data.id, "diagnosis_eval")}</td>
       </tr>
       <tr>
         <th class="border px-4 py-2">Estimasi Tarif</th>
@@ -1646,22 +1576,24 @@ function renderEvaluasiDiagnosis(data) {
       </tr>
       <tr>
         <th class="border px-4 py-2">Syarat Klinis (Kombinasi)</th>
-        <td class="border px-4 py-2">${data.syarat || "-"}</td>
+        <td class="border px-4 py-2">${renderEvalCell(data.syarat, data.id, "diagnosis_eval")}</td>
       </tr>
       <tr>
         <th class="border px-4 py-2">Evaluasi Faskes</th>
-        <td class="border px-4 py-2">${data.evaluasi_faskes || "-"}</td>
+        <td class="border px-4 py-2">${renderEvalCell(data.evaluasi_faskes, data.id, "diagnosis_eval")}</td>
       </tr>
       <tr>
         <th class="border px-4 py-2">Rawat Inap</th>
-        <td class="border px-4 py-2">${data.rawat_inap || "-"}</td>
+        <td class="border px-4 py-2">${renderEvalCell(data.rawat_inap, data.id, "diagnosis_eval")}</td>
       </tr>
     </table>
   `;
 }
 
+
 // ==================== Panel Evaluasi Tindakan ====================
 function renderEvaluasiProcedure(rows) {
+  console.log("📥 Render Evaluasi Tindakan:", rows);
   const target = document.getElementById("evaluasi-procedure");
   if (!target) return;
   target.innerHTML = "";
@@ -1677,25 +1609,21 @@ function renderEvaluasiProcedure(rows) {
   const konflik = [];
 
   rows.forEach(p => {
-    const icon = statusIcon(p.validitas); // ✅ pakai validitas utk icon
+    const icon = statusIcon(p.validitas);
     const tindakan = p.tindakan || p.validitas_detail || p.status_tindakan || "-";
 
-    // Wajib
     if (p.status_tindakan && ["wajib","mandatory"].includes(p.status_tindakan.toLowerCase())) {
-      wajib.push(`${icon} - ${tindakan}`);
+      wajib.push(`${icon} - ${renderEvalCell(tindakan, p.id, "procedure_eval")}`);
     }
 
-    // Validasi Verifikator
     if (p.status_tindakan && !["wajib","mandatory"].includes(p.status_tindakan.toLowerCase())) {
       validasi.push(`${icon} - ${tindakan}`);
     }
 
-    // Dampak tarif
     if (p.tarif_impact && p.tarif_impact !== "-") {
-      dampak.push(`${icon} ${tindakan} → ${p.tarif_impact}`);
+      dampak.push(`${icon} ${renderEvalCell(`${tindakan} → ${p.tarif_impact}`, p.id, "procedure_eval")}`);
     }
 
-    // Konflik
     if (p.syarat_klinis && p.syarat_klinis !== "-") {
       konflik.push(`${icon} - ${p.syarat_klinis}`);
     }
@@ -1725,6 +1653,7 @@ function renderEvaluasiProcedure(rows) {
     </table>
   `;
 }
+
 
 // ==================== Panel Alternatif Kombinasi ====================
 function renderAlternatifKombinasi(items) {

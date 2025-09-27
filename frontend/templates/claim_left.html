@@ -3,28 +3,25 @@
 
 <form id="claimForm"
       method="post"
-      action="{% if role == 'doctor' %}/claims/{{ record.id }}/update-draft{% elif role == 'verifikator' %}/claims/{{ record.id }}/finalize{% endif %}"
-      data-claim-id="{{ record.id if record else '' }}"
+      action="/claims/{{ record.id }}/update-draft"
+      data-claim-id="{{ record.id }}"
       class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
 
-  <!-- Root Alpine -->
   <div id="claimRoot" 
-       x-data="claimData({ role: '{{ user.role }}' })" 
+       x-data="claimData({ role: 'doctor' })"
        data-claim-id="{{ record.id }}"
-       class="grid grid-cols-3 gap-6">
+       class="space-y-4">
 
-    <!-- ================= Panel Kiri ================= -->
-    <div class="col-span-2 space-y-4 p-4 bg-white dark:bg-gray-800">
+    <!-- ================= Panel Kiri (Rekomendasi Klaim) ================= -->
+    <div class="p-4 bg-white dark:bg-gray-800 space-y-4 rounded shadow">
 
       <!-- Judul dan Tombol Generate AI -->
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
-        {% if role == 'doctor' %}
         <button type="button" onclick="generateAI()" 
                 class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
           Generate AI
         </button>
-        {% endif %}
       </div>
 
       <!-- Tabs -->
@@ -40,10 +37,8 @@
                 @click="tab='discharge'">Discharge</button>
       </div>
 
-      <!-- ================= Admission ================= -->
+      <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
       <div x-show="tab==='admission'" class="space-y-4">
-
-        <!-- Diagnosis -->
         <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
             <span class="font-semibold">Diagnosis</span>
@@ -98,12 +93,8 @@
         </details>
       </div>
 
-      <!-- ================= Daily ================= -->
       <div x-show="tab.startsWith('daily')" class="space-y-4">
-
         <div id="daily-accordion" class="space-y-2"></div>
-
-        <!-- Rekam Medis -->
         <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
             Rekam Medis
@@ -116,10 +107,7 @@
         </details>
       </div>
 
-      <!-- ================= Discharge ================= -->
       <div x-show="tab==='discharge'" class="space-y-4">
-
-        <!-- Diagnosis -->
         <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
             <span class="font-semibold">Diagnosis</span>
@@ -173,184 +161,108 @@
           </div>
         </details>
       </div>
-    </div>
 
-    <!-- ================= Panel Kanan ================= -->
-    <div class="col-span-1 space-y-4 bg-white dark:bg-gray-800">
-
-      <!-- Kombinasi Klaim -->
-      <div class="p-4 bg-white dark:bg-gray-800 rounded shadow">
-        <h3 class="font-semibold mb-3 text-lg">Kombinasi Klaim</h3>
+      <!-- ================= Panel Simulasi (View-Only) ================= -->
+      <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-6">
+        <h3 class="font-semibold text-xl border-b pb-2">Simulasi Klaim (Draft Dokter)</h3>
 
         <!-- Diagnosis -->
-        <div>
-          <h3 class="font-bold text-lg mb-3">Diagnosis</h3>
-          <!-- Primary Claim -->
-          <div class="mb-2">
+        <div class="space-y-3">
+          <h4 class="font-bold text-lg">Diagnosis</h4>
+
+          <!-- Primary -->
+          <div>
             <label class="text-sm font-medium">Primary Claim</label>
             <template x-if="simulasi[tab].utama">
-              <div class="flex items-center gap-2 mt-1">
-                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-                  <span x-text="(simulasi[tab].utama?.name || '-') + ' [' + (simulasi[tab].utama?.label || '') + ']'"></span>
-                </div>
-                <select x-show="role !== 'doctor'"
-                  :disabled="role === 'doctor'"
-                  x-model="simulasi[tab].utama.mapping"
-                  @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
-                  <option value="Primary">Primary</option>
-                  <option value="Secondary">Secondary</option>
-                  <option value="None">None</option>
-                </select>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
+                      x-text="(simulasi[tab].utama?.name || '-') + ' [' + (simulasi[tab].utama?.label || '') + ']'"></span>
               </div>
             </template>
             <template x-if="!simulasi[tab]?.utama">
-              <div class="italic text-gray-400 mt-1">Belum ada Primary Claim</div>
+              <p class="italic text-gray-400 mt-1">Belum ada Primary Claim</p>
             </template>
           </div>
 
-          <!-- Secondary Claims -->
+          <!-- Secondary -->
           <div>
             <label class="text-sm font-medium">Secondary Claims</label>
             <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
-              <div class="flex items-center gap-2 mt-1">
-                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-                  <span x-text="(dx.name || '-') + ' [' + (dx.label || '') + ']'"></span>
-                </div>
-                <select x-show="role !== 'doctor'"
-                  :disabled="role === 'doctor'"
-                  x-model="dx.mapping"
-                  @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
-                  <option value="Secondary">Secondary</option>
-                  <option value="Primary">Primary</option>
-                  <option value="None">None</option>
-                </select>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
+                      x-text="(dx.name || '-') + ' [' + (dx.label || '') + ']'"></span>
               </div>
             </template>
             <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
-              <div class="italic text-gray-400 mt-1">Belum ada Secondary Claim</div>
+              <p class="italic text-gray-400 mt-1">Belum ada Secondary Claim</p>
             </template>
           </div>
         </div>
 
         <!-- Tindakan -->
-        <div>
-          <h3 class="font-bold text-lg mb-3">Tindakan</h3>
+        <div class="space-y-3">
+          <h4 class="font-bold text-lg">Tindakan</h4>
 
-          <!-- Tindakan Utama -->
-          <div class="mb-2">
+          <!-- Primary Action -->
+          <div>
             <label class="text-sm font-medium">Primary Action</label>
             <template x-if="simulasi[tab].tindakanUtama">
-              <div class="flex items-center gap-2 mt-1">
-                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-                  <span x-text="simulasi[tab].tindakanUtama?.name"></span>
-                </div>
-                <select x-show="role !== 'doctor'"
-                  :disabled="role === 'doctor'"
-                  x-model="simulasi[tab].tindakanUtama.mapping"
-                  @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
-                  <option value="Primary">Primary</option>
-                  <option value="Secondary">Secondary</option>
-                  <option value="None">None</option>
-                </select>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
+                      x-text="simulasi[tab].tindakanUtama?.name"></span>
               </div>
             </template>
             <template x-if="!simulasi[tab]?.tindakanUtama">
-              <div class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</div>
+              <p class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</p>
             </template>
           </div>
 
-          <!-- Tindakan Sekunder -->
+          <!-- Secondary Actions -->
           <div>
             <label class="text-sm font-medium">Secondary Actions</label>
             <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
-              <div class="flex items-center gap-2 mt-1">
-                <div class="flex-1 bg-blue-600 text-white px-3 py-2 rounded">
-                  <span x-text="(tdk.name || '-')"></span>
-                </div>
-                <select x-show="role !== 'doctor'"
-                  :disabled="role === 'doctor'"
-                  x-model="tdk.mapping"
-                  @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
-                  class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
-                  <option value="Secondary">Secondary</option>
-                  <option value="Primary">Primary</option>
-                  <option value="None">None</option>
-                </select>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
+                      x-text="(tdk.name || '-')"></span>
               </div>
             </template>
             <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
-              <div class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</div>
+              <p class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</p>
             </template>
           </div>
         </div>
-      {% if role == 'doctor' %}
-        <!-- Tombol Generate Summary -->
-        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4"></div>
-          <button type="button" onclick="generateSummary()" 
-                  class="w-full bg-green-600 text-white px-4 py-2 rounded font-semibold">
-            Generate Summary
-          </button>
-        </div>
+      </div>
 
-        <!-- Evaluasi -->
-         
-        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
-          <div id="evaluasi-diagnosis" class="text-xs"></div>
+      <!-- Hidden inputs -->
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="simulasi" id="simulasiField">
+      <input type="hidden" name="summary" id="summaryField">
 
-          <div id="evaluasi-procedure" class="text-xs"></div>
-
-          <div id="alternatif" class="text-xs"></div>
-        </div>
-      {% endif %}
-
-        <!-- Hidden inputs -->
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="simulasi" id="simulasiField">
-        <input type="hidden" name="summary" id="summaryField">
+      <!-- Tombol -->
+       <div class="flex justify-center space-x-4">
+        <button type="button" onclick="generateAI()" 
+          class="bg-yellow-600 text-white px-6 py-2 rounded font-semibold">
+          Recalculate
+        </button>
+        <button type="submit"
+          class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
+          Save Draft
+        </button>
+      </div>
+    </div>
 
 
-
-        <!-- Tombol Recalculate + Save Draft/Final -->
-        <div class="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
-          {% if role == 'doctor' %}
-          <button type="button" onclick="generateAI()" 
-                  class="w-full bg-yellow-600 text-white px-4 py-2 rounded font-semibold">
-            Recalculate
-          </button>
-          <button type="submit"
-                  class="w-full bg-blue-600 text-white px-4 py-2 rounded font-semibold">
-            Save Draft
-          </button>
-          {% elif role == 'verifikator' %}
-          <button type="submit"
-                  class="w-full bg-purple-600 text-white px-4 py-2 rounded font-semibold">
-            Save Final
-          </button>
-          {% endif %}
-        </div>
-      </div>  
-
-      <!-- Modal -->
-      <div x-show="modalOpen" x-cloak
-        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          
-          <!-- Tombol X -->
-          <button type="button" x-show="!$root.hideDefaultClose" @click="modalOpen=false"
-                  class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
-            ✕
-          </button>
-
-          <!-- Judul -->
-          <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
-              x-text="modalTitle"></h3>
-
-          <!-- Konten -->
-          <div class="p-6" x-html="modalContent"></div>
-        </div>
+    <!-- Modal -->
+    <div x-show="modalOpen" x-cloak
+         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <button type="button" @click="modalOpen=false"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+          ✕
+        </button>
+        <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+            x-text="modalTitle"></h3>
+        <div class="p-6" x-html="modalContent"></div>
       </div>
     </div>
   </div>

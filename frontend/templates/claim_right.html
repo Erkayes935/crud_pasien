@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+
+<form id="claimForm"
+      method="post"
+      action="/claims/{{ record.id }}/finalize"
+      data-claim-id="{{ record.id }}"
+      class="max-w-4xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
+
+    <div id="claimRoot" 
+       x-data="claimData({ role: 'verifikator' })"
+       data-claim-id="{{ record.id }}"
+       class="space-y-4">
+
+        <div class="tabs flex space-x-6 border-b mb-4">
+            <button type="button" class="px-4 py-2" 
+                :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                @click="tab='admission'">Admission</button>
+            <button type="button" class="px-4 py-2" 
+                    :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                    @click="tab='daily-0'">Daily</button>
+            <button type="button" class="px-4 py-2" 
+                :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                @click="tab='discharge'">Discharge</button>
+        </div>
+
+    <!-- ================= Panel Kanan (Simulasi & Evaluasi) ================= -->
+        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-8">
+
+            <!-- Judul -->
+            <h3 class="font-semibold text-xl border-b border-gray-300 dark:border-gray-600 pb-2">
+                Kombinasi Klaim
+            </h3>
+
+            <!-- Diagnosis -->
+            <div class="space-y-3">
+                <h4 class="font-bold text-lg">Diagnosis</h4>
+
+                <!-- Primary Claim -->
+                <div>
+                <label class="text-sm font-medium">Primary Claim</label>
+                <template x-if="simulasi[tab].utama">
+                    <div class="flex items-center gap-2 mt-2">
+                    <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-medium">
+                        <span x-text="(simulasi[tab].utama?.name || '-') + ' [' + (simulasi[tab].utama?.label || '') + ']'"></span>
+                    </span>
+                    <select x-model="simulasi[tab].utama.mapping"
+                            @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+                            class="border rounded-md px-2 py-1 text-sm bg-white dark:bg-gray-900 dark:text-gray-100">
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="None">None</option>
+                    </select>
+                    </div>
+                </template>
+                <template x-if="!simulasi[tab]?.utama">
+                    <p class="italic text-gray-400 mt-1">Belum ada Primary Claim</p>
+                </template>
+                </div>
+
+                <!-- Secondary Claims -->
+                <div>
+                <label class="text-sm font-medium">Secondary Claims</label>
+                <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
+                    <div class="flex items-center gap-2 mt-2">
+                    <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-sm font-medium">
+                        <span x-text="(dx.name || '-') + ' [' + (dx.label || '') + ']'"></span>
+                    </span>
+                    <select x-model="dx.mapping"
+                            @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+                            class="border rounded-md px-2 py-1 text-sm bg-white dark:bg-gray-900 dark:text-gray-100">
+                        <option value="Secondary">Secondary</option>
+                        <option value="Primary">Primary</option>
+                        <option value="None">None</option>
+                    </select>
+                    </div>
+                </template>
+                <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
+                    <p class="italic text-gray-400 mt-1">Belum ada Secondary Claim</p>
+                </template>
+                </div>
+            </div>
+
+            <!-- Tindakan -->
+            <div class="space-y-3">
+                <h4 class="font-bold text-lg">Tindakan</h4>
+
+                <!-- Primary Action -->
+                <div>
+                <label class="text-sm font-medium">Primary Action</label>
+                <template x-if="simulasi[tab].tindakanUtama">
+                    <div class="flex items-center gap-2 mt-2">
+                    <span class="flex-1 px-3 py-2 rounded-md bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-sm font-medium"
+                            x-text="simulasi[tab].tindakanUtama?.name"></span>
+                    <select x-model="simulasi[tab].tindakanUtama.mapping"
+                            @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+                            class="border rounded-md px-2 py-1 text-sm bg-white dark:bg-gray-900 dark:text-gray-100">
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="None">None</option>
+                    </select>
+                    </div>
+                </template>
+                <template x-if="!simulasi[tab]?.tindakanUtama">
+                    <p class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</p>
+                </template>
+                </div>
+
+                <!-- Secondary Actions -->
+                <div>
+                <label class="text-sm font-medium">Secondary Actions</label>
+                <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
+                    <div class="flex items-center gap-2 mt-2">
+                    <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 text-sm font-medium"
+                            x-text="(tdk.name || '-')"></span>
+                    <select x-model="tdk.mapping"
+                            @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+                            class="border rounded-md px-2 py-1 text-sm bg-white dark:bg-gray-900 dark:text-gray-100">
+                        <option value="Secondary">Secondary</option>
+                        <option value="Primary">Primary</option>
+                        <option value="None">None</option>
+                    </select>
+                    </div>
+                </template>
+                <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+                    <p class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</p>
+                </template>
+                </div>
+            </div>
+
+            <!-- Tombol Generate Summary -->
+        <div class="flex justify-center">
+            <button type="button" onclick="generateSummary()" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold shadow">
+            Generate Summary
+            </button>
+        </div>
+
+            <!-- Evaluasi -->
+        <div class="p-4 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 space-y-3">
+            <div id="evaluasi-diagnosis" class="text-xs text-gray-400 italic">
+                Belum ada evaluasi diagnosis
+            </div>
+            <div id="evaluasi-procedure" class="text-xs text-gray-400 italic">
+                Belum ada evaluasi tindakan
+            </div>
+            <div id="alternatif" class="text-xs text-gray-400 italic">
+                Belum ada alternatif kombinasi
+            </div>
+        </div>
+
+        <!-- Hidden inputs -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="simulasi" id="simulasiField">
+        <input type="hidden" name="summary" id="summaryField">
+
+        <!-- Tombol Save Final -->
+        <div class="flex justify-center">
+            <button type="submit"
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md font-semibold shadow">
+            Save Final
+            </button>
+        </div>
+        <!-- Modal -->
+        <div x-show="modalOpen" x-cloak
+            class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <button type="button" @click="modalOpen=false"
+                        class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+                ✕
+                </button>
+                <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+                    x-text="modalTitle"></h3>
+                <div class="p-6" x-html="modalContent"></div>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/claim.js') }}"></script>
+{% endblock %}
