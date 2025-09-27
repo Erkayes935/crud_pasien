@@ -64,9 +64,8 @@ function claimData(init) {
       const role = this.role;
       const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
-      if (role === 'verifikator' && claimId) {
-        // 🔹 langsung load dari DB (BE pecahan)
-        loadSimulations(claimId);
+      if ((role === 'verifikator' || role === 'doctor') && claimId) {
+      loadSimulations(claimId);
       }
     },
 
