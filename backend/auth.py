@@ -1,23 +1,13 @@
 import httpx
 from fastapi import Request, HTTPException, status, Depends, Form
 from jose import jwt, JWTError
-from .database import SessionLocal
+from .database import SessionLocal, get_db
 from . import config, models
 import time
 from typing import Optional, Dict, Any, Iterable, Callable
 from functools import wraps
 import secrets
 from sqlalchemy.orm import Session
-
-# ---------------------------
-# DB dependency
-# ---------------------------
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # ---------------------------
 # JWKS fetch (async, cached)

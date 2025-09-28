@@ -11,32 +11,18 @@ the target resource does not exist) to make callers easier to implement.
 
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from . import models
-
+from backend import models
 
 def get_patients(db: Session) -> List[models.Patient]:
-    """Return all patient rows from the database.
-
-    Args:
-        db: SQLAlchemy Session
-
-    Returns:
-        List of Patient ORM objects.
-    """
-
-    return db.query(models.Patient).all()
+    """Return all active patients (not soft-deleted)."""
+    return db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
 
 def create_patient(db: Session, data: Dict[str, Any]) -> models.Patient:
-    """Create and persist a new Patient.
-
-    Args:
-        db: SQLAlchemy Session
-        data: dict mapping Patient field names to values
-
-    Returns:
-        The created Patient ORM object (with ID populated).
-    """
-
+    """Create and persist a new Patient."""
+    if "is_deleted" not in data:
+        data["is_deleted"] = False
+    if "is_dummy" not in data:
+        data["is_dummy"] = True
     new_patient = models.Patient(**data)
     db.add(new_patient)
     db.commit()
@@ -44,40 +30,24 @@ def create_patient(db: Session, data: Dict[str, Any]) -> models.Patient:
     return new_patient
 
 def update_patient(db: Session, patient_id: int, data: Dict[str, Any]) -> Optional[models.Patient]:
-    """Update an existing patient with values from `data`.
-
-    Args:
-        db: SQLAlchemy Session
-        patient_id: ID of the patient to update
-        data: dict of fields to update
-
-    Returns:
-        The updated Patient, or None if the patient was not found.
-    """
-
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    """Update an existing patient with values from `data`."""
+    patient = db.query(models.Patient).filter(
+        models.Patient.id == patient_id,
+        models.Patient.is_deleted == False
+    ).first()
     if not patient:
         return None
-
     for key, value in data.items():
         setattr(patient, key, value)
     db.commit()
+    db.refresh(patient)
     return patient
 
 def delete_patient(db: Session, patient_id: int) -> bool:
-    """Delete a patient by ID.
-
-    Args:
-        db: SQLAlchemy Session
-        patient_id: ID of the patient to delete
-
-    Returns:
-        True if a patient was deleted, False if no patient with that ID exists.
-    """
-
+    """Soft-delete a patient by setting is_deleted=True."""
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         return False
-    db.delete(patient)
+    patient.is_deleted = True
     db.commit()
     return True
