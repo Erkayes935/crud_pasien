@@ -11,6 +11,7 @@ from services.analyze_diagnosis_service import process_analyze_diagnosis
 from services.analyze_procedure_service import process_analyze_procedure
 from services.generate_claim_combos_service import process_generate_claim_combos
 from services.resume_service import process_resume_medis
+from services.regulation_service import process_regulation_detail
 
 router = APIRouter()
 
@@ -90,3 +91,10 @@ async def generate_claim_combos(payload: dict):
 @router.post("/resume_medis")
 async def generate_resume(input_data: ResumeInput):
     return process_resume_medis(input_data.dict(), mode=input_data.mode, settings=input_data.settings or {})
+
+@router.post("/regulation_detail")
+async def regulation_detail(payload: dict):
+    field = payload.get("field", "")
+    return process_regulation_detail(payload, field)
+
+
