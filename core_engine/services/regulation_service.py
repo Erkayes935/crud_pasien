@@ -3,9 +3,10 @@ import os
 import json
 from datetime import date
 from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
 from openai import OpenAI
 
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ---------------------------
@@ -58,6 +59,37 @@ FIELD_REGULATION_MAP = {
     "konflik_duplikasi": ["INA-CBG", "CP"],
 }
 
+RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
+
+# ---------------------------
+# Utils
+# ---------------------------
+def load_rule_files(kategori: str):
+    """Coba load file diagnosis rules berdasarkan kategori (mis. Pneumonia.json)"""
+    diagnosis_file = RULES_DIR / "diagnosis" / f"{kategori.lower().replace(' ', '')}.json"
+    if diagnosis_file.exists():
+        with open(diagnosis_file, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def load_global_rules():
+    """Load semua file global (clinical_rules, fornas, icd9/icd10 mapping, ina_cbg)."""
+    global_files = [
+        "clinical_rules.json",
+        "cp_pnpk.json",
+        "fornas.json",
+        "icd9_mapping.json",
+        "icd10_mapping.json",
+        "ina_cbg.json"
+    ]
+    data = {}
+    for fname in global_files:
+        fpath = RULES_DIR / fname
+        if fpath.exists():
+            with open(fpath, encoding="utf-8") as f:
+                data[fname.replace(".json", "")] = json.load(f)
+    return data
+
 # ---------------------------
 # Service utama
 # ---------------------------
@@ -72,7 +104,17 @@ def process_regulation_detail(payload: dict, field: str):
 
     regulasi_sumber = FIELD_REGULATION_MAP.get(field, ["PNPK", "Permenkes"])
 
-    # 📝 Prompt ketat dengan aturan output
+    # Load rules lokal
+    rules_diagnosis = load_rule_files(kategori)
+    rules_global = load_global_rules()
+
+    # Build konteks rules
+    context_rules = {
+        "diagnosis_rules": rules_diagnosis,
+        "global_rules": rules_global,
+    }
+
+    # Prompt ke AI
     prompt = f"""
     Kamu adalah asisten regulasi medis Indonesia.
 
@@ -84,14 +126,19 @@ def process_regulation_detail(payload: dict, field: str):
     - ICD-9: {icd9}
     - Field yang ditekan: {field}
     - Nilai field: {current_value}
-    - Data pasien: {patient_context}
+    - Data pasien: {json.dumps(patient_context, ensure_ascii=False)}
+
+    Data rules lokal (hanya sebagai konteks tambahan, JANGAN disalin mentah):
+    {json.dumps(context_rules, ensure_ascii=False)}
 
     Aturan output:
     1. Jawab hanya dalam JSON valid.
     2. Output wajib berisi: dasar_hukum, judul_regulasi, bab_pasal, isi.
-    3. "isi" harus memuat poin-poin aturan/kriteria eksplisit (angka, syarat, batas nilai).
-    4. Referensi hanya boleh dari: PNPK, CP, Permenkes, BPJS, ICD-10, ICD-9, INA-CBG.
-    5. Jika tidak ada aturan relevan, isi dengan "-".
+    3. "isi" harus berupa LIST poin-poin ringkasan aturan/pasal resmi (angka, syarat, batas nilai).
+       - Contoh: ["Kode ICD-10 E11.9 digunakan untuk DM tanpa komplikasi.", "Catatan BPJS: klaim valid untuk terapi standar."]
+    4. Jangan pernah menyalin mentah isi rules JSON ke field "isi".
+    5. Referensi hanya boleh dari: PNPK, CP, Permenkes, BPJS, ICD-10, ICD-9, INA-CBG.
+    6. Jika tidak ada aturan relevan, isi dengan "-".
 
     Jawablah sesuai dasar regulasi: {', '.join(regulasi_sumber) if regulasi_sumber else '-'}.
     """
@@ -104,17 +151,16 @@ def process_regulation_detail(payload: dict, field: str):
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
-            response_format={"type": "json_object"}  # ⬅️ hasil pasti JSON valid
+            response_format={"type": "json_object"}
         )
 
-        # ambil hasil dan parse ke dict
         content = resp.choices[0].message.content
         parsed = json.loads(content)
 
         result = {
             "claim_id": claim_id,
             "field": field,
-            "regulasi": parsed,  # sudah dict, bukan string lagi
+            "regulasi": parsed,
             "engine_version": f"regulation_service@{date.today().isoformat()}"
         }
         return result
