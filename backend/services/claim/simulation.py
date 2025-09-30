@@ -68,216 +68,179 @@ def load_sim_and_summary_service(db: Session, claim_id: int, include_summary: bo
         ]
     return sim, summ
 
-def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ_data: dict):
-    """Simpan ulang simulasi (utama/sekunder) + evaluasi kombinasi ke tabel pecahan (pakai helper + regulasi)."""
+def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ_data: dict): 
+    """Simpan ulang simulasi (utama/sekunder) + evaluasi kombinasi ke tabel pecahan.""" 
+    claim = db.query(models.Claim).get(claim_id) 
+    if not claim: 
+        return 
+    # 🔹 Bersihkan dulu data regulasi dummy & simulasi 
+    db.query(models.ClaimRegulationDetail).filter_by(claim_id=claim_id, is_dummy=True).delete() 
+    db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).delete() 
+    db.flush() 
+    
+    # 🔹 Simpan ulang ClaimSimulation 
+    for stage, arr in (sim_data or {}).items(): 
+        if not isinstance(arr, dict): 
+            continue 
+        utama_diag_id = None 
+        if arr.get("utama"): 
+            name = arr["utama"].get("name") or arr["utama"].get("diagnosis_text") 
+            if name: 
+                diag = db.query(models.ClaimDiagnosis).filter_by( claim_id=claim_id, diagnosis_text=name ).first() 
+                if diag: 
+                    utama_diag_id = diag.id 
+                    db.add(models.ClaimRegulationDetail( 
+                        claim_id=claim_id, 
+                        diagnosis_id=utama_diag_id, 
+                        judul_regulasi="Regulasi default diagnosis utama", 
+                        dasar_hukum="PNPK", 
+                        bab_pasal="Bab II Pasal 5", 
+                        isi=f"Regulasi terkait diagnosis utama {name}", 
+                        created_at=datetime.utcnow(), 
+                        updated_at=datetime.utcnow(), 
+                        is_deleted=False, 
+                        is_dummy=True 
+                    )) 
+        sek_diag_id = None 
+        if arr.get("sekunder"): 
+            sek_item = arr["sekunder"][0] if isinstance(arr["sekunder"], list) else arr["sekunder"] 
+            if sek_item: 
+                name = sek_item.get("name") or sek_item.get("diagnosis_text") 
+                if name: 
+                    diag = db.query(models.ClaimDiagnosis).filter_by( claim_id=claim_id, diagnosis_text=name ).first() 
+                    if diag: 
+                        sek_diag_id = diag.id 
+                        db.add(models.ClaimRegulationDetail( 
+                            claim_id=claim_id, 
+                            diagnosis_id=sek_diag_id, 
+                            judul_regulasi="Regulasi default diagnosis sekunder", 
+                            dasar_hukum="PNPK", 
+                            bab_pasal="Bab III Pasal 7", 
+                            isi=f"Regulasi terkait diagnosis sekunder {name}", 
+                            created_at=datetime.utcnow(), 
+                            updated_at=datetime.utcnow(), 
+                            is_deleted=False, 
+                            is_dummy=True 
+                        )) 
+        sim = models.ClaimSimulation( 
+            claim_id=claim_id, 
+            stage=stage, 
+            diagnosis_utama_id=utama_diag_id, 
+            diagnosis_sekunder_id=sek_diag_id, 
+            is_dummy=False, 
+            is_deleted=False, 
+            created_at=datetime.utcnow(), 
+            updated_at=datetime.utcnow() 
+        ) 
+        db.add(sim) 
+        db.flush() 
+        if arr.get("tindakanUtama"): 
+            sim.tindakan_utama_id = _update_or_create_procedure(db, claim, arr["tindakanUtama"], "utama", sim.id) 
+            db.add(models.ClaimRegulationDetail( 
+                claim_id=claim_id, 
+                procedure_id=sim.tindakan_utama_id, 
+                judul_regulasi="Regulasi default tindakan utama", 
+                dasar_hukum="PNPK", 
+                bab_pasal="Bab X", 
+                isi="Regulasi terkait tindakan utama", 
+                created_at=datetime.utcnow(), 
+                updated_at=datetime.utcnow(), 
+                is_deleted=False, 
+                is_dummy=True 
+            )) 
+        if arr.get("tindakanSekunder"): 
+            sek_item = arr["tindakanSekunder"][0] if isinstance(arr["tindakanSekunder"], list) else arr["tindakanSekunder"] 
+            sim.tindakan_sekunder_id = _update_or_create_procedure(db, claim, sek_item, "sekunder", sim.id) 
+            db.add(models.ClaimRegulationDetail( 
+                claim_id=claim_id, 
+                procedure_id=sim.tindakan_sekunder_id, 
+                judul_regulasi="Regulasi default tindakan sekunder", 
+                dasar_hukum="PNPK", bab_pasal="Bab Y", 
+                isi="Regulasi terkait tindakan sekunder", 
+                created_at=datetime.utcnow(), 
+                updated_at=datetime.utcnow(), 
+                is_deleted=False, 
+                is_dummy=True 
+            )) 
+            db.flush() 
+    # 🔹 Simpan Evaluasi (summary) hanya kalau ada 
+    if summ_data and ( summ_data.get("kombinasi_diagnosis") or summ_data.get("procedure") or summ_data.get("alternatif") ): 
+        print("🗑️ Akan hapus evaluasi lama untuk claim:", claim_id)
+        print("   summ_data diterima:", summ_data)
 
-    claim = db.query(models.Claim).get(claim_id)
-    if not claim:
-        return
-
-    # 🔹 Bersihkan dulu data dummy supaya FK gak nyangkut
-    db.query(models.ClaimRegulationDetail).filter_by(claim_id=claim_id, is_dummy=True).delete()
-    db.query(models.ClaimSimulation).filter(models.ClaimSimulation.claim_id == claim_id).delete()
-    db.query(models.ClaimDiagnosisEvaluation).filter(models.ClaimDiagnosisEvaluation.claim_id == claim_id).delete()
-    db.query(models.ClaimProcedureEvaluation).filter(models.ClaimProcedureEvaluation.claim_id == claim_id).delete()
-    db.query(models.ClaimCombinationAlternative).filter(models.ClaimCombinationAlternative.claim_id == claim_id).delete()
-    db.flush()
-
-    # 🔹 Simpan ulang ClaimSimulation
-    for stage, arr in (sim_data or {}).items():
-        if not isinstance(arr, dict):
-            continue
-
-        # Diagnosis utama
-        utama_diag_id = None
-        if arr.get("utama"):
-            utama_item = arr["utama"]
-            name = utama_item.get("name") or utama_item.get("diagnosis_text")
-            if name:
-                diag = db.query(models.ClaimDiagnosis).filter_by(
-                    claim_id=claim_id, diagnosis_text=name
-                ).first()
-                if diag:
-                    utama_diag_id = diag.id
-                    db.add(models.ClaimRegulationDetail(
-                        claim_id=claim_id,
-                        diagnosis_id=utama_diag_id,
-                        judul_regulasi="Regulasi default diagnosis utama",
-                        dasar_hukum="PNPK",
-                        bab_pasal="Bab II Pasal 5",
-                        isi=f"Regulasi terkait diagnosis utama {name}",
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
-                        is_deleted=False,
-                        is_dummy=True
-                    ))
-
-        # Diagnosis sekunder
-        sek_diag_id = None
-        if arr.get("sekunder"):
-            sek_item = arr["sekunder"][0] if isinstance(arr["sekunder"], list) and arr["sekunder"] else None
-            if sek_item:
-                name = sek_item.get("name") or sek_item.get("diagnosis_text")
-                if name:
-                    diag = db.query(models.ClaimDiagnosis).filter_by(
-                        claim_id=claim_id, diagnosis_text=name
-                    ).first()
-                    if diag:
-                        sek_diag_id = diag.id
-                        db.add(models.ClaimRegulationDetail(
-                            claim_id=claim_id,
-                            diagnosis_id=sek_diag_id,
-                            judul_regulasi="Regulasi default diagnosis sekunder",
-                            dasar_hukum="PNPK",
-                            bab_pasal="Bab III Pasal 7",
-                            isi=f"Regulasi terkait diagnosis sekunder {name}",
-                            created_at=datetime.utcnow(),
-                            updated_at=datetime.utcnow(),
-                            is_deleted=False,
-                            is_dummy=True
-                        ))
-
-        # Buat simulasi kosong dulu
-        sim = models.ClaimSimulation(
-            claim_id=claim_id,
-            stage=stage,
-            diagnosis_utama_id=utama_diag_id,
-            diagnosis_sekunder_id=sek_diag_id,
-            is_dummy=False,
-            is_deleted=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(sim)
-        db.flush()  # ✅ supaya sim.id terisi
-
-        # Tindakan utama
-        if arr.get("tindakanUtama"):
-            sim.tindakan_utama_id = _update_or_create_procedure(
-                db, claim, arr["tindakanUtama"], "utama", sim.id
-            )
-            # Tambahkan regulasi default utk tindakan utama
-            db.add(models.ClaimRegulationDetail(
-                claim_id=claim_id,
-                procedure_id=sim.tindakan_utama_id,
-                judul_regulasi="Regulasi default tindakan utama",
-                dasar_hukum="PNPK",
-                bab_pasal="Bab X",
-                isi="Regulasi terkait tindakan utama",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                is_deleted=False,
-                is_dummy=True
-            ))
-
-        # Tindakan sekunder
-        if arr.get("tindakanSekunder"):
-            sek_item = arr["tindakanSekunder"][0] if isinstance(arr["tindakanSekunder"], list) else arr["tindakanSekunder"]
-            sim.tindakan_sekunder_id = _update_or_create_procedure(
-                db, claim, sek_item, "sekunder", sim.id
-            )
-            # Tambahkan regulasi default utk tindakan sekunder
-            db.add(models.ClaimRegulationDetail(
-                claim_id=claim_id,
-                procedure_id=sim.tindakan_sekunder_id,
-                judul_regulasi="Regulasi default tindakan sekunder",
-                dasar_hukum="PNPK",
-                bab_pasal="Bab Y",
-                isi="Regulasi terkait tindakan sekunder",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                is_deleted=False,
-                is_dummy=True
-            ))
-
-        db.flush()  # ✅ update sim setelah id tindakan terisi
-
-    # 🔹 Simpan Evaluasi (summary)
-    if summ_data:
-        # === Kombinasi Diagnosis ===
-        diag_name = summ_data.get("kombinasi_diagnosis", {}).get("name") \
-                 or summ_data.get("kombinasi_diagnosis", {}).get("diagnosis_text")
-        diag = db.query(models.ClaimDiagnosis).filter_by(
-            claim_id=claim_id, diagnosis_text=diag_name
-        ).first() if diag_name else None
-
+        # bersihin evaluasi lama dulu 
+        db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete() 
+        db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete() 
+        db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete() 
+        db.flush() 
+        # === Kombinasi Diagnosis === 
+        diag_data = summ_data.get("kombinasi_diagnosis") or summ_data.get("diagnosis") or {}
         diag_eval = models.ClaimDiagnosisEvaluation(
             claim_id=claim_id,
-            validitas=summ_data.get("kombinasi_diagnosis", {}).get("validitas"),
-            severity=summ_data.get("kombinasi_diagnosis", {}).get("severity"),
-            validitas_detail=summ_data.get("kombinasi_diagnosis", {}).get("validitas_detail"),
-            kode_ina_cbg=summ_data.get("kombinasi_diagnosis", {}).get("kode_ina_cbg"),
-            estimasi_tarif=parse_number(summ_data.get("kombinasi_diagnosis", {}).get("estimasi_tarif")),
-            syarat_klinis=summ_data.get("kombinasi_diagnosis", {}).get("syarat_klinis"),
-            evaluasi_faskes=summ_data.get("kombinasi_diagnosis", {}).get("evaluasi_faskes"),
-            rawat_inap=summ_data.get("kombinasi_diagnosis", {}).get("rawat_inap"),
+            validitas=diag_data.get("validitas"),
+            severity=diag_data.get("severity") or diag_data.get("severity_detail"),
+            validitas_detail=diag_data.get("validitas_detail"),
+            kode_ina_cbg=diag_data.get("kode_ina_cbg") or diag_data.get("ina_cbg"),
+            estimasi_tarif=parse_number(diag_data.get("estimasi_tarif") or diag_data.get("tarif")),
+            syarat_klinis=diag_data.get("syarat_klinis") or diag_data.get("syarat"),
+            evaluasi_faskes=diag_data.get("evaluasi_faskes"),
+            rawat_inap=diag_data.get("rawat_inap"),
             created_at=datetime.utcnow(),
             is_deleted=False,
             is_dummy=True
         )
+        print("🆕 Insert ClaimDiagnosisEvaluation:", diag_data)
         db.add(diag_eval)
-        db.flush()
-
-        db.add(models.ClaimRegulationDetail(
-            claim_id=claim_id,
-            diagnosis_evaluation_id=diag_eval.id,
-            judul_regulasi="PNPK Evaluasi Diagnosis 2020",
-            dasar_hukum="PNPK",
-            bab_pasal="Bab IV Pasal 8",
-            isi="Evaluasi kombinasi diagnosis harus berdasarkan kriteria klinis",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            is_deleted=False,
-            is_dummy=True
-        ))
-
-        # === Kombinasi Tindakan ===
-        for v in summ_data.get("procedure", []):
-            proc_id = None
-            name = v.get("tindakan") or v.get("name") or v.get("procedure_text")
-            if name:
-                proc = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id, procedure_text=name).first()
-                proc_id = proc.id if proc else None
-
-            proc_eval = models.ClaimProcedureEvaluation(
-                claim_id=claim_id,
-                validitas=v.get("validitas"),
-                validitas_detail=v.get("validitas_detail"),
-                status_tindakan=v.get("status_tindakan"),
-                tarif_impact=parse_number(v.get("tarif_impact")),
-                faskes=v.get("faskes"),
-                rawat_inap=v.get("rawat_inap"),
-                syarat_klinis=v.get("syarat_klinis"),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                is_deleted=False,
-                is_dummy=True
-            )
-            db.add(proc_eval)
-            db.flush()
-
-            db.add(models.ClaimRegulationDetail(
-                claim_id=claim_id,
-                procedure_evaluation_id=proc_eval.id,
-                judul_regulasi="PNPK Evaluasi Tindakan 2020",
-                dasar_hukum="PNPK",
-                bab_pasal="Bab V Pasal 12",
-                isi=f"Evaluasi regulasi terkait tindakan {proc_eval.status_tindakan or '-'}",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                is_deleted=False,
-                is_dummy=True
-            ))
-
-        # === Alternatif Kombinasi ===
-        for alt in summ_data.get("alternatif", []):
+        db.flush() 
+        db.add(models.ClaimRegulationDetail( 
+            claim_id=claim_id, 
+            diagnosis_evaluation_id=diag_eval.id, 
+            judul_regulasi="PNPK Evaluasi Diagnosis 2020", 
+            dasar_hukum="PNPK", 
+            bab_pasal="Bab IV Pasal 8", 
+            isi="Evaluasi kombinasi diagnosis harus berdasarkan kriteria klinis", 
+            created_at=datetime.utcnow(), 
+            updated_at=datetime.utcnow(), 
+            is_deleted=False, 
+            is_dummy=True 
+        )) 
+        # === Kombinasi Tindakan === 
+        for v in summ_data.get("procedure", []): 
+            proc_eval = models.ClaimProcedureEvaluation( 
+                claim_id=claim_id, 
+                validitas=v.get("validitas"), 
+                validitas_detail=v.get("validitas_detail"), 
+                status_tindakan=v.get("status_tindakan"), 
+                tarif_impact=parse_number(v.get("tarif_impact")), 
+                faskes=v.get("faskes"), 
+                rawat_inap=v.get("rawat_inap"), 
+                syarat_klinis=v.get("syarat_klinis"), 
+                created_at=datetime.utcnow(), 
+                updated_at=datetime.utcnow(), 
+                is_deleted=False, is_dummy=True 
+            ) 
+            db.add(proc_eval) 
+            db.flush() 
+            db.add(models.ClaimRegulationDetail( 
+                claim_id=claim_id, 
+                procedure_evaluation_id=proc_eval.id, 
+                judul_regulasi="PNPK Evaluasi Tindakan 2020", 
+                dasar_hukum="PNPK", 
+                bab_pasal="Bab V Pasal 12", 
+                isi=f"Evaluasi regulasi terkait tindakan {proc_eval.status_tindakan or '-'}", 
+                created_at=datetime.utcnow(), 
+                updated_at=datetime.utcnow(), 
+                is_deleted=False, is_dummy=True 
+            )) 
+        # === Alternatif Kombinasi === 
+        for alt in summ_data.get("alternatif", []): 
             db.add(models.ClaimCombinationAlternative(
                 claim_id=claim_id,
-                kombinasi_nama=alt.get("kombinasi"),
-                severity=alt.get("severity"),
-                kode_ina_cbg=alt.get("kode_ina_cbg"),
-                estimasi_tarif=parse_number(alt.get("tarif")),
-                syarat_klinis=alt.get("syarat_klinis"),
+                kombinasi_nama=alt.get("kombinasi") or alt.get("nama"),
+                severity=alt.get("severity") or alt.get("severity_detail"),
+                kode_ina_cbg=alt.get("kode_ina_cbg") or alt.get("ina_cbg"),
+                estimasi_tarif=parse_number(alt.get("estimasi_tarif") or alt.get("tarif")),
+                syarat_klinis=alt.get("syarat_klinis") or alt.get("syarat"),
                 faskes=alt.get("faskes"),
                 rawat_inap=alt.get("rawat_inap"),
                 tindakan_wajib=alt.get("tindakan_wajib"),
@@ -285,7 +248,7 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
                 is_deleted=False,
                 is_dummy=True
             ))
-
+        print("🆕 Insert ClaimCombinationAlternative:", alt) 
     db.commit()
 
 def get_simulations_service(db: Session, claim_id: int):

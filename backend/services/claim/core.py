@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from ... import models
-from .simulation import save_simulation_and_summary
 from .helper import parse_number, _update_or_create_procedure, _update_diag_fields, _update_medical_record_from_form
+from .simulation import save_simulation_and_summary
 import json
 
 # ==================================================
@@ -266,10 +266,16 @@ def finalize_claim_service(db: Session, claim_id: int, user, form_data: dict):
     except Exception as e:
         print("❌ Gagal update ClaimDiagnosis/ClaimProcedure:", e)
 
-    if not summ_data:
+    if not summ_data or (
+        "kombinasi_diagnosis" not in summ_data and
+        "procedure" not in summ_data and
+        "alternatif" not in summ_data
+    ):
         old_diag = db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim.id).first()
+        print("🔎 Data ClaimDiagnosisEvaluation lama:", old_diag)
         old_proc = db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim.id).all()
         old_alt = db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim.id).all()
+        print("🔎 Data ClaimCombinationAlternative lama:", old_alt)
 
         summ_data = {
             "kombinasi_diagnosis": {
@@ -297,10 +303,10 @@ def finalize_claim_service(db: Session, claim_id: int, user, form_data: dict):
             ],
             "alternatif": [
                 {
-                    "kombinasi_nama": a.kombinasi_nama,
+                    "kombinasi": a.kombinasi_nama,   # pakai key 'kombinasi'
                     "severity": a.severity,
                     "kode_ina_cbg": a.kode_ina_cbg,
-                    "estimasi_tarif": a.estimasi_tarif,
+                    "tarif": a.estimasi_tarif,       # pakai key 'tarif'
                     "syarat_klinis": a.syarat_klinis,
                     "faskes": a.faskes,
                     "rawat_inap": a.rawat_inap,
@@ -309,6 +315,11 @@ def finalize_claim_service(db: Session, claim_id: int, user, form_data: dict):
                 for a in old_alt
             ],
         }
+
+    print("📌 finalize_claim_service.summ_data.kombinasi_diagnosis:", summ_data.get("kombinasi_diagnosis"))
+    print("📌 finalize_claim_service.summ_data.procedure:", summ_data.get("procedure"))
+    print("📌 finalize_claim_service.summ_data.alternatif:", summ_data.get("alternatif"))
+
     # Save simulasi & summary
     save_simulation_and_summary(db, claim.id, sim_data, summ_data)
 

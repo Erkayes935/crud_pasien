@@ -369,6 +369,7 @@ def make_dummy(tab):
             "alternatif": [
                 {
                     "kombinasi": "Sepsis + ARDS",
+                    "severity": "High",
                     "kode_ina_cbg": "D-04-13",
                     "tarif": "Rp 12.500.000",
                     "syarat_klinis": "Ventilasi Mekanik + catatan ICU",
@@ -378,6 +379,7 @@ def make_dummy(tab):
                 },
                 {
                     "kombinasi": "Sepsis + DM + ARDS",
+                    "severity": "invalid",
                     "kode_ina_cbg": "D-04-13",
                     "tarif": "Rp 13.500.000",
                     "syarat_klinis": "Ventilasi Mekanik + catatan ICU",
