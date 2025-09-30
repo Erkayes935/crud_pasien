@@ -25,7 +25,7 @@
       else if (typeof dx.klinis === "object" && dx.klinis !== null) {
         text = [dx.klinis.justifikasi, dx.klinis.bukti_klinis, dx.klinis.syarat_klinis].filter(Boolean).join(", ");
       }
-      klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 20)}</span>` : "-";
+      klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "-";
     }
 
     // kolom ICD
@@ -42,7 +42,7 @@
     if (tindakanCell) {
       if (dx.tindakan && dx.tindakan.length > 0) {
         const text = dx.tindakan.map(t => t.procedure_text || t.tindakan).join(", ");
-        tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 20)}</span>`;
+        tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 44)}</span>`;
       } else {
         tindakanCell.innerText = "-";
       }
@@ -72,7 +72,10 @@
         dx = JSON.parse(tr.dataset.row);
         window.claimState.currentDiagnosis = dx;
         window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
-        openModal(`Detail Diagnosis (${window.claimState.currentDiagnosisTitle})`, buildModalContent(dx));
+        openModal(`<div class="flex flex-col items-start items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
+        </div>`, buildModalContent(dx));
         return;
       }
 
@@ -82,7 +85,10 @@
       const namaPenyakit =
         dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "-";
 
-      openModal(`Detail Diagnosis (${namaPenyakit})`, buildModalContent(dx));
+      openModal(`<div class="flex flex-col items-start items-center">
+        <span class="text-lg font-bold">Detail Diagnosis</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
+      </div>`, buildModalContent(dx));
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
 
@@ -318,7 +324,10 @@
       rawat_inap: "-",
       syarat_klinis: "-"
     };
-    const title = `Detail Diagnosis (${dummy.kategori})`;
+    const title = `<div class="flex flex-col items-start items-center">
+      <span class="text-lg font-bold">Detail Tindakan Manual</span>
+      <span class="text-sm font-normal">${it.procedure_text || "-"}</span>
+    </div>`;
     openModal(title, buildModalContent(dummy));
     window.claimState.currentProcedure = dummy;
     updateRingkasanFromRow(dummy);
@@ -328,7 +337,10 @@
     const dx = window.claimState.currentDiagnosis;
     if (dx) {
       const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
-      openModal(`Detail Diagnosis (${nama})`, buildModalContent(dx), { hideDefaultClose: false });
+      openModal(`<div class="flex flex-col items-start items-center">
+        <span class="text-lg font-bold">Detail Diagnosis</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
+        </div>`, buildModalContent(dx), { hideDefaultClose: false });
     } else {
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;

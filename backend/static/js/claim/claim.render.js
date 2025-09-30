@@ -171,12 +171,12 @@
       thead.className = "bg-gray-100 dark:bg-gray-800";
       thead.innerHTML = `
         <tr>
-          <th class="border px-3 py-2">Kategori</th>
-          <th class="border px-3 py-2">Klinis</th>
-          <th class="border px-3 py-2">ICD</th>
-          <th class="border px-3 py-2">Tindakan</th>
-          <th class="border px-3 py-2">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-3 py-2">Mapping</th>` : ``}
+          <th class="border px-3 py-2 w-[15.5%]">Kategori</th>
+          <th class="border px-3 py-2 w-[30.5%]">Klinis</th>
+          <th class="border px-3 py-2 w-[5.5%]">ICD</th>
+          <th class="border px-3 py-2 w-[32.75%]">Tindakan</th>
+          <th class="border px-3 py-2 w-[3.75%]">Score</th>
+          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[13%]">Mapping</th>` : ``}
         </tr>`;
       table.insertBefore(thead, table.firstChild);
     }
@@ -196,7 +196,7 @@
       tbody.insertAdjacentHTML("beforeend", `
         <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
             data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
-            <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+            <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
               <span @click="open=!open" class="mr-1 cursor-pointer">
                 <span x-show="!open" x-cloak>▶</span>
                 <span x-show="open" x-cloak>▼</span>
@@ -204,14 +204,14 @@
               <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || "-"}</span>
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
-            <td class="col-klinis border px-6 py-2">
-              <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis" title="${titleKlinis}">
+            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
+              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleKlinis}">
                 ${klinisText || "-"}
               </div>
             </td>
-            <td class="col-icd border px-[19px] py-2 text-center">${icdText}</td>
-            <td class="col-tindakan border px-6 py-2">
-              <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis" title="${titleTindakan}">
+            <td class="col-icd border px-3 py-2 text-center">${icdText}</td>
+            <td class="col-tindakan border px-6 py-2 whitespace-nowrap">
+              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleTindakan}">
                 ${tindakanText}
               </div>
             </td>
@@ -233,18 +233,18 @@
               class="bg-gray-50 dark:bg-gray-800 italic text-sm"
               data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
               data-db-id="${child.id}">
-            <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+            <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis"
                 onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
               → ${child.nama_kategori || child.kategori || "-"}
             </td>
-            <td class="col-klinis border px-6 py-2">
-              <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis" title="${kText}">
+            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
+              <div class="flex items-center overflow-hidden text-ellipsis" title="${kText}">
                 ${kText || "-"}
               </div>
             </td>
-            <td class="col-icd border px-[19px] py-2 text-center">${iText}</td>
+            <td class="col-icd border px-3 py-2 text-center">${iText}</td>
             <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${tText}">
-              <div class="w-full max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
+              <div class="flex items-center overflow-hidden text-ellipsis">
                 ${tText}
               </div>
             </td>
