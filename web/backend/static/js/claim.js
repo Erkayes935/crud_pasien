@@ -208,20 +208,24 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   // === Header Table ===
   const table = target.closest("table")
   if (table) {
-    table.classList.add("table-fixed")
+    table.classList.add("table-fixed", "w-full", "border-collapse", "text-sm")
     if (!table.querySelector("thead")) {
       const thead = document.createElement("thead")
       thead.className = "bg-gray-100 dark:bg-gray-800"
       thead.innerHTML = `
         <tr>
-          <th class="border px-4 py-2 w-40">Kategori</th>
-          <th class="border px-4 py-2 w-40">Klinis</th>
-          <th class="border px-4 py-2 w-24 text-center">ICD</th>
-          <th class="border px-4 py-2 w-40">Tindakan</th>
-          <th class="border px-4 py-2 w-20 text-center">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-4 py-2 w-32 text-center">Mapping</th>` : ``}
+          <th class="w-[33.333%] border px-2 py-2 text-left truncate">Kategori</th>
+          <th class="w-[33.333%] border px-2 py-2 text-left truncate">Klinis</th>
+          <th class="w-[8.333%] border px-2 py-2 text-center truncate">ICD</th>
+          <th class="w-[16.666%] border px-2 py-2 text-left truncate">Tindakan</th>
+          <th class="w-[8.333%] border px-2 py-2 text-center truncate">Score</th>
+          ${state.role === "doctor" ? `<th class="w-[8.333%] border px-2 py-2 text-center truncate">Mapping</th>` : ``}
         </tr>`
       table.insertBefore(thead, table.firstChild)
+    }
+    // Bungkus tabel dengan overflow-x-auto
+    if (!table.parentElement.classList.contains("overflow-x-auto")) {
+      table.parentElement.classList.add("overflow-x-auto")
     }
   }
 
@@ -234,9 +238,9 @@ function renderTable(targetId, items, type, tab, dayId = null) {
   console.log("[DEBUG] tbody type:", typeof tbody, "constructor:", tbody.constructor.name, tbody)
     // parent row
     tbody.innerHTML += `
-      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
+      <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-xs"
           data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
-          <td class="border px-4 py-2 w-40">
+          <td class="w-[33.333%] border px-2 py-2 truncate">
             <span @click="open=!open" class="mr-1 cursor-pointer">
               <span x-show="!open" x-cloak>▶</span>
               <span x-show="open" x-cloak>▼</span>
@@ -247,12 +251,12 @@ function renderTable(targetId, items, type, tab, dayId = null) {
             </span>
             <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
           </td>
-          <td class="border px-4 py-2 w-40">${parent.klinis || "-"}</td>
-          <td class="border px-4 py-2 w-24 text-center">${parent.icd10_code || parent.icd9_code || "-"}</td>
-          <td class="border px-4 py-2 w-40">${parent.tindakan || parent.procedure_text || "-"}</td>
-          <td class="border px-4 py-2 w-20 text-center">${parent.score || "-"}</td>
+          <td class="w-[33.333%] border px-2 py-2 truncate">${parent.klinis || "-"}</td>
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">${parent.icd10_code || parent.icd9_code || "-"}</td>
+          <td class="w-[16.666%] border px-2 py-2 truncate">${parent.tindakan || parent.procedure_text || "-"}</td>
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">${parent.score || "-"}</td>
           ${state.role === "doctor" ? `
-          <td class="border px-4 py-2 w-32 text-center">
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">
             ${renderMappingSelect(parent, tab, type, idx)}
           </td>` : ``}
         </tr>
@@ -261,19 +265,19 @@ function renderTable(targetId, items, type, tab, dayId = null) {
     (parent.children || []).forEach((child, cIdx) => {
       tbody.innerHTML += `
         <tr x-show="open" x-cloak
-            class="bg-gray-50 dark:bg-gray-800 italic text-sm"
+            class="bg-gray-50 dark:bg-gray-800 italic text-xs"
             data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
             data-db-id="${child.id}">
-          <td class="border px-4 py-2 w-40 cursor-pointer"
+          <td class="w-[33.333%] border px-2 py-2 truncate cursor-pointer"
               onclick="openModalFromAttr(this, '${type}')">
-            → → ${child.kategori || "-"}
+            → ${child.kategori || child.name || "-"}
           </td>
-          <td class="border px-4 py-2 w-40">-</td>
-          <td class="border px-4 py-2 w-24 text-center">${child.icd10_code || child.icd9_code || "-"}</td>
-          <td class="border px-4 py-2 w-40">${child.tindakan || child.procedure_text || "-"}</td>
-          <td class="border px-4 py-2 w-20 text-center">${child.score || "-"}</td>
+          <td class="w-[33.333%] border px-2 py-2">-</td>
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">${child.icd10_code || child.icd9_code || "-"}</td>
+          <td class="w-[16.666%] border px-2 py-2 truncate">${child.tindakan || child.procedure_text || "-"}</td>
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">${child.score || "-"}</td>
           ${state.role === "doctor" ? `
-          <td class="border px-4 py-2 w-32 text-center">
+          <td class="w-[8.333%] border px-2 py-2 text-center truncate">
             ${renderMappingSelect(child, tab, type, idx)}
           </td>` : ``}
         </tr>
@@ -942,11 +946,17 @@ function updateSimulasi(type, opt, value, source, tab) {
   if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
   if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
   if (!Array.isArray(sim.tindakanSekunder)) sim.tindakanSekunder = [];
-  if (!("tarifDraft" in sim)) sim.tarifDraft = null;
 
   const item = typeof value === "string"
-  ? { name: value.split(" [")[0], label: "", source: "Manual", isManual: true }
-  : { ...value };
+  ? { name: value.split(" [")[0] || "", label: "", source: "Manual", isManual: true, id: null }
+  : {
+      ...value,
+      id: value.id || null,
+      name: value.name || value.diagnosis_utama_name || value.diagnosis_sekunder_name || 
+            value.tindakan_utama_name || value.tindakan_sekunder_name || "(tanpa nama)",
+      label: value.label || ""
+    };
+
 
 
   if (source) {
@@ -960,13 +970,14 @@ function updateSimulasi(type, opt, value, source, tab) {
     if (finalOpt === "Primary") {
       const oldPrimary = sim.utama;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
-      sim.utama = item;
+      sim.utama = { diagnosis_utama_id: item.id, ...item };
       if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
     } else if (finalOpt.startsWith("Secondary")) {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
-      if (idx === -1) sim.sekunder.push(item);
-      else sim.sekunder[idx] = item;
+      const secItem = { diagnosis_sekunder_id: item.id, ...item };
+      if (idx === -1) sim.sekunder.push(secItem);
+      else sim.sekunder[idx] = secItem;
     } else if (finalOpt === "None") {
       if (sim.utama && sim.utama.name === item.name) sim.utama = null;
       sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
@@ -974,17 +985,22 @@ function updateSimulasi(type, opt, value, source, tab) {
   }
 
   // Tindakan
+  const nama = typeof value === "string" 
+    ? value 
+    : (value.name || value.label || "(tanpa nama)");
+  const id = typeof value === "string" ? null : (value.id || null);
+   // ambil ID kalau ada
+
   if (type === "tindakan") {
-    const nama = typeof value === "string" ? value : value.name;
     if (finalOpt === "Primary") {
       const oldPrimary = sim.tindakanUtama;
       sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
-      sim.tindakanUtama = { name: nama };
+      sim.tindakanUtama = { tindakan_utama_id: id, name: nama };   // ⬅️ inject ID
       if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
     } else if (finalOpt === "Secondary") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
       if (!sim.tindakanSekunder.find(td => td.name === nama)) {
-        sim.tindakanSekunder.push({ name: nama });
+        sim.tindakanSekunder.push({ tindakan_sekunder_id: id, name: nama });  // ⬅️ inject ID
       }
     } else if (finalOpt === "None") {
       if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
@@ -998,19 +1014,18 @@ function updateSimulasi(type, opt, value, source, tab) {
     if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
     state.simulasi.daily.days[idxDay] = state.simulasi[tab];
 
-    // rebuild summary daily
-    state.simulasi.daily.utama = null;
-    state.simulasi.daily.sekunder = [];
-    state.simulasi.daily.days.forEach(d => {
-      if (d?.utama && !state.simulasi.daily.utama) {
-        state.simulasi.daily.utama = d.utama;
-      }
-      if (Array.isArray(d?.sekunder)) {
-        state.simulasi.daily.sekunder.push(...d.sekunder);
-      }
-    });
+    // rebuild summary harian
+    state.simulasi.daily.summary = state.simulasi.daily.days.map((d, i) => {
+      if (!d) return null;
+      return {
+        dayIndex: i,
+        utama: d.utama || null,
+        sekunder: Array.isArray(d.sekunder) ? d.sekunder : []
+      };
+    }).filter(Boolean);
   }
 
+  syncHiddenInputs();
   console.log("🟢 Simulasi updated:", state.simulasi);
 }
 
@@ -1027,18 +1042,17 @@ async function loadRecommendations(claimId) {
   try {
     const res = await fetch(`/claims/${claimId}/recommendations`)
     if (!res.ok) {
-      console.error("❌ Gagal load rekomendasi dari DB")
-      return
+      return console.error("❌ Gagal load rekomendasi dari DB")
     }
-    const recs = await res.json()
+    const body = await res.json()
+    const recs = body.data || []
     console.log("📥 Data rekomendasi dari DB:", recs)
 
     // Grouping per stage & category
     const grouped = { admission: {}, discharge: {}, daily: {} }
     recs.forEach(r => {
-      const parts = r.category.split("_", 2)
-      const stage = parts[0]
-      const cat = parts[1] || "unknown"
+      let stage = r.stage || "admission"   // fallback kalau DB gak kasih prefix
+      let cat = r.category || "unknown"
 
       if (stage === "admission") {
         grouped.admission[cat] = grouped.admission[cat] || []
@@ -1052,6 +1066,7 @@ async function loadRecommendations(claimId) {
         grouped.daily[stage][cat].push(r)
       }
     })
+
 
     // === Admission ===
     renderTable("diagnosis-admission", (grouped.admission.diagnosis || []).map(mapRecommendation), "diagnosis", "admission")
@@ -1095,6 +1110,61 @@ async function loadRecommendations(claimId) {
   } catch (err) {
     console.error("❌ Error loadRecommendations:", err)
   }
+}
+
+
+async function loadSimulations(claimId) {
+  const res = await fetch(`/claims/${claimId}/simulations`)
+  if (!res.ok) return
+  const body = await res.json()
+  const sims = body.data || []
+  console.log("📥 Simulasi dari DB:", sims)
+
+  sims.forEach(s => {
+    // Diagnosis utama
+    if (s.diagnosis_utama_id) {
+      setTimeout(() => {
+        updateSimulasi("diagnosis", "Primary", { 
+          id: s.diagnosis_utama_id, 
+          name: s.diagnosis_utama_name || "(tanpa nama)",  // ⬅️ fallback
+          mapping: "Primary"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Diagnosis sekunder
+    if (s.diagnosis_sekunder_id) {
+      setTimeout(() => {
+        updateSimulasi("diagnosis", "Secondary-Komorbid", { 
+          id: s.diagnosis_sekunder_id, 
+          name: s.diagnosis_sekunder_name || "(tanpa nama)", // ⬅️ fallback
+          mapping: "Secondary-Komorbid"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Tindakan utama
+    if (s.tindakan_utama_id) {
+      setTimeout(() => {
+        updateSimulasi("tindakan", "Primary", { 
+          id: s.tindakan_utama_id, 
+          name: s.tindakan_utama_name || "(tanpa nama)", // ⬅️ fallback
+          mapping: "Primary"
+        }, true, s.stage)
+      }, 0)
+    }
+
+    // Tindakan sekunder
+    if (s.tindakan_sekunder_id) {
+      setTimeout(() => {
+        updateSimulasi("tindakan", "Secondary", { 
+          id: s.tindakan_sekunder_id, 
+          name: s.tindakan_sekunder_name,   // ⬅ langsung pakai string
+          mapping: "Secondary"
+        }, true, s.stage)
+      }, 0)
+    }
+  })
 }
 
 function mapRecommendation(r) {
@@ -1377,6 +1447,36 @@ async function resumeMedis() {
     alert("Gagal generate resume medis");
   }
 }
+
+// ==================== Hide Right Panel + Stretch Left Panel khusus EXE Dokter ====================
+document.addEventListener("DOMContentLoaded", () => {
+  if (navigator.userAgent.includes("AIClaim-Doctor")) {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const rightPanel = document.querySelector("div.col-span-1");
+      const leftPanel = document.querySelector("div.col-span-2");
+
+      if (rightPanel && leftPanel) {
+        // Hide right panel
+        rightPanel.style.display = "none";
+        console.log("✅ Panel kanan disembunyikan khusus untuk EXE dokter");
+
+        // Stretch left panel jadi full grid
+        leftPanel.classList.remove("col-span-2");
+        leftPanel.classList.add("col-span-3");
+        console.log("✅ Panel kiri diperlebar jadi full width");
+
+        clearInterval(interval); // stop looping kalau sudah sukses
+      }
+
+      attempts++;
+      if (attempts > 10) {
+        clearInterval(interval);
+        console.warn("⚠️ Panel tidak ditemukan setelah 10 percobaan");
+      }
+    }, 200); // cek tiap 200ms
+  }
+});
 
 window.analyzeDiagnosis = analyzeDiagnosis;
 window.analyzeProcedure = analyzeProcedure;
