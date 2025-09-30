@@ -76,6 +76,7 @@
 
       window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(data.diagnosis || {});
       window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(data.procedure || {});
+      window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(data.idrg_summary || {});
       window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(data.alternatif || []);
 
       const summaryField = document.getElementById("summaryField");

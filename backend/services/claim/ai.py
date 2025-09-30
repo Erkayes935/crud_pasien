@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from ... import models
-from ...utils.dummy_data import make_dummy, make_modal
+from ...utils.dummy_data import make_dummy, make_modal, make_dummy_idrg_diagnosis, make_dummy_idrg_summary
 from .helper import parse_number
 
 # ==================================================
@@ -202,6 +202,7 @@ def ai_recommendation_detail(
 
         # seed default ke field diagnosis bila kosong (pakai dummy modal)
         modal_data = make_dummy("A41.9")["modal"]
+        modal_idrg = make_dummy_idrg_diagnosis()
 
         diag.icd10_code = diag.icd10_code or modal_data["icd10"]["kode_icd"]
         diag.struktur_icd10 = diag.struktur_icd10 or modal_data["icd10"]["struktur_icd10"]
@@ -227,7 +228,7 @@ def ai_recommendation_detail(
 
         tindakan = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).all()
         tindakan_list = [{"id": p.id, "tindakan": p.procedure_text} for p in tindakan]
-
+        
         return {
             "status": "ok",
             "data": {
@@ -245,6 +246,7 @@ def ai_recommendation_detail(
                     "z_code": diag.z_code,
                     "kode_bpjs_khusus": diag.kode_bpjs_khusus
                 },
+                "idrg": modal_idrg,
                 "tindakan": tindakan_list,
                 "rawat_inap": {
                     "indikasi": diag.indikasi,
@@ -413,6 +415,7 @@ def ai_summary_service(db: Session, claim_id: int, payload: dict):
     diag = db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).first()
     procs = db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).all()
     alts = db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).limit(2).all()
+    idrg_dummy = make_dummy_idrg_summary()
 
     return {
         "diagnosis": {
@@ -453,7 +456,8 @@ def ai_summary_service(db: Session, claim_id: int, payload: dict):
             }
             for a in alts
         ],
-        "alternatif_count": len(alts)
+        "alternatif_count": len(alts),
+        "idrg_summary": idrg_dummy
     }
 
 # ==================================================

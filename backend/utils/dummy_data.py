@@ -397,3 +397,27 @@ def make_dummy(tab):
           f"komplikasi={len(data['komplikasi'])}")
     
     return data
+
+def make_dummy_idrg_diagnosis():
+    return {
+        "group_idrg": "I-SEP-2",
+        "severity_index": "2",
+        "checklist": "Catat kultur darah & LOS ≥ 3 hari",
+        "faktor_severity": "Sepsis + DM",
+        "ungroupable_alert": "Ungroupable jika kultur darah hilang",
+        "simulasi_tarif": "Rp 7.200.000",
+        "gap_analysis": "+Rp 1.500.000",
+    }
+
+def make_dummy_idrg_summary():
+    return {
+        "group_idrg_kombinasi": "I-SEP-DM-3",
+        "severity_kombinasi": "Tinggi",
+        "checklist_kombinasi": "HbA1c + kultur darah wajib",
+        "faktor_severity": "Sepsis + DM + komplikasi",
+        "risiko_ungroupable": "HbA1c tidak tercatat",
+        "estimasi_tarif": "Rp 9.000.000",
+        "gap_inacbg_vs_idrg": "-Rp 2.000.000",
+        "rekomendasi_ai": "Tambahkan dokumentasi HbA1c di semua pasien DM"
+    }
+

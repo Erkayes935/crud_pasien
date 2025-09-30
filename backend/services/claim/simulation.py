@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from ... import models
+from ...utils.dummy_data import make_dummy_idrg_diagnosis, make_dummy_idrg_summary
 from .helper import parse_number, _update_or_create_procedure, _update_diag_fields
 
 # =========================
@@ -66,6 +67,36 @@ def load_sim_and_summary_service(db: Session, claim_id: int, include_summary: bo
             }
             for a in db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).all()
         ]
+        # === IDRG Diagnosis ===
+    idrg_diag = db.query(models.ClaimIDRGDiagnosis).filter_by(claim_id=claim_id).first()
+    if idrg_diag:
+        summ["idrg_diagnosis"] = {
+            "group_idrg": idrg_diag.group_idrg,
+            "severity_index": idrg_diag.severity_index,
+            "checklist": idrg_diag.checklist,
+            "faktor_severity": idrg_diag.faktor_severity,
+            "ungroupable_alert": idrg_diag.ungroupable_alert,
+            "simulasi_tarif": idrg_diag.simulasi_tarif,
+            "gap_analysis": idrg_diag.gap_analysis,
+        }
+    else:
+        summ["idrg_diagnosis"] = make_dummy_idrg_diagnosis()
+
+    # === IDRG Summary ===
+    idrg_summary = db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).first()
+    if idrg_summary:
+        summ["idrg_summary"] = {
+            "group_idrg_kombinasi": idrg_summary.group_idrg_kombinasi,
+            "severity_kombinasi": idrg_summary.severity_kombinasi,
+            "checklist_kombinasi": idrg_summary.checklist_kombinasi,
+            "faktor_severity": idrg_summary.faktor_severity,
+            "risiko_ungroupable": idrg_summary.risiko_ungroupable,
+            "estimasi_tarif": idrg_summary.estimasi_tarif,
+            "gap_inacbg_vs_idrg": idrg_summary.gap_inacbg_vs_idrg,
+            "rekomendasi_ai": idrg_summary.rekomendasi_ai,
+        }
+    else:
+        summ["idrg_summary"] = make_dummy_idrg_summary()
     return sim, summ
 
 def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ_data: dict): 
@@ -76,6 +107,8 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
     # 🔹 Bersihkan dulu data regulasi dummy & simulasi 
     db.query(models.ClaimRegulationDetail).filter_by(claim_id=claim_id, is_dummy=True).delete() 
     db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).delete() 
+    db.query(models.ClaimIDRGDiagnosis).filter_by(claim_id=claim_id).delete() 
+    db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).delete() 
     db.flush() 
     
     # 🔹 Simpan ulang ClaimSimulation 
@@ -163,6 +196,18 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
                 is_dummy=True 
             )) 
             db.flush() 
+    idrg_diag_data = make_dummy_idrg_diagnosis()
+    idrg_diag = models.ClaimIDRGDiagnosis(
+        claim_id=claim_id,
+        group_idrg=idrg_diag_data.get("group_idrg"),
+        severity_index=idrg_diag_data.get("severity_index"),
+        checklist=idrg_diag_data.get("checklist"),
+        faktor_severity=idrg_diag_data.get("faktor_severity"),
+        ungroupable_alert=idrg_diag_data.get("ungroupable_alert"),
+        simulasi_tarif=idrg_diag_data.get("simulasi_tarif"),
+        gap_analysis=idrg_diag_data.get("gap_analysis"),
+    )
+    db.add(idrg_diag)
     # 🔹 Simpan Evaluasi (summary) hanya kalau ada 
     if summ_data and ( summ_data.get("kombinasi_diagnosis") or summ_data.get("procedure") or summ_data.get("alternatif") ): 
         print("🗑️ Akan hapus evaluasi lama untuk claim:", claim_id)
@@ -249,6 +294,23 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
                 is_dummy=True
             ))
         print("🆕 Insert ClaimCombinationAlternative:", alt) 
+        if summ_data.get("idrg"):
+            idrg_summary_data = summ_data["idrg"]
+        else:
+            idrg_summary_data = make_dummy_idrg_summary()
+
+        idrg_summary = models.ClaimIDRGSummary(
+            claim_id=claim_id,
+            group_idrg_kombinasi=idrg_summary_data.get("group_idrg_kombinasi"),
+            severity_kombinasi=idrg_summary_data.get("severity_kombinasi"),
+            checklist_kombinasi=idrg_summary_data.get("checklist_kombinasi"),
+            faktor_severity=idrg_summary_data.get("faktor_severity"),
+            risiko_ungroupable=idrg_summary_data.get("risiko_ungroupable"),
+            estimasi_tarif=idrg_summary_data.get("estimasi_tarif"),
+            gap_inacbg_vs_idrg=idrg_summary_data.get("gap_inacbg_vs_idrg"),
+            rekomendasi_ai=idrg_summary_data.get("rekomendasi_ai"),
+        )
+        db.add(idrg_summary)
     db.commit()
 
 def get_simulations_service(db: Session, claim_id: int):

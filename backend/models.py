@@ -382,8 +382,6 @@ class ClaimSimulation(Base):
         cascade="all, delete-orphan"
     )
 
-
-
 # =========================================
 # Claim AI Recommendations Summary
 # =========================================
@@ -456,6 +454,51 @@ class ClaimCombinationAlternative(Base):
 
     claim = relationship("Claim", back_populates="combination_alternatives")
 
+# =========================================
+# i-DRG Diagnosis (per modal detail diagnosis)
+# =========================================
+class ClaimIDRGDiagnosis(Base):
+    __tablename__ = "claim_idrg_diagnosis"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+
+    group_idrg = Column(String(50))
+    severity_index = Column(String(50))
+    checklist = Column(Text)
+    faktor_severity = Column(Text)
+    ungroupable_alert = Column(Text)
+    simulasi_tarif = Column(String(50))
+    gap_analysis = Column(String(50))
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
+
+
+# =========================================
+# i-DRG Summary (hasil kombinasi verifikator)
+# =========================================
+class ClaimIDRGSummary(Base):
+    __tablename__ = "claim_idrg_summary"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+
+    group_idrg_kombinasi = Column(String(50))
+    severity_kombinasi = Column(String(50))
+    checklist_kombinasi = Column(Text)
+    faktor_severity = Column(Text)
+    risiko_ungroupable = Column(Text)
+    estimasi_tarif = Column(String(50))
+    gap_inacbg_vs_idrg = Column(String(50))
+    rekomendasi_ai = Column(Text)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
+    is_dummy = Column(Boolean, default=False)
 
 # =========================================
 # Claim Tariffs (INA-CBGs result)
