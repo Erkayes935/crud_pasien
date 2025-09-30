@@ -181,5 +181,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/claim.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.state.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.manual.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.modals.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.api.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.bootstrap.js') }}"></script>
 {% endblock %}

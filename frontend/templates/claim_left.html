@@ -256,7 +256,7 @@
     <div x-show="modalOpen" x-cloak
          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <button type="button" @click="modalOpen=false"
+        <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
                 class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
           ✕
         </button>
@@ -271,5 +271,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/claim.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.state.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.manual.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.modals.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.api.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.bootstrap.js') }}"></script>
 {% endblock %}

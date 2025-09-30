@@ -214,3 +214,37 @@ def delete_visit(
 
     flash(request, "Visit berhasil dihapus !", "success")
     return RedirectResponse("/visits", status_code=303)
+
+# =========================
+# WIZARD CLAIM VISIT
+# =========================
+
+@router.get("/patients/{patient_id}/visits")
+def list_visit(
+    request: Request, 
+    patient_id: int, 
+    db: Session = Depends(get_db), 
+    search: str | None = Query(None),
+    user=Depends(require_roles_session("doctor", "admin_rs")),
+    flow: str = None
+):
+    visits = db.query(models.Visit).filter(models.Visit.patient_id == patient_id)
+    if search:
+        visits = visits.filter(
+            models.Visit.dokter.ilike(f"%{search}%") |
+            models.Visit.poli.ilike(f"%{search}%")
+        )
+    visits = visits.order_by(models.Visit.id.desc()).filter(models.Visit.is_deleted == False).all()
+    patient = db.query(models.Patient).get(patient_id)
+    return templates.TemplateResponse(
+        "visit_list.html",
+        {
+            "request": request,
+            "visits": visits,
+            "patient": patient,
+            "flow": flow,
+            "user": user,
+            "current_user": user,
+            "csrf_token": issue_csrf_token(request)
+        }
+    )
