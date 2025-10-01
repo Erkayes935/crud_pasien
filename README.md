@@ -134,16 +134,160 @@ This project contains short module- and function-level docstrings inside the
 
 - Add input validation with Pydantic models for posted forms / import JSON.
 - Cache JWKS in `auth.py` to avoid network calls per request.
-- Add unit tests for CRUD operations and auth helpers.
-- Add CI workflow (GitHub Actions) that runs linters and basic tests.
+```markdown
+# CRUD Pasien (FastAPI + SQLAlchemy)
+
+Lightweight patient & claims management app built with FastAPI, SQLAlchemy
+and server-side Jinja2 templates. The codebase has grown and been refactored
+— this README reflects the current structure, dependencies and developer
+workflow (run, migrations, env vars, and useful notes).
+
+## Quick facts
+- Python: 3.10+ (developed/tested on 3.11+)
+- Web framework: FastAPI
+- DB: PostgreSQL via SQLAlchemy (synchronous usage)
+- Auth: Auth0 (JWT) and session helpers
+- Templates: Jinja2 (templates under `frontend/templates`)
+
+
+## Repository layout
+- `backend/` — application code and routers
+  - `main.py` — FastAPI app, middleware, and router registration
+  - `models.py` — comprehensive SQLAlchemy models (Hospital, Patient, Visit, Claim, MedicalRecord, User, etc.)
+  - `database.py` — SQLAlchemy engine / Base and DB helpers
+  - `config.py` — environment-driven configuration (dotenv support)
+  - `routers/` — many routers (dashboard, auth, patients, users, hospitals, medical_records, claims, visits, ...)
+  - `static/` — static assets served at `/static`
+  - `services/` — business logic and domain services (e.g. `dashboard_service.py`, `services/claim/*` contains claim-specific logic like `core.py`, `ai.py`, `simulation.py`, `helper.py`)
+  - `utils/` — small helpers used across the app (e.g. `form_utils.py`, `templates.py`, `flash.py`, `auth_utils.py`, `dummy_data.py`)
+  - `crud/` — thin DB helper modules that encapsulate simple CRUD queries for each model (e.g. `crud/patient.py`, `crud/claim.py`, `crud/medical_record.py`, `crud/user.py`, `crud/visit.py`, `crud/hospital.py`).
+    - These helpers keep routers thin; more complex domain logic has been moved to `services/` (for example heavy claim-creation workflows live under `services/claim`).
+- `alembic/` — DB migrations (alembic env uses `DATABASE_URL` from environment)
+- `frontend/templates/` — Jinja2 templates used by the app
+
+
+## Prerequisites
+- PostgreSQL running and reachable from your development machine
+- Python 3.10+
+
+
+## Setup (PowerShell)
+
+1) Create and activate a virtual environment
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+2) Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+3) Configure environment
+
+- Copy `.env.example` (if present) to `.env` and fill required variables.
+  The important environment variables used by `backend/config.py` are:
+
+  - DATABASE_URL — e.g. postgresql://postgres:password@localhost:5432/dbname
+  - AUTH0_DOMAIN
+  - CLIENT_ID
+  - CLIENT_SECRET
+  - REDIRECT_URI
+  - AUDIENCE
+  - ALGORITHMS — comma-separated (e.g. RS256)
+  - SESSION_SECRET — optional; auto-generated if not provided
+
+  The module `backend/config.py` validates presence of Auth0-related
+  variables at import time and will raise an error if any required variable
+  is missing.
+
+
+## Running the app (development)
+
+Start the app with uvicorn (auto-reload):
+
+```powershell
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The app serves static files at `/static` and exposes routers registered in
+`backend/main.py`. A common entrypoint for the UI is a dashboard route (see
+`routers/dashboard_router`).
+
+
+## Database migrations (Alembic)
+
+This repository includes `alembic/` with migration scripts. Alembic reads
+`DATABASE_URL` from the environment (see `alembic/env.py`). Typical workflow:
+
+```powershell
+setx DATABASE_URL "postgresql://postgres:password@localhost:5432/dbname"; # (PowerShell)
+alembic upgrade head
+```
+
+Creating a new migration after changing models:
+
+```powershell
+alembic revision --autogenerate -m "describe changes"
+alembic upgrade head
+```
+
+Note: `backend/main.py` also calls `Base.metadata.create_all(bind=engine)` at
+startup, so the DB user needs privileges to create tables when running the
+app directly. For controlled schema changes prefer Alembic migrations.
+
+
+## Key features & routes
+
+- Auth: Auth0 integration and session helpers are available in `backend/auth.py`.
+  - Token-based and session-based flows are supported. JWT verification
+    uses Auth0 JWKS; network failures will affect token verification.
+- Models: see `backend/models.py` — main entities include Hospital, Patient,
+  Visit, MedicalRecord, Claim and related submodels (diagnoses, procedures,
+  evaluations, tariffs, logs, etc.).
+- Routers: The app registers multiple routers in `backend/main.py` including
+  dashboard, auth, patients, users, hospitals, medical_records, claims and visits.
+
+
+## Dependencies
+
+Primary dependencies are listed in `requirements.txt` and include:
+
+- fastapi, uvicorn, SQLAlchemy
+- psycopg2-binary (Postgres driver)
+- python-jose / httpx / requests (auth & HTTP)
+- Jinja2, openpyxl (export), python-dotenv, alembic
+
+
+## Developer notes & troubleshooting
+
+- Configuration fails fast: missing critical Auth0 env vars cause a
+  RuntimeError at import time (see `backend/config.py`). This prevents
+  running the app in a misconfigured state.
+- JWKS fetching: `auth.py` fetches Auth0 JWKS for token verification —
+  consider caching JWKS or using a resilient HTTP client in production.
+- DB initialization: The app calls `Base.metadata.create_all(...)` on
+  startup; if you prefer migrations-only, remove or guard that call.
+- File uploads / import: endpoints like import expect JSON; ensure the
+  client sends `application/json`.
+
+
+## Suggested next improvements (low-risk)
+
+- Add Pydantic request models for endpoints that accept JSON or form data.
+- Add unit tests for CRUD and auth helpers (use pytest + a test DB).
+- Add a GitHub Actions workflow to run linting and tests on PRs.
+- Add CONTRIBUTING.md with development setup and a small PowerShell helper
+  script to bootstrap local DB and env.
 
 
 ## Contact / authors
 Repo owner: Erkayes935
 
-If you'd like, I can also:
-- Add Pydantic request models and update routes to use them
-- Add JWKS caching and tests for token verification
-- Add a small PowerShell helper to initialize the DB locally
+If you'd like, I can also implement any of the suggested improvements above
+— tell me which one you want and I'll prepare a follow-up change.
 
-Tell me which you'd like next and I will implement it.
+```
