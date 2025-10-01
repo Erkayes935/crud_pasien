@@ -85,6 +85,8 @@
 
       window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(result.evaluasiDiagnosis || {});
       window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(result.evaluasiProcedure || {});
+      // window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(result.idrg_summary || {});
+      // (perubahan di atas)
       window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(result.alternatifKombinasi || []);
 
       // Hidden field & state summary

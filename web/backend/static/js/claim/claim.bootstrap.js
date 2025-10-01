@@ -105,6 +105,45 @@
     `;
   }
 
+  // function renderEvaluasiIDRGSummary(data) {
+  //   const target = document.getElementById("evaluasi-idrg");
+  //   if (!target) return;
+  //   target.innerHTML = "";
+
+  //   if (!data) {
+  //     target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada prediksi i-DRG summary</div>`;
+  //     return;
+  //   }
+
+  //   const renderRow = (label, value) => `
+  //     <div class="grid grid-cols-2">
+  //       <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+  //       <div class="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2">${value || "-"}</div>
+  //     </div>
+  //   `;
+
+  //   target.innerHTML = `
+  //     <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
+  //       <div class="accordion-header flex items-center justify-between bg-yellow-500 dark:bg-yellow-600 text-white dark:text-gray-900 px-3 py-2 font-bold cursor-pointer"
+  //           @click="open = !open">
+  //         <span class="font-bold text-lg mb-2 text-gray-900">Prediksi i-DRG Kombinasi</span>
+  //         <span x-text="open ? '▼' : '▶'"></span>
+  //       </div>
+  //       <div class="accordion-body" x-show="open" x-transition>
+  //         ${renderRow("Group i-DRG Kombinasi", data.group_idrg_kombinasi)}
+  //         ${renderRow("Severity Kombinasi", data.severity_kombinasi)}
+  //         ${renderRow("Checklist Kombinasi", data.checklist_kombinasi)}
+  //         ${renderRow("Faktor Severity", data.faktor_severity)}
+  //         ${renderRow("Risiko Ungroupable", data.risiko_ungroupable)}
+  //         ${renderRow("Estimasi Tarif", data.estimasi_tarif)}
+  //         ${renderRow("Gap INA-CBG vs i-DRG", data.gap_inacbg_vs_idrg)}
+  //         ${data.rekomendasi_ai ? renderRow("Rekomendasi AI", data.rekomendasi_ai) : ""}
+  //       </div>
+  //     </div>
+  //   `;
+  // }
+  // (perubahan di atas)
+
   function renderAlternatifKombinasi(items) {
     const target = document.getElementById("alternatif");
     if (!target) return;
