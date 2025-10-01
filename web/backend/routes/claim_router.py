@@ -19,7 +19,9 @@ from ..utils.templates import templates
 from ..utils.flash import flash
 from ..crud import claim as claim_crud
 from ..services.claim import core, simulation, ai
-from ..services import claim_ai, claim_helper
+from ..services import claim_ai
+from backend.services.claim.simulation import load_sim_and_summary
+from backend.services import claim_helper
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
@@ -152,7 +154,7 @@ def edit_claim_form(
     is_doctor = (isinstance(user.role, str) and user.role == "doctor") or \
                 (isinstance(user.role, (list, tuple)) and "doctor" in user.role)
 
-    sim, summ = claim_helper.load_sim_and_summary(db, id, include_summary=not is_doctor)
+    sim, summ = load_sim_and_summary(db, id, include_summary=not is_doctor)
     template_name = "claim_left.html" if is_doctor else "claim_right.html"
 
     return templates.TemplateResponse(template_name, {
@@ -166,7 +168,7 @@ def edit_claim_form(
         "isVerifikator": ("verifikator" in user.role) if isinstance(user.role, (list, tuple)) else (user.role == "verifikator"),
         "sim": sim,
         "summ": summ,
-        "claim_medical_record_fields": form_configs["claim_medical_record"],
+        "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
     })
 
 

@@ -9,7 +9,7 @@ from backend.database import get_db
 from backend.utils.templates import templates
 from backend.utils.flash import flash
 from backend.auth import require_roles_session, require_csrf_dep, issue_csrf_token
-from backend.crud import medical_record as mr_crud
+import backend.crud.medical_record as mr_crud
 
 router = APIRouter()
 

@@ -9,7 +9,7 @@ from backend.database import get_db
 from backend.utils.templates import templates
 from backend.utils.flash import flash
 from backend.auth import require_roles_session, require_csrf_dep, issue_csrf_token
-from backend.crud import visit as visit_crud
+import backend.crud.visit as visit_crud
 from backend.form_configs import form_configs
 
 router = APIRouter()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.crud import claim as claim_crud
+import backend.crud.claim as claim_crud
 from backend.services import claim_ai
 
 router = APIRouter()

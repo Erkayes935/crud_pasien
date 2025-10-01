@@ -22,10 +22,10 @@ patient_fields = [
 # Hospital
 # ------------------------
 hospital_fields = [
-    {"name": "kode_rs", "label": "Kode RS", "type": "text"},
+    {"name": "kode_hospital", "label": "Kode RS", "type": "text"},
     {"name": "nama", "label": "Nama Rumah Sakit", "type": "text"},
-    {"name": "tipe_rs", "label": "Tipe RS", "type": "text"},
-    {"name": "jenis_rs", "label": "Jenis RS", "type": "text"},
+    {"name": "tipe_hospital", "label": "Tipe RS", "type": "text"},
+    {"name": "jenis_hospital", "label": "Jenis RS", "type": "text"},
     {"name": "alamat", "label": "Alamat", "type": "text"},
     {"name": "telepon", "label": "Telepon", "type": "text"},
     {"name": "email", "label": "Email", "type": "email"},
@@ -81,7 +81,7 @@ claim_medical_record_fields = [
 
     # --- Daily ---
     {"name": "notes_date", "label": "Tanggal Catatan", "type": "date", "record_type": "daily"},
-    {"name": "td", "label": "Tekanan Darah", "type": "text", "record_type": "daily"},
+    {"name": "tekanan_darah", "label": "Tekanan Darah", "type": "text", "record_type": "daily"},
     {"name": "nadi", "label": "Nadi", "type": "text", "record_type": "daily"},
     {"name": "pernapasan", "label": "Pernapasan", "type": "text", "record_type": "daily"},
     {"name": "suhu", "label": "Suhu", "type": "text", "record_type": "daily"},
