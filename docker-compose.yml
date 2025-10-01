@@ -3,13 +3,14 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+    container_name: crud_pasien_web
     ports:
       - "8001:8001"
+    # pakai .env di root
     env_file:
       - ./.env
+    # jika DATABASE_URL ada di .env, baris ini opsional; biarkan agar bisa override dari host
     environment:
-      # Kalau baris ini tetap ada, ia akan MENIMPA nilai dari .env
-      DATABASE_URL: ${DATABASE_URL}
       CORE_ENGINE_URL: http://core_engine:8002
     working_dir: /app/web
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001
@@ -19,9 +20,13 @@ services:
   core_engine:
     build:
       context: ./core_engine
+      dockerfile: Dockerfile
+    container_name: crud_pasien_core_engine
     ports:
       - "8002:8002"
+    # env khusus untuk core_engine
     env_file:
-      - ./.env
+      - ./.env        # jika ingin share sebagian env root
+      - ./core_engine/.env
     working_dir: /app
     command: uvicorn main:app --host 0.0.0.0 --port 8002
