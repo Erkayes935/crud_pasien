@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from ... import models
-from ...utils.dummy_data import make_dummy_idrg_diagnosis, make_dummy_idrg_summary
+from ...utils.dummy_data import make_dummy_idrg_diagnosis, make_dummy_idrg_summary, make_dummy_idrg_regulasi
 from .helper import parse_number, _update_or_create_procedure, _update_diag_fields
 
 # =========================
@@ -91,7 +91,7 @@ def load_sim_and_summary_service(db: Session, claim_id: int, include_summary: bo
             "checklist_kombinasi": idrg_summary.checklist_kombinasi,
             "faktor_severity": idrg_summary.faktor_severity,
             "risiko_ungroupable": idrg_summary.risiko_ungroupable,
-            "estimasi_tarif": idrg_summary.estimasi_tarif,
+            "estimasi_tarif": parse_number(idrg_summary.estimasi_tarif),
             "gap_inacbg_vs_idrg": idrg_summary.gap_inacbg_vs_idrg,
             "rekomendasi_ai": idrg_summary.rekomendasi_ai,
         }
@@ -208,6 +208,12 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
         gap_analysis=idrg_diag_data.get("gap_analysis"),
     )
     db.add(idrg_diag)
+    db.flush()
+    # 🔹 Tambah regulasi dummy untuk 4 field i-DRG Diagnosis
+    for field in ["group_idrg", "severity_index", "checklist", "ungroupable_alert"]:
+        reg = make_dummy_idrg_regulasi("diagnosis", field)
+        db.add(models.ClaimRegulationDetail(claim_id=claim_id, idrg_diagnosis_id=idrg_diag.id, **reg))
+
     # 🔹 Simpan Evaluasi (summary) hanya kalau ada 
     if summ_data and ( summ_data.get("kombinasi_diagnosis") or summ_data.get("procedure") or summ_data.get("alternatif") ): 
         print("🗑️ Akan hapus evaluasi lama untuk claim:", claim_id)
@@ -311,6 +317,16 @@ def save_simulation_and_summary(db: Session, claim_id: int, sim_data: dict, summ
             rekomendasi_ai=idrg_summary_data.get("rekomendasi_ai"),
         )
         db.add(idrg_summary)
+        db.flush()
+        # 🔹 Tambah regulasi dummy untuk 4 field i-DRG Summary
+        for field in [
+            "group_idrg_kombinasi",
+            "severity_kombinasi",
+            "checklist_kombinasi",
+            "risiko_ungroupable",
+        ]:
+            reg = make_dummy_idrg_regulasi("summary", field)
+            db.add(models.ClaimRegulationDetail(claim_id=claim_id, idrg_summary_id=idrg_summary.id, **reg))
     db.commit()
 
 def get_simulations_service(db: Session, claim_id: int):

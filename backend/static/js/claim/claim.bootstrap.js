@@ -105,7 +105,7 @@
     `;
   }
 
-  function renderEvaluasiIDRGSummary(data) {
+  function renderEvaluasiIDRGSummary(data, claimId) {
     const target = document.getElementById("evaluasi-idrg");
     if (!target) return;
     target.innerHTML = "";
@@ -118,23 +118,33 @@
     const renderRow = (label, value) => `
       <div class="grid grid-cols-2">
         <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2">${value || "-"}</div>
+        <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2">${value || "-"}</div>
+      </div>
+    `;
+
+    const renderRowClickable = (label, value, field) => `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2"
+            onclick="openRegulationModal('${claimId}', '${field}')">
+          ${value || "-"}
+        </div>
       </div>
     `;
 
     target.innerHTML = `
       <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-yellow-500 dark:bg-yellow-600 text-white dark:text-gray-900 px-3 py-2 font-bold cursor-pointer"
+        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-800 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-bold cursor-pointer"
             @click="open = !open">
-          <span class="font-bold text-lg mb-2 text-gray-900">Prediksi i-DRG Kombinasi</span>
+          <span>Prediksi i-DRG Kombinasi</span>
           <span x-text="open ? '▼' : '▶'"></span>
         </div>
         <div class="accordion-body" x-show="open" x-transition>
-          ${renderRow("Group i-DRG Kombinasi", data.group_idrg_kombinasi)}
-          ${renderRow("Severity Kombinasi", data.severity_kombinasi)}
-          ${renderRow("Checklist Kombinasi", data.checklist_kombinasi)}
-          ${renderRow("Faktor Severity", data.faktor_severity)}
-          ${renderRow("Risiko Ungroupable", data.risiko_ungroupable)}
+          ${renderRowClickable("Group i-DRG Kombinasi", data.group_idrg_kombinasi, "idrg_summary_group")}
+          ${renderRowClickable("Severity Kombinasi", data.severity_kombinasi, "idrg_summary_severity")}
+          ${renderRowClickable("Checklist Kombinasi", data.checklist_kombinasi, "idrg_summary_checklist")}
+          ${renderRow("Faktor Severity Kombinasi", data.faktor_severity)}
+          ${renderRowClickable("Risiko Ungroupable", data.risiko_ungroupable, "idrg_summary_ungroupable")}
           ${renderRow("Estimasi Tarif", data.estimasi_tarif)}
           ${renderRow("Gap INA-CBG vs i-DRG", data.gap_inacbg_vs_idrg)}
           ${data.rekomendasi_ai ? renderRow("Rekomendasi AI", data.rekomendasi_ai) : ""}
@@ -142,6 +152,7 @@
       </div>
     `;
   }
+
 
   function renderAlternatifKombinasi(items) {
     const target = document.getElementById("alternatif");
@@ -160,7 +171,7 @@
     items.forEach((alt, i) => {
       target.insertAdjacentHTML("beforeend", `
         <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
-          <h4 class="font-bold text-blue-600 mb-2">Alternatif ${i + 1}: ${window.statusIcon(alt.nama) || "-"}</h4>
+          <h4 class="font-bold text-yellow-600 mb-2">Alternatif ${i + 1}: ${window.statusIcon(alt.nama) || "-"}</h4>
           <div class="text-sm">
             <div><b>Severity:</b> ${alt.severity_detail || "-"}</div>
             <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>

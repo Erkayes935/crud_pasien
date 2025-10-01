@@ -421,3 +421,52 @@ def make_dummy_idrg_summary():
         "rekomendasi_ai": "Tambahkan dokumentasi HbA1c di semua pasien DM"
     }
 
+from datetime import datetime
+
+def make_dummy_idrg_regulasi(context: str, field: str):
+    mapping = {
+        "group_idrg": "Group i-DRG",
+        "severity_index": "Severity Index",
+        "checklist": "Checklist Dokumentasi",
+        "ungroupable_alert": "Ungroupable Alert",
+        "group_idrg_kombinasi": "Group i-DRG Kombinasi",
+        "severity_kombinasi": "Severity Kombinasi",
+        "checklist_kombinasi": "Checklist i-DRG Kombinasi",
+        "risiko_ungroupable": "Risiko Ungroupable"
+    }
+
+    label = mapping.get(field, field)
+
+    if context == "diagnosis":
+        return {
+            "judul_regulasi": f"Aturan i-DRG Diagnosis - {label}",
+            "dasar_hukum": "Permenkes",
+            "bab_pasal": "Bab I Pasal 3",
+            "isi": f"Regulasi terkait {label} pada i-DRG Diagnosis (dummy).",
+            "is_dummy": True,
+            "is_deleted": False,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+    elif context == "summary":
+        return {
+            "judul_regulasi": f"Aturan i-DRG Summary - {label}",
+            "dasar_hukum": "Permenkes",
+            "bab_pasal": "Bab II Pasal 6",
+            "isi": f"Regulasi terkait {label} pada i-DRG Summary (dummy).",
+            "is_dummy": True,
+            "is_deleted": False,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+    else:
+        return {
+            "judul_regulasi": "Aturan i-DRG (Unknown Context)",
+            "dasar_hukum": "Permenkes",
+            "bab_pasal": "-",
+            "isi": f"Context {context} tidak dikenali (dummy).",
+            "is_dummy": True,
+            "is_deleted": False,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }

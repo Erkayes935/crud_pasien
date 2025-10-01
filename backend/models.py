@@ -329,6 +329,8 @@ class ClaimRegulationDetail(Base):
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=True)
     diagnosis_evaluation_id = Column(Integer, ForeignKey("claim_diagnosis_evaluations.id"), nullable=True)
     procedure_evaluation_id = Column(Integer, ForeignKey("claim_procedure_evaluations.id"), nullable=True)
+    idrg_diagnosis_id = Column(Integer, ForeignKey("claim_idrg_diagnosis.id"), nullable=True)
+    idrg_summary_id   = Column(Integer, ForeignKey("claim_idrg_summary.id"), nullable=True)
 
 
     judul_regulasi = Column(String(255), nullable=False)   # contoh: PNPK Sepsis 2020
@@ -346,6 +348,8 @@ class ClaimRegulationDetail(Base):
     procedure = relationship("ClaimProcedure")
     diagnosis_evaluation = relationship("ClaimDiagnosisEvaluation")
     procedure_evaluation = relationship("ClaimProcedureEvaluation")
+    idrg_diagnosis = relationship("ClaimIDRGDiagnosis")
+    idrg_summary = relationship("ClaimIDRGSummary")
 
 
 # =========================================

@@ -353,6 +353,8 @@ def get_regulations(
     procedure_id: int | None = None,
     diagnosis_evaluation_id: int | None = None,
     procedure_evaluation_id: int | None = None,
+    idrg_diagnosis_id: int | None = None,
+    idrg_summary_id: int | None = None,
     db: Session = Depends(get_db)
 ):
     return claim_service.get_regulations_payload(
@@ -360,5 +362,7 @@ def get_regulations(
         diagnosis_id=diagnosis_id,
         procedure_id=procedure_id,
         diagnosis_evaluation_id=diagnosis_evaluation_id,
-        procedure_evaluation_id=procedure_evaluation_id
+        procedure_evaluation_id=procedure_evaluation_id,
+        idrg_diagnosis_id=idrg_diagnosis_id,
+        idrg_summary_id=idrg_summary_id
     )

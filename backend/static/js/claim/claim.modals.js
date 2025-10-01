@@ -207,7 +207,7 @@
     `;
   }
 
-  function renderIdrgSection(idrg) {
+  function renderIdrgSection(idrg, claimId) {
     if (!idrg) {
       return `<div class="italic text-gray-500">Tidak ada prediksi i-DRG</div>`;
     }
@@ -219,26 +219,37 @@
       </div>
     `;
 
+    const renderRowClickable = (label, value, field) => `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2"
+            onclick="openRegulationModal('${claimId}', '${field}')">
+          ${value || "-"}
+        </div>
+      </div>
+    `;
+
     return `
       <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
         <div class="accordion-header flex items-center justify-between bg-blue-600 text-white px-3 py-2 font-bold cursor-pointer"
             @click="open = !open">
-          <span>Prediksi i-DRG</span>
+          <span>Prediksi i-DRG (Diagnosis)</span>
           <span x-text="open ? '▼' : '▶'"></span>
         </div>
         <div class="accordion-body" x-show="open" x-transition>
-          ${renderRow("Group i-DRG", idrg.group_idrg)}
-          ${renderRow("Severity Index", idrg.severity_index)}
-          ${renderRow("Checklist", idrg.checklist)}
+          ${renderRowClickable("Group i-DRG", idrg.group_idrg, "idrg_diagnosis_group")}
+          ${renderRowClickable("Severity Index", idrg.severity_index, "idrg_diagnosis_severity")}
+          ${renderRowClickable("Checklist Dokumentasi", idrg.checklist, "idrg_diagnosis_checklist")}
           ${renderRow("Faktor Severity", idrg.faktor_severity)}
-          ${renderRow("Ungroupable Alert", idrg.ungroupable_alert)}
+          ${renderRowClickable("Ungroupable Alert", idrg.ungroupable_alert, "idrg_diagnosis_ungroupable")}
           ${renderRow("Simulasi Tarif", idrg.simulasi_tarif)}
           ${renderRow("Gap Analysis", idrg.gap_analysis)}
-          ${idrg.rekomendasi_ai ? renderRow("Rekomendasi AI", idrg.rekomendasi_ai) : ""}
         </div>
       </div>
     `;
   }
+
+
 
   function renderTindakan(list) {
     const tindakanList = (list && list.length > 0)
@@ -391,10 +402,21 @@
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     let url = `/claims/${claimId}/regulations?`;
+
     if (type === "diagnosis") url += `diagnosis_id=${id}`;
     else if (type === "procedure") url += `procedure_id=${id}`;
     else if (type === "diagnosis_eval") url += `diagnosis_evaluation_id=${id}`;
     else if (type === "procedure_eval") url += `procedure_evaluation_id=${id}`;
+
+    // 🔹 Tambahin untuk i-DRG Diagnosis
+    else if (type === "idrg_diagnosis") {
+      url += `idrg_diagnosis_id=${id}`;
+    }
+
+    // 🔹 Tambahin untuk i-DRG Summary
+    else if (type === "idrg_summary") {
+      url += `idrg_summary_id=${id}`;
+    }
 
     try {
       const res = await fetch(url);
@@ -410,15 +432,24 @@
       window.claimState = window.claimState || {};
       window.claimState.regulationSource = { type, id };
 
-      // Tentukan apakah perlu tombol merah manual
-      const isEval = (type === "diagnosis_eval" || type === "procedure_eval");
+      const isEval =
+        type === "diagnosis_eval" ||
+        type === "procedure_eval" ||
+        type.startsWith("idrg_summary");   // ✅ hanya summary yang close langsung
 
-      const closeBtn = isEval
-        ? "" // kalau dari eval → jangan render close merah
-        : `<div class="flex justify-end items-start mb-3">
-            <button type="button" onclick="closeRegulationModal()"
-                    class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
-          </div>`;
+      const isIdrgDiagnosis = type.startsWith("idrg_diagnosis"); // treat i-DRG juga seperti evaluasi
+
+      let closeBtn = "";
+      if (isEval) {
+        // evaluasi & summary → pakai default close bawaan modal
+        closeBtn = "";
+      } else {
+        // diagnosis/procedure/i-DRG diagnosis → render tombol merah manual
+        closeBtn = `<div class="flex justify-end items-start mb-3">
+                      <button type="button" onclick="closeRegulationModal()"
+                              class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+                    </div>`;
+      }
 
       const content = `
         <div class="space-y-4 text-sm">
@@ -439,12 +470,12 @@
         </div>
       `;
 
-      // Kalau dari eval, biarkan default ❌ (jadi `hideDefaultClose=false`)
       openModal("Detail Regulasi", content, { hideDefaultClose: isEval ? false : true });
     } catch (e) {
       console.error("❌ Gagal load regulasi", e);
     }
   }
+
 
 
   // === Tutup Regulasi (Balik ke modal asal) ===
@@ -454,11 +485,22 @@
     if (source?.type === "procedure" && window.claimState?.currentProcedure) {
       // Balik ke modal tindakan
       openProcedureModal(window.claimState.currentProcedure.id);
+
+    } else if (source?.type?.startsWith("idrg_diagnosis") && window.claimState?.currentDiagnosis) {
+      // Balik ke modal diagnosis
+      closeNestedModal();
+
+    } else if (source?.type?.startsWith("idrg_summary")) {
+      // i-DRG Summary → langsung close modal (kayak evaluasi)
+      const state = Alpine.$data(document.getElementById('claimRoot'));
+      state.modalOpen = false;
+
     } else {
-      // Default → balik ke modal diagnosis
+      // default → close diagnosis
       closeNestedModal();
     }
   }
+
 
   // Export
   window.openModal = openModal;

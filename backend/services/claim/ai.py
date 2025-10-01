@@ -246,7 +246,7 @@ def ai_recommendation_detail(
                     "z_code": diag.z_code,
                     "kode_bpjs_khusus": diag.kode_bpjs_khusus
                 },
-                "idrg": modal_idrg,
+                "idrg_diagnosis": modal_idrg,
                 "tindakan": tindakan_list,
                 "rawat_inap": {
                     "indikasi": diag.indikasi,
@@ -470,10 +470,13 @@ def get_regulations_payload(
     procedure_id: int | None = None,
     diagnosis_evaluation_id: int | None = None,
     procedure_evaluation_id: int | None = None,
+    idrg_diagnosis_id: int | None = None,
+    idrg_summary_id: int | None = None,
 ) -> dict:
     q = db.query(models.ClaimRegulationDetail).filter_by(
         claim_id=claim_id, is_deleted=False
     )
+
     if diagnosis_id:
         q = q.filter(models.ClaimRegulationDetail.diagnosis_id == diagnosis_id)
     elif procedure_id:
@@ -482,6 +485,11 @@ def get_regulations_payload(
         q = q.filter(models.ClaimRegulationDetail.diagnosis_evaluation_id == diagnosis_evaluation_id)
     elif procedure_evaluation_id:
         q = q.filter(models.ClaimRegulationDetail.procedure_evaluation_id == procedure_evaluation_id)
+    elif idrg_diagnosis_id:
+        q = q.filter(models.ClaimRegulationDetail.idrg_diagnosis_id == idrg_diagnosis_id)
+    elif idrg_summary_id:
+        q = q.filter(models.ClaimRegulationDetail.idrg_summary_id == idrg_summary_id)
+
 
     regs = q.all()
     return {
@@ -493,6 +501,8 @@ def get_regulations_payload(
                 "dasar_hukum": r.dasar_hukum,
                 "bab_pasal": r.bab_pasal,
                 "isi": r.isi,
-            } for r in regs
-        ]
+            }
+            for r in regs
+        ],
     }
+
