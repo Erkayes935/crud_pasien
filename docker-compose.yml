@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build:
@@ -7,22 +5,23 @@ services:
       dockerfile: web/Dockerfile
     ports:
       - "8001:8001"
-    environment:
-      # DATABASE_URL: postgresql://postgres:user@0.tcp.ap.ngrok.io:19771/patients
-      DATABASE_URL: postgresql://postgres:user@27.112.78.243:5434/patients
-      CORE_ENGINE_URL: http://core_engine:8002
     env_file:
-      - .env
+      - ./.env
+    environment:
+      # Kalau baris ini tetap ada, ia akan MENIMPA nilai dari .env
+      DATABASE_URL: ${DATABASE_URL}
+      CORE_ENGINE_URL: http://core_engine:8002
     working_dir: /app/web
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001
     depends_on:
       - core_engine
 
   core_engine:
-    build: ./core_engine
+    build:
+      context: ./core_engine
     ports:
       - "8002:8002"
+    env_file:
+      - ./.env
     working_dir: /app
     command: uvicorn main:app --host 0.0.0.0 --port 8002
-    env_file:
-      - ./core_engine/.env
