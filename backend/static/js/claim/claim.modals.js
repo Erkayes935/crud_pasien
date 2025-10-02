@@ -514,4 +514,68 @@
   window.closeNestedModal = closeNestedModal;
   window.openRegulationModal = openRegulationModal;
   window.closeRegulationModal = closeRegulationModal;
+
+  // ================= Note Modal (Diagnosis / Tindakan) =================
+window.openNoteModal = function(title, fieldKey) {
+  const root = document.getElementById("claimRoot");
+  const state = Alpine.$data(root);
+
+  const existingLogs = (state.notes && state.notes[fieldKey]) ? state.notes[fieldKey] : [];
+  const currentText = existingLogs.join("\n");
+
+  state.modalTitle = title;
+  state.modalContent = `
+    <div class="space-y-4">
+      <label class="block text-sm font-medium">Tambahkan Catatan:</label>
+      <textarea id="noteField"
+                class="w-full border rounded p-2 text-sm"
+                rows="4"
+                placeholder="Tulis catatan..."></textarea>
+
+      <div class="flex justify-end gap-2">
+        <button type="button"
+                class="px-4 py-2 bg-gray-300 rounded"
+                onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
+          Close
+        </button>
+        <button type="button"
+                class="px-4 py-2 bg-blue-600 text-white rounded"
+                onclick="saveNote('${fieldKey}')">
+          Save & Close
+        </button>
+      </div>
+
+      <hr class="my-4">
+      <h4 class="font-semibold text-sm">Riwayat Catatan:</h4>
+      <pre class="bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">${currentText || 'Belum ada catatan.'}</pre>
+    </div>
+  `;
+  state.modalOpen = true;
+};
+
+window.saveNote = function(fieldKey) {
+  const root = document.getElementById("claimRoot");
+  const state = Alpine.$data(root);
+
+  const textarea = document.getElementById("noteField");
+  const val = textarea.value.trim();
+  if (!val) {
+    state.modalOpen = false;
+    return;
+  }
+
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const role = state.role.charAt(0).toUpperCase() + state.role.slice(1);
+
+  const log = `[${role} ${hh}:${mm}] ${val}`;
+    if (!state.notes) state.notes = {};
+    if (!state.notes[fieldKey]) state.notes[fieldKey] = [];
+
+    state.notes[fieldKey].push(log);
+
+    state.modalOpen = false;
+  };
+
 })();
