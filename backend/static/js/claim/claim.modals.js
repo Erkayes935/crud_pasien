@@ -570,6 +570,7 @@ window.saveNote = function(fieldKey) {
   const role = state.role.charAt(0).toUpperCase() + state.role.slice(1);
 
   const log = `[${role} ${hh}:${mm}] ${val}`;
+
     if (!state.notes) state.notes = {};
     if (!state.notes[fieldKey]) state.notes[fieldKey] = [];
 
