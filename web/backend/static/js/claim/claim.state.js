@@ -231,6 +231,18 @@
       });
     }
   }
+  function claimData(init) {
+  return {
+    role: init.role || 'doctor', // role login (doctor, coder, verifikator, dll)
+    tab: 'admission',
+    simulasi: { admission: {}, discharge: {}, daily: {} },
+    notes: {}, // { fieldKey: [ "log1", "log2" ] }
+    modalOpen: false,
+    modalTitle: '',
+    modalContent: '',
+    hideDefaultClose: false
+  };
+}
 
   // Expose
   window.claimData = claimData;
