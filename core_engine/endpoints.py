@@ -12,6 +12,7 @@ from services.analyze_procedure_service import process_analyze_procedure
 from services.generate_claim_combos_service import process_generate_claim_combos
 from services.resume_service import process_resume_medis
 from services.regulation_service import process_regulation_detail
+from services.idrg_service import predict_idrg
 
 router = APIRouter()
 
@@ -97,4 +98,15 @@ async def regulation_detail(payload: dict):
     field = payload.get("field", "")
     return process_regulation_detail(payload, field)
 
+@router.post("/predict_idrg/{mode}")
+async def predict_idrg_endpoint(mode: str, payload: dict):
+    """
+    Expects:
+      - mode = "single" (detail diagnosis) | "combo" (kombinasi klaim)
+      - payload = dict dari FE sesuai mode
+    Returns:
+      - JSON prediksi i-DRG + engine_version
+    """
+    out = predict_idrg(mode, payload)
+    return out
 

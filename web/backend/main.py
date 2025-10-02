@@ -476,7 +476,7 @@ def export_patients(db: Session = Depends(get_db), user=Depends(require_roles_se
     ws.title = "Patients"
     ws.append(["Nama", "Tanggal Lahir", "Nomor HP", "Alamat", "Email", "No KTP", "No BPJS", "No Rekam Medis"])
     for p in patients:
-        ws.append([p.nama, p.tanggal_lahir, p.no_hp, p.alamat, p.email, p.no_ktp, p.no_bpjs, p.no_rekam_medis])
+        ws.append([p.nama, p.tanggal_lahir, p.no_hp, p.alamat, p.email, p.no_ktp, p.no_bpjs, p.no_rm])
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
