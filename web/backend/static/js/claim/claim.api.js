@@ -8,7 +8,7 @@
     try {
       const state = Alpine.$data(document.getElementById("claimRoot"));
       const stage = state.tab || "admission";
-
+      
       // ✅ endpoint baru
       const res = await fetch(`/claims/${claimId}/predict_ddx`, {
         method: "POST",

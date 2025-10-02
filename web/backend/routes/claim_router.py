@@ -133,6 +133,7 @@ def add_claim(
 ):
     claim = core.add_claim_service(
         db, user=current_user,
+        # hospital_id=current_user.hospital.id if current_user.hospital else None
         form_data={"visit_id": visit_id, "hospital_id": current_user.hospital.id if current_user.hospital else None}
     )
     flash(request, "Claim berhasil ditambahkan!", "success")
@@ -238,7 +239,11 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
     stage = (payload.get("stage") or "admission").strip()
     global_record = claim_helper.build_global_record(db, cid)
     forward = {"claim_id": cid, "stage": stage, "global_record": global_record}
-    return await claim_ai.proxy_core_engine("/predict_ddx", forward)
+    # nyoba normalize di sini dulu
+    raw_resp = await claim_ai.proxy_core_engine("/predict_ddx", forward)
+    normalized = claim_helper.normalize_predict_ddx(raw_resp)
+    # return await claim_ai.proxy_core_engine("/predict_ddx", forward)
+    return normalized
 
 
 @router.post("/{claim_id}/analyze_diagnosis")

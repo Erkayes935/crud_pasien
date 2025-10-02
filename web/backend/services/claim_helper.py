@@ -195,3 +195,38 @@ def build_procedure_context(db: Session, claim_id: int, stage: str) -> dict:
             if getattr(sim, "tindakan_sekunder", None) and getattr(sim.tindakan_sekunder, "procedure_text", None) else [],
     }
     return {k: v for k, v in ctx.items() if v and (not isinstance(v, list) or len(v))}
+
+def normalize_predict_ddx(raw_resp: dict) -> dict:
+    def map_item(item, is_child=False):
+        return {
+            "kategori": item.get("parent") if not is_child else item.get("name"),
+            "klinis": item.get("parent") if not is_child else item.get("name"),
+            "icd10_code": "",  # AI belum isi, biarkan kosong
+            "procedure_text": "",
+            "score": item.get("confidence", 0),
+            "child": is_child
+        }
+
+    diagnosis = []
+    for d in raw_resp.get("diagnosis", []):
+        parent = map_item(d, False)
+        parent["children"] = [map_item(ch, True) for ch in d.get("children", [])]
+        diagnosis.append(parent)
+
+    komorbid = []
+    for k in raw_resp.get("komorbid", []):
+        parent = map_item(k, False)
+        parent["children"] = [map_item(ch, True) for ch in k.get("children", [])]
+        komorbid.append(parent)
+
+    komplikasi = []
+    for c in raw_resp.get("komplikasi", []):
+        parent = map_item(c, False)
+        parent["children"] = [map_item(ch, True) for ch in c.get("children", [])]
+        komplikasi.append(parent)
+
+    return {
+        "diagnosis": diagnosis,
+        "komorbid": komorbid,
+        "komplikasi": komplikasi
+    }
