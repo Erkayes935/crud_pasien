@@ -13,7 +13,7 @@
 
   <!-- Tombol cepat -->
   <div class="flex flex-wrap gap-3">
-    {% if current_user.role in ['superadmin', 'admin_rs'] %}
+    {% if current_user.role == 'superadmin' %}
     <a href="/hospitals" 
        class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
        🏥 List Semua RS
@@ -23,6 +23,12 @@
        👥 List Semua Users
     </a>
     {% else %}
+      {% if current_user.role == 'admin_rs' %}
+        <a href="/users" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          👥 List Semua Users
+        </a>
+      {% endif %}
       {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
         <a href="/patients?flow=claim" 
           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
@@ -86,6 +92,57 @@
 
     <!-- Statistik Klaim -->
   {% else %}
+  <!-- Stats Cards Row -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
+      <div class="text-sm text-gray-500 dark:text-gray-400">Total klaim bulan ini</div>
+      <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_claims_bulan_ini or "1.250" }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
+      <div class="text-sm text-gray-500 dark:text-gray-400">Klaim resmi INA-CBGs</div>
+      <div class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ klaim_resmi or "9,85 M" }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
+      <div class="text-sm text-gray-500 dark:text-gray-400">Gap estimasi</div>
+      <div class="text-2xl font-bold text-green-600">+Rp {{ gap_estimasi or "1,07 M" }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400">(+10,8%)</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
+      <div class="text-sm text-gray-500 dark:text-gray-400">Ungroupable</div>
+      <div class="text-2xl font-bold text-yellow-500">{{ ungroupable or "10%" }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
+      <div class="text-sm text-gray-500 dark:text-gray-400">Mismatch</div>
+      <div class="text-2xl font-bold text-red-500">{{ mismatch or "18%" }}</div>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+    <!-- Donut Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Distribusi Klaim</h2>
+      <div class="h-64">
+        <canvas id="donutChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Top 5 Diagnosis/Tindakan</h2>
+      <div class="h-64">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Line Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+      <h2 class="text-lg font-semibold mb-3">Trend Mismatch Bulanan</h2>
+      <div class="h-64">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
       <h2 class="text-lg font-semibold mb-3">Statistik Klaim</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -185,4 +242,128 @@
     </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+  // ============ Fungsi Helper Warna ============
+  function getChartColors() {
+    const isDark = document.documentElement.classList.contains('dark');
+    return {
+      textColor: isDark ? '#f9fafb' : '#1f2937',          // abu terang vs abu gelap
+      gridColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
+    };
+  }
+
+  function applyColors(chart) {
+    const { textColor, gridColor } = getChartColors();
+
+    if (chart.options.plugins.legend?.labels) {
+      chart.options.plugins.legend.labels.color = textColor;
+    }
+
+    if (chart.options.scales) {
+      Object.values(chart.options.scales).forEach(scale => {
+        if (scale.ticks) scale.ticks.color = textColor;
+        if (scale.grid) scale.grid.color = gridColor;
+      });
+    }
+
+    chart.update();
+  }
+
+  // ============ INIT CHARTS ============
+  const { textColor, gridColor } = getChartColors();
+
+  const donutChart = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Match', 'Mismatch', 'Ungroupable'],
+      datasets: [{
+        data: [72, 15, 13],
+        backgroundColor: ['#3b82f6', '#f59e0b', '#8b5cf6'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: textColor }
+        }
+      }
+    }
+  });
+
+  const barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Sepsis', 'Pneumonia', 'DM komplikasi', 'Stroke', 'Appendisitis'],
+      datasets: [{
+        label: 'Jumlah Kasus',
+        data: [43, 22, 23, 22, 13],
+        backgroundColor: ['#8b5cf6','#f59e0b','#3b82f6','#3b82f6','#f59e0b'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor }},
+        y: { ticks: { color: textColor }, grid: { display: false }}
+      }
+    }
+  });
+
+  const lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'],
+      datasets: [
+        {
+          label: 'Ungroupable RS',
+          data: [12, 11, 13, 10, 9, 11, 10, 12, 11, 10, 8, 10],
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Mismatch RS',
+          data: [20, 19, 21, 18, 17, 19, 18, 20, 19, 18, 14, 18],
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: textColor, usePointStyle: true } }
+      },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor }},
+        y: { ticks: { color: textColor }, grid: { color: gridColor }}
+      }
+    }
+  });
+
+  // ============ OBSERVE MODE CHANGE ============
+  // Perhatikan perubahan class="dark" di <html>
+  const observer = new MutationObserver(() => {
+    applyColors(donutChart);
+    applyColors(barChart);
+    applyColors(lineChart);
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+</script>
 {% endblock %}

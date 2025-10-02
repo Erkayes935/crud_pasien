@@ -1705,11 +1705,11 @@ def export_claims(
             c.patient.nama if c.patient else "N/A",
             c.status,
             c.doctor_name,
-            json.dumps(c.simulasi_draft) if not c.is_final else "N/A",
-            json.dumps(c.summary_draft) if not c.is_final else "N/A",
+            json.dumps(getattr(c, 'simulasi_draft', {})) if not c.is_final else "N/A",
+            json.dumps(getattr(c, 'summary_draft', {})) if not c.is_final else "N/A",
             "Ya" if c.is_final else "Tidak",
-            json.dumps(c.simulasi_draft) if c.is_final else "N/A",
-            json.dumps(c.summary_draft) if c.is_final else "N/A",
+            json.dumps(getattr(c, 'simulasi_draft', {})) if c.is_final else "N/A",
+            json.dumps(getattr(c, 'summary_draft', {})) if c.is_final else "N/A",
             c.created_at,
         ])
     buffer = io.BytesIO()
@@ -1806,7 +1806,7 @@ def add_claim(
         alergi=alergi,
         keluhan=keluhan,
         gejala_lain=gejala_lain,
-        td=td,
+        tekanan_darah=td,
         nadi=nadi,
         pernapasan=pernapasan,
         suhu=suhu,
@@ -1950,8 +1950,15 @@ def claim_form(
         })
 
 
+    # Tentukan template berdasarkan role
+    template_name = "claim_form.html"  # fallback default
+    if user.role == "doctor":
+        template_name = "claim_left.html"
+    elif user.role == "verifikator":
+        template_name = "claim_right.html"
+    
     return templates.TemplateResponse(
-        "claim_form.html",
+        template_name,
         {
             "request": request,
             "visit": visit,
@@ -2164,7 +2171,7 @@ def edit_claim_form(
     # === Procedure Evaluations ===
     summ["procedure"] = [
         {
-            "procedure_id": p.procedure_id,
+            "procedure_id": getattr(p, 'procedure_id', p.id),  # fallback to evaluation id
             "validitas": p.validitas,
             "status_tindakan": p.status_tindakan,
             "tarif_impact": float(p.tarif_impact) if p.tarif_impact else None,
@@ -2214,7 +2221,14 @@ def edit_claim_form(
         if claim.medical_record and f["name"] in claim.medical_record.__dict__:
             f["value"] = getattr(claim.medical_record, f["name"])
 
-    return templates.TemplateResponse("claim_form.html", {
+    # Tentukan template berdasarkan role
+    template_name = "claim_form.html"  # fallback default
+    if user.role == "doctor":
+        template_name = "claim_left.html"
+    elif user.role == "verifikator":
+        template_name = "claim_right.html"
+    
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "mode": "edit",
         "record": claim,
@@ -2387,6 +2401,89 @@ def delete_claim(
 
     flash(request, "Klaim berhasil dihapus !", "success")
     return RedirectResponse("/claims", status_code=303)
+
+
+# -------------------------
+# REGULATION DETAIL ENDPOINT
+# -------------------------
+@app.get("/claims/{claim_id}/regulations")
+async def get_regulation_detail(
+    claim_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
+    diagnosis_id: Optional[str] = Query(None),
+    procedure_id: Optional[str] = Query(None),
+    field_name: Optional[str] = Query(None),
+    field_type: Optional[str] = Query(None)
+):
+    """
+    Endpoint untuk mendapatkan detail regulasi untuk field tertentu.
+    Akan request ke core_engine regulation_service.py
+    """
+    try:
+        # Prepare request data untuk core_engine
+        regulation_request = {
+            "claim_id": claim_id,
+            "field_name": field_name,
+            "field_type": field_type
+        }
+        
+        if diagnosis_id:
+            regulation_request["diagnosis_id"] = diagnosis_id
+        if procedure_id:
+            regulation_request["procedure_id"] = procedure_id
+            
+        # Request ke core_engine regulation service
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{CORE_ENGINE_URL}/regulation_detail",
+                json=regulation_request,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                regulation_data = response.json()
+                
+                # Core engine mengembalikan { "regulasi": {...}, "field": "...", ... }
+                # Frontend expect: { "status": "success", "data": [{"dasar_hukum": "...", "judul_regulasi": "...", ...}] }
+                if "regulasi" in regulation_data:
+                    regulasi = regulation_data["regulasi"]
+                    # Convert to array format yang diharapkan frontend
+                    formatted_data = [{
+                        "dasar_hukum": regulasi.get("dasar_hukum", "-"),
+                        "judul_regulasi": regulasi.get("judul_regulasi", "-"),
+                        "bab_pasal": regulasi.get("bab_pasal", "-"),
+                        "isi": regulasi.get("isi", "-")
+                    }]
+                    
+                    return JSONResponse({
+                        "status": "success",
+                        "data": formatted_data
+                    })
+                else:
+                    return JSONResponse({
+                        "status": "error",
+                        "message": "No regulation data found"
+                    }, status_code=404)
+            else:
+                # Handle error dari core_engine
+                error_detail = response.json() if response.headers.get("content-type") == "application/json" else {"detail": "Unknown error"}
+                return JSONResponse({
+                    "status": "error", 
+                    "message": f"Core engine error: {error_detail.get('detail', 'Unknown error')}"
+                }, status_code=response.status_code)
+                
+    except httpx.TimeoutException:
+        return JSONResponse({
+            "status": "error",
+            "message": "Timeout connecting to regulation service"
+        }, status_code=504)
+    except Exception as e:
+        return JSONResponse({
+            "status": "error", 
+            "message": f"Failed to get regulation detail: {str(e)}"
+        }, status_code=500)
 
 
 # -------------------------
@@ -3011,7 +3108,14 @@ def edit_medical_record_form(request: Request, record_id: int, db: Session = Dep
             f["options"] = [(p.id, p.nama) for p in patients]
             f["type"] = "select"
 
-    return templates.TemplateResponse("claim_form.html", {
+    # Tentukan template berdasarkan role
+    template_name = "claim_form.html"  # fallback default
+    if current_user.role == "doctor":
+        template_name = "claim_left.html"
+    elif current_user.role == "verifikator":
+        template_name = "claim_right.html"
+    
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "mode": "edit",
         "record_id": record_id,
