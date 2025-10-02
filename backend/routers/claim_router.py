@@ -366,3 +366,19 @@ def get_regulations(
         idrg_diagnosis_id=idrg_diagnosis_id,
         idrg_summary_id=idrg_summary_id
     )
+
+# ==================================================
+# SEARCH AUTOCOMPLETE
+# ==================================================
+
+from ..utils.dummy_data import dummy_diagnosis_list, dummy_diagnosis_detail
+
+@router.get("/search/diagnosis")
+def search_diagnosis(query: str):
+    dummy = dummy_diagnosis_list()
+    results = [d for d in dummy if query.lower() in d["name"].lower()]
+    return {"status": "ok", "data": results}
+
+@router.get("/search/diagnosis/detail/{code}")
+def search_diagnosis_detail(code: str):
+    return {"status": "ok", "data": dummy_diagnosis_detail(code)}

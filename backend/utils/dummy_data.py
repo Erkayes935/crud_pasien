@@ -470,3 +470,140 @@ def make_dummy_idrg_regulasi(context: str, field: str):
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
+
+def dummy_diagnosis_list():
+    return [
+        {"id": 1, "code": "R05", "name": "Batuk"},
+        {"id": 2, "code": "J20.9", "name": "Bronkitis akut, tidak spesifik"},
+        {"id": 3, "code": "J18.9", "name": "Pneumonia"},
+        {"id": 4, "code": "J45", "name": "Asma"}
+    ]
+
+def dummy_diagnosis_detail(icd_code: str):
+    base = {
+        "kategori": "Unknown",
+        "klinis": {"justifikasi": "-", "bukti_klinis": "-", "syarat_klinis": "-"},
+        "icd10": {
+            "kode_icd": icd_code,
+            "struktur_icd10": "-",
+            "kode_ganda": "-",
+            "z_code": "-",
+            "kode_bpjs_khusus": "-"
+        },
+        "tindakan": [
+            {"procedure_text": "Pemeriksaan penunjang standar"}
+        ],
+        "rawat_inap": {"indikasi": "-", "lama_rawat": "-", "perpanjangan": "-"},
+        "faskes": {"kesesuaian_rs": "-"},
+        "rujukan": {"syarat": "-", "kelayakan": "-"},
+        "idrg_diagnosis": make_dummy_idrg_diagnosis()
+    }
+
+    mapping = {
+        "R05": {
+            "kategori": "Batuk",
+            "klinis": {
+                "justifikasi": "Batuk > 2 minggu",
+                "bukti_klinis": "Riwayat batuk persisten",
+                "syarat_klinis": "Foto thorax + pemeriksaan dahak"
+            },
+            "icd10": {
+                "kode_icd": "R05",
+                "struktur_icd10": "Bab XVIII",
+                "kode_ganda": "R05",
+                "z_code": "Z94",
+                "kode_bpjs_khusus": "K2"
+            },
+            "tindakan": [
+                {"procedure_text": "Terapi batuk simptomatik"}
+            ],
+            "rawat_inap": {
+                "indikasi": "Tidak wajib rawat inap",
+                "lama_rawat": "1-2 hari",
+                "perpanjangan": "Tidak ada"
+            },
+            "faskes": {"kesesuaian_rs": "RS Tipe C"},
+            "rujukan": {"syarat": "Jika komplikasi", "kelayakan": "Layak"},
+            "idrg_diagnosis": make_dummy_idrg_diagnosis()
+        },
+        "J20.9": {
+            "kategori": "Bronkitis Akut",
+            "klinis": {
+                "justifikasi": "Batuk + wheezing",
+                "bukti_klinis": "Auskultasi paru",
+                "syarat_klinis": "Spirometri"
+            },
+            "icd10": {
+                "kode_icd": "J20.9",
+                "struktur_icd10": "Bab X",
+                "kode_ganda": "J20.9",
+                "z_code": "Z95",
+                "kode_bpjs_khusus": "K3"
+            },
+            "tindakan": [
+                {"procedure_text": "Bronkodilator inhalasi"}
+            ],
+            "rawat_inap": {
+                "indikasi": "Wajib jika sesak nafas",
+                "lama_rawat": "3-5 hari",
+                "perpanjangan": "Berdasarkan kondisi"
+            },
+            "faskes": {"kesesuaian_rs": "RS Tipe B"},
+            "rujukan": {"syarat": "Jika gagal terapi", "kelayakan": "Layak"},
+            "idrg_diagnosis": make_dummy_idrg_diagnosis()
+        },
+        "J18.9": { 
+            "kategori": "Pneumonia",
+            "klinis": {
+                "justifikasi": "Demam + batuk + infiltrat",
+                "bukti_klinis": "Foto thorax",
+                "syarat_klinis": "Pemeriksaan darah lengkap"
+            },
+            "icd10": {
+                "kode_icd": "J18.9",
+                "struktur_icd10": "Bab X",
+                "kode_ganda": "J18.9",
+                "z_code": "Z96",
+                "kode_bpjs_khusus": "K4"
+            },
+            "tindakan": [
+                {"procedure_text": "Antibiotik spektrum luas"}
+            ],
+            "rawat_inap": {
+                "indikasi": "Wajib rawat inap",
+                "lama_rawat": "5-7 hari",
+                "perpanjangan": "Berdasarkan respon terapi"
+            },
+            "faskes": {"kesesuaian_rs": "RS Tipe A"},
+            "rujukan": {"syarat": "Jika gagal terapi", "kelayakan": "Layak"},
+            "idrg_diagnosis": make_dummy_idrg_diagnosis()
+         },
+        "J45":   { 
+            "kategori": "Asma",
+            "klinis": {
+                "justifikasi": "Demam + batuk + infiltrat",
+                "bukti_klinis": "Foto thorax",
+                "syarat_klinis": "Pemeriksaan darah lengkap"
+            },
+            "icd10": {
+                "kode_icd": "J45",
+                "struktur_icd10": "Bab X",
+                "kode_ganda": "J45",
+                "z_code": "Z97",
+                "kode_bpjs_khusus": "K5"
+            },
+            "tindakan": [
+                {"procedure_text": "Antibiotik spektrum luas"}
+            ],
+            "rawat_inap": {
+                "indikasi": "Wajib rawat inap",
+                "lama_rawat": "5-7 hari",
+                "perpanjangan": "Berdasarkan respon terapi"
+            },
+            "faskes": {"kesesuaian_rs": "RS Tipe A"},
+            "rujukan": {"syarat": "Jika gagal terapi", "kelayakan": "Layak"},
+            "idrg_diagnosis": make_dummy_idrg_diagnosis()
+         }
+    }
+
+    return mapping.get(icd_code, base)

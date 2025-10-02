@@ -195,7 +195,9 @@
 
       tbody.insertAdjacentHTML("beforeend", `
         <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
-            data-id="${dayId || tab}-${type}-${idx}" data-db-id="${parent.id}">
+          data-id="${dayId || tab}-${type}-${idx}"
+          data-db-id="${parent.id || ''}"
+          data-row='${parent.rowData ? JSON.stringify(parent.rowData) : ""}'>
             <td class="border px-5 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
               <span @click="open=!open" class="mr-1 cursor-pointer">
                 <span x-show="!open" x-cloak>▶</span>
@@ -230,9 +232,10 @@
 
         tbody.insertAdjacentHTML("beforeend", `
           <tr x-show="open" x-cloak
-              class="bg-gray-50 dark:bg-gray-800 italic text-sm"
-              data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
-              data-db-id="${child.id}">
+            class="bg-gray-50 dark:bg-gray-800 italic text-sm"
+            data-id="child-${dayId || tab}-${type}-${idx}-${cIdx}"
+            data-db-id="${child.id || ''}"
+            data-row='${child.rowData ? JSON.stringify(child.rowData) : ""}'>
             <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis"
                 onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
               → ${child.nama_kategori || child.kategori || "-"}
@@ -289,8 +292,25 @@
 
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
-            <td class="border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
-              <input x-model="${tabPath}.kategori" placeholder="Nama Penyakit" class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+            <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
+              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}')" class="relative">
+                <input type="text"
+                      x-model="query"
+                      @input.debounce.300ms="search"
+                      placeholder="Cari diagnosis..."
+                      class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
+                              text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+
+                <!-- dropdown suggestion -->
+                <ul x-show="results.length > 0"
+                    class="absolute left-0 top-full mt-1 z-[9999] bg-white dark:bg-gray-800 border w-full rounded max-h-40 overflow-y-auto shadow-lg">
+                  <template x-for="item in results" :key="item.code">
+                    <li @click="select(item)"
+                        class="px-2 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                        x-text="item.code + ' - ' + item.name"></li>
+                  </template>
+                </ul>
+              </div>
             </td>
             <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
               <input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
@@ -316,7 +336,25 @@
     }
   }
 
+  function diagnosisAutocomplete(tab, tabPath) {
+    return {
+      query: "",
+      results: [],
+      async search() {
+        if (!this.query) { this.results = []; return; }
+        const res = await window.searchDiagnosis(this.query);
+        this.results = res.data || [];
+      },
+      async select(item) {
+        this.query = item.code + " - " + item.name;
+        this.results = [];
+        await window.addManualFromAutocomplete(tab, item);
+      }
+    }
+  }
+
   // export
+  window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
 })();

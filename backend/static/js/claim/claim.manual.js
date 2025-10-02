@@ -52,6 +52,38 @@
     window.syncHiddenInputs && window.syncHiddenInputs();
   }
 
+  async function addManualFromAutocomplete(tab, selected) {
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    if (!state.simulasi[tab]) {
+      state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[] };
+    }
+
+    // bikin item baru (mirip AI → cuma kategori + score)
+    const newItem = {
+      kategori: selected.name,
+      icd10_code: "",
+      klinis: "-",
+      tindakan: "-",
+      score: 80,
+      mapping: "",
+      isManual: true,
+      source: "Manual"
+    };
+
+    // fetch detail dummy
+    const detailRes = await window.getDiagnosisDetail(selected.code);
+    if (detailRes.status === "ok") {
+      newItem.rowData = detailRes.data; // simpan full detail untuk modal
+    }
+
+    state.simulasi[tab].diagnosis.push(newItem);
+
+    // render ulang tabel
+    window.renderTable && window.renderTable(`diagnosis-${tab}`, state.simulasi[tab].diagnosis, "diagnosis", tab);
+    window.syncHiddenInputs && window.syncHiddenInputs();
+  }
+
+
   // ===== Manual tindakan (list & nested modal) =====
 
   function addManualTindakan() {
@@ -111,6 +143,7 @@
 
   // Export
   window.addManual = addManual;
+  window.addManualFromAutocomplete = addManualFromAutocomplete;
   window.addManualTindakan = addManualTindakan;
   window.renderManualTindakanList = renderManualTindakanList;
 })();

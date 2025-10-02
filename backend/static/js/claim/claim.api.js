@@ -57,6 +57,19 @@
     }
   }
 
+  async function searchDiagnosis(query) {
+    const res = await fetch(`/claims/search/diagnosis?query=${query}`);
+    return await res.json();
+  }
+
+  async function getDiagnosisDetail(code) {
+    const res = await fetch(`/claims/search/diagnosis/detail/${code}`);
+    return await res.json();
+  }
+
+window.searchDiagnosis = searchDiagnosis;
+window.getDiagnosisDetail = getDiagnosisDetail;
+
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
@@ -96,4 +109,6 @@
   window.generateAI = generateAI;
   window.generateSummary = generateSummary;
   window.loadSimulations = loadSimulations;
+  window.searchDiagnosis = searchDiagnosis;
+  window.getDiagnosisDetail = getDiagnosisDetail;
 })();
