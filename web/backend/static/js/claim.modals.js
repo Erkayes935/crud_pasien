@@ -138,7 +138,17 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         const result = await res.json();
         console.log("[RESP] /analyze_diagnosis", result);
-        dx = result; // Gunakan langsung response JSON untuk modal
+        
+        // 🔥 Process core_engine response untuk modal
+        window.claimState.currentDiagnosis = result;
+        window.claimState.currentDiagnosisTitle = diseaseName;
+        
+        const modalContent = renderDiagnosisDetail(result);
+        openModal(`<div class="flex flex-col items-start items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${diseaseName}</span>
+        </div>`, modalContent);
+        return;
       } else if (dbId && !isNaN(Number(dbId))) {
         // fallback legacy detail
         const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
@@ -154,10 +164,13 @@
         dx = JSON.parse(tr.dataset.row);
         window.claimState.currentDiagnosis = dx;
         window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
+        
+        // 🔥 Use new renderDiagnosisDetail for consistent parsing
+        const modalContent = renderDiagnosisDetail(dx);
         openModal(`<div class="flex flex-col items-start items-center">
           <span class="text-lg font-bold">Detail Diagnosis</span>
           <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
-        </div>`, buildModalContent(dx));
+        </div>`, modalContent);
         return;
       }
 
@@ -167,10 +180,12 @@
       const namaPenyakit =
         dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "-";
 
+      // 🔥 Use new renderDiagnosisDetail for consistent parsing
+      const modalContent = renderDiagnosisDetail(dx);
       openModal(`<div class="flex flex-col items-start items-center">
         <span class="text-lg font-bold">Detail Diagnosis</span>
         <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
-      </div>`, buildModalContent(dx));
+      </div>`, modalContent);
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
 
@@ -181,32 +196,48 @@
   }
 
   function renderDiagnosisDetail(it) {
-    // 🔥 Parse data from /analyze_diagnosis response format
-    console.log("📋 renderDiagnosisDetail data:", it);
+    // 🔥 Parse data from /analyze_diagnosis response format (nested structure)
+    console.log("📋 renderDiagnosisDetail received data:", it);
+    console.log("📋 it.klinis:", it.klinis);
+    console.log("📋 it.icd10:", it.icd10);
+    console.log("📋 it.tindakan:", it.tindakan);
     
     // Fallback for diagnosisId - use available id fields
     const diagnosisId = it.id || it.diagnosis_id || it.itemId || Date.now();
     console.log("📋 Using diagnosisId:", diagnosisId);
     
+    // Handle nested structure from core_engine - detailed parsing
     const klinis = {
-      justifikasi: it.justifikasi || "-",
-      bukti_klinis: it.bukti_klinis || "-", 
-      syarat_klinis: it.syarat_klinis || "-"
+      justifikasi: it.klinis?.justifikasi || it.justifikasi || "-",
+      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "-", 
+      syarat_klinis: it.klinis?.syarat_klinis || it.syarat_klinis || "-",
+      status: it.klinis?.status || it.status || "default"
     };
 
     const icd10 = {
-      kode_icd: it.icd10_code || "-",
-      struktur_icd10: it.struktur_icd10 || "-",
-      kode_ganda: it.kode_ganda || "-",
-      z_code: it.z_code || "-",
-      kode_bpjs_khusus: it.kode_bpjs_khusus || "-"
+      kode_icd: it.icd10?.kode_icd || it.icd10_code || "-",
+      struktur_icd10: it.icd10?.struktur_icd10 || it.struktur_icd10 || "-",
+      kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "-",
+      z_code: it.icd10?.z_code || it.z_code || "-",
+      kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "-",
+      status_icd: it.icd10?.status_icd || it.status_icd || "default"
     };
     
     const tindakan = it.tindakan || [];
-    const rawat = it.rawat_inap || {};
+    const rawat = it.rawat || it.rawat_inap || {};
     const faskes = it.faskes || {};
     const rujukan = it.rujukan || {};
-    const inaCbg = it.ina_cbg || {};
+    const inaCbg = it.inaCbg || it.ina_cbg || {};
+    
+    console.log("📋 Parsed klinis:", klinis);
+    console.log("📋 Parsed icd10:", icd10);
+    console.log("📋 Parsed tindakan count:", tindakan.length);
+    
+    // 🔥 Debug specific field values
+    console.log("📋 klinis.justifikasi:", klinis.justifikasi);
+    console.log("📋 klinis.bukti_klinis:", klinis.bukti_klinis);
+    console.log("📋 icd10.kode_icd:", icd10.kode_icd);
+    console.log("📋 rawat.indikasi:", rawat.indikasi);
 
     const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
       let colorClass = "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100";
@@ -214,6 +245,7 @@
       if (status === "invalid") colorClass = "bg-red-600 text-white";
       
       const safeValue = value || "-";
+      console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
       
       // Check if field has regulation based on field mapping
       const hasRegulation = checkFieldHasRegulation(fieldName);
@@ -227,12 +259,14 @@
                          onclick="openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
       }
       
-      return `
+      const boxHtml = `
         <div class="grid grid-cols-2">
           <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
           <div class="${colorClass} px-3 py-2">${content}</div>
         </div>
       `;
+      console.log(`📋 renderBox(${label}) HTML:`, boxHtml);
+      return boxHtml;
     };
 
     return `
@@ -240,16 +274,16 @@
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi")}
-            ${renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis")}
-            ${renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis")}
+            ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
+            ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
+            ${(console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis), renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
           </div>
         </section>
 
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd")}
+            ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
             ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
             ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
             ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
@@ -439,9 +473,21 @@
       console.log("[RESP] /analyze_procedure", result);
       
       const d = result.data || result;
+      console.log("🧮 INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
       const renderProcBox = (label, value, fieldName = null) => {
-        const safeValue = value || "-";
+        let safeValue = value || "-";
+        
+        // 🧮 Special handling untuk tarif INA-CBG
+        if (fieldName === "ina_cbg" && value && value !== "-") {
+          console.log("💰 Formatting tarif:", value, typeof value);
+          const numericValue = parseInt(value);
+          if (!isNaN(numericValue)) {
+            safeValue = `Rp ${numericValue.toLocaleString('id-ID')}`;
+          } else {
+            safeValue = value; // keep original if not numeric
+          }
+        }
         
         // Check if field has regulation
         const hasRegulation = checkFieldHasRegulation(fieldName);
@@ -485,6 +531,7 @@
 
       // update tampilan deskripsi list tindakan (instant)
       const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
+      const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
       if (itemEl) itemEl.textContent = deskripsiGabungan;
     } catch (err) {
       console.error("Gagal load detail tindakan", err);
