@@ -59,6 +59,35 @@ function claimData(init) {
     hideDefaultClose: false,
     currentDiagnosis: null,
 
+    // 🔹 Notes untuk diagnosis dan procedure
+    notes: {
+      primary_diagnosis: [],
+      secondary_diagnosis: [],
+      primary_procedure: [],
+      secondary_procedure: []
+    },
+
+    openNoteModal(title, noteType) {
+      const noteList = this.notes[noteType] || [];
+      const content = `
+        <div class="space-y-2">
+          <h3 class="font-bold">${title}</h3>
+          ${noteList.length > 0 
+            ? noteList.map((note, idx) => `
+                <div class="p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                  <div class="text-xs text-gray-500 mb-1">#${idx + 1}</div>
+                  <div class="font-mono text-sm">${note}</div>
+                </div>
+              `).join('')
+            : '<p class="text-gray-500 italic">Tidak ada catatan</p>'
+          }
+        </div>
+      `;
+      this.modalTitle = title;
+      this.modalContent = content;
+      this.modalOpen = true;
+    },
+
     init() {
       const role = this.role;
       const claimId = document.getElementById("claimRoot")?.dataset.claimId;
