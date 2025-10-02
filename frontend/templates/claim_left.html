@@ -244,40 +244,85 @@
           </template>
         </div>
       </div>
+      <!-- Tindakan -->
+      <div class="space-y-3 mt-6">
+        <h4 class="font-bold text-lg">Tindakan</h4>
 
+        <!-- Primary Action -->
+        <div>
+          <label class="text-sm font-medium flex items-center gap-1">
+            Primary Action
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                @click="openNoteModal('Primary Action Note','primary_action')">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+            </svg>
+          </label>
+          <template x-if="simulasi[tab].tindakanUtama">
+            <div class="flex items-center gap-2 mt-2">
+              <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
+                    x-text="simulasi[tab].tindakanUtama?.name"></span>
+            </div>
+          </template>
+          <template x-if="!simulasi[tab]?.tindakanUtama">
+            <p class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</p>
+          </template>
 
-        <!-- Tindakan -->
-        <div class="space-y-3">
-          <h4 class="font-bold text-lg">Tindakan</h4>
-
-          <!-- Primary Action -->
-          <div>
-            <label class="text-sm font-medium">Primary Action</label>
-            <template x-if="simulasi[tab].tindakanUtama">
-              <div class="flex items-center gap-2 mt-2">
-                <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
-                      x-text="simulasi[tab].tindakanUtama?.name"></span>
-              </div>
-            </template>
-            <template x-if="!simulasi[tab]?.tindakanUtama">
-              <p class="italic text-gray-400 mt-1">Belum ada Tindakan Utama</p>
-            </template>
-          </div>
-
-          <!-- Secondary Actions -->
-          <div>
-            <label class="text-sm font-medium">Secondary Actions</label>
-            <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
-              <div class="flex items-center gap-2 mt-2">
-                <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
-                      x-text="(tdk.name || '-')"></span>
-              </div>
-            </template>
-            <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
-              <p class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</p>
-            </template>
-          </div>
+          <!-- Preview Note -->
+          <template x-if="notes['primary_action'] && notes['primary_action'].length">
+            <div class="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border">
+              <p class="font-mono"
+                x-text="notes['primary_action'][notes['primary_action'].length - 1]"></p>
+              <template x-if="notes['primary_action'].length > 1">
+                <p class="text-blue-600 cursor-pointer mt-1"
+                  @click="openNoteModal('Primary Action Note','primary_action')">
+                  +<span x-text="notes['primary_action'].length - 1"></span> more
+                </p>
+              </template>
+            </div>
+          </template>
         </div>
+
+        <!-- Secondary Actions -->
+        <div>
+          <label class="text-sm font-medium flex items-center gap-1">
+            Secondary Actions
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                @click="openNoteModal('Secondary Actions Note','secondary_action')">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+            </svg>
+          </label>
+          <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
+            <div class="flex items-center gap-2 mt-2">
+              <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
+                    x-text="(tdk.name || '-')"></span>
+            </div>
+          </template>
+          <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+            <p class="italic text-gray-400 mt-1">Belum ada Tindakan Sekunder</p>
+          </template>
+
+          <!-- Preview Note -->
+          <template x-if="notes['secondary_action'] && notes['secondary_action'].length">
+            <div class="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border">
+              <p class="font-mono"
+                x-text="notes['secondary_action'][notes['secondary_action'].length - 1]"></p>
+              <template x-if="notes['secondary_action'].length > 1">
+                <p class="text-blue-600 cursor-pointer mt-1"
+                  @click="openNoteModal('Secondary Actions Note','secondary_action')">
+                  +<span x-text="notes['secondary_action'].length - 1"></span> more
+                </p>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
       </div>
 
       <!-- Hidden inputs -->
