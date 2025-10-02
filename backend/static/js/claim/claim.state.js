@@ -47,6 +47,7 @@
       tab: init.tab || 'admission',
       form: {},
 
+    
       // simulasi hasil AI (utama/sekunder)
       simulasi: init.sim || {
         admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
@@ -80,6 +81,14 @@
         },
         daily: {}
       },
+
+      notes: {
+        primary_diagnosis: [],
+        secondary_diagnosis: [],
+        primary_action: [],
+        secondary_action: []
+      },
+
 
       modalOpen: false,
       modalTitle: '',
