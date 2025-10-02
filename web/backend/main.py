@@ -3435,3 +3435,143 @@ def generate_claim_combos(payload: dict = Body(...), db: Session = Depends(get_d
 @app.post("/resume_medis")
 async def resume_medis(payload: dict = Body(None)):
     return await proxy_core_engine("/resume_medis", payload)
+
+@app.post("/claims/{claim_id}/generate_resume")
+async def generate_claim_resume(
+    claim_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
+    payload: dict = Body(...)
+):
+    """Generate resume medis dari claim ID (call core engine /resume_medis)"""
+    try:
+        print(f"📋 Resume request for claim {claim_id}")
+        
+        # Get claim data from database
+        claim = db.query(models.Claim).filter(
+            models.Claim.id == claim_id,
+            models.Claim.is_deleted == False
+        ).first()
+        
+        if not claim:
+            raise HTTPException(status_code=404, detail="Claim not found")
+        
+        # Extract parameters from frontend
+        mode = payload.get("mode", "list")
+        settings = payload.get("settings", {})
+        
+        # ✅ MAPPING SESUAI MODELS.PY
+        resume_payload = {
+            "pasien": {
+                "nama": getattr(claim.patient, 'nama', '') if claim.patient else "-",
+                "no_rm": getattr(claim.patient, 'no_rm', '') if claim.patient else "-",
+                "umur": _calculate_age(getattr(claim.patient, 'tanggal_lahir', None)) if claim.patient else "-",
+                "jk": getattr(claim.patient, 'jenis_kelamin', '') if claim.patient else "-",
+                "keluhan": getattr(claim.medical_record, 'keluhan', '') if claim.medical_record else "-"
+            },
+            "visit": {
+                "tgl_masuk": str(getattr(claim.visit, 'tanggal_kunjungan', '')) if claim.visit else "-",
+                "tgl_keluar": "-",  # No discharge_date field in models
+                "ruangan": getattr(claim.visit, 'poli', '') if claim.visit else "-"
+            },
+            "diagnosis": {
+                "utama": {
+                    "nama": getattr(claim.medical_record, 'diagnosis_akhir', '') if claim.medical_record else "-",
+                    "icd": "-"  # No ICD field in medical_record
+                },
+                "sekunder": []  # Could be taken from claim.diagnoses if needed
+            },
+            "tindakan": {
+                "utama": {
+                    "nama": getattr(claim.medical_record, 'tindakan', '') if claim.medical_record else "-",
+                    "kode": "-"
+                },
+                "sekunder": []  # Could be taken from claim.procedures if needed
+            },
+            "obat": _parse_obat(getattr(claim.medical_record, 'obat', '') if claim.medical_record else ""),
+            "regulasi": [],  # Could be taken from claim.regulation_details if needed
+            "dokter": {
+                "dpjp": getattr(claim.medical_record, 'doctor_name', '') if claim.medical_record else getattr(claim, 'doctor_name', '') or "-",
+                "perawat": "-"
+            },
+            "mode": mode,
+            "settings": settings
+        }
+        
+        print(f"🚀 Calling core engine /resume_medis with mode: {mode}")
+        
+        # ✅ CALL CORE ENGINE
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{CORE_ENGINE_URL}/resume_medis",
+                json=resume_payload,
+                timeout=60.0
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                print(f"✅ Resume generated successfully")
+                return result
+            else:
+                error_detail = response.json() if response.headers.get("content-type") == "application/json" else {"detail": "Unknown error"}
+                print(f"❌ Core engine error: {response.status_code}")
+                return JSONResponse({
+                    "status": "error",
+                    "message": f"Core engine error: {error_detail.get('detail', 'Unknown error')}"
+                }, status_code=response.status_code)
+                
+    except httpx.TimeoutException:
+        error_msg = "Timeout generating resume - please try again"
+        print(f"❌ {error_msg}")
+        return JSONResponse({
+            "status": "error",
+            "message": error_msg
+        }, status_code=408)
+    except Exception as e:
+        error_msg = f"Resume generation failed: {str(e)}"
+        print(f"❌ {error_msg}")
+        return JSONResponse({
+            "status": "error", 
+            "message": error_msg
+        }, status_code=500)
+
+def _calculate_age(birth_date) -> str:
+    """Calculate age from birth date"""
+    if not birth_date:
+        return "-"
+    
+    try:
+        if isinstance(birth_date, str):
+            birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+        elif isinstance(birth_date, datetime):
+            birth_date = birth_date.date()
+        
+        today = date.today()
+        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        return str(age)
+    except:
+        return "-"
+
+def _parse_obat(obat_text: str) -> list:
+    """Parse obat text into list format"""
+    if not obat_text or obat_text.strip() == "":
+        return []
+    
+    # Simple parsing - bisa diperbaiki sesuai format obat di database
+    obat_list = []
+    for line in obat_text.split('\n'):
+        line = line.strip()
+        if line:
+            if '(' in line and ')' in line:
+                # Format: "Nama Obat (dosis)"
+                nama = line.split('(')[0].strip()
+                dosis = line.split('(')[1].split(')')[0].strip()
+                obat_list.append({"nama": nama, "dosis": dosis})
+            else:
+                obat_list.append({"nama": line, "dosis": ""})
+    
+    return obat_list
+
+
+

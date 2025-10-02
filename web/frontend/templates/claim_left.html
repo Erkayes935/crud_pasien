@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
 {% block content %}
 
 <form id="claimForm"
@@ -18,10 +22,20 @@
       <!-- Judul dan Tombol Generate AI -->
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
-        <button type="button" onclick="generateAI()" 
-                class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
-          Generate AI
-        </button>
+        
+        <div class="flex space-x-2">
+          <button type="button" onclick="generateAI()" 
+                  class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
+            Generate AI
+          </button>
+          
+          <!-- Button Resume -->
+          <button type="button" id="generateResumeBtn" 
+                  class="bg-info-600 hover:bg-info-700 text-white px-4 py-2 rounded font-semibold"
+                  style="background-color: #17a2b8;">
+            Generate Resume
+          </button>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -39,6 +53,7 @@
 
       <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
       <div x-show="tab==='admission'" class="space-y-4">
+        <!-- Diagnosis -->
         <details class="border rounded">
           <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
             <span class="font-semibold">Diagnosis</span>
@@ -327,4 +342,6 @@
 <script src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
+<!-- ➕ TAMBAH SCRIPT RESUME -->
+<script src="{{ url_for('static', path='js/claim/claim.resume.js') }}"></script>
 {% endblock %}
