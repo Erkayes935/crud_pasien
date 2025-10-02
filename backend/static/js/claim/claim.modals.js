@@ -76,6 +76,7 @@
           <span class="text-lg font-bold">Detail Diagnosis</span>
           <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
         </div>`, buildModalContent(dx));
+        updateRingkasanFromRow(uiId, dx);   // 🔹 update tabel pakai detail
         return;
       }
 
