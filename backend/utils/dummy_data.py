@@ -607,3 +607,55 @@ def dummy_diagnosis_detail(icd_code: str):
     }
 
     return mapping.get(icd_code, base)
+
+def dummy_tindakan_list():
+    return [
+        {"procedure_text": "Apendektomi", "deskripsi": "-"},
+        {"procedure_text": "Herniorafi", "deskripsi": "-"},
+        {"procedure_text": "Gastroskopi", "deskripsi": "-"},
+    ]
+
+def dummy_tindakan_detail(procedure_text: str):
+    mapping = {
+        "Apendektomi": {
+            "procedure_text": "Apendektomi",
+            "icd9": "47.09",
+            "validitas": "Valid",
+            "status": "Final",
+            "ina_cbg": "C-04-01",
+            "faskes": "RS Tipe B",
+            "rawat_inap": "Ya",
+            "syarat_klinis": "Nyeri perut kanan bawah, USG/CT confirm"
+        },
+        "Herniorafi": {
+            "procedure_text": "Herniorafi",
+            "icd9": "53.00",
+            "validitas": "Valid",
+            "status": "Final",
+            "ina_cbg": "C-09-02",
+            "faskes": "RS Tipe C",
+            "rawat_inap": "Opsional",
+            "syarat_klinis": "Benjolan inguinal"
+        },
+        "Gastroskopi": {
+            "procedure_text": "Gastroskopi",
+            "icd9": "45.73",
+            "validitas": "Warning",
+            "status": "Review",
+            "ina_cbg": "C-12-05",
+            "faskes": "RS Tipe A",
+            "rawat_inap": "Tidak",
+            "syarat_klinis": "Nyeri epigastrium, indikasi perdarahan"
+        }
+    }
+
+    return mapping.get(procedure_text, {
+        "procedure_text": procedure_text,
+        "icd9": "-",
+        "validitas": "-",
+        "status": "-",
+        "ina_cbg": "-",
+        "faskes": "-",
+        "rawat_inap": "-",
+        "syarat_klinis": "-"
+    })

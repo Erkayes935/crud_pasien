@@ -174,7 +174,7 @@
           </div>
         </section>
 
-        <section class="rounded shadow overflow-hidden">
+        <section class="rounded shadow overflow-visible">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
           <div class="p-3 bg-gray-100 dark:bg-gray-700">
             ${renderTindakan(tindakan)}
@@ -250,7 +250,22 @@
     `;
   }
 
-
+  function tindakanAutocomplete() {
+    return {
+      query: "",
+      results: [],
+      async search() {
+        if (!this.query) { this.results = []; return; }
+        const res = await window.searchTindakan(this.query);
+        this.results = res.data || [];
+      },
+      async select(item) {
+        this.query = item.procedure_text;
+        this.results = [];
+        await window.addManualTindakanFromAutocomplete(window.claimState.tab, item);
+      }
+    }
+  }
 
   function renderTindakan(list) {
     const tindakanList = (list && list.length > 0)
@@ -285,14 +300,34 @@
       <div class="tindakan-list mt-4"></div>
       <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
         <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-        <div class="flex gap-2">
-          <input id="manualNamaTindakan" placeholder="Nama Tindakan"
-                 class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
-          <button type="button" onclick="addManualTindakan()"
-                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center">➕ Tambah</button>
+        <div class="relative">
+          <div class="relative flex gap-2" x-data="tindakanAutocomplete()">
+            <input type="text"
+                  x-model="query"
+                  @input.debounce.300ms="search"
+                  @keydown.enter.prevent="results.length && select(results[0])"
+                  placeholder="Nama Tindakan"
+                  class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
+                          text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+            <button type="button"
+                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                    @click="results.length && select(results[0])">+</button>
+
+            <ul x-show="results.length > 0"
+                class="absolute top-full left-0 mt-1 z-50 
+                      bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
+                      rounded shadow-lg w-full max-h-40 overflow-y-auto">
+              <template x-for="item in results" :key="item.procedure_text">
+                <li @click="select(item)"
+                    class="px-2 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                    x-text="item.procedure_text"></li>
+              </template>
+            </ul>
+          </div>
         </div>
       </div>
     ` : '';
+
 
     // render list manual setelah modal terbuka
     setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
@@ -364,27 +399,32 @@
     }
   }
 
-  function openManualDetailModal(it) {
-    const dummy = {
-      kategori: it.kategori || "Manual",
-      klinis: it.klinis || "-",
-      icd10: { kode_icd: it.icd10_code || "-", deskripsi: "-" },
-      tindakan: it.procedure_text ? [{ procedure_text: it.procedure_text }] : [],
-      validitas: "-",
-      status: "-",
-      ina_cbg: "-",
-      faskes: "-",
-      rawat_inap: "-",
-      syarat_klinis: "-"
-    };
-    const title = `<div class="flex flex-col items-start items-center">
-      <span class="text-lg font-bold">Detail Tindakan Manual</span>
-      <span class="text-sm font-normal">${it.procedure_text || "-"}</span>
-    </div>`;
-    openModal(title, buildModalContent(dummy));
-    window.claimState.currentProcedure = dummy;
-    updateRingkasanFromRow(dummy);
+  async function openManualDetailModal(it, tab, idx) {
+    try {
+      const url = `/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const json = await res.json();
+      if (json.status !== "ok") throw new Error("Gagal load detail");
+
+      const detail = json.data;
+
+      const title = `<div class="flex flex-col items-start items-center">
+        <span class="text-lg font-bold">Detail Tindakan Manual</span>
+        <span class="text-sm font-normal">${detail.procedure_text}</span>
+      </div>`;
+
+      openModal(title, buildModalContent(detail), { hideDefaultClose: true });
+
+      // simpan state + update ringkasan
+      window.claimState.currentProcedure = detail;
+      const uiId = `manual-tindakan-${tab}-${idx}`;
+      updateRingkasanFromRow(uiId, detail);
+    } catch (err) {
+      console.error("❌ Gagal load detail tindakan manual:", err);
+    }
   }
+
 
   function closeNestedModal() {
     const dx = window.claimState.currentDiagnosis;
@@ -510,6 +550,7 @@
   window.renderDiagnosisDetail = renderDiagnosisDetail;
   window.renderIdrgSection = renderIdrgSection;
   window.renderTindakan = renderTindakan;
+  window.tindakanAutocomplete = tindakanAutocomplete;
   window.openProcedureModal = openProcedureModal;
   window.openManualDetailModal = openManualDetailModal;
   window.closeNestedModal = closeNestedModal;

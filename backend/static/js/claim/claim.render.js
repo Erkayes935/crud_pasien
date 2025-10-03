@@ -92,7 +92,7 @@
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
     return `
       <select onchange="onMappingChange(event, '${tab}', '${type}', ${item.id})"
-              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
+              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate"
               ${disabled}>
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
         <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
@@ -102,6 +102,15 @@
       </select>
     `;
   }
+
+  function renderValue(val) {
+    if (val && String(val).trim()) {
+      return `<span class="block w-full truncate overflow-hidden">${val}</span>`;
+    }
+    return '<span class="block w-full text-center text-gray-400">-</span>';
+  }
+
+
 
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
@@ -171,12 +180,12 @@
       thead.className = "bg-gray-100 dark:bg-gray-800";
       thead.innerHTML = `
         <tr>
-          <th class="border px-3 py-2 w-[15.5%]">Kategori</th>
-          <th class="border px-3 py-2 w-[30.5%]">Klinis</th>
-          <th class="border px-3 py-2 w-[5.5%]">ICD</th>
-          <th class="border px-3 py-2 w-[32.75%]">Tindakan</th>
-          <th class="border px-3 py-2 w-[3.75%]">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[13%]">Mapping</th>` : ``}
+          <th class="border px-3 py-2 w-[20%]">Kategori</th>
+          <th class="border px-3 py-2 w-[25%]">Klinis</th>
+          <th class="border px-3 py-2 w-[10%]">ICD</th>
+          <th class="border px-3 py-2 w-[25%]">Tindakan</th>
+          <th class="border px-3 py-2 w-[10%]">Score</th>
+          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ``}
         </tr>`;
       table.insertBefore(thead, table.firstChild);
     }
@@ -187,9 +196,9 @@
       const tbody = document.createElement("tbody");
       tbody.setAttribute("x-data", "{ open:false }");
 
-      const tindakanText = parent.tindakan || parent.procedure_text || "-";
-      const klinisText = parent.klinis || "";
-      const icdText = parent.icd10_code || parent.icd9_code || "-";
+      const tindakanText = parent.tindakan || parent.procedure_text;
+      const klinisText = parent.klinis;
+      const icdText = parent.icd10_code || parent.icd9_code;
       const titleTindakan = tindakanText;
       const titleKlinis = klinisText;
 
@@ -203,21 +212,21 @@
                 <span x-show="!open" x-cloak>▶</span>
                 <span x-show="open" x-cloak>▼</span>
               </span>
-              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || "-"}</span>
+              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori}</span>
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
-            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleKlinis}">
-                ${klinisText || "-"}
-              </div>
+            <td class="col-klinis border px-3 py-2 w-[25%]">
+              <span class="block w-full truncate">${renderValue(klinisText)}</span>
             </td>
-            <td class="col-icd border px-3 py-2 text-center">${icdText}</td>
-            <td class="col-tindakan border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleTindakan}">
-                ${tindakanText}
-              </div>
+            <td class="col-icd border px-3 py-2 w-[10%] text-center">
+              <span class="block w-full truncate">${renderValue(icdText)}</span>
             </td>
-            <td class="border px-3 py-2 text-center">${parent.score || "-"}</td>
+            <td class="col-tindakan border px-3 py-2 w-[25%]">
+              <span class="block w-full truncate">${renderValue(tindakanText)}</span>
+            </td>
+            <td class="border px-3 py-2 w-[10%] text-center">
+              <span class="block w-full truncate">${renderValue(parent.score)}</span>
+            </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
               ${renderMappingSelect(parent, tab, type)}
@@ -226,9 +235,9 @@
       `);
 
       parent.children.forEach((child, cIdx) => {
-        const tText = child.tindakan || child.procedure_text || "-";
-        const kText = child.klinis || "";
-        const iText = child.icd10_code || child.icd9_code || "-";
+        const tText = child.tindakan || child.procedure_text;
+        const kText = child.klinis;
+        const iText = child.icd10_code || child.icd9_code;
 
         tbody.insertAdjacentHTML("beforeend", `
           <tr x-show="open" x-cloak
@@ -238,20 +247,20 @@
             data-row='${child.rowData ? JSON.stringify(child.rowData) : ""}'>
             <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis"
                 onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
-              → ${child.nama_kategori || child.kategori || "-"}
+              ${child.nama_kategori || child.kategori}
             </td>
-            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${kText}">
-                ${kText || "-"}
-              </div>
+            <td class="col-klinis border px-3 py-2 w-[25%] italic" title="${kText}">
+              <span class="block w-full truncate">${renderValue(kText)}</span>
             </td>
-            <td class="col-icd border px-3 py-2 text-center">${iText}</td>
-            <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${tText}">
-              <div class="flex items-center overflow-hidden text-ellipsis">
-                ${tText}
-              </div>
+            <td class="col-icd border px-3 py-2 w-[10%] text-center" title="${iText}">
+              <span class="block w-full truncate">${renderValue(iText)}</span>
             </td>
-            <td class="border px-3 py-2 text-center">${child.score || "-"}</td>
+            <td class="col-tindakan border px-3 py-2 w-[25%] italic" title="${tText}">
+              <span class="block w-full truncate">${renderValue(tText)}</span>
+            </td>
+            <td class="border px-3 py-2 text-center w-[10%]">
+              <span class="block w-full truncate">${renderValue(child.score)}</span>
+            </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
               ${renderMappingSelect(child, tab, type)}
@@ -287,13 +296,13 @@
       if (tab === "admission" || tab === "discharge" || String(tab).startsWith("daily-")) {
         const manualTbody = document.createElement("tbody");
         const tabPath = String(tab).startsWith("daily-")
-          ? `manualInput.daily['${tab}'].${type}`
+          ? `manualInput.daily[\`${tab}\`].${type}`
           : `manualInput.${tab}.${type}`;
 
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
-              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}')" class="relative">
+              <div x-data="diagnosisAutocomplete('${tab}', ${tabPath})" class="relative">
                 <input type="text"
                       x-model="query"
                       @input.debounce.300ms="search"

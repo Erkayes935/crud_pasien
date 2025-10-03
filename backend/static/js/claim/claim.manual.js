@@ -107,43 +107,84 @@
     namaEl.value = "";
   }
 
-  function renderManualTindakanList() {
+  // Render list manual tindakan di dalam modal diagnosis
+  function renderManualTindakanList(tab) {
     const state = window.claimState || {};
     const listContainer = document.querySelector(".tindakan-list");
     if (!listContainer) return;
 
-    state.manualTindakan = (state.manualTindakan || []).filter(td => td.nama && td.nama !== "-" && td.nama !== "undefined");
+    const list = (state.simulasi?.[tab]?.tindakan || [])
+      .filter(td => td.procedure_text || td.nama);
+
     listContainer.innerHTML = "";
 
-    (state.manualTindakan || []).forEach((td, idx) => {
+    list.forEach((td, idx) => {
+      const nama = td.procedure_text || td.nama || "-";
+      const deskripsi = td.deskripsi || "-";
       listContainer.insertAdjacentHTML("beforeend", `
-        <div class="grid grid-cols-3 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2 gap-4">
+        <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+            data-id="manual-tindakan-${tab}-${idx}">
           <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-              onclick="openManualNestedProcedureModal(${idx})">
-            ${td.nama}
+              onclick="openManualDetailModal(window.claimState.simulasi['${tab}'].tindakan[${idx}], '${tab}', ${idx})">
+            ${nama}
           </div>
-          <div class="px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
-                      text-gray-900 dark:text-gray-100 rounded shadow-sm truncate"
-              title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
-            ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
+          <div>
+            <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
+                        text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                  title="${deskripsi}">${deskripsi}</span>
           </div>
-          ${state.role === "doctor" ? `
+          ${window.claimState?.role === "doctor" ? `
             <div class="flex space-x-2 justify-end">
               <button type="button"
-                      onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
+                      onclick="updateSimulasi('tindakan','Primary','${nama}','Manual','${tab}')"
                       class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
               <button type="button"
-                      onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
+                      onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual','${tab}')"
                       class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
             </div>` : ``}
         </div>
       `);
     });
   }
+  
+  async function addManualTindakanFromAutocomplete(tab, selected) {
+    console.log(">>> addManualTindakanFromAutocomplete CALLED", {tab, selected});
+
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    if (!state.simulasi[tab]) {
+      console.warn("tab not found in simulasi, inisialisasi dulu", tab);
+      state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] };
+    }
+    if (!Array.isArray(state.simulasi[tab].tindakan)) {
+      state.simulasi[tab].tindakan = [];
+    }
+
+    const newItem = {
+      procedure_text: selected.procedure_text,
+      deskripsi: "-",
+      isManual: true,
+      source: "Manual",
+      rowData: null
+    };
+
+    const detailRes = await window.getTindakanDetail(selected.procedure_text);
+    console.log(">>> detailRes", detailRes);
+    if (detailRes?.status === "ok") {
+      newItem.rowData = detailRes.data;
+    }
+
+    state.simulasi[tab].tindakan.push(newItem);
+    console.log(">>> simulasi after push", state.simulasi[tab].tindakan);
+
+    window.renderManualTindakanList?.(tab);
+    window.syncHiddenInputs?.();
+  }
+
 
   // Export
   window.addManual = addManual;
   window.addManualFromAutocomplete = addManualFromAutocomplete;
+  window.addManualTindakanFromAutocomplete = addManualTindakanFromAutocomplete;
   window.addManualTindakan = addManualTindakan;
   window.renderManualTindakanList = renderManualTindakanList;
 })();

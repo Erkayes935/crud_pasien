@@ -67,8 +67,14 @@
     return await res.json();
   }
 
-window.searchDiagnosis = searchDiagnosis;
-window.getDiagnosisDetail = getDiagnosisDetail;
+  async function searchTindakan(query) {
+    const res = await fetch(`/claims/search/tindakan?query=${query}`);
+    return await res.json();
+  }
+  async function getTindakanDetail(procedure_text) {
+    const res = await fetch(`/claims/search/tindakan/detail/${procedure_text}`);
+    return await res.json();
+  }
 
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
@@ -111,4 +117,6 @@ window.getDiagnosisDetail = getDiagnosisDetail;
   window.loadSimulations = loadSimulations;
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
+  window.searchTindakan = searchTindakan;
+  window.getTindakanDetail = getTindakanDetail;
 })();
