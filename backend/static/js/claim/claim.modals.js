@@ -336,11 +336,22 @@
   }
 
   function buildModalContent(it) {
-    let content = renderDiagnosisDetail(it);
-    content += `<div class="tindakan-list mt-4"></div>`;
-    setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
-    return content;
+    // kalau ada icd10 → diagnosis
+    if (it.icd10) {
+      let content = renderDiagnosisDetail(it);
+      content += `<div class="tindakan-list mt-4"></div>`;
+      setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
+      return content;
+    }
+
+    // kalau ada icd9/detail → tindakan
+    if (it.icd9 || it.detail) {
+      return renderProcedureDetail(it);
+    }
+
+    return `<div class="italic text-gray-500">Tidak ada detail tersedia</div>`;
   }
+
 
   async function openProcedureModal(procId) {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
@@ -401,7 +412,7 @@
 
   async function openManualDetailModal(it, tab, idx) {
     try {
-      const url = `/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
+      const url = `/claims/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("HTTP " + res.status);
       const json = await res.json();
@@ -414,7 +425,7 @@
         <span class="text-sm font-normal">${detail.procedure_text}</span>
       </div>`;
 
-      openModal(title, buildModalContent(detail), { hideDefaultClose: true });
+      openModal(title, renderProcedureDetail(detail), { hideDefaultClose: true });
 
       // simpan state + update ringkasan
       window.claimState.currentProcedure = detail;
@@ -424,6 +435,41 @@
       console.error("❌ Gagal load detail tindakan manual:", err);
     }
   }
+
+  function renderProcedureDetail(it) {
+    const d = (it.detail && it.detail[0]) || it;
+    const deskripsi = d.icd9 && d.status && d.ina_cbg
+      ? `ICD-9: ${d.icd9}, Status: ${d.status}, INA-CBG: ${d.ina_cbg}`
+      : (d.icd9 || d.status || d.ina_cbg || "-");
+    const renderProcBox = (label, value, skipReg = false) => {
+      const safeValue = value || "-";
+      const content = (!skipReg)
+        ? `<span class="cursor-pointer" title="PNPK Sepsis 2020"
+                  onclick="openRegulationModal('${d.icd9}', 'procedure')">${safeValue}</span>`
+        : safeValue;
+
+      return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
+              <div class="bg-gray-800 px-3 py-2 rounded">${content}</div>`;
+    };
+
+    return `
+      <div class="flex justify-end items-start mb-3">
+            <button type="button" onclick="closeNestedModal()"
+                    class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        ${renderProcBox("Kode ICD-9", d.icd9)}
+        ${renderProcBox("Deskripsi", d.deskripsi || deskripsi)}
+        ${renderProcBox("Validitas", d.validitas, true)}
+        ${renderProcBox("Status", d.status)}
+        ${renderProcBox("INA-CBG", d.ina_cbg)}
+        ${renderProcBox("Faskes", d.faskes)}
+        ${renderProcBox("Rawat Inap", d.rawat_inap)}
+        ${renderProcBox("Syarat Klinis", d.syarat_klinis)}
+      </div>
+    `;
+  }
+
 
 
   function closeNestedModal() {
