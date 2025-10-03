@@ -12,7 +12,7 @@ from . import config
 from .database import engine, Base
 from .routers import (
     dashboard_router, auth_router, patient_router, user_router,
-    hospital_router, medical_record_router, claim_router, visit_router
+    hospital_router, medical_record_router, claim_router, visit_router, claim_note_router
 )
 
 # Init DB
@@ -35,3 +35,4 @@ app.include_router(hospital_router.router, tags=["hospitals"])
 app.include_router(medical_record_router.router, tags=["medical_records"])
 app.include_router(visit_router.router, tags=["visits"])
 app.include_router(claim_router.router, tags=["claims"])
+app.include_router(claim_note_router.router)

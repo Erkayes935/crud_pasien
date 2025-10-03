@@ -17,7 +17,7 @@ from ..utils.flash import flash
 from ..utils.templates import templates
 from ..utils.dummy_data import make_dummy
 from ..auth import require_roles_session, require_csrf_dep, issue_csrf_token
-from ..crud import claim as claim_crud
+from ..crud import claim_note as claim_crud
 from ..services import claim as claim_service
 from ..form_configs import form_configs
 from ..utils.form_utils import get_form_as_dict
@@ -382,3 +382,18 @@ def search_diagnosis(query: str):
 @router.get("/search/diagnosis/detail/{code}")
 def search_diagnosis_detail(code: str):
     return {"status": "ok", "data": dummy_diagnosis_detail(code)}
+
+
+@router.get("/{claim_id}/notes")
+def get_notes(claim_id: int, db: Session = Depends(get_db)):
+    notes = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id).all()
+    return {"data": [
+        {
+            "id": n.id,
+            "item_id": n.item_id,
+            "role": n.role,
+            "user_id": n.user_id,
+            "note_text": n.note_text,
+            "timestamp": n.timestamp.isoformat()
+        } for n in notes
+    ]}
