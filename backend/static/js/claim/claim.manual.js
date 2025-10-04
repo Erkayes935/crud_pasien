@@ -113,14 +113,26 @@
     const listContainer = document.querySelector(".tindakan-list");
     if (!listContainer) return;
 
+    // 🧹 Filter agar tindakan placeholder "-" tidak muncul
     const list = (state.simulasi?.[tab]?.tindakan || [])
-      .filter(td => td.procedure_text || td.nama);
+      .filter(td => td.procedure_text && td.procedure_text !== "-");
 
     listContainer.innerHTML = "";
 
+    if (!list.length) {
+      listContainer.innerHTML = `<div class="italic text-gray-500 text-center py-2">Belum ada tindakan manual</div>`;
+      return;
+    }
+
     list.forEach((td, idx) => {
       const nama = td.procedure_text || td.nama || "-";
-      const deskripsi = td.deskripsi || "-";
+
+      // 🧠 Deskripsi awal tidak langsung “-”, tunggu setelah fetch detail
+      const deskripsi =
+        td.deskripsi && td.deskripsi !== "-"
+          ? td.deskripsi
+          : "";
+
       listContainer.insertAdjacentHTML("beforeend", `
         <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
             data-id="manual-tindakan-${tab}-${idx}">
@@ -131,7 +143,7 @@
           <div>
             <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
                         text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-                  title="${deskripsi}">${deskripsi}</span>
+                  title="${deskripsi}">${deskripsi || "&nbsp;"}</span>
           </div>
           ${window.claimState?.role === "doctor" ? `
             <div class="flex space-x-2 justify-end">
@@ -146,44 +158,71 @@
       `);
     });
   }
-  
-  async function addManualTindakanFromAutocomplete(tab, selected) {
-    console.log(">>> addManualTindakanFromAutocomplete CALLED", {tab, selected});
 
-    const state = Alpine.$data(document.getElementById('claimRoot'));
-    if (!state.simulasi[tab]) {
-      console.warn("tab not found in simulasi, inisialisasi dulu", tab);
-      state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] };
+  // ====================== Tambah Tindakan Manual ======================
+  window.addManualTindakanFromAutocomplete = async function (tab, selected) {
+    try {
+      const root = document.getElementById("claimRoot");
+      const state = Alpine.$data(root);
+      if (!state.simulasi[tab]) state.simulasi[tab] = { tindakan: [] };
+      if (!Array.isArray(state.simulasi[tab].tindakan)) state.simulasi[tab].tindakan = [];
+
+      // ambil detail dari backend (dummy_data.py)
+      const res = await fetch(`/claims/search/tindakan/detail/${encodeURIComponent(selected.procedure_text)}`);
+      const json = await res.json();
+      const detail = json.data || {};
+
+      const newItem = {
+        ...selected,
+        ...detail,
+        isManual: true,
+        source: "Manual",
+        procedure_text: selected.procedure_text || detail.procedure_text || "-",
+        deskripsi: "", // awalnya kosong, nanti diisi setelah fetch detail
+      };
+
+      // 🧹 hapus duplikat nama sama sebelum push
+      state.simulasi[tab].tindakan = state.simulasi[tab].tindakan.filter(
+        td => td.procedure_text !== newItem.procedure_text
+      );
+
+      state.simulasi[tab].tindakan.push(newItem);
+
+      // 🔁 render ulang list manual di modal
+      setTimeout(() => {
+        window.renderManualTindakanList && window.renderManualTindakanList(tab);
+      }, 50);
+
+      window.syncHiddenInputs && window.syncHiddenInputs();
+    } catch (err) {
+      console.error("❌ Gagal tambah tindakan manual:", err);
     }
-    if (!Array.isArray(state.simulasi[tab].tindakan)) {
-      state.simulasi[tab].tindakan = [];
+  };
+
+  // ====================== Tombol "+" ======================
+  async function handleAddManualTindakan(tab) {
+    // ambil konteks Alpine autocomplete
+    const alpineCtx = Alpine.$data(document.querySelector('[x-data="tindakanAutocomplete()"]'));
+    const text = alpineCtx?.query?.trim?.() || "";
+    if (!text) return;
+
+    const found = window.cachedTindakan?.some(td =>
+      td.procedure_text.toLowerCase() === text.toLowerCase()
+    );
+
+    if (!found) {
+      const confirmAdd = confirm(`Tindakan "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`);
+      if (!confirmAdd) return;
     }
 
-    const newItem = {
-      procedure_text: selected.procedure_text,
-      deskripsi: "-",
-      isManual: true,
-      source: "Manual",
-      rowData: null
-    };
-
-    const detailRes = await window.getTindakanDetail(selected.procedure_text);
-    console.log(">>> detailRes", detailRes);
-    if (detailRes?.status === "ok") {
-      newItem.rowData = detailRes.data;
-    }
-
-    state.simulasi[tab].tindakan.push(newItem);
-    console.log(">>> simulasi after push", state.simulasi[tab].tindakan);
-
-    window.renderManualTindakanList?.(tab);
-    window.syncHiddenInputs?.();
+    addManualTindakanFromAutocomplete(tab, { procedure_text: text });
+    alpineCtx.query = ""; // reset input
   }
-
 
   // Export
   window.addManual = addManual;
   window.addManualFromAutocomplete = addManualFromAutocomplete;
+  window.handleAddManualTindakan = handleAddManualTindakan;
   window.addManualTindakanFromAutocomplete = addManualTindakanFromAutocomplete;
   window.addManualTindakan = addManualTindakan;
   window.renderManualTindakanList = renderManualTindakanList;

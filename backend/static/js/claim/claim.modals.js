@@ -270,8 +270,8 @@
   function renderTindakan(list) {
     const tindakanList = (list && list.length > 0)
       ? list.map(td => {
-          const nama = td.nama || td.tindakan || "-";
-          const deskripsi = td.deskripsi || td.description || "-";
+          const nama = td.nama || td.tindakan || "";
+          const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
           const procId = td.id || td.procedure_id || "";
           return `
             <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
@@ -311,7 +311,7 @@
                           text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
             <button type="button"
                     class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-                    @click="results.length && select(results[0])">+</button>
+                    @click="handleAddManualTindakan(tab)">+</button>
 
             <ul x-show="results.length > 0"
                 class="absolute top-full left-0 mt-1 z-50 
@@ -419,6 +419,14 @@
       if (json.status !== "ok") throw new Error("Gagal load detail");
 
       const detail = json.data;
+      // 🧩 Tambahkan deskripsi gabungan setelah fetch sukses
+      const deskripsiGabungan = `ICD-9: ${detail.icd9 || "-"}, Status: ${detail.status || "-"}, INA-CBG: ${detail.ina_cbg || "-"}`;
+      detail.deskripsi = deskripsiGabungan;
+
+      // sinkron ke state biar muncul di list
+      if (window.claimState?.simulasi?.[tab]?.tindakan?.[idx]) {
+        window.claimState.simulasi[tab].tindakan[idx].deskripsi = deskripsiGabungan;
+      }
 
       const title = `<div class="flex flex-col items-start items-center">
         <span class="text-lg font-bold">Detail Tindakan Manual</span>
@@ -480,6 +488,9 @@
         <span class="text-lg font-bold">Detail Diagnosis</span>
         <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
         </div>`, buildModalContent(dx), { hideDefaultClose: false });
+      setTimeout(() => {
+        window.renderManualTindakanList && window.renderManualTindakanList(dx?.tab || "admission");
+      }, 0);
     } else {
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;

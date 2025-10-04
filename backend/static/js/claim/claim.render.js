@@ -127,7 +127,7 @@
 
     let merged;
     if (type === "tindakan") {
-      merged = [...aiItems]; // manual tindakan terpisah
+      merged = aiItems.filter(it => it.procedure_text && it.procedure_text !== "-");
     } else {
       merged = [...aiItems, ...manualItems];
     }
@@ -342,6 +342,10 @@
         target.appendChild(manualTbody);
         Alpine.initTree(manualTbody);
       }
+    }
+    // === Sinkron render list tindakan manual di modal ===
+    if (type === "diagnosis" && typeof window.renderManualTindakanList === "function") {
+      setTimeout(() => window.renderManualTindakanList(tab), 0);
     }
   }
 
