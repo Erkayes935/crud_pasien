@@ -247,6 +247,9 @@
                       x-text="simulasi[tab].tindakanUtama?.name"></span>
               </div>
             </template>
+            <template x-if="!simulasi[tab]?.tindakanUtama">
+              <p class="italic text-gray-400 mt-1">Belum ada Primary Action</p>
+            </template>
           </div>
 
           <!-- Secondary Actions -->
@@ -261,11 +264,14 @@
                       d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
               </svg>
             </label>
-            <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder?.[0] || null" :key="i">
+            <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
               <div class="flex items-center gap-2 mt-2">
                 <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
                       x-text="(tdk.name || '-')"></span>
               </div>
+            </template>
+            <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+              <p class="italic text-gray-400 mt-1">Belum ada Secondary Action</p>
             </template>
           </div>
 
