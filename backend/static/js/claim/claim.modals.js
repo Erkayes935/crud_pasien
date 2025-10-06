@@ -12,6 +12,11 @@
 
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
+    if (dx.isManual && (!dx.icd10_code || dx.icd10_code === "-" || !dx.klinis || dx.klinis === "-")) {
+      console.debug("🟡 Skip updateRingkasanFromRow untuk item manual belum lengkap:", itemId);
+      return;
+    }
+
 
     const row = document.querySelector(`[data-id="${itemId}"]`);
     if (!row) return;
@@ -50,6 +55,7 @@
   }
 
   // Buka modal dari klik kategori
+  // ================== Modal detail dari tabel ==================
   async function openModalFromAttr(el, type) {
     const tr = el.closest("tr");
     const dbId = tr?.dataset.dbId;
@@ -59,40 +65,120 @@
     try {
       let dx;
       if (dbId && !isNaN(Number(dbId))) {
+        // 🔹 ENTRYPOINT AI
         const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = await res.json();
-        dx = result.data;
+        dx = result.data || {};
+
+        // pastikan semua tindakan punya source AI
+        if (Array.isArray(dx.tindakan)) {
+          dx.tindakan = dx.tindakan.map(td => ({ ...td, source: td.source || "AI" }));
+        }
+
+        // 🧠 fallback tindakan kalau BE kosong
+        if ((!Array.isArray(dx.tindakan) || !dx.tindakan.length) && window.claimState?.simulasi) {
+          const stage = dx.stage || window.claimState.tab || "admission";
+          const semua = window.claimState.simulasi[stage]?.tindakan || [];
+          const tindakanAI = semua.filter(td => td.is_manual === false);
+          if (tindakanAI.length) {
+            dx.tindakan = tindakanAI.map(td => ({
+              procedure_text: td.procedure_text || td.tindakan || "-",
+              deskripsi: td.deskripsi || "-",
+              icd9: td.icd9 || "-",
+              status: td.status || "-",
+              isManual: false,
+              source: "AI"
+            }));
+            console.log(`🧩 Fallback tindakan AI: ${tindakanAI.length} item`);
+          }
+        }
+
+        // 🧠 Simpan tindakan AI yang baru dibuka ke cache global
+        if (dx && Array.isArray(dx.tindakan) && dx.tindakan.length) {
+          window.claimState.cache = window.claimState.cache || {};
+          if (!Array.isArray(window.claimState.cache.tindakanAI))
+            window.claimState.cache.tindakanAI = [];
+
+          const stage = dx.stage || window.claimState.tab || "admission";
+          dx.tindakan.forEach(td => {
+            const exists = window.claimState.cache.tindakanAI.some(
+              t => t.procedure_text === td.procedure_text && t.stage === stage
+            );
+            if (!exists) {
+              window.claimState.cache.tindakanAI.push({
+                ...td,
+                stage,
+                diagnosis_id: dx.id,
+                diagnosis_code: dx.icd10_code,
+                isManual: false,
+                source: "AI"
+              });
+            }
+          });
+          console.log(`🧠 Cache tindakanAI diperbarui: +${dx.tindakan.length} item (stage: ${stage})`);
+        }
       } else {
+        // 🔹 ENTRYPOINT MANUAL
         dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
+        const stage = dx.stage || window.claimState?.tab || "admission";
+
+        // ambil semua tindakan hasil AI dari cache
+        // ambil semua tindakan hasil AI dari cache
+        const tindakanAIAll = Array.isArray(window.claimState?.cache?.tindakanAI)
+          ? window.claimState.cache.tindakanAI.filter(td =>
+              td && (td.source === "AI" || td.isManual === false || td.is_manual === false)
+            )
+          : [];
+
+
+        // normalisasi id agar tidak undefined (pakai id asli dari AI)
+        const tindakanAIFinal = tindakanAIAll
+          .map(td => ({
+            ...td,
+            id: td.id ?? td.procedure_id ?? td.item_id ?? null,
+            diagnosis_id: td.diagnosis_id ?? td.parent_id ?? null,
+            diagnosis_code: td.diagnosis_code ?? td.icd10_code ?? null,
+            stage: td.stage || stage,
+            source: "AI",
+            isManual: false
+          }));
+
+        // gabungkan manual dan AI
+        const existingManual = Array.isArray(dx.tindakan)
+          ? dx.tindakan.filter(t => t.isManual === true)
+          : [];
+
+        dx.tindakan = [...tindakanAIFinal, ...existingManual];
+
+        console.log(
+          `🧠 Injected ${tindakanAIFinal.length} tindakan AI ke modal manual (stage: ${stage})`
+        );
+
       }
 
-      if ((!dbId || isNaN(Number(dbId))) && tr?.dataset.row) {
-        dx = JSON.parse(tr.dataset.row);
-        window.claimState.currentDiagnosis = dx;
-        window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
-        openModal(`<div class="flex flex-col items-start items-center">
-          <span class="text-lg font-bold">Detail Diagnosis</span>
-          <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
-        </div>`, buildModalContent(dx));
-        updateRingkasanFromRow(uiId, dx);   // 🔹 update tabel pakai detail
-        return;
-      }
-
-      let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
-      rawText = rawText.replace(/^▶|^▼/, "").trim();
-      rawText = rawText.replace(/\s+\d+$/, "");
+      // --- Render modal diagnosis ---
+      const rawText = tr?.querySelector("td")?.innerText.trim() || "-";
       const namaPenyakit =
-        dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "-";
+        dx?.kategori || dx?.nama_kategori || dx?.diagnosis ||
+        dx?.komorbid || dx?.komplikasi || rawText || "-";
 
-      openModal(`<div class="flex flex-col items-start items-center">
-        <span class="text-lg font-bold">Detail Diagnosis</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
-      </div>`, buildModalContent(dx));
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
 
+      const title = `
+        <div class="flex flex-col items-start items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
+        </div>`;
+
+      // simpan hasil injeksi AI manual ke state.simulasi agar tidak terhapus saat render ulang
+      const stageKey = dx.stage || window.claimState?.tab || "admission";
+      if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
+      window.claimState.simulasi[stageKey].tindakan = dx.tindakan;
+
+      openModal(title, buildModalContent(dx));
       updateRingkasanFromRow(uiId, dx);
     } catch (err) {
       console.error("❌ Gagal load modal detail:", err);
@@ -268,79 +354,104 @@
   }
 
   function renderTindakan(list) {
-    const tindakanList = (list && list.length > 0)
-      ? list.map(td => {
-          const nama = td.nama || td.tindakan || "";
-          const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
-          const procId = td.id || td.procedure_id || "";
-          return `
-            <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
-                data-procid="${procId}">
-              <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-                   onclick="openProcedureModal('${procId}')">${nama}</div>
-              <div>
-                <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-                      title="${deskripsi}">${deskripsi}</span>
+    const all = Array.isArray(list) ? list : [];
+
+  // 🔧 normalisasi properti agar filter tidak buang data sah
+    const normalized = all.map(td => ({
+      ...td,
+      source: (td.source || "").toUpperCase(),        // pastikan "AI" konsisten
+      isManual: td.isManual ?? td.is_manual ?? false,  // gabungkan dua varian boolean
+    }));
+
+    const aiList = normalized.filter(td => !td.isManual && td.source === "AI");
+    const manualList = normalized.filter(td => td.isManual);
+    // --- Render tindakan AI ---
+    const aiSection = aiList.length
+      ? aiList
+          .map(td => {
+            console.log("🧾 tindakan item:", td);
+            const nama = td.procedure_text || td.nama || td.procedure_name || td.tindakan;
+            const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
+            const procId = td.id || td.procedure_id || "";
+            return `
+              <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+                  data-procid="${procId}">
+                <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+                    onclick="openProcedureModal('${procId}')">${nama}</div>
+                <div>
+                  <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
+                              text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                        title="${deskripsi}">${deskripsi}</span>
+                </div>
+                ${window.claimState?.role === "doctor" ? `
+                  <div class="flex space-x-2 justify-end">
+                    <button type="button"
+                            onclick="updateSimulasi('tindakan','Primary','${nama}','AI', window.claimState.tab)"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+                    <button type="button"
+                            onclick="updateSimulasi('tindakan','Secondary','${nama}','AI', window.claimState.tab)"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+                  </div>` : ``}
               </div>
-              ${window.claimState?.role === "doctor" ? `
-                <div class="flex space-x-2 justify-end">
-                  <button type="button"
-                          onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
-                          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-                  <button type="button"
-                          onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
-                          class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-                </div>` : ``}
-            </div>
-          `;
-        }).join("")
+            `;
+          })
+          .join("")
       : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
 
-    const manualForm = window.claimState?.role === "doctor" ? `
-      <div class="tindakan-list mt-4"></div>
+    // --- Render area manual ---
+    const manualArea = `
+      <div class="tindakan-list"></div>
       <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
         <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-        <div class="relative">
-          <div class="relative flex gap-2" x-data="tindakanAutocomplete()">
-            <input type="text"
-                  x-model="query"
-                  @input.debounce.300ms="search"
-                  @keydown.enter.prevent="results.length && select(results[0])"
-                  placeholder="Nama Tindakan"
-                  class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
-                          text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-            <button type="button"
-                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-                    @click="handleAddManualTindakan(tab)">+</button>
+        <div class="relative flex gap-2 mt-2" x-data="tindakanAutocomplete()">
+          <input type="text"
+                x-model="query"
+                @input.debounce.300ms="search"
+                @keydown.enter.prevent="results.length && select(results[0])"
+                placeholder="Nama Tindakan"
+                class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
+                        text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
+          <button type="button"
+                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                  @click="handleAddManualTindakan(window.claimState.tab)">+</button>
 
-            <ul x-show="results.length > 0"
-                class="absolute top-full left-0 mt-1 z-50 
-                      bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
-                      rounded shadow-lg w-full max-h-40 overflow-y-auto">
-              <template x-for="item in results" :key="item.procedure_text">
-                <li @click="select(item)"
-                    class="px-2 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-                    x-text="item.procedure_text"></li>
-              </template>
-            </ul>
-          </div>
+          <ul x-show="results.length > 0"
+              class="absolute top-full left-0 mt-1 z-50 
+                    bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
+                    rounded shadow-lg w-full max-h-40 overflow-y-auto">
+            <template x-for="item in results" :key="item.procedure_text">
+              <li @click="select(item)"
+                  class="px-2 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                  x-text="item.procedure_text"></li>
+            </template>
+          </ul>
         </div>
       </div>
-    ` : '';
+    `;
 
+    // --- Render manual list jika ada data manual ---
+    setTimeout(() => {
+      const tab = window.claimState?.tab || "admission";
+      const sim = window.claimState?.simulasi?.[tab];
+      if (sim?.tindakan?.some(td => td.isManual)) {
+        window.renderManualTindakanList(tab);
+      }
+    }, 0);
 
-    // render list manual setelah modal terbuka
-    setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
-
-    return tindakanList + manualForm;
+    return aiSection + manualArea;
   }
+
+
 
   function buildModalContent(it) {
     // kalau ada icd10 → diagnosis
     if (it.icd10) {
       let content = renderDiagnosisDetail(it);
       content += `<div class="tindakan-list mt-4"></div>`;
-      setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
+      setTimeout(() => {
+        const tab = window.claimState?.tab || "admission";
+        window.renderManualTindakanList && window.renderManualTindakanList(tab);
+      }, 0);
       return content;
     }
 
@@ -353,27 +464,39 @@
   }
 
 
+  // ================== Modal detail tindakan ==================
   async function openProcedureModal(procId) {
+    if (!procId || procId === "undefined" || procId === "null") {
+      console.warn("⚠️ Tidak bisa buka detail tindakan: procId kosong");
+      return;
+    }
+
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
 
     try {
       const res = await fetch(url);
-      const { data } = await res.json();
-      const d = (data.tindakan && data.tindakan[0]) || {};
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const data = json?.data || {};
+      const d = (data?.tindakan && data.tindakan[0]) ? data.tindakan[0] : data;
+
       const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
+      const procedureName = data?.procedure_text || d.procedure_text || "-";
 
       const dx = window.claimState.currentDiagnosis;
       if (dx && Array.isArray(dx.tindakan)) {
         dx.tindakan.forEach(td => {
-          if (td.id == procId) td.deskripsi = deskripsiGabungan;
+          if (td.id == procId || td.procedure_id == procId)
+            td.deskripsi = deskripsiGabungan;
         });
       }
 
       const renderProcBox = (label, value, skipReg = false) => {
         const safeValue = value || "-";
         const content = (!skipReg)
-          ? `<span class="cursor-pointer" title="PNPK Sepsis 2020" onclick="openRegulationModal(${procId}, 'procedure')">${safeValue}</span>`
+          ? `<span class="cursor-pointer" title="PNPK Sepsis 2020"
+                  onclick="openRegulationModal(${procId}, 'procedure')">${safeValue}</span>`
           : safeValue;
         return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
                 <div class="bg-gray-800 px-3 py-2 rounded">${content}</div>`;
@@ -396,19 +519,24 @@
         </div>
       `;
 
-      openModal(`Detail Tindakan (${data.procedure_text || '-'})`, content, { hideDefaultClose: true });
+      openModal(
+        `<div class="flex flex-col items-start items-center">
+          <span class="text-lg font-semibold">Detail Tindakan</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${procedureName}</span>
+        </div>`,
+        content,
+        { hideDefaultClose: true }
+      );
 
-      // ✅ simpan reference supaya regulasi tahu asalnya
-      window.claimState = window.claimState || {};
       window.claimState.currentProcedure = { id: procId };
 
-      // update tampilan deskripsi list tindakan (instant)
       const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
       if (itemEl) itemEl.textContent = deskripsiGabungan;
     } catch (err) {
-      console.error("Gagal load detail tindakan", err);
+      console.error("❌ Gagal load detail tindakan:", err);
     }
   }
+
 
   async function openManualDetailModal(it, tab, idx) {
     try {
@@ -429,8 +557,8 @@
       }
 
       const title = `<div class="flex flex-col items-start items-center">
-        <span class="text-lg font-bold">Detail Tindakan Manual</span>
-        <span class="text-sm font-normal">${detail.procedure_text}</span>
+        <span class="text-sm font-semibold">Detail Tindakan Manual</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${detail.procedure_text}</span>
       </div>`;
 
       openModal(title, renderProcedureDetail(detail), { hideDefaultClose: true });

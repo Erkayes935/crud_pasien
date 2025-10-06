@@ -4,10 +4,14 @@
   function attachTindakan(rows) {
     const tindakanAll = rows.filter(r => r.category === "tindakan");
     rows.forEach(d => {
-      const arr = tindakanAll.filter(t => t.stage === d.stage && t.category === d.category);
+      const arr = tindakanAll.filter(
+        t => t.stage === d.stage &&
+            (t.diagnosis_id === d.id || t.diagnosis_code === d.icd10_code)
+      );
       d.tindakan = arr.length ? arr : "-";
     });
   }
+
 
   // Pure renderer untuk data pecahan
   function renderAI(rows) {
@@ -124,6 +128,18 @@
 
     const newAiItems = (items || []).filter(it => !it.isManual);
     const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems;
+
+    if (aiItems.length === 0 && type === "tindakan") {
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="text-center italic text-gray-500 py-2">
+              Menunggu hasil AI...
+            </td>
+          </tr>`;
+      }
+      return; // jangan lanjut render tabel kosong
+    }
 
     let merged;
     if (type === "tindakan") {

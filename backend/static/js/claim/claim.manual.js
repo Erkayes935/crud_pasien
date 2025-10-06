@@ -108,36 +108,35 @@
   }
 
   // Render list manual tindakan di dalam modal diagnosis
-  function renderManualTindakanList(tab) {
+  function renderManualTindakanList(tab, containerEl) {
     const state = window.claimState || {};
-    const listContainer = document.querySelector(".tindakan-list");
+    const listContainer =
+      containerEl?.querySelector(".tindakan-list") ||
+      document.querySelector(".modal-content .tindakan-list") ||
+      document.querySelector(".tindakan-list");
     if (!listContainer) return;
 
-    // 🧹 Filter agar tindakan placeholder "-" tidak muncul
     const list = (state.simulasi?.[tab]?.tindakan || [])
       .filter(td => td.procedure_text && td.procedure_text !== "-");
 
     listContainer.innerHTML = "";
 
     if (!list.length) {
-      listContainer.innerHTML = `<div class="italic text-gray-500 text-center py-2">Belum ada tindakan manual</div>`;
+      listContainer.innerHTML =
+        `<div class="italic text-gray-500 text-center py-2">Belum ada tindakan manual</div>`;
       return;
     }
 
     list.forEach((td, idx) => {
       const nama = td.procedure_text || td.nama || "-";
-
-      // 🧠 Deskripsi awal tidak langsung “-”, tunggu setelah fetch detail
-      const deskripsi =
-        td.deskripsi && td.deskripsi !== "-"
-          ? td.deskripsi
-          : "";
-
-      listContainer.insertAdjacentHTML("beforeend", `
+      const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
+      listContainer.insertAdjacentHTML(
+        "beforeend",
+        `
         <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
             data-id="manual-tindakan-${tab}-${idx}">
           <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-              onclick="openManualDetailModal(window.claimState.simulasi['${tab}'].tindakan[${idx}], '${tab}', ${idx})">
+              onclick="openManualDetailModal({ procedure_text: '${nama}' }, '${tab}', ${idx})">
             ${nama}
           </div>
           <div>
@@ -145,19 +144,21 @@
                         text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
                   title="${deskripsi}">${deskripsi || "&nbsp;"}</span>
           </div>
-          ${window.claimState?.role === "doctor" ? `
-            <div class="flex space-x-2 justify-end">
-              <button type="button"
-                      onclick="updateSimulasi('tindakan','Primary','${nama}','Manual','${tab}')"
-                      class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-              <button type="button"
-                      onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual','${tab}')"
-                      class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-            </div>` : ``}
-        </div>
-      `);
+          ${window.claimState?.role === "doctor"
+            ? `<div class="flex space-x-2 justify-end">
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Primary','${nama}','Manual','${tab}')"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual','${tab}')"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+              </div>`
+            : ``}
+        </div>`
+      );
     });
   }
+
 
   // ====================== Tambah Tindakan Manual ======================
   window.addManualTindakanFromAutocomplete = async function (tab, selected) {

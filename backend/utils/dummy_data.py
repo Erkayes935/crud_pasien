@@ -481,7 +481,7 @@ def dummy_diagnosis_list():
 
 def dummy_diagnosis_detail(icd_code: str):
     base = {
-        "kategori": "Unknown",
+        "kategori": "-",
         "klinis": {"justifikasi": "-", "bukti_klinis": "-", "syarat_klinis": "-"},
         "icd10": {
             "kode_icd": icd_code,
@@ -490,9 +490,7 @@ def dummy_diagnosis_detail(icd_code: str):
             "z_code": "-",
             "kode_bpjs_khusus": "-"
         },
-        "tindakan": [
-            {"procedure_text": "Pemeriksaan penunjang standar"}
-        ],
+        "tindakan": [],
         "rawat_inap": {"indikasi": "-", "lama_rawat": "-", "perpanjangan": "-"},
         "faskes": {"kesesuaian_rs": "-"},
         "rujukan": {"syarat": "-", "kelayakan": "-"},
@@ -514,9 +512,7 @@ def dummy_diagnosis_detail(icd_code: str):
                 "z_code": "Z94",
                 "kode_bpjs_khusus": "K2"
             },
-            "tindakan": [
-                {"procedure_text": "Terapi batuk simptomatik"}
-            ],
+            "tindakan": [],
             "rawat_inap": {
                 "indikasi": "Tidak wajib rawat inap",
                 "lama_rawat": "1-2 hari",
@@ -540,9 +536,7 @@ def dummy_diagnosis_detail(icd_code: str):
                 "z_code": "Z95",
                 "kode_bpjs_khusus": "K3"
             },
-            "tindakan": [
-                {"procedure_text": "Bronkodilator inhalasi"}
-            ],
+            "tindakan": [],
             "rawat_inap": {
                 "indikasi": "Wajib jika sesak nafas",
                 "lama_rawat": "3-5 hari",
@@ -566,9 +560,7 @@ def dummy_diagnosis_detail(icd_code: str):
                 "z_code": "Z96",
                 "kode_bpjs_khusus": "K4"
             },
-            "tindakan": [
-                {"procedure_text": "Antibiotik spektrum luas"}
-            ],
+            "tindakan": [],
             "rawat_inap": {
                 "indikasi": "Wajib rawat inap",
                 "lama_rawat": "5-7 hari",
@@ -592,9 +584,7 @@ def dummy_diagnosis_detail(icd_code: str):
                 "z_code": "Z97",
                 "kode_bpjs_khusus": "K5"
             },
-            "tindakan": [
-                {"procedure_text": "Antibiotik spektrum luas"}
-            ],
+            "tindakan": [],
             "rawat_inap": {
                 "indikasi": "Wajib rawat inap",
                 "lama_rawat": "5-7 hari",

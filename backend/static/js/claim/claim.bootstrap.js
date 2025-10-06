@@ -134,10 +134,10 @@
 
     target.innerHTML = `
       <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-800 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-bold cursor-pointer"
+        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-900 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-bold cursor-pointer"
             @click="open = !open">
           <span>Prediksi i-DRG Kombinasi</span>
-          <span x-text="open ? '▼' : '▶'"></span>
+          <span class="text-xs text-gray-500 dark:text-gray-300">(klik untuk lihat detail)</span>
         </div>
         <div class="accordion-body" x-show="open" x-transition>
           ${renderRowClickable("Group i-DRG Kombinasi", data.group_idrg_kombinasi, "idrg_summary_group")}
@@ -164,27 +164,37 @@
       return;
     }
 
+    // === Accordion global untuk semua alternatif ===
     target.insertAdjacentHTML("beforeend", `
-      <h3 class="font-bold text-lg mb-2 text-yellow-500">Alternatif Kombinasi (${items.length})</h3>
-    `);
-
-    items.forEach((alt, i) => {
-      target.insertAdjacentHTML("beforeend", `
-        <div class="border rounded-lg shadow mb-3 bg-white dark:bg-gray-800 p-3">
-          <h4 class="font-bold text-yellow-600 mb-2">Alternatif ${i + 1}: ${window.statusIcon(alt.nama) || "-"}</h4>
-          <div class="text-sm">
-            <div><b>Severity:</b> ${alt.severity_detail || "-"}</div>
-            <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>
-            <div><b>Tarif:</b> ${window.formatRupiah(alt.tarif)}</div>
-            <div><b>Syarat Klinis:</b> ${alt.syarat || "-"}</div>
-            <div><b>Evaluasi Faskes:</b> ${alt.faskes || "-"}</div>
-            <div><b>Rawat Inap:</b> ${alt.rawat_inap || "-"}</div>
-            <div><b>Tindakan Wajib:</b> ${alt.tindakan_wajib || "-"}</div>
-          </div>
+      <details class="border rounded-lg shadow-sm bg-white dark:bg-gray-800 open:shadow-md transition-all">
+        <summary class="cursor-pointer px-4 py-3 flex items-center justify-between bg-gray-100 dark:bg-gray-900 rounded-t">
+          <span class="font-bold text-lg text-yellow-500">Alternatif Kombinasi (${items.length})</span>
+          <span class="text-xs text-gray-500 dark:text-gray-300 font-bold">(klik untuk lihat detail)</span>
+        </summary>
+        <div class="p-4 text-sm space-y-3 border-t dark:border-gray-600">
+          ${items
+            .map((alt, i) => `
+              <div class="border rounded-lg shadow-sm bg-white dark:bg-gray-800 p-3">
+                <h4 class="font-bold text-yellow-600 mb-2">
+                  Alternatif ${i + 1}: ${alt.nama || "-"}
+                </h4>
+                <div class="text-sm space-y-1">
+                  <div><b>Severity:</b> ${alt.severity_detail || "-"}</div>
+                  <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>
+                  <div><b>Tarif:</b> ${window.formatRupiah(alt.tarif)}</div>
+                  <div><b>Syarat Klinis:</b> ${alt.syarat || "-"}</div>
+                  <div><b>Evaluasi Faskes:</b> ${alt.faskes || "-"}</div>
+                  <div><b>Rawat Inap:</b> ${alt.rawat_inap || "-"}</div>
+                  <div><b>Tindakan Wajib:</b> ${alt.tindakan_wajib || "-"}</div>
+                </div>
+              </div>
+            `)
+            .join("")}
         </div>
-      `);
-    });
+      </details>
+    `);
   }
+
 
   // Expose renderer (nama sama persis dg versi lama)
   window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;

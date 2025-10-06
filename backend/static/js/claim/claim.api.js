@@ -4,6 +4,14 @@
   async function generateAI() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
+    const state = window.claimState || {};
+
+    // 1️⃣ Backup tindakan manual
+    const manualBackup = {};
+    for (const tab in (state.simulasi || {})) {
+      const tindakans = state.simulasi[tab]?.tindakan?.filter(t => t.isManual) || [];
+      if (tindakans.length) manualBackup[tab] = tindakans;
+    }
 
     try {
       const res = await fetch("/claims/ai/recommendation", {
@@ -11,13 +19,101 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ claim_id: claimId })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const result = await res.json();
-      window.renderAI && window.renderAI(result.data || []);
+      console.log("🔍 result.data:", result.data);
+      const rows = result.data || [];
+
+      // --- render tabel rekomendasi AI
+      window.renderAI && window.renderAI(rows);
+
+      // 🩺 Tambahan fix: kumpulkan semua tindakan dari hasil AI (tanpa ubah struktur diagnosis)
+      const tindakanAll = [];
+      rows.forEach(row => {
+        if (Array.isArray(row.tindakan) && row.tindakan.length) {
+          row.tindakan.forEach(td => {
+            tindakanAll.push({
+              ...td,
+              diagnosis_id: row.id,
+              diagnosis_code: row.icd10_code,
+              stage: row.stage || "admission",
+              isManual: false,
+              source: "AI"
+            });
+          });
+        }
+      });
+
+      // Tambahan: kumpulkan juga tindakan dari baris category:"tindakan"
+      const tindakanCategory = rows.filter(r => r.category === "tindakan");
+      tindakanCategory.forEach(td => {
+        tindakanAll.push({
+          ...td,
+          diagnosis_id: td.diagnosis_id || null,
+          diagnosis_code: td.diagnosis_code || null,
+          stage: td.stage || "admission",
+          isManual: false,
+          source: "AI"
+        });
+      });
+
+
+      // simpan ke simulasi agar bisa dibaca cache global
+      tindakanAll.forEach(td => {
+        const stage = td.stage || "admission";
+        if (!window.claimState.simulasi[stage]) window.claimState.simulasi[stage] = {};
+        if (!Array.isArray(window.claimState.simulasi[stage].tindakan))
+          window.claimState.simulasi[stage].tindakan = [];
+        window.claimState.simulasi[stage].tindakan.push(td);
+      });
+
+      console.log("✅ Tindakan AI global ditambahkan:", tindakanAll.length);
+
+      // === simpan semua tindakan hasil AI ke cache global ===
+      if (!window.claimState.cache) window.claimState.cache = {};
+
+      setTimeout(() => {
+        const allAI = [];
+        Object.values(window.claimState.simulasi).forEach(stageObj => {
+          if (Array.isArray(stageObj.tindakan)) {
+            allAI.push(...stageObj.tindakan.filter(td => !(td.isManual || td.is_manual)));
+          }
+        });
+        window.claimState.cache.tindakanAI = allAI;
+        console.log("✅ [Synced] Cache tindakanAI global:", allAI.length, "item");
+      }, 500);
+
+      console.log("✅ tindakan AI tersimpan ke state:", window.claimState.simulasi);
+
+      // 3️⃣ Kembalikan tindakan manual yang dibackup sebelumnya
+      for (const tab in manualBackup) {
+        const manualList = manualBackup[tab];
+        if (!manualList?.length) continue;
+        if (!state.simulasi[tab]) continue;
+
+        const current = state.simulasi[tab].tindakan || [];
+        const merged = [
+          ...current.filter(it => !manualList.some(m => m.procedure_text === it.procedure_text)),
+          ...manualList,
+        ];
+        state.simulasi[tab].tindakan = merged;
+      }
+
+      // 4️⃣ Refresh tampilan list tindakan di modal
+      Object.keys(state.simulasi).forEach(tab => {
+        window.renderManualTindakanList &&
+          window.renderManualTindakanList(tab);
+      });
+
+      window.syncHiddenInputs && window.syncHiddenInputs();
     } catch (err) {
       console.error("❌ Error generate AI:", err);
       alert("Gagal generate AI");
     }
   }
+
+
 
   async function loadSimulations(claimId) {
     try {
