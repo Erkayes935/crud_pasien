@@ -12,8 +12,9 @@
 
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
-    if (dx.isManual && (!dx.icd10_code || dx.icd10_code === "-" || !dx.klinis || dx.klinis === "-")) {
-      console.debug("🟡 Skip updateRingkasanFromRow untuk item manual belum lengkap:", itemId);
+    if (dx.isManual) {
+      const stage = dx.stage || window.claimState?.tab || "admission";
+      window.renderManualTindakanList && window.renderManualTindakanList(stage);
       return;
     }
 
