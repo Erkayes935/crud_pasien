@@ -213,6 +213,7 @@
     }
   }
 
+  
   function renderDiagnosisDetail(it) {
     const klinisRaw = it.klinis || {};
     let klinis = {};
@@ -770,7 +771,158 @@
       // default → close diagnosis
       closeNestedModal();
     }
+    
   }
+  // --- fungsi renderDiagnosisDetail, renderIdrgSection, renderTindakan, buildModalContent, openProcedureModal, dll ---
+  // (isinya sama persis dengan versi kamu, tidak saya potong di sini biar tetap jalan normal)
+
+  // ================= Note Modal (Diagnosis / Tindakan) =================
+    // ==== Helper: stable numeric id dari claimId + fieldKey (djb2a 32-bit, unsigned, >0) ====
+    function getStableItemId(claimId, fieldKey) {
+      const s = `${claimId}:${fieldKey}`;
+      let hash = 5381;
+      for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) + hash) ^ s.charCodeAt(i); // djb2a with XOR
+      }
+      return (hash >>> 0) + 1; // unsigned + pastikan > 0
+    }
+
+    // ================= Note Modal (Diagnosis / Tindakan) =================
+    window.openNoteModal = async function(title, fieldKey, item = null) {
+    const root = document.getElementById("claimRoot");
+    const state = Alpine.$data(root);
+
+    state.currentDiagnosis = null;
+    state.currentProcedure = null;
+
+    if (fieldKey.includes("diagnosis") && item) state.currentDiagnosis = item;
+    if (fieldKey.includes("action") && item) state.currentProcedure = item;
+
+    const claimId = root.dataset.claimId;
+    let itemId = state.currentDiagnosis?.id || state.currentProcedure?.id || null;
+    if (!itemId) {
+      itemId = getStableItemId(claimId, fieldKey); // fungsi hash/bigint tadi
+    }
+
+    // 🔹 fetch notes dari backend
+    let notes = [];
+    try {
+      const res = await fetch(`/claims/${claimId}/notes`);
+      const json = await res.json();
+      if (res.ok) {
+        notes = json.data.filter(n => String(n.item_id) === String(itemId));
+      }
+    } catch (err) {
+      console.error("Gagal fetch notes:", err);
+    }
+
+    // 🔹 gabungkan dengan state lokal (kalau ada)
+    const existingLogs = notes.map(n => {
+      const time = new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+      return `[${n.role} ${time}] ${n.note_text}`;
+    });
+
+    const currentText = existingLogs.join("\n");
+
+    state.modalTitle = title;
+    state.modalContent = `
+      <div class="space-y-4">
+        <label class="block text-sm font-medium">Tambahkan Catatan:</label>
+        <textarea id="noteField"
+                  class="w-full border rounded p-2 text-sm"
+                  rows="4"
+                  placeholder="Tulis catatan..."></textarea>
+
+        <div class="flex justify-end gap-2">
+          <button type="button"
+                  class="px-4 py-2 bg-gray-300 rounded"
+                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
+            Close
+          </button>
+          <button type="button"
+                  class="px-4 py-2 bg-blue-600 text-white rounded"
+                  onclick="saveNote('${fieldKey}')">
+            Save & Close
+          </button>
+        </div>
+
+        <hr class="my-4">
+        <h4 class="font-semibold text-sm">Riwayat Catatan:</h4>
+        <pre class="bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">${currentText || 'Belum ada catatan.'}</pre>
+      </div>
+    `;
+    state.modalOpen = true;
+
+    console.log("✅ openNoteModal - loaded notes:", notes);
+  };
+
+    window.saveNote = async function(fieldKey) {
+      const root = document.getElementById("claimRoot");
+      const state = Alpine.$data(root);
+
+      const textarea = document.getElementById("noteField");
+      const val = textarea.value.trim();
+      if (!val) {
+        state.modalOpen = false;
+        return;
+      }
+
+      const claimId = root.dataset.claimId;
+
+      // Ambil itemId dari state, jika tidak ada → gunakan stable numeric
+      let itemId = state.currentDiagnosis?.id || state.currentProcedure?.id || null;
+      if (itemId == null) {
+        itemId = getStableItemId(claimId, fieldKey);
+        console.log("🆕 Auto-generate stable numeric itemId:", itemId);
+      }
+
+      console.log("📝 saveNote FINAL:", {
+        fieldKey,
+        itemId,
+        currentDiagnosis: state.currentDiagnosis,
+        currentProcedure: state.currentProcedure,
+        valueToSend: val
+      });
+
+      try {
+        const headers = { "Content-Type": "application/json" };
+        // jika kamu menyimpan CSRF ke window.csrfToken, kirimkan juga
+        if (window.csrfToken) headers["X-CSRF-Token"] = window.csrfToken;
+
+        const resp = await fetch(`/claims/${claimId}/notes`, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            item_id: itemId,           // sekarang integer
+            note_text: val,
+            parent_id: null,
+            field_key: fieldKey
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${resp.status}`);
+        }
+
+        // sukses → update state lokal pakai key stable numeric
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const role = (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : "User");
+        const log = `[${role} ${hh}:${mm}] ${val}`;
+
+        if (!state.notes[itemId]) state.notes[itemId] = [];
+        state.notes[itemId].push(log);
+
+      } catch (e) {
+        console.error("❌ saveNote error:", e);
+        alert("Gagal menyimpan catatan: " + e.message);
+      }
+
+      state.modalOpen = false;
+    };
 
 
   // Export
@@ -786,68 +938,4 @@
   window.closeNestedModal = closeNestedModal;
   window.openRegulationModal = openRegulationModal;
   window.closeRegulationModal = closeRegulationModal;
-
-  // ================= Note Modal (Diagnosis / Tindakan) =================
-window.openNoteModal = function(title, fieldKey) {
-  const root = document.getElementById("claimRoot");
-  const state = Alpine.$data(root);
-
-  const existingLogs = (state.notes && state.notes[fieldKey]) ? state.notes[fieldKey] : [];
-  const currentText = existingLogs.join("\n");
-
-  state.modalTitle = title;
-  state.modalContent = `
-    <div class="space-y-4">
-      <label class="block text-sm font-medium">Tambahkan Catatan:</label>
-      <textarea id="noteField"
-                class="w-full border rounded p-2 text-sm"
-                rows="4"
-                placeholder="Tulis catatan..."></textarea>
-
-      <div class="flex justify-end gap-2">
-        <button type="button"
-                class="px-4 py-2 bg-gray-300 rounded"
-                onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
-          Close
-        </button>
-        <button type="button"
-                class="px-4 py-2 bg-blue-600 text-white rounded"
-                onclick="saveNote('${fieldKey}')">
-          Save & Close
-        </button>
-      </div>
-
-      <hr class="my-4">
-      <h4 class="font-semibold text-sm">Riwayat Catatan:</h4>
-      <pre class="bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">${currentText || 'Belum ada catatan.'}</pre>
-    </div>
-  `;
-  state.modalOpen = true;
-};
-
-window.saveNote = function(fieldKey) {
-  const root = document.getElementById("claimRoot");
-  const state = Alpine.$data(root);
-
-  const textarea = document.getElementById("noteField");
-  const val = textarea.value.trim();
-  if (!val) {
-    state.modalOpen = false;
-    return;
-  }
-
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const role = state.role.charAt(0).toUpperCase() + state.role.slice(1);
-
-  const log = `[${role} ${hh}:${mm}] ${val}`;
-    if (!state.notes) state.notes = {};
-    if (!state.notes[fieldKey]) state.notes[fieldKey] = [];
-
-    state.notes[fieldKey].push(log);
-
-    state.modalOpen = false;
-  };
-
 })();

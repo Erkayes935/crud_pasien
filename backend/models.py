@@ -15,6 +15,7 @@ from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime, date
 import uuid
+from sqlalchemy.sql import func
 
 # =========================================
 # Hospital
@@ -168,6 +169,10 @@ class Claim(Base):
 
     # logs sebaiknya tanpa delete-orphan, hanya back_populates
     logs = relationship("ClaimLog", back_populates="claim")
+    # kearah note
+    notes = relationship("ClaimNote", back_populates="claim", cascade="all, delete")
+    
+
 
 
 # =========================================
@@ -684,3 +689,20 @@ class User(Base):
     medical_record_logs = relationship("MedicalRecordLog", back_populates="user", foreign_keys=[MedicalRecordLog.updated_by])
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
     is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
+
+
+class ClaimNote(Base):
+    __tablename__ = "claim_notes"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    claim_id = Column(Integer, ForeignKey("claims.id", ondelete="CASCADE"))
+    item_id = Column(Integer, nullable=True)   # bisa diagnosis/procedure ID
+    role = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    note_text = Column(Text, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(pytz.timezone("Asia/Jakarta")))
+    parent_id = Column(Integer, ForeignKey("claim_notes.id", ondelete="CASCADE"), nullable=True)
+
+    # relasi
+    claim = relationship("Claim", back_populates="notes")
+    user = relationship("User")
