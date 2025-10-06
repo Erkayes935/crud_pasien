@@ -6,7 +6,7 @@
     if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
     const state = window.claimState || {};
 
-    // 1️⃣ Backup tindakan manual
+    // 1️⃣ Backup tindakan manual sebelum generate AI
     const manualBackup = {};
     for (const tab in (state.simulasi || {})) {
       const tindakans = state.simulasi[tab]?.tindakan?.filter(t => t.isManual) || [];
@@ -14,6 +14,7 @@
     }
 
     try {
+      // 🔹 Fetch utama rekomendasi AI
       const res = await fetch("/claims/ai/recommendation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -22,14 +23,48 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
-      console.log("🔍 result.data:", result.data);
       const rows = result.data || [];
+      console.log("🔍 result.data:", rows);
 
-      // --- render tabel rekomendasi AI
+      // ------------------------------------------------------------------
+      // 🧠 PREFETCH semua detail diagnosis untuk ambil tindakan AI-nya
+      // ------------------------------------------------------------------
+      window.claimState.cache = window.claimState.cache || {};
+      if (!Array.isArray(window.claimState.cache.tindakanAI))
+        window.claimState.cache.tindakanAI = [];
+
+      // buat semua request paralel
+      const detailPromises = rows.map(async row => {
+        const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=diagnosis&item_id=${row.id}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const detail = await res.json();
+          const tindakanList = detail.data?.data?.tindakan || detail.data?.tindakan || [];
+          return tindakanList.map(td => ({
+            ...td,
+            stage: row.stage || "admission",
+            isManual: false,
+            source: "AI",
+          }));
+        } catch (e) {
+          console.warn("prefetch gagal:", e);
+          return [];
+        }
+      });
+
+      const allDetails = (await Promise.all(detailPromises)).flat();
+      window.claimState.cache.tindakanAI.push(...allDetails);
+      console.log("✅ Cache tindakanAI global:", window.claimState.cache.tindakanAI.length);
+
+      // ------------------------------------------------------------------
+      // 🔹 Render tabel AI + update simulasi state
+      // ------------------------------------------------------------------
       window.renderAI && window.renderAI(rows);
 
-      // 🩺 Tambahan fix: kumpulkan semua tindakan dari hasil AI (tanpa ubah struktur diagnosis)
       const tindakanAll = [];
+
+      // dari nested tindakan di tiap diagnosis (kalau ada)
       rows.forEach(row => {
         if (Array.isArray(row.tindakan) && row.tindakan.length) {
           row.tindakan.forEach(td => {
@@ -39,25 +74,14 @@
               diagnosis_code: row.icd10_code,
               stage: row.stage || "admission",
               isManual: false,
-              source: "AI"
+              source: "AI",
             });
           });
         }
       });
 
-      // Tambahan: kumpulkan juga tindakan dari baris category:"tindakan"
-      const tindakanCategory = rows.filter(r => r.category === "tindakan");
-      tindakanCategory.forEach(td => {
-        tindakanAll.push({
-          ...td,
-          diagnosis_id: td.diagnosis_id || null,
-          diagnosis_code: td.diagnosis_code || null,
-          stage: td.stage || "admission",
-          isManual: false,
-          source: "AI"
-        });
-      });
-
+      // tambahkan hasil prefetch detail ke list tindakanAll
+      tindakanAll.push(...allDetails);
 
       // simpan ke simulasi agar bisa dibaca cache global
       tindakanAll.forEach(td => {
@@ -70,9 +94,7 @@
 
       console.log("✅ Tindakan AI global ditambahkan:", tindakanAll.length);
 
-      // === simpan semua tindakan hasil AI ke cache global ===
-      if (!window.claimState.cache) window.claimState.cache = {};
-
+      // sinkronisasi cache global
       setTimeout(() => {
         const allAI = [];
         Object.values(window.claimState.simulasi).forEach(stageObj => {
@@ -84,9 +106,9 @@
         console.log("✅ [Synced] Cache tindakanAI global:", allAI.length, "item");
       }, 500);
 
-      console.log("✅ tindakan AI tersimpan ke state:", window.claimState.simulasi);
-
-      // 3️⃣ Kembalikan tindakan manual yang dibackup sebelumnya
+      // ------------------------------------------------------------------
+      // 3️⃣ Kembalikan tindakan manual yg dibackup sebelumnya
+      // ------------------------------------------------------------------
       for (const tab in manualBackup) {
         const manualList = manualBackup[tab];
         if (!manualList?.length) continue;
@@ -100,18 +122,22 @@
         state.simulasi[tab].tindakan = merged;
       }
 
+      // ------------------------------------------------------------------
       // 4️⃣ Refresh tampilan list tindakan di modal
+      // ------------------------------------------------------------------
       Object.keys(state.simulasi).forEach(tab => {
         window.renderManualTindakanList &&
           window.renderManualTindakanList(tab);
       });
 
       window.syncHiddenInputs && window.syncHiddenInputs();
+
     } catch (err) {
       console.error("❌ Error generate AI:", err);
       alert("Gagal generate AI");
     }
   }
+
 
 
 

@@ -20,6 +20,16 @@
 
     const row = document.querySelector(`[data-id="${itemId}"]`);
     if (!row) return;
+    if (row.closest(".tindakan-list")) {
+      const descEl = row.querySelector("span[title], span.block");
+      if (descEl) {
+        const newText = dx.deskripsi || "-";
+        descEl.textContent = newText;
+        descEl.setAttribute("title", newText);
+      }
+      return;
+    }
+
 
     // kolom Klinis
     const klinisCell = row.querySelector(".col-klinis");
@@ -102,6 +112,7 @@
             window.claimState.cache.tindakanAI = [];
 
           const stage = dx.stage || window.claimState.tab || "admission";
+
           dx.tindakan.forEach(td => {
             const exists = window.claimState.cache.tindakanAI.some(
               t => t.procedure_text === td.procedure_text && t.stage === stage
@@ -117,7 +128,10 @@
               });
             }
           });
-          console.log(`🧠 Cache tindakanAI diperbarui: +${dx.tindakan.length} item (stage: ${stage})`);
+
+          console.log(
+            `🧠 Cache tindakanAI diperbarui total: ${window.claimState.cache.tindakanAI.length} item`
+          );
         }
       } else {
         // 🔹 ENTRYPOINT MANUAL
@@ -150,7 +164,21 @@
           ? dx.tindakan.filter(t => t.isManual === true)
           : [];
 
-        dx.tindakan = [...tindakanAIFinal, ...existingManual];
+        dx.tindakan = existingManual.length
+          ? [...tindakanAIFinal, ...existingManual]
+          : tindakanAIFinal;
+
+        const stageKey = dx.stage || window.claimState?.tab || "admission";
+        if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
+        // ⛔ Jangan overwrite total, tapi merge aman
+        const currentAll = window.claimState.simulasi[stageKey].tindakan || [];
+        const merged = [...currentAll];
+        dx.tindakan.forEach(td => {
+          if (!merged.some(m => m.procedure_text === td.procedure_text && m.source === td.source))
+            merged.push(td);
+        });
+        window.claimState.simulasi[stageKey].tindakan = merged;
+
 
         console.log(
           `🧠 Injected ${tindakanAIFinal.length} tindakan AI ke modal manual (stage: ${stage})`
@@ -363,8 +391,18 @@
       isManual: td.isManual ?? td.is_manual ?? false,  // gabungkan dua varian boolean
     }));
 
-    const aiList = normalized.filter(td => !td.isManual && td.source === "AI");
-    const manualList = normalized.filter(td => td.isManual);
+    const unique = [];
+    const seen = new Set();
+    for (const td of normalized) {
+      const key = `${td.procedure_text || td.nama || td.tindakan}-${td.source}`;
+      if (!seen.has(key)) {
+        unique.push(td);
+        seen.add(key);
+      }
+    }
+
+    const aiList = unique.filter(td => !td.isManual && td.source === "AI");
+    const manualList = unique.filter(td => td.isManual);
     // --- Render tindakan AI ---
     const aiSection = aiList.length
       ? aiList
@@ -610,20 +648,27 @@
 
   function closeNestedModal() {
     const dx = window.claimState.currentDiagnosis;
-    if (dx) {
-      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
-      openModal(`<div class="flex flex-col items-start items-center">
-        <span class="text-lg font-bold">Detail Diagnosis</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
-        </div>`, buildModalContent(dx), { hideDefaultClose: false });
-      setTimeout(() => {
-        window.renderManualTindakanList && window.renderManualTindakanList(dx?.tab || "admission");
-      }, 0);
-    } else {
+    if (!dx) {
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;
+      return;
     }
+
+    const stage = dx.stage || window.claimState?.tab || "admission";
+    const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
+
+    // render ulang modal diagnosis tanpa ubah state
+    openModal(`<div class="flex flex-col items-start items-center">
+      <span class="text-lg font-bold">Detail Diagnosis</span>
+      <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
+    </div>`, buildModalContent(dx), { hideDefaultClose: false });
+
+    setTimeout(() => {
+      window.renderManualTindakanList && window.renderManualTindakanList(stage);
+    }, 0);
   }
+
+
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;

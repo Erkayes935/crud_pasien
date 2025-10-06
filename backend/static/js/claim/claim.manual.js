@@ -116,9 +116,19 @@
       document.querySelector(".tindakan-list");
     if (!listContainer) return;
 
-    const list = (state.simulasi?.[tab]?.tindakan || [])
+    const rawList = (state.simulasi?.[tab]?.tindakan || [])
       .filter(td => td.procedure_text && td.procedure_text !== "-");
 
+    // 🔥 filter unik biar tidak looping terus
+    const list = [];
+    const seen = new Set();
+    for (const td of rawList) {
+      const key = td.procedure_text + (td.source || "");
+      if (!seen.has(key)) {
+        list.push(td);
+        seen.add(key);
+      }
+    }
     listContainer.innerHTML = "";
 
     if (!list.length) {
