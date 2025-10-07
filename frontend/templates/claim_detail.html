@@ -80,29 +80,49 @@
   </div>
 
   <!-- Action -->
+     <!-- Action -->
   <div class="mt-6 flex justify-between">
     <a href="/claims"
        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow transition">
       ⬅ Kembali ke Daftar Klaim
     </a>
-    {% if user and user.role == 'doctor' %}
-    <div class="flex gap-2">
-      {% if claim.status == 'draft' %}
-        <a href="/claims/{{ claim.id }}/edit"
-          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
-          ✏️ Edit
-        </a>
-      {% endif %}
-      <div>
-        <form method="post" action="/claims/delete/{{ claim.id }}" onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
-            🗑 Hapus
-          </button>
-        </form>
+
+    {% if user %}
+      <div class="flex flex-col items-end gap-1">
+        {% if user.role == 'doctor' and claim.status == 'draft' %}
+          <!-- Doctor: edit & hapus -->
+          <div class="flex gap-2">
+            <a href="/claims/{{ claim.id }}/edit"
+              class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
+              ✏️ Edit
+            </a>
+            <form method="post" action="/claims/delete/{{ claim.id }}"
+                  onsubmit="return confirm('Yakin ingin menghapus klaim ini?');"
+                  class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit"
+                      class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
+                🗑 Hapus
+              </button>
+            </form>
+          </div>
+
+        {% elif user.role == 'coder' %}
+          <!-- Coder: hanya verifikasi ICD -->
+          <a href="/claims/{{ claim.id }}/coder"
+             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow transition">
+             🧩 Review ICD (Coder)
+          </a>
+
+          <!-- Bonus UX: indikator mode -->
+          <div class="text-xs text-blue-400 italic mt-1">
+            Mode: Review ICD oleh Coder
+          </div>
+        {% endif %}
       </div>
-      
     {% endif %}
   </div>
+
+
 </div>
 {% endblock %}

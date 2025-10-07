@@ -249,6 +249,10 @@ class ClaimDiagnosis(Base):
     kesesuaian_rs = Column(Text, nullable=True)
     syarat = Column(Text, nullable=True)
     kelayakan = Column(Text, nullable=True)
+    icd10_final_by_coder = Column(String(20), nullable=True)
+    verified_by = Column(String(100), nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
@@ -265,25 +269,31 @@ class ClaimProcedure(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
-
     procedure_type = Column(String(50), nullable=False)  # utama / sekunder
     procedure_text = Column(Text, nullable=False)
-    requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))    # wajib/tidak
+    requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     claim = relationship("Claim", back_populates="procedures")
-    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
-    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
-
     procedure_details = relationship("ClaimProcedureDetail", back_populates="procedure", cascade="all, delete-orphan")
+
+    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))
+    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))
+
     @property
     def description(self):
         if not self.procedure_details:
             return None
-        # Ambil deskripsi dari detail pertama (atau join semua kalau mau)
         return self.procedure_details[0].description
+
+    @property
+    def icd9_code(self):
+        """Ambil ICD-9 dari detail pertama jika ada."""
+        if self.procedure_details and len(self.procedure_details) > 0:
+            return self.procedure_details[0].icd9_tindakan
+        return None
 
 # =========================================
 # Claim Procedure Details
@@ -321,7 +331,6 @@ class ClaimProcedureDetail(Base):
             f"INA-CBG: {self.ina_cbg_tindakan}" if self.ina_cbg_tindakan else ""
         ]
         return ", ".join([p for p in parts if p])
-
 # =========================================
 # Claim Detail Regulations
 # =========================================
@@ -377,6 +386,13 @@ class ClaimSimulation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # 🆕 hasil verifikasi coder di level simulasi
+    coder_icd10_utama = Column(String(20), nullable=True)
+    coder_icd10_sekunder = Column(String(20), nullable=True)
+    coder_verified_by = Column(String(100), nullable=True)
+    coder_verified_at = Column(DateTime, nullable=True)
+    coder_note = Column(Text, nullable=True)
+    
     # 🔗 Relasi
     claim = relationship("Claim", back_populates="simulations")
     diagnosis_utama = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_utama_id])
@@ -669,17 +685,19 @@ class MedicalRecordLog(Base):
 # User Management
 # =========================================
 
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, text
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    auth0_sub = Column(String, unique=True, index=True, nullable=True)  # sinkron ke Auth0 user_id
+    auth0_sub = Column(String, unique=True, index=True, nullable=True)
     email = Column(String, unique=True, nullable=True)
-    name = Column(String, nullable=True)  # ✅ Wajib, untuk identitas user
+    name = Column(String, nullable=True)
     role = Column(String(50), nullable=True, default="doctor")
-    jabatan = Column(String, nullable=True)   # khusus dokter/admin
-    sip_number = Column(String, nullable=True) # khusus dokter
-    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)  # kalau admin_rs
+    jabatan = Column(String, nullable=True)
+    sip_number = Column(String, nullable=True)
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
 
     hospital = relationship("Hospital", back_populates="users", foreign_keys=[hospital_id])
     admin_of_hospital = relationship("Hospital", back_populates="admin", foreign_keys=[Hospital.admin_id])
@@ -687,8 +705,9 @@ class User(Base):
     visits = relationship("Visit", back_populates="doctor", foreign_keys=[Visit.doctor_id])
     medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])
     medical_record_logs = relationship("MedicalRecordLog", back_populates="user", foreign_keys=[MedicalRecordLog.updated_by])
-    is_deleted = Column(Boolean, nullable=False, server_default=text("false"))   # soft delete flag
-    is_dummy = Column(Boolean, nullable=False, server_default=text("false"))     # tandai dummy data
+
+    is_deleted = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_dummy   = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
 
 class ClaimNote(Base):
