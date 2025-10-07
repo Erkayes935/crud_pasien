@@ -15,7 +15,7 @@ from .. import models
 from ..database import get_db
 from ..utils.flash import flash
 from ..utils.templates import templates
-from ..utils.dummy_data import make_dummy
+from ..utils.dummy_data import make_dummy, dummy_diagnosis_list, dummy_diagnosis_detail, dummy_tindakan_list, dummy_tindakan_detail
 from ..auth import require_roles_session, require_csrf_dep, issue_csrf_token
 from ..crud import claim_note as claim_crud
 from ..services import claim as claim_service
@@ -420,8 +420,6 @@ def get_regulations(
 # SEARCH AUTOCOMPLETE
 # ==================================================
 
-from ..utils.dummy_data import dummy_diagnosis_list, dummy_diagnosis_detail
-
 @router.get("/search/diagnosis")
 def search_diagnosis(query: str):
     dummy = dummy_diagnosis_list()
@@ -432,6 +430,21 @@ def search_diagnosis(query: str):
 def search_diagnosis_detail(code: str):
     return {"status": "ok", "data": dummy_diagnosis_detail(code)}
 
+# Autocomplete list tindakan (opsional, kalau nanti mau dipakai dropdown)
+@router.get("/search/tindakan")
+def search_tindakan(query: str = ""):
+    dummy = dummy_tindakan_list()
+    if query:
+        results = [d for d in dummy if query.lower() in d["procedure_text"].lower()]
+    else:
+        results = dummy
+    return {"status": "ok", "data": results}
+
+
+# Detail tindakan (nested modal)
+@router.get("/search/tindakan/detail/{procedure_text}")
+def search_tindakan_detail(procedure_text: str):
+    return {"status": "ok", "data": dummy_tindakan_detail(procedure_text)}
 
 @router.get("/{claim_id}/notes")
 def get_notes(claim_id: int, db: Session = Depends(get_db)):

@@ -12,7 +12,7 @@
   }
 
   function truncateText(text, max) {
-    return (text && text.length > max) ? text.substring(0, max) + "…" : (text || "");
+    return (text && text.length > max) ? text.substring(0, 20) + "…" : (text || "");
   }
 
   function formatRupiah(num) {

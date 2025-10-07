@@ -9,298 +9,304 @@
 
   <div id="claimRoot" 
        x-data="claimData({ role: 'doctor' })"
-       data-claim-id="{{ record.id }}"
-       class="space-y-4">
+       data-claim-id="{{ record.id }}">
 
-    <!-- ================= Panel Kiri (Rekomendasi Klaim) ================= -->
-    <div class="p-4 bg-white dark:bg-gray-800 space-y-4 rounded shadow">
+    <div class="grid grid-cols-5 gap-6">
+      <!-- ================= Panel Kiri (Rekomendasi Klaim) ================= -->
+      <div class="col-span-3 space-y-4">
+        <div class="p-4 bg-white dark:bg-gray-800 space-y-4 rounded shadow">
+          <!-- Judul dan Tombol Generate AI -->
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
+            <button type="button" onclick="generateAI()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
+                Generate AI
+            </button>
+          </div>
 
-      <!-- Judul dan Tombol Generate AI -->
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
-        <button type="button" onclick="generateAI()" 
-                class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
-          Generate AI
-        </button>
+            <!-- Tabs -->
+          <div class="tabs flex space-x-6 border-b mb-4">
+            <button type="button" class="px-4 py-2" 
+                    :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='admission'">Admission</button>
+            <button type="button" class="px-4 py-2" 
+                    :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                    @click="tab='daily-0'">Daily</button>
+            <button type="button" class="px-4 py-2" 
+                    :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                    @click="tab='discharge'">Discharge</button>
+          </div>
+          <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
+          <!-- ================= ADMISSION TAB ================= -->
+          <div x-show="tab==='admission'" class="space-y-4">
+            <!-- Diagnosis -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Diagnosis</span>
+                <span id="count-diagnosis-admission" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <!-- Table tanpa thead (akan dibuat oleh JS) -->
+                <table class="w-full text-xs border-collapse border" id="diagnosis-admission"></table>
+              </div>
+            </details>
+
+            <!-- Komorbid -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komorbid</span>
+                <span id="count-komorbid-admission" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border" id="komorbid-admission"></table>
+              </div>
+            </details>
+
+            <!-- Komplikasi -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komplikasi</span>
+                <span id="count-komplikasi-admission" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border" id="komplikasi-admission"></table>
+              </div>
+            </details>
+            <!-- Rekam Medis -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+                Rekam Medis
+              </summary>
+              <div class="p-3 space-y-3">
+                {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
+                  {% include "_form_renderer.html" %}
+                {% endfor %}
+              </div>
+            </details>
+          </div>  
+          <!-- ================= DAILY TAB ================= -->
+          <div x-show="tab.startsWith('daily')" class="space-y-4">
+            <div id="daily-accordion" class="space-y-2"></div>
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+                Rekam Medis
+              </summary>
+              <div class="p-3 space-y-3">
+                {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+                  {% include "_form_renderer.html" %}
+                {% endfor %}
+              </div>
+            </details>
+          </div>
+
+          <!-- ================= DISCHARGE TAB ================= -->
+          <div x-show="tab==='discharge'" class="space-y-4">
+            <!-- Diagnosis -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Diagnosis</span>
+                <span id="count-diagnosis-discharge" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border" id="diagnosis-discharge"></table>
+              </div>
+            </details>
+
+            <!-- Komorbid -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komorbid</span>
+                <span id="count-komorbid-discharge" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border" id="komorbid-discharge"></table>
+              </div>
+            </details>
+
+            <!-- Komplikasi -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komplikasi</span>
+                <span id="count-komplikasi-discharge" 
+                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border" id="komplikasi-discharge"></table>
+              </div>
+            </details>
+
+            <!-- Rekam Medis -->
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
+                Rekam Medis
+              </summary>
+              <div class="p-3 space-y-3">
+                {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
+                  {% include "_form_renderer.html" %}
+                {% endfor %}
+              </div>
+            </details>
+          </div>
+        </div>
       </div>
-
-      <!-- Tabs -->
-      <div class="tabs flex space-x-6 border-b mb-4">
-        <button type="button" class="px-4 py-2" 
-                :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
-                @click="tab='admission'">Admission</button>
-        <button type="button" class="px-4 py-2" 
-                :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
-                @click="tab='daily-0'">Daily</button>
-        <button type="button" class="px-4 py-2" 
-                :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
-                @click="tab='discharge'">Discharge</button>
-      </div>
-
-      <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
-      <!-- ================= ADMISSION TAB ================= -->
-      <div x-show="tab==='admission'" class="space-y-4">
-        <!-- Diagnosis -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Diagnosis</span>
-            <span id="count-diagnosis-admission" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <!-- Table tanpa thead (akan dibuat oleh JS) -->
-            <table class="w-full text-xs border-collapse border" id="diagnosis-admission"></table>
-          </div>
-        </details>
-
-        <!-- Komorbid -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Komorbid</span>
-            <span id="count-komorbid-admission" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse border" id="komorbid-admission"></table>
-          </div>
-        </details>
-
-        <!-- Komplikasi -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Komplikasi</span>
-            <span id="count-komplikasi-admission" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse border" id="komplikasi-admission"></table>
-          </div>
-        </details>
-
-        <!-- Rekam Medis -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
-            Rekam Medis
-          </summary>
-          <div class="p-3 space-y-3">
-            {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
-              {% include "_form_renderer.html" %}
-            {% endfor %}
-          </div>
-        </details>
-      </div>
-
-      <!-- ================= DAILY TAB ================= -->
-      <div x-show="tab.startsWith('daily')" class="space-y-4">
-        <div id="daily-accordion" class="space-y-2"></div>
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
-            Rekam Medis
-          </summary>
-          <div class="p-3 space-y-3">
-            {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-              {% include "_form_renderer.html" %}
-            {% endfor %}
-          </div>
-        </details>
-      </div>
-
-      <!-- ================= DISCHARGE TAB ================= -->
-      <div x-show="tab==='discharge'" class="space-y-4">
-        <!-- Diagnosis -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Diagnosis</span>
-            <span id="count-diagnosis-discharge" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse border" id="diagnosis-discharge"></table>
-          </div>
-        </details>
-
-        <!-- Komorbid -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Komorbid</span>
-            <span id="count-komorbid-discharge" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse border" id="komorbid-discharge"></table>
-          </div>
-        </details>
-
-        <!-- Komplikasi -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-            <span class="font-semibold">Komplikasi</span>
-            <span id="count-komplikasi-discharge" 
-                  class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-          </summary>
-          <div class="p-3 overflow-x-auto">
-            <table class="w-full text-xs border-collapse border" id="komplikasi-discharge"></table>
-          </div>
-        </details>
-
-        <!-- Rekam Medis -->
-        <details class="border rounded">
-          <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
-            Rekam Medis
-          </summary>
-          <div class="p-3 space-y-3">
-            {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
-              {% include "_form_renderer.html" %}
-            {% endfor %}
-          </div>
-        </details>
-      </div>
-
-      <!-- ================= Panel Simulasi (View-Only) ================= -->
-      <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-6">
+      <!-- ================= Akhir Panel Kiri ================= -->
+      <!-- ================= Panel Kanan (Simulasi Klaim) ================= -->
+      <div class="col-span-2 space-y-4">
+        <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-6">
         <h3 class="font-semibold text-xl border-b pb-2">Simulasi Klaim (Draft Dokter)</h3>
-      <!-- Diagnosis -->
-      <div class="space-y-3">
-        <h4 class="font-bold text-lg">Diagnosis</h4>
+        <!-- Diagnosis -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-lg">Diagnosis</h4>
 
-        <!-- Primary Diagnosis -->
-        <div>
-          <label class="text-sm font-medium flex items-center gap-1">
-            Primary Claim
-            <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                @click="openNoteModal('Primary Diagnosis Note','primary_diagnosis', simulasi[tab].utama)">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
-            </svg>
-          </label>
-          <template x-if="simulasi[tab].utama">
-            <div class="flex items-center gap-2 mt-2">
-              <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
-                    x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
-            </div>
-          </template>
-          <template x-if="!simulasi[tab]?.utama || null">
-            <p class="italic text-gray-400 mt-1">Belum ada Primary Claim</p>
-          </template>
-
-          <!-- Preview Note -->
-          <template x-if="notes['primary_diagnosis'] && notes['primary_diagnosis'].length">
-            <div class="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border">
-              <p class="font-mono"
-                x-text="notes['primary_diagnosis'][notes['primary_diagnosis'].length - 1]"></p>
-              <template x-if="notes['primary_diagnosis'].length > 1">
-                <p class="text-blue-600 cursor-pointer mt-1"
+          <!-- Primary Diagnosis -->
+          <div>
+            <label class="text-sm font-medium flex items-center gap-1">
+              Primary Claim
+              <svg xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
                   @click="openNoteModal('Primary Diagnosis Note','primary_diagnosis', simulasi[tab].utama)">
-                  +<span x-text="notes['primary_diagnosis'].length - 1"></span> more
-                </p>
-              </template>
-            </div>
-          </template>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+              </svg>
+            </label>
+            <!-- Preview Primary Diagnosis -->
+            <template x-if="simulasi[tab].utama">
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
+                      x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
+              </div>
+            </template>
+            <template x-if="!simulasi[tab]?.utama || null">
+              <p class="italic text-gray-400 mt-1">Belum ada Primary Claim</p>
+            </template>
+
+            <!-- Preview Note -->
+            <template x-if="notes['primary_diagnosis'] && notes['primary_diagnosis'].length">
+              <div class="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border">
+                <p class="font-mono"
+                  x-text="notes['primary_diagnosis'][notes['primary_diagnosis'].length - 1]"></p>
+                <template x-if="notes['primary_diagnosis'].length > 1">
+                  <p class="text-blue-600 cursor-pointer mt-1"
+                    @click="openNoteModal('Primary Diagnosis Note','primary_diagnosis', simulasi[tab].utama)">
+                    +<span x-text="notes['primary_diagnosis'].length - 1"></span> more
+                  </p>
+                </template>
+              </div>
+            </template>
+          </div>
+
+          <!-- Secondary Diagnosis -->
+          <div>
+            <label class="text-sm font-medium flex items-center gap-1">
+              Secondary Claims
+              <svg xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  @click="openNoteModal('Secondary Diagnosis Note','secondary_diagnosis', simulasi[tab].sekunder?.[0] || null)">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+              </svg>
+            </label>
+            <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
+                      x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
+              </div>
+            </template>
+            <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
+              <p class="italic text-gray-400 mt-1">Belum ada Secondary Claim</p>
+            </template>
+          </div>
         </div>
 
-        <!-- Secondary Diagnosis -->
-        <div>
-          <label class="text-sm font-medium flex items-center gap-1">
-            Secondary Claims
-            <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                @click="openNoteModal('Secondary Diagnosis Note','secondary_diagnosis', simulasi[tab].sekunder?.[0] || null)">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
-            </svg>
-          </label>
-          <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
-            <div class="flex items-center gap-2 mt-2">
-              <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
-                    x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
-            </div>
-          </template>
-          <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
-            <p class="italic text-gray-400 mt-1">Belum ada Secondary Claim</p>
-          </template>
+        <!-- Tindakan -->
+        <div class="space-y-3 mt-6">
+          <h4 class="font-bold text-lg">Tindakan</h4>
+
+          <!-- Primary Action -->
+          <div>
+            <label class="text-sm font-medium flex items-center gap-1">
+              Primary Action
+              <svg xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  @click="openNoteModal('Primary Action Note','primary_action', simulasi[tab].tindakanUtama || null)">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+              </svg>
+            </label>
+            <template x-if="simulasi[tab].tindakanUtama">
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
+                      x-text="simulasi[tab].tindakanUtama?.name"></span>
+              </div>
+            </template>
+            <template x-if="!simulasi[tab]?.tindakanUtama">
+              <p class="italic text-gray-400 mt-1">Belum ada Primary Action</p>
+            </template>
+          </div>
+
+          <!-- Secondary Actions -->
+          <div>
+            <label class="text-sm font-medium flex items-center gap-1">
+              Secondary Actions
+              <svg xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  @click="openNoteModal('Secondary Actions Note','secondary_action', simulasi[tab].tindakanSekunder[0])">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
+              </svg>
+            </label>
+            <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
+              <div class="flex items-center gap-2 mt-2">
+                <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
+                      x-text="(tdk.name || '-')"></span>
+              </div>
+            </template>
+            <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
+              <p class="italic text-gray-400 mt-1">Belum ada Secondary Action</p>
+            </template>
+          </div>
+
+            <!-- Hidden inputs -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="simulasi" id="simulasiField">
+            <input type="hidden" name="summary" id="summaryField">
+
+            <!-- Tombol -->
+          <div class="flex justify-center space-x-4">
+            <button type="button" onclick="generateAI()" 
+              class="bg-yellow-600 text-white px-6 py-2 rounded font-semibold">
+              Recalculate
+            </button>
+            <button type="submit"
+            class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
+              Save Draft
+            </button>
+          </div>
         </div>
+        <!-- ================= Akhir Panel Kanan ================= -->
       </div>
 
-      <!-- Tindakan -->
-      <div class="space-y-3 mt-6">
-        <h4 class="font-bold text-lg">Tindakan</h4>
-
-        <!-- Primary Action -->
-        <div>
-          <label class="text-sm font-medium flex items-center gap-1">
-            Primary Action
-            <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                @click="openNoteModal('Primary Action Note','primary_action', simulasi[tab].tindakanUtama || null)">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
-            </svg>
-          </label>
-          <template x-if="simulasi[tab].tindakanUtama">
-            <div class="flex items-center gap-2 mt-2">
-              <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
-                    x-text="simulasi[tab].tindakanUtama?.name"></span>
-            </div>
-          </template>
+      <!-- Modal -->
+      <div x-show="modalOpen" x-cloak
+          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
+                  class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+            ✕
+          </button>
+          <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+              x-html="modalTitle"></h3>
+          <div class="p-6" x-html="modalContent"></div>
         </div>
-
-        <!-- Secondary Actions -->
-        <div>
-          <label class="text-sm font-medium flex items-center gap-1">
-            Secondary Actions
-            <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                @click="openNoteModal('Secondary Actions Note','secondary_action', simulasi[tab].tindakanSekunder[0])">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
-            </svg>
-          </label>
-          <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder?.[0] || null" :key="i">
-            <div class="flex items-center gap-2 mt-2">
-              <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
-                    x-text="(tdk.name || '-')"></span>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      </div>
-
-      <!-- Hidden inputs -->
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <input type="hidden" name="simulasi" id="simulasiField">
-      <input type="hidden" name="summary" id="summaryField">
-
-      <!-- Tombol -->
-       <div class="flex justify-center space-x-4">
-        <button type="button" onclick="generateAI()" 
-          class="bg-yellow-600 text-white px-6 py-2 rounded font-semibold">
-          Recalculate
-        </button>
-        <button type="submit"
-          class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
-          Save Draft
-        </button>
-      </div>
-    </div>
-
-
-    <!-- Modal -->
-    <div x-show="modalOpen" x-cloak
-         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
-                class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
-          ✕
-        </button>
-        <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
-            x-html="modalTitle"></h3>
-        <div class="p-6" x-html="modalContent"></div>
       </div>
     </div>
   </div>
@@ -311,8 +317,8 @@
 {% block scripts %}
 <script src="{{ url_for('static', path='js/claim/claim.utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.state.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.manual.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script> 
 <script src="{{ url_for('static', path='js/claim/claim.modals.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.bootstrap.js') }}"></script>
