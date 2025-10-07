@@ -143,7 +143,8 @@
         "beforeend",
         `
         <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
-            data-id="manual-tindakan-${tab}-${idx}">
+            data-id="manual-tindakan-${tab}-${idx}"
+            data-manual-idx="${idx}">
           <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
               onclick="openManualDetailModal({ procedure_text: '${nama}' }, '${tab}', ${idx})">
             ${nama}

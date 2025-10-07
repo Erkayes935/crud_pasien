@@ -48,9 +48,23 @@
 
   // ================= Fungsi Global: Add Manual If Not Found =================
   async function addManualIfNotFound(tab, type = "diagnosis") {
-    const el = document.querySelector(`[x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')"]`);
+    // 🔎 cari komponen Alpine yang punya x-data diagnosisAutocomplete dan mengandung tab + type
+    let el = document.querySelector(
+      `[x-data*="diagnosisAutocomplete('${tab}'"][x-data*="'${type}')"]`
+    );
+
+    // fallback untuk daily tab (kadang id bisa berubah)
+    if (!el && String(tab).startsWith("daily-")) {
+      el = document.querySelector(
+        `[x-data*="diagnosisAutocomplete('daily"][x-data*="'${type}')"]`
+      );
+    }
+
     const ctx = el ? Alpine.$data(el) : null;
-    if (!ctx) return;
+    if (!ctx) {
+      console.warn("⚠️ addManualIfNotFound: konteks Alpine tidak ditemukan untuk", tab, type);
+      return;
+    }
 
     const text = ctx.query?.trim?.();
     if (!text) return;
@@ -412,7 +426,7 @@
               <input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
             </td>
             <td class="border px-3 py-2 text-center">
-              <button type="button" @click="addManualIfNotFound()" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+              <button type="button" @click="addManualIfNotFound('${tab}', '${type}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
             </td>
           </tr>
         `);

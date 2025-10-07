@@ -863,10 +863,18 @@
       console.error("Gagal fetch notes:", err);
     }
 
-    // 🔹 gabungkan dengan state lokal (kalau ada)
     const existingLogs = notes.map(n => {
-      const time = new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-      return `[${n.role} ${time}] ${n.note_text}`;
+      // Pastikan timestamp dianggap UTC dulu
+      const utcString = n.timestamp.endsWith('Z') ? n.timestamp : n.timestamp + 'Z';
+      const time = new Date(utcString).toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return `[${n.role} ${time} WIB] ${n.note_text}`;
     });
 
     const currentText = existingLogs.join("\n");
