@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.auth import require_roles_session
 from backend.services.claim import note_service
+from ..crud import claim_note as claim_crud
 
 router = APIRouter(prefix="/claims", tags=["notes"])
 

@@ -3,6 +3,7 @@ from datetime import datetime
 from ... import models
 from ...utils.dummy_data import make_dummy_idrg_diagnosis, make_dummy_idrg_summary, make_dummy_idrg_regulasi
 from .helper import parse_number, _update_or_create_procedure, _update_diag_fields
+from zoneinfo import ZoneInfo
 
 # =========================
 # Simulasi + Evaluasi
@@ -355,4 +356,135 @@ def get_simulations_service(db: Session, claim_id: int):
         ]
     }
 
+def get_simulations_for_coder(db: Session, claim_id: int):
+    """
+    Ambil seluruh kombinasi diagnosis & tindakan dokter untuk diverifikasi coder.
+    Sekaligus pastikan field_key konsisten antar-role agar notes terbaca lintas user.
+    """
+    sims = (
+        db.query(models.ClaimSimulation)
+        .options(
+            joinedload(models.ClaimSimulation.diagnosis_utama),
+            joinedload(models.ClaimSimulation.diagnosis_sekunder),
+            joinedload(models.ClaimSimulation.tindakan_utama),
+            joinedload(models.ClaimSimulation.tindakan_sekunder),
+        )
+        .filter(
+            models.ClaimSimulation.claim_id == claim_id,
+            models.ClaimSimulation.is_deleted == False,
+            (
+                models.ClaimSimulation.diagnosis_utama_id.isnot(None)
+                | models.ClaimSimulation.diagnosis_sekunder_id.isnot(None)
+                | models.ClaimSimulation.tindakan_utama_id.isnot(None)
+                | models.ClaimSimulation.tindakan_sekunder_id.isnot(None)
+            ),
+        )
+        .order_by(models.ClaimSimulation.stage.asc(), models.ClaimSimulation.id.asc())
+        .all()
+    )
 
+    stages = {}
+    for s in sims:
+        items = []
+
+        # ========================
+        # DIAGNOSIS
+        # ========================
+        if s.diagnosis_utama_id and s.diagnosis_utama:
+            items.append({
+                "type": "Diagnosis Utama",
+                "text": s.diagnosis_utama.diagnosis_text,
+                "icd_doctor": s.diagnosis_utama.icd10_code,
+                "field": "primary_diagnosis",   # ✅ konsisten antar-role
+                "icd_final": s.coder_icd10_utama,
+                "verified_by": s.coder_verified_by,
+                "verified_at": s.coder_verified_at,
+                "item_id": s.diagnosis_utama_id
+            })
+
+        if s.diagnosis_sekunder_id and s.diagnosis_sekunder:
+            items.append({
+                "type": "Diagnosis Sekunder",
+                "text": s.diagnosis_sekunder.diagnosis_text,
+                "icd_doctor": s.diagnosis_sekunder.icd10_code,
+                "field": "secondary_diagnosis",  # ✅ konsisten antar-role
+                "icd_final": s.coder_icd10_sekunder,
+                "verified_by": s.coder_verified_by,
+                "verified_at": s.coder_verified_at,
+                "item_id": s.diagnosis_sekunder_id
+            })
+
+        # ========================
+        # TINDAKAN
+        # ========================
+        if s.tindakan_utama_id and s.tindakan_utama:
+            icd9_code = None
+            # ambil icd9 dari ClaimProcedureDetail jika ada
+            if s.tindakan_utama.procedure_details:
+                icd9_code = s.tindakan_utama.procedure_details[0].icd9_tindakan
+            items.append({
+                "type": "Tindakan Utama",
+                "text": s.tindakan_utama.procedure_text,
+                "icd_doctor": icd9_code,
+                "field": "primary_action",       # ✅ konsisten antar-role
+                "icd_final": s.coder_icd10_utama,
+                "verified_by": s.coder_verified_by,
+                "verified_at": s.coder_verified_at,
+                "item_id": s.tindakan_utama_id
+            })
+
+        if s.tindakan_sekunder_id and s.tindakan_sekunder:
+            icd9_code = None
+            if s.tindakan_sekunder.procedure_details:
+                icd9_code = s.tindakan_sekunder.procedure_details[0].icd9_tindakan
+            items.append({
+                "type": "Tindakan Sekunder",
+                "text": s.tindakan_sekunder.procedure_text,
+                "icd_doctor": icd9_code,
+                "field": "secondary_action",     # ✅ konsisten antar-role
+                "icd_final": s.coder_icd10_sekunder,
+                "verified_by": s.coder_verified_by,
+                "verified_at": s.coder_verified_at,
+                "item_id": s.tindakan_sekunder_id
+            })
+
+        if items:
+            stages.setdefault(s.stage, []).extend(items)
+
+    return stages
+
+def save_coder_verification(db: Session, claim_id: int, form_data: dict, coder_name: str):
+    """Simpan hasil verifikasi ICD dari coder ke claim_simulations."""
+    updated = 0
+    now = datetime.now(ZoneInfo("Asia/Jakarta"))
+
+    sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).all()
+    if not sims:
+        return 0
+
+    for key, value in form_data.items():
+        val = (value or "").strip()
+        if not val:
+            continue
+
+        # ============================
+        # Mode baru: key tanpa ID suffix
+        # ============================
+        for sim in sims:
+            if key == "primary_diagnosis" and sim.diagnosis_utama_id:
+                sim.coder_icd10_utama = val
+            elif key == "secondary_diagnosis" and sim.diagnosis_sekunder_id:
+                sim.coder_icd10_sekunder = val
+            elif key == "primary_action" and sim.tindakan_utama_id:
+                sim.coder_icd10_utama = val
+            elif key == "secondary_action" and sim.tindakan_sekunder_id:
+                sim.coder_icd10_sekunder = val
+            else:
+                continue
+
+            sim.coder_verified_by = coder_name
+            sim.coder_verified_at = now
+            updated += 1
+
+    db.commit()
+    return updated

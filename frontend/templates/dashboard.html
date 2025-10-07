@@ -30,6 +30,20 @@
         </a>
       {% endif %}
       {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
+
+      {% if current_user.role == 'coder' %}
+        <!-- CODER hanya bisa melihat: Klaim & Ekspor Klaim -->
+        <a href="/claims" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          📝 Klaim
+        </a>
+        <a href="/claims/export" 
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
+          ⬇️ Ekspor Klaim
+        </a>
+
+      {% else %}
+        <!-- Role lain (doctor, costing, validator, manajemen) -->
         <a href="/patients?flow=claim" 
           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
           + Klaim Baru
@@ -55,6 +69,9 @@
           ⬇️ Ekspor Klaim
         </a>
       {% endif %}
+
+    {% endif %}
+
     {% endif %}
   </div>
 
@@ -183,14 +200,18 @@
                       <span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs">Draft</span>
                     </td>
                     <td class="p-2 border text-center">
-                      {% if user and user.role in ['doctor', 'coder'] %}
+                      {% if user %}
+                      {% if user.role == 'doctor' %}
                         <a href="/claims/{{ claim.id }}/edit" 
-                        class="text-blue-600 hover:underline">Edit</a>
-                      {% endif %}
-                      {% if user and user.role == 'verifikator' %}
+                          class="text-blue-600 hover:underline">Edit</a>
+                      {% elif user.role == 'coder' %}
+                        <a href="/claims/{{ claim.id }}/coder" 
+                          class="text-blue-600 hover:underline">Review ICD</a>
+                      {% elif user.role == 'verifikator' %}
                         <a href="/claims/{{ claim.id }}/edit" 
-                        class="text-blue-600 hover:underline">Review</a>
+                          class="text-blue-600 hover:underline">Review</a>
                       {% endif %}
+                    {% endif %}
                     </td>
                   </tr>
               {% endif %}

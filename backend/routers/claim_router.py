@@ -7,10 +7,10 @@ Route dibuat tipis → panggil crud.Claim + services.claim_service.
 
 from fastapi import APIRouter, Depends, Request, Form, Body, Query, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date, timedelta
 from typing import Optional
-
+import zoneinfo
 from .. import models
 from ..database import get_db
 from ..utils.flash import flash
@@ -21,6 +21,7 @@ from ..crud import claim_note as claim_crud
 from ..services import claim as claim_service
 from ..form_configs import form_configs
 from ..utils.form_utils import get_form_as_dict
+from ..services.claim import simulation as sim_service
 
 import io, json
 from openpyxl import Workbook
@@ -312,6 +313,54 @@ def ai_summary(claim_id: int, payload: dict = Body(...), db: Session = Depends(g
 @router.get("/{claim_id}/simulations")
 def get_simulations(claim_id: int, db: Session = Depends(get_db)):
     return claim_service.get_simulations_service(db, claim_id)
+
+
+from datetime import datetime
+
+# ==========================================================
+# CODER VERIFICATION (berdasarkan claim_simulations)
+# ==========================================================
+
+@router.get("/{claim_id}/coder", response_class=HTMLResponse)
+def coder_review_page(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("coder")),
+):
+    """Tampilkan data simulasi dokter untuk diverifikasi coder."""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    stages = sim_service.get_simulations_for_coder(db, claim_id)
+    csrf_token = issue_csrf_token(request)
+
+    return templates.TemplateResponse(
+        "claims/edit_coder.html",
+        {
+            "request": request,
+            "claim": claim,
+            "stages": stages,
+            "user": user,
+            "current_user": user,
+            "csrf_token": csrf_token,
+        },
+    )
+
+@router.post("/{claim_id}/coder")
+async def coder_submit_verification(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("coder")),
+):
+    """Simpan hasil verifikasi ICD coder."""
+    form_data = await request.form()
+    updated = sim_service.save_coder_verification(db, claim_id, form_data, user.name)
+
+    flash(request, f"✅ {updated} simulasi berhasil diverifikasi oleh coder.", "success")
+    return RedirectResponse(url=f"/claims/{claim_id}/coder", status_code=303)
 
 # ==================================================
 # UPDATE DRAFT / FINALIZE
