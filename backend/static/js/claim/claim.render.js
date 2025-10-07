@@ -12,6 +12,67 @@
     });
   }
 
+  // ================= Diagnosis Autocomplete =================
+  function diagnosisAutocomplete(tab, tabPath, type = "diagnosis") {
+    return {
+      query: "",
+      results: [],
+
+      // 🔍 cari diagnosis dari backend
+      async search() {
+        if (!this.query) {
+          this.results = [];
+          return;
+        }
+        try {
+          const res = await window.searchDiagnosis(this.query);
+          this.results = res?.data || [];
+        } catch (err) {
+          console.error("❌ Gagal cari diagnosis:", err);
+        }
+      },
+
+      // 🩺 pilih hasil dari dropdown
+      async select(item) {
+        this.query = `${item.code} - ${item.name}`;
+        this.results = [];
+        await window.addManualFromAutocomplete(tab, item, type);
+      },
+
+      // ➕ tombol tambah manual
+      async addManualIfNotFound() {
+        await window.addManualIfNotFound(tab, type); // panggil versi global
+      },
+    };
+  }
+
+  // ================= Fungsi Global: Add Manual If Not Found =================
+  async function addManualIfNotFound(tab, type = "diagnosis") {
+    const el = document.querySelector(`[x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')"]`);
+    const ctx = el ? Alpine.$data(el) : null;
+    if (!ctx) return;
+
+    const text = ctx.query?.trim?.();
+    if (!text) return;
+
+    const found = (ctx.results || []).some(
+      dx =>
+        dx.name?.toLowerCase() === text.toLowerCase() ||
+        dx.code?.toLowerCase() === text.toLowerCase()
+    );
+
+    if (!found) {
+      const confirmAdd = confirm(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`
+      );
+      if (!confirmAdd) return;
+      await window.addManualFromAutocomplete(tab, { name: text, code: null }, type);
+      ctx.query = "";
+      ctx.results = [];
+    }
+  }
+
+
 
   // Pure renderer untuk data pecahan
   function renderAI(rows) {
@@ -55,14 +116,14 @@
           </button>
           <div x-show="open" class="p-2 space-y-2">
             ${["diagnosis","komorbid","komplikasi"].map(k => `
-              <details class="border rounded mb-2">
+              <details class="border rounded">
                 <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                   <span class="font-semibold">${k[0].toUpperCase() + k.slice(1)}</span>
                   <span id="count-${k}-${dayId}"
                         class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
                 </summary>
-                <div class="p-3">
-                  <table class="w-full text-xs border table-fixed">
+                <div class="p-3 overflow-x-auto">
+                  <table class="w-full text-xs border" id="${k}-${dayId}">
                     <tbody id="${k}-${dayId}"></tbody>
                   </table>
                 </div>
@@ -318,11 +379,12 @@
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
-              <div x-data="diagnosisAutocomplete('${tab}', ${tabPath})" class="relative">
+              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')" class="relative">
                 <input type="text"
                       x-model="query"
                       @input.debounce.300ms="search"
-                      placeholder="Cari diagnosis..."
+                      @keydown.enter.prevent="results.length ? select(results[0]) : addManualIfNotFound()"
+                      placeholder="Cari penyakit..."
                       class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
                               text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
 
@@ -350,7 +412,7 @@
               <input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
             </td>
             <td class="border px-3 py-2 text-center">
-              <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+              <button type="button" @click="addManualIfNotFound()" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
             </td>
           </tr>
         `);
@@ -365,25 +427,10 @@
     }
   }
 
-  function diagnosisAutocomplete(tab, tabPath) {
-    return {
-      query: "",
-      results: [],
-      async search() {
-        if (!this.query) { this.results = []; return; }
-        const res = await window.searchDiagnosis(this.query);
-        this.results = res.data || [];
-      },
-      async select(item) {
-        this.query = item.code + " - " + item.name;
-        this.results = [];
-        await window.addManualFromAutocomplete(tab, item);
-      }
-    }
-  }
 
   // export
   window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
+  window.addManualIfNotFound = addManualIfNotFound;
 })();

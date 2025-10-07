@@ -63,6 +63,51 @@
         tindakanCell.innerText = "-";
       }
     }
+    // 🧩 Persist semua perubahan hasil modal ke state simulasi
+    try {
+      const stage = dx.stage || window.claimState?.tab || "admission";
+      const sim = window.claimState?.simulasi?.[stage];
+      if (sim && Array.isArray(sim.diagnosis)) {
+        const item = sim.diagnosis.find(d =>
+          d.id === dx.id ||
+          d.kategori === dx.kategori ||
+          d.icd10_code === dx.icd10_code
+        );
+        if (item) {
+          // --- KLINIS ---
+          if (dx.klinis) {
+            let klinisText = "";
+            if (typeof dx.klinis === "object" && dx.klinis !== null) {
+              const k = dx.klinis;
+              klinisText = [k.justifikasi, k.bukti_klinis, k.syarat_klinis]
+                .filter(Boolean)
+                .join(", ");
+            } else if (Array.isArray(dx.klinis)) {
+              klinisText = dx.klinis.filter(Boolean).join(", ");
+            } else {
+              klinisText = dx.klinis;
+            }
+            // simpan versi HTML biar tetap truncate + tooltip
+            item.klinis = `<span title="${klinisText}">${truncateText(klinisText, 44)}</span>`;
+          }
+
+          // --- ICD ---
+          if (dx.icd10_code || dx.icd10) {
+            item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "-";
+            item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
+          }
+
+          // --- TINDAKAN ---
+          if (Array.isArray(dx.tindakan)) {
+            const texts = dx.tindakan.map(t => t.procedure_text || t.tindakan).filter(Boolean);
+            const tindakanText = texts.join(", ");
+            item.tindakan = `<span title="${tindakanText}">${truncateText(tindakanText, 44)}</span>`;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ gagal persist ringkasan ke state:", err);
+    }
   }
 
   // Buka modal dari klik kategori
@@ -365,6 +410,7 @@
       </div>
     `;
   }
+
 
   function tindakanAutocomplete() {
     return {
@@ -933,6 +979,7 @@
   window.renderDiagnosisDetail = renderDiagnosisDetail;
   window.renderIdrgSection = renderIdrgSection;
   window.renderTindakan = renderTindakan;
+  window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.tindakanAutocomplete = tindakanAutocomplete;
   window.openProcedureModal = openProcedureModal;
   window.openManualDetailModal = openManualDetailModal;
