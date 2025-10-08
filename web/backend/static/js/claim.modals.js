@@ -840,6 +840,192 @@
       closeNestedModal();
     }
   }
+// ✅ ID stabil tanpa hash (supaya sama setiap reload)
+  // ================= SISTEM NOTES YANG DIPERBAIKI =================
+  
+// ======================== SISTEM NOTES FINAL STABIL ========================
+
+// ✅ ID stabil tanpa hash (supaya sama setiap reload)
+function getStableItemId(claimId, stage, fieldKey, itemName = "") {
+  const key = fieldKey.toLowerCase();
+  if (key === "primary_diagnosis" || key === "primary_action") return 1;
+  if (key === "secondary_diagnosis" || key === "secondary_action") return 2;
+  return 9999; // fallback umum
+}
+
+// ✅ Buka modal catatan (dengan context lengkap)
+window.openNoteModal = async function(title, fieldKey, item = null) {
+  const root = document.getElementById("claimRoot");
+  let state = null;
+  try {
+    state = Alpine.$data(root);
+  } catch (e) {
+    console.warn("⚠️ fallback ke window.claimState karena Alpine belum aktif");
+    state = window.claimState || {};
+  }
+
+  const claimId = root.dataset.claimId;
+  const currentStage = state.tab || window.claimState?.tab || "admission";
+
+  // Simpan context
+  state.currentNoteItem = item;
+  state.currentNoteField = fieldKey;
+  state.currentNoteStage = currentStage;
+
+  // Tentukan itemId (stabil)
+  const itemName = item?.name || "primary";
+  const itemId = item?.id || getStableItemId(claimId, currentStage, fieldKey, itemName);
+
+  console.log("📝 openNoteModal context:", { stage: currentStage, fieldKey, itemId, itemName });
+
+  // Ambil notes dari backend
+  let notes = [];
+  try {
+    const url = `/claims/${claimId}/notes?stage=${currentStage}&field_key=${fieldKey}&item_id=${itemId}`;
+    console.log("🔍 Fetching notes from:", url);
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (res.ok) {
+      // Tambahkan fallback ID lama agar note lama tetap terbaca
+      const oldIds = [804880226, 2184760293, 32548051, 1, 2];
+      notes = (json.data || []).filter(n =>
+        n.stage === currentStage &&
+        n.field_key === fieldKey &&
+        (String(n.item_id) === String(itemId) || oldIds.includes(Number(n.item_id)))
+      );
+
+      console.log("🧩 Filter debug", {
+        currentStage,
+        fieldKey,
+        itemId,
+        totalBefore: (json.data || []).length,
+        totalAfter: notes.length,
+        exampleMatch: notes.slice(0, 2).map(n => n.item_id)
+      });
+    }
+  } catch (err) {
+    console.error("❌ Gagal fetch notes:", err);
+  }
+
+  // Render riwayat catatan
+  const existingLogs = notes.map(n => {
+    const utcString = n.timestamp?.endsWith("Z") ? n.timestamp : n.timestamp + "Z";
+    const time = new Date(utcString).toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    return `[${n.role} ${time} WIB] ${n.note_text}`;
+  });
+
+  const currentText = existingLogs.join("\n");
+
+  state.modalTitle = `${title} - ${currentStage.toUpperCase()}`;
+  state.modalContent = `
+    <div class="space-y-4">
+      <label class="block text-sm font-medium">Tambahkan Catatan:</label>
+      <textarea id="noteField"
+                class="w-full border rounded p-2 text-sm bg-white text-gray-800
+                      focus:outline-none focus:ring-2 focus:ring-blue-400
+                      dark:bg-gray-100 dark:text-gray-900"
+                rows="4"
+                placeholder="Tulis catatan..."></textarea>
+
+      <div class="flex justify-end gap-2">
+        <button type="button"
+                class="px-4 py-2 bg-gray-300 dark:bg-gray-700 dark:text-gray-200 rounded"
+                onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
+          Close
+        </button>
+        <button type="button"
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onclick="saveNote('${fieldKey}', '${currentStage}', ${itemId})">
+          Save & Close
+        </button>
+      </div>
+
+      <hr class="my-4 border-gray-300 dark:border-gray-700">
+      <h4 class="font-semibold text-sm">Riwayat Catatan (${notes.length}):</h4>
+      <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs whitespace-pre-wrap max-h-60 overflow-y-auto text-gray-800 dark:text-gray-100">
+        ${currentText || 'Belum ada catatan.'}
+      </pre>
+    </div>
+  `;
+
+
+  state.modalOpen = true;
+  console.log("✅ openNoteModal - loaded notes:", notes.length);
+};
+
+
+// ✅ Simpan note baru (frontend + backend sync)
+window.saveNote = async function(fieldKey, stage, itemId) {
+  const root = document.getElementById("claimRoot");
+  const state = Alpine.$data(root);
+  const textarea = document.getElementById("noteField");
+  const val = textarea.value.trim();
+
+  if (!val) {
+    state.modalOpen = false;
+    return;
+  }
+
+  const claimId = root.dataset.claimId;
+
+  console.log("💾 saveNote FINAL:", { fieldKey, itemId, stage, valueToSend: val });
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (window.csrfToken) headers["X-CSRF-Token"] = window.csrfToken;
+
+    const resp = await fetch(`/claims/${claimId}/notes`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        item_id: itemId,
+        note_text: val,
+        parent_id: null,
+        field_key: fieldKey,
+        stage: stage
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+
+    // Tambahkan ke local state (agar langsung muncul tanpa reload)
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const role = state.role ? state.role : "User";
+    const log = `[${role} ${hh}:${mm}] ${val}`;
+
+    if (!state.notes) state.notes = {};
+    if (!state.notes[stage]) state.notes[stage] = {};
+    if (!state.notes[stage][fieldKey]) state.notes[stage][fieldKey] = {};
+    if (!state.notes[stage][fieldKey][itemId]) state.notes[stage][fieldKey][itemId] = [];
+    state.notes[stage][fieldKey][itemId].push(log);
+
+    console.log("✅ Note saved successfully", {
+      stage,
+      fieldKey,
+      itemId,
+      totalNotes: state.notes[stage][fieldKey][itemId].length
+    });
+  } catch (e) {
+    console.error("❌ saveNote error:", e);
+    alert("Gagal menyimpan catatan: " + e.message);
+  }
+
+  state.modalOpen = false;
+};
 
 
   // Export
@@ -856,68 +1042,7 @@
   window.closeRegulationModal = closeRegulationModal;
 
   // ================= Note Modal (Diagnosis / Tindakan) =================
-window.openNoteModal = function(title, fieldKey) {
-  const root = document.getElementById("claimRoot");
-  const state = Alpine.$data(root);
-
-  const existingLogs = (state.notes && state.notes[fieldKey]) ? state.notes[fieldKey] : [];
-  const currentText = existingLogs.join("\n");
-
-  state.modalTitle = title;
-  state.modalContent = `
-    <div class="space-y-4">
-      <label class="block text-sm font-medium">Tambahkan Catatan:</label>
-      <textarea id="noteField"
-                class="w-full border rounded p-2 text-sm"
-                rows="4"
-                placeholder="Tulis catatan..."></textarea>
-
-      <div class="flex justify-end gap-2">
-        <button type="button"
-                class="px-4 py-2 bg-gray-300 rounded"
-                onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
-          Close
-        </button>
-        <button type="button"
-                class="px-4 py-2 bg-blue-600 text-white rounded"
-                onclick="saveNote('${fieldKey}')">
-          Save & Close
-        </button>
-      </div>
-
-      <hr class="my-4">
-      <h4 class="font-semibold text-sm">Riwayat Catatan:</h4>
-      <pre class="bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">${currentText || 'Belum ada catatan.'}</pre>
-    </div>
-  `;
-  state.modalOpen = true;
-};
-
-window.saveNote = function(fieldKey) {
-  const root = document.getElementById("claimRoot");
-  const state = Alpine.$data(root);
-
-  const textarea = document.getElementById("noteField");
-  const val = textarea.value.trim();
-  if (!val) {
-    state.modalOpen = false;
-    return;
-  }
-
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const role = state.role.charAt(0).toUpperCase() + state.role.slice(1);
-
-  const log = `[${role} ${hh}:${mm}] ${val}`;
-
-    if (!state.notes) state.notes = {};
-    if (!state.notes[fieldKey]) state.notes[fieldKey] = [];
-
-    state.notes[fieldKey].push(log);
-
-    state.modalOpen = false;
-  };
+// ======================== SISTEM NOTES FINAL STABIL (MERGED FOR VERSION B) ========================
 
   // Function to open regulation detail modal
   window.openRegulationDetailModal = async function(fieldName, diagnosisId, procedureId = null) {

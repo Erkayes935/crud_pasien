@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Verifikasi ICD Coder{% endblock %}
+
+{% block content %}
+<form id="claimForm"
+      method="post"
+      action="/claims/{{ claim.id }}/coder"
+      data-claim-id="{{ claim.id }}"
+      class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
+
+  <div id="claimRoot"
+       x-data="claimData({ role: 'coder' })"
+       data-claim-id="{{ claim.id }}"
+       class="space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">🩺 Verifikasi ICD Coder</h2>
+      <button type="submit"
+              class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold transition">
+        💾 Simpan Verifikasi
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs flex space-x-6 border-b mb-4">
+      <button type="button" class="px-4 py-2"
+              :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+              @click="tab='admission'">Admission</button>
+      <button type="button" class="px-4 py-2"
+              :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+              @click="tab='daily-0'">Daily</button>
+      <button type="button" class="px-4 py-2"
+              :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+              @click="tab='discharge'">Discharge</button>
+    </div>
+
+    <!-- ==================== STAGES ==================== -->
+    {% for stage, groups in stages.items() %}
+    <div x-show="tab==='{{ stage }}'" x-cloak class="space-y-6">
+
+      <!-- ================= Diagnosis ================= -->
+      <details open class="border rounded">
+        <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+          <span class="font-semibold">Diagnosis</span>
+          <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+            {{ groups.diagnosis|length if groups.diagnosis is defined else 0 }}
+          </span>
+        </summary>
+
+        <div class="p-4 bg-white dark:bg-gray-800 rounded-b-lg overflow-x-auto">
+          <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700">
+            <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <tr>
+                <th class="border p-2 w-24">Jenis</th>
+                <th class="border p-2">Deskripsi</th>
+                <th class="border p-2 w-32">ICD Dokter</th>
+                <th class="border p-2 w-40">ICD Final (Coder)</th>
+                <th class="border p-2 w-20 text-center">Catatan</th>
+                <th class="border p-2 w-40 text-center">Status Verifikasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in groups.diagnosis %}
+              <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition
+                         {% if item.verified_at %}bg-green-50 dark:bg-green-900/30{% endif %}">
+                <td class="border p-2 font-medium text-gray-700 dark:text-gray-200">{{ item.type }}</td>
+                <td class="border p-2 text-gray-700 dark:text-gray-300">{{ item.text }}</td>
+                <td class="border p-2 text-blue-700 dark:text-blue-300 font-semibold">{{ item.icd_doctor or '-' }}</td>
+                <td class="border p-2">
+                  <input type="text"
+                         list="icd10_list"
+                         oninput="searchICD(this, 'icd10')"
+                         name="icd_final_diag_{{ item.item_id }}"
+                         value="{{ item.icd_final or '' }}"
+                         placeholder="Isi atau pilih kode ICD..."
+                         class="border rounded px-2 py-1 w-full text-sm
+                                dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
+                </td>
+                <td class="border p-2 text-center">
+                  <button type="button"
+                          class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="Buka Catatan"
+                          @click="openNoteModal(
+                            'Catatan Diagnosis',
+                            '{{ item.field }}',
+                            { id: {{ item.item_id or 'null' }}, stage: '{{ stage }}' }
+                          )">🗒️</button>
+                </td>
+                <td class="border p-2 text-center">
+                  {% if item.verified_at %}
+                    <div class="text-green-700 dark:text-green-400 font-semibold">
+                      ✅ Sudah diverifikasi<br>
+                      <small>{{ item.verified_by or '-' }}<br>{{ item.verified_at.strftime('%d-%m-%Y %H:%M') }}</small>
+                    </div>
+                  {% else %}
+                    <span class="text-red-600 dark:text-red-400 font-semibold">❌ Belum</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <!-- ================= Tindakan ================= -->
+      <details open class="border rounded">
+        <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+          <span class="font-semibold">Tindakan / Prosedur</span>
+          <span class="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+            {{ groups.procedure|length if groups.procedure is defined else 0 }}
+          </span>
+        </summary>
+
+        <div class="p-4 bg-white dark:bg-gray-800 rounded-b-lg overflow-x-auto">
+          <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700">
+            <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <tr>
+                <th class="border p-2 w-24">Jenis</th>
+                <th class="border p-2">Deskripsi</th>
+                <th class="border p-2 w-32">ICD-9 Dokter</th>
+                <th class="border p-2 w-40">ICD-9 Final (Coder)</th>
+                <th class="border p-2 w-20 text-center">Catatan</th>
+                <th class="border p-2 w-40 text-center">Status Verifikasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in groups.procedure %}
+              <tr class="odd:bg-gray-50 dark:odd:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition
+                         {% if item.verified_at %}bg-green-50 dark:bg-green-900/30{% endif %}">
+                <td class="border p-2 font-medium text-gray-700 dark:text-gray-200">{{ item.type }}</td>
+                <td class="border p-2 text-gray-700 dark:text-gray-300">{{ item.text }}</td>
+                <td class="border p-2 text-blue-700 dark:text-blue-300 font-semibold">{{ item.icd_doctor or '-' }}</td>
+                <td class="border p-2">
+                  <input type="text"
+                         list="icd9_list"
+                         oninput="searchICD(this, 'icd9')"
+                         name="icd_final_proc_{{ item.item_id }}"
+                         value="{{ item.icd_final or '' }}"
+                         placeholder="Isi atau pilih kode ICD-9..."
+                         class="border rounded px-2 py-1 w-full text-sm
+                                dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-green-500">
+                </td>
+                <td class="border p-2 text-center">
+                  <button type="button"
+                          class="text-gray-500 hover:text-green-600 dark:hover:text-green-400"
+                          title="Buka Catatan"
+                          @click="openNoteModal(
+                            'Catatan Tindakan',
+                            '{{ item.field }}',
+                            { id: {{ item.item_id or 'null' }}, stage: '{{ stage }}' }
+                          )">🗒️</button>
+                </td>
+                <td class="border p-2 text-center">
+                  {% if item.verified_at %}
+                    <div class="text-green-700 dark:text-green-400 font-semibold">
+                      ✅ Sudah diverifikasi<br>
+                      <small>{{ item.verified_by or '-' }}<br>{{ item.verified_at.strftime('%d-%m-%Y %H:%M') }}</small>
+                    </div>
+                  {% else %}
+                    <span class="text-red-600 dark:text-red-400 font-semibold">❌ Belum</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+    </div>
+    {% endfor %}
+    <!-- ============================================ -->
+
+    <!-- Modal Notes -->
+    <div x-show="modalOpen" x-cloak
+         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">✕</button>
+        <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+            x-html="modalTitle"></h3>
+        <div class="p-6" x-html="modalContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ICD Autocomplete Lists -->
+  <datalist id="icd10_list"></datalist>
+  <datalist id="icd9_list"></datalist>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/claim/claim.utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.state.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.manual.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.modals.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.api.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim/claim.bootstrap.js') }}"></script>
+
+<!-- ICD Autocomplete -->
+<script>
+let icdTimer;
+function searchICD(input, version) {
+  const q = input.value.trim();
+  clearTimeout(icdTimer);
+  if (q.length < 2) return;
+  icdTimer = setTimeout(async () => {
+    try {
+      console.log("🔍 Fetch ICD:", q, version);
+      const res = await fetch(`/claims/api/search/icd?q=${encodeURIComponent(q)}&version=${version}`);
+      const json = await res.json();
+      const datalist = document.getElementById(version === 'icd10' ? 'icd10_list' : 'icd9_list');
+      datalist.innerHTML = json.data.map(i => `<option value="${i.code} - ${i.name}">`).join('');
+      console.log("✅ Datalist updated:", json.data.length, "result(s)");
+    } catch (err) {
+      console.error("❌ Gagal cari ICD:", err);
+    }
+  }, 300); // tunggu 300 ms sebelum fetch
+}
+</script>
+{% endblock %}

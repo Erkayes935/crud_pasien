@@ -17,6 +17,118 @@ import backend.crud.patient as patient_crud
 from backend.form_configs import form_configs
 
 router = APIRouter()
+# =========================================================
+# 📤 EXPORT PASIEN (Excel)
+# =========================================================
+@router.get("/patients/export", name="export_patients_filtered")
+def export_patients_filtered(
+    db: Session = Depends(get_db),
+    search: Optional[str] = Query(None, description="Cari pasien berdasarkan nama, KTP, RM, atau BPJS"),
+    gender: Optional[str] = Query(None, description="Filter berdasarkan jenis kelamin"),
+    hospital_id: Optional[int] = Query(None, description="Filter berdasarkan rumah sakit"),
+    start_date: Optional[str] = Query(None, description="Tanggal lahir dari (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Tanggal lahir sampai (YYYY-MM-DD)"),
+    user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator")),
+):
+    """
+    Ekspor data pasien ke Excel — mengikuti filter pencarian dan tanggal yang aktif di tampilan daftar.
+    """
+    query = db.query(models.Patient).join(models.Hospital, isouter=True)
+    query = query.filter(models.Patient.is_deleted == False)
+
+    # 🔹 Filter pencarian umum
+    if search:
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                func.lower(func.trim(models.Patient.nama)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_ktp)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_rm)).like(pattern.lower()),
+                func.lower(func.trim(models.Patient.no_bpjs)).like(pattern.lower()),
+            )
+        )
+
+    # 🔹 Filter jenis kelamin
+    if gender:
+        query = query.filter(models.Patient.jenis_kelamin == gender)
+
+    # 🔹 Filter rumah sakit
+    if hospital_id:
+        query = query.filter(models.Patient.hospital_id == hospital_id)
+
+    # 🔹 Filter rentang tanggal lahir
+    from datetime import date as date_cls
+    if start_date:
+        try:
+            start_date_val = date_cls.fromisoformat(start_date)
+            query = query.filter(models.Patient.tanggal_lahir >= start_date_val)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_date_val = date_cls.fromisoformat(end_date)
+            query = query.filter(models.Patient.tanggal_lahir <= end_date_val)
+        except ValueError:
+            pass
+
+    # 🔹 Ambil data akhir
+    patients = query.order_by(models.Patient.id.desc()).all()
+    if not patients:
+        raise HTTPException(status_code=404, detail="Tidak ada data pasien untuk diekspor.")
+
+    # =========================================================
+    # 📘 Buat file Excel
+    # =========================================================
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Data Pasien"
+
+    headers = [
+        "ID Pasien", "Nama", "Jenis Kelamin", "Tanggal Lahir", "Umur",
+        "No. RM", "No. BPJS", "No. KTP", "No. HP", "Email",
+        "Alamat", "Rumah Sakit", "Tanggal Dibuat", "Tanggal Diperbarui"
+    ]
+    ws.append(headers)
+
+    today = datetime.now().date()
+    for p in patients:
+        umur = "-"
+        if p.tanggal_lahir:
+            umur = today.year - p.tanggal_lahir.year - ((today.month, today.day) < (p.tanggal_lahir.month, p.tanggal_lahir.day))
+
+        ws.append([
+            p.id,
+            p.nama or "-",
+            p.jenis_kelamin or "-",
+            p.tanggal_lahir.strftime("%Y-%m-%d") if p.tanggal_lahir else "-",
+            umur,
+            p.no_rm or "-",
+            p.no_bpjs or "-",
+            p.no_ktp or "-",
+            p.no_hp or "-",
+            p.email or "-",
+            p.alamat or "-",
+            p.hospital.nama if p.hospital else "-",
+            p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "-",
+            p.updated_at.strftime("%Y-%m-%d %H:%M") if p.updated_at else "-",
+        ])
+
+    # Auto width kolom
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max(12, min(max_length + 2, 60))
+
+    # Simpan buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"patients_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 # =========================
 # LIST PATIENTS

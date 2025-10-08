@@ -3,8 +3,8 @@
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Daftar Pasien</h1>
-        <a href="/export" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
-            📤 Eksport Data ke Excel
+        <a href="/patients/export?search={{ search or '' }}&gender={{ gender or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}"
+            class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow"> 📤 Export Pasien (Excel)
         </a>
     </div>
 

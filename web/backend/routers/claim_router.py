@@ -2,14 +2,17 @@
 Module: backend.routers.claim_router
 
 Manajemen klaim: list, detail, add/edit, draft/finalize, delete,
-simulasi, evaluasi, AI proxy (core_engine), dan export.
+simulasi, evaluasi, AI proxy (core_engine), export, notes, coder.
 """
 
-from fastapi import APIRouter, Depends, Request, Form, Body, Query, HTTPException
+from fastapi import (
+    APIRouter, Depends, Request, Form, Body, Query, HTTPException
+)
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
 from sqlalchemy.orm import Session
-from datetime import date
-import io, json
+from datetime import datetime, date
+from typing import Optional
+import io
 from openpyxl import Workbook
 
 from .. import models, form_configs
@@ -18,18 +21,56 @@ from ..auth import require_roles_session, require_csrf_dep, issue_csrf_token
 from ..utils.templates import templates
 from ..utils.flash import flash
 from ..crud import claim as claim_crud
+from ..crud import claim_note as note_crud
 from ..services.claim import core, simulation, ai
 from ..services import claim_ai
 from backend.services.claim.simulation import load_sim_and_summary
 from backend.services import claim_helper
-from .. import config
-import httpx
-
-
-from .. import config
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
+
+
+# ==================================================
+# EXPORT
+# ==================================================
+
+@router.get("/export", name="export_claims")
+def export_claims(
+    status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
+):
+    """Ekspor data klaim ke Excel dengan tampilan rapi untuk user."""
+    claims = db.query(models.Claim).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Data Klaim"
+
+    headers = [
+        "ID Klaim", "Tanggal Klaim", "Nama Pasien", "No. RM", "Rumah Sakit",
+        "Dokter", "Status", "Final", "Total Diagnosis", "Total Tindakan",
+        "ICD10 Utama", "ICD9 Utama", "Status Verifikasi", "Dibuat"
+    ]
+    ws.append(headers)
+
+    for c in claims:
+        data = c.to_export_dict()
+        ws.append([data[h] for h in headers])
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    filename = f"claims_{date.today().isoformat()}.xlsx"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 # ==================================================
 # LIST & DETAIL
@@ -44,7 +85,7 @@ def list_claims(
     claim_id: int | None = Query(None),
     visit_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator")),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
     claims = claim_crud.get_claims(
         db,
@@ -73,7 +114,7 @@ def claim_detail(
     request: Request,
     claim_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
     claim = claim_crud.get_claim(db, claim_id)
     if not claim:
@@ -85,44 +126,6 @@ def claim_detail(
         "csrf_token": issue_csrf_token(request),
         "current_user": user,
     })
-
-
-# ==================================================
-# EXPORT
-# ==================================================
-
-@router.get("/export", name="export_claims")
-def export_claims(
-    status: str | None = None,
-    start_date: date | None = None,
-    end_date: date | None = None,
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","coder","verifikator","admin_rs","superadmin")),
-):
-    claims = claim_crud.export_claims(db, status, start_date, end_date)
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Claims"
-    ws.append(["Tanggal Klaim", "Nama Pasien", "Status", "Nama Dokter", "Created At"])
-    for c in claims:
-        ws.append([
-            c.claim_date,
-            c.patient.nama if c.patient else "N/A",
-            c.status,
-            c.doctor_name,
-            c.created_at,
-        ])
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-    filename = f"claims_{date.today().isoformat()}.xlsx"
-    return StreamingResponse(
-        buffer,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
-
 
 # ==================================================
 # ADD / EDIT / UPDATE / FINALIZE
@@ -137,30 +140,31 @@ def add_claim(
     _=Depends(require_csrf_dep),
 ):
     claim = core.add_claim_service(
-        db, user=current_user,
-        # hospital_id=current_user.hospital.id if current_user.hospital else None
-        form_data={"visit_id": visit_id, "hospital_id": current_user.hospital.id if current_user.hospital else None}
+        db,
+        user=current_user,
+        form_data={"visit_id": visit_id, "hospital_id": current_user.hospital.id if current_user.hospital else None},
     )
     flash(request, "Claim berhasil ditambahkan!", "success")
     return RedirectResponse(url=f"/claims/{claim.id}", status_code=303)
 
 
-@router.get("/{id}/edit")
+@router.get("/{claim_id}/edit")
 def edit_claim_form(
     request: Request,
-    id: int,
+    claim_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("verifikator","coder","doctor"))
+    user=Depends(require_roles_session("verifikator", "coder", "doctor")),
 ):
-    claim = db.query(models.Claim).get(id)
+    claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
     csrf_token = issue_csrf_token(request)
-    is_doctor = (isinstance(user.role, str) and user.role == "doctor") or \
-                (isinstance(user.role, (list, tuple)) and "doctor" in user.role)
+    is_doctor = (isinstance(user.role, str) and user.role == "doctor") or (
+        isinstance(user.role, (list, tuple)) and "doctor" in user.role
+    )
 
-    sim, summ = load_sim_and_summary(db, id, include_summary=not is_doctor)
+    sim, summ = load_sim_and_summary(db, claim_id, include_summary=not is_doctor)
     template_name = "claim_left.html" if is_doctor else "claim_right.html"
 
     return templates.TemplateResponse(template_name, {
@@ -171,7 +175,9 @@ def edit_claim_form(
         "current_user": user,
         "user": user,
         "isDoctor": is_doctor,
-        "isVerifikator": ("verifikator" in user.role) if isinstance(user.role, (list, tuple)) else (user.role == "verifikator"),
+        "isVerifikator": ("verifikator" in user.role)
+        if isinstance(user.role, (list, tuple))
+        else (user.role == "verifikator"),
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
@@ -185,35 +191,22 @@ async def update_claim_draft(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
-    payload: dict = Body(...)
+    payload: dict = Body(...),
 ):
     try:
-        # Extract AI recommendations if present
         ai_recommendations = payload.get("ai_recommendations")
         stage = payload.get("stage", "admission")
 
         if ai_recommendations:
-            # Clear previous AI results for this stage
             ai.clear_ai_results(db, claim_id)
-            
-            # Store new AI recommendations
             ai.store_ai_recommendations(
-                db=db,
-                claim_id=claim_id,
-                ai_data=ai_recommendations,
-                mode="predict",
-                stage=stage
+                db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
             )
 
-        # Update the draft with form data
         core.update_claim_draft_service(db, claim_id, user, payload)
-
         return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to save draft: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
 
 
 @router.post("/{claim_id}/finalize", name="finalize_claim")
@@ -223,7 +216,7 @@ def finalize_claim(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
-    **form_data
+    **form_data,
 ):
     core.finalize_claim_service(db, claim_id, user, form_data)
     flash(request, "Klaim difinalisasi", "success")
@@ -239,7 +232,7 @@ def delete_claim(
     claim_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor","verifikator")),
+    user=Depends(require_roles_session("doctor", "verifikator")),
     _=Depends(require_csrf_dep),
 ):
     claim_crud.delete_claim(db, claim_id)
@@ -254,6 +247,54 @@ def delete_claim(
 @router.get("/{claim_id}/simulations")
 def get_simulations(claim_id: int, db: Session = Depends(get_db)):
     return simulation.get_simulations_service(db, claim_id)
+
+
+# ==================================================
+# CODER (VERSI BARU)
+# ==================================================
+
+from ..services.claim import simulation as sim_service
+
+@router.get("/{claim_id}/coder", response_class=HTMLResponse)
+def coder_review_page(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("coder")),
+):
+    """Halaman verifikasi ICD oleh coder"""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    stages = sim_service.get_simulations_for_coder(db, claim_id)
+    csrf_token = issue_csrf_token(request)
+
+    return templates.TemplateResponse(
+        "edit_coder.html",
+        {
+            "request": request,
+            "claim": claim,
+            "stages": stages,
+            "user": user,
+            "current_user": user,
+            "csrf_token": csrf_token,
+        },
+    )
+
+
+@router.post("/{claim_id}/coder")
+async def coder_submit_verification(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("coder")),
+):
+    """Simpan hasil verifikasi ICD coder"""
+    form_data = await request.form()
+    updated = sim_service.save_coder_verification(db, claim_id, form_data, user.name)
+    flash(request, f"✅ {updated} entri berhasil diverifikasi oleh coder.", "success")
+    return RedirectResponse(url=f"/claims/{claim_id}/coder", status_code=303)
 
 
 # ==================================================

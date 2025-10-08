@@ -47,8 +47,7 @@
       tab: init.tab || 'admission',
       form: {},
 
-    
-      // simulasi hasil AI (utama/sekunder)
+      // simulasi hasil AI
       simulasi: init.sim || {
         admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
         "daily-0": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
@@ -56,6 +55,9 @@
         discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
         daily: { days: [], utama: null, sekunder: [] }
       },
+
+      // cache tindakan untuk coder
+      cache: { tindakanAI: [] },
 
       // evaluasi (summary)
       evaluasiDiagnosis: [],
@@ -82,14 +84,21 @@
         daily: {}
       },
 
+      // ======================== NOTE SYSTEM (sinkron BE) ========================
       notes: {
+        admission: {},
+        discharge: {},
+        daily: {},
         primary_diagnosis: [],
         secondary_diagnosis: [],
         primary_action: [],
         secondary_action: []
       },
+      currentNoteItem: null,
+      currentNoteField: null,
+      currentNoteStage: null,
 
-
+      // modal
       modalOpen: false,
       modalTitle: '',
       modalContent: '',
@@ -101,12 +110,10 @@
         const role = this.role;
         const claimId = document.getElementById("claimRoot")?.dataset.claimId;
         if ((role === 'verifikator' || role === 'doctor') && claimId) {
-          // panggil setelah semua script loaded
           setTimeout(() => window.loadSimulations && window.loadSimulations(claimId), 0);
         }
       },
 
-      // versi ringan (emoji) khusus di dalam state
       statusIcon(s) {
         if (!s) return "";
         const val = String(s).trim().toLowerCase();
@@ -117,17 +124,16 @@
       }
     };
 
-    window.claimState = state; // tetap global
+    window.claimState = state;
     return state;
   }
 
-  // inti: updateSimulasi
+  // updateSimulasi
   function updateSimulasi(type, opt, value, source, tab) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
     if (!tab) tab = "admission";
     const finalOpt = normalizeOpt(opt || value?.mapping || "");
 
-    // safety struktur per tab
     if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
       state.simulasi[tab] = {};
     }
@@ -154,7 +160,7 @@
       else if (finalOpt === "Secondary-Komplikasi") item.label = "Komplikasi";
     }
 
-    // Diagnosis/Komorbid/Komplikasi
+    // Diagnosis
     if (["diagnosis", "komorbid", "komplikasi"].includes(type)) {
       if (finalOpt === "Primary") {
         const oldPrimary = sim.utama;
@@ -194,17 +200,11 @@
       }
     }
 
-    // Sync daily summary
+    // Daily tab sync
     if (tab.startsWith("daily-")) {
       const idxDay = parseInt(tab.split("-")[1], 10);
       if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
       state.simulasi.daily.days[idxDay] = state.simulasi[tab];
-
-      state.simulasi.daily.summary = state.simulasi.daily.days
-        .map((d, i) => d ? ({ dayIndex: i, utama: d.utama || null, sekunder: Array.isArray(d.sekunder) ? d.sekunder : [] }) : null)
-        .filter(Boolean);
-
-      // juga rebuild ringkasannya (utama & sekunder kumulatif)
       state.simulasi.daily.utama = null;
       state.simulasi.daily.sekunder = [];
       state.simulasi.daily.days.forEach(d => {
@@ -216,7 +216,7 @@
     window.syncHiddenInputs && window.syncHiddenInputs();
   }
 
-  // dipanggil dari <select> mapping di tabel
+  // onMappingChange handler
   function onMappingChange(event, tab, type, itemId) {
     const state = Alpine.$data(document.getElementById('claimRoot'));
     const arr = state.simulasi?.[tab]?.[type] || [];
@@ -226,19 +226,6 @@
     const opt = event.target.value;
     item.mapping = opt;
     updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab);
-
-    if (tab.startsWith("daily-")) {
-      const idxDay = parseInt(tab.split("-")[1], 10);
-      if (!state.simulasi.daily.days) state.simulasi.daily.days = [];
-      state.simulasi.daily.days[idxDay] = state.simulasi[tab];
-
-      state.simulasi.daily.utama = null;
-      state.simulasi.daily.sekunder = [];
-      state.simulasi.daily.days.forEach(d => {
-        if (d?.utama && !state.simulasi.daily.utama) state.simulasi.daily.utama = d.utama;
-        if (Array.isArray(d?.sekunder)) state.simulasi.daily.sekunder.push(...d.sekunder);
-      });
-    }
   }
 
   // Expose
@@ -246,5 +233,5 @@
   window.ensureDaily = ensureDaily;
   window.updateSimulasi = updateSimulasi;
   window.onMappingChange = onMappingChange;
-  window.normalizeProcedure = normalizeProcedure; // dipakai di manual/procedure modal
+  window.normalizeProcedure = normalizeProcedure;
 })();

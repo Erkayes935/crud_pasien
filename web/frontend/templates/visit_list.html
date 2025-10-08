@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-6">
+
+  <!-- Judul & Tombol Export -->
   <div class="mb-6 flex justify-between items-center">
     <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
       Daftar Kunjungan {% if patient %}untuk {{ patient.nama }}{% endif %}
     </h1>
+    <a href="/visits/export?search={{ request.query_params.get('search','') }}"
+       class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+      📤 Export Kunjungan (Excel)
+    </a>
   </div>
 
   <!-- Form Cari -->

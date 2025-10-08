@@ -248,3 +248,108 @@ def list_visit(
             "csrf_token": issue_csrf_token(request)
         }
     )
+
+# =========================================================
+# 📤 EXPORT VISITS (Excel)
+# =========================================================
+from fastapi.responses import StreamingResponse
+from sqlalchemy import or_, func
+from openpyxl import Workbook
+import io
+
+@router.get("/visits/export", name="export_visits_filtered")
+def export_visits_filtered(
+    db: Session = Depends(get_db),
+    search: Optional[str] = Query(None, description="Cari berdasarkan dokter, poli, atau sumber"),
+    start_date: Optional[str] = Query(None, description="Tanggal kunjungan dari (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Tanggal kunjungan sampai (YYYY-MM-DD)"),
+    hospital_id: Optional[int] = Query(None, description="Filter berdasarkan rumah sakit"),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
+):
+    """
+    Ekspor daftar kunjungan ke Excel — mengikuti filter pencarian & tanggal yang aktif di tampilan list.
+    """
+    query = db.query(models.Visit).join(models.Patient, isouter=True).join(models.Hospital, isouter=True)
+    query = query.filter(models.Visit.is_deleted == False)
+
+    # 🔹 Filter pencarian umum (dokter / poli / sumber)
+    if search:
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                func.lower(func.trim(models.Visit.poli)).like(pattern.lower()),
+                func.lower(func.trim(models.Visit.sumber)).like(pattern.lower()),
+                func.lower(func.trim(models.Visit.doctor_name)).like(pattern.lower()),
+            )
+        )
+
+    # 🔹 Filter berdasarkan rumah sakit
+    if hospital_id:
+        query = query.filter(models.Visit.hospital_id == hospital_id)
+
+    # 🔹 Filter rentang tanggal kunjungan
+    from datetime import date as date_cls
+    if start_date:
+        try:
+            start_date_val = date_cls.fromisoformat(start_date)
+            query = query.filter(models.Visit.tanggal_kunjungan >= start_date_val)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_date_val = date_cls.fromisoformat(end_date)
+            query = query.filter(models.Visit.tanggal_kunjungan <= end_date_val)
+        except ValueError:
+            pass
+
+    # 🔹 Eksekusi query
+    visits = query.order_by(models.Visit.tanggal_kunjungan.desc()).all()
+    if not visits:
+        raise HTTPException(status_code=404, detail="Tidak ada data kunjungan untuk diekspor.")
+
+    # =========================================================
+    # 📘 Buat file Excel
+    # =========================================================
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Data Kunjungan"
+
+    headers = [
+        "ID Kunjungan", "Tanggal Kunjungan", "Jenis Kunjungan", "Poli",
+        "Dokter", "Pasien", "No. RM", "Rumah Sakit", "Sumber",
+        "Eksternal ID", "Dibuat", "Diperbarui"
+    ]
+    ws.append(headers)
+
+    for v in visits:
+        ws.append([
+            v.id,
+            v.tanggal_kunjungan.strftime("%Y-%m-%d") if v.tanggal_kunjungan else "-",
+            v.jenis_kunjungan or "-",
+            v.poli or "-",
+            v.doctor_name or "-",
+            v.patient.nama if v.patient else "-",
+            v.patient.no_rm if v.patient else "-",
+            v.hospital.nama if v.hospital else "-",
+            v.sumber or "-",
+            v.eksternal_id or "-",
+            v.created_at.strftime("%Y-%m-%d %H:%M") if v.created_at else "-",
+            v.updated_at.strftime("%Y-%m-%d %H:%M") if v.updated_at else "-",
+        ])
+
+    # Auto width kolom
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max(12, min(max_length + 2, 50))
+
+    # Simpan buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"visits_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

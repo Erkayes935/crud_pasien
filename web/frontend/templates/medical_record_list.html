@@ -24,12 +24,21 @@
       <option value="draft" {% if status=='draft' %}selected{% endif %}>Draft</option>
     </select>
   </div>
-  <div class="flex items-end">
-    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+  <div class="flex items-end gap-2">
+    <button type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
       🔍 Filter
     </button>
   </div>
 </form>
+
+<!-- ✅ Tombol Export Rekam Medis -->
+<div class="flex justify-end mb-4">
+  <a href="{{ url_for('export_medical_records') }}?q={{ q or '' }}&status={{ status or '' }}&date={{ date or '' }}"
+    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+    📤 Export Rekam Medis (Excel)
+  </a>
+</div>
 
 <div class="overflow-x-auto rounded-lg shadow">
   <table class="w-full text-sm text-center">
@@ -73,8 +82,8 @@
 <div class="p-4 flex gap-3">
   {% if patient and visit %}
     <a href="{{ url_for('wizard_add_medical_record', patient_id=patient.id, visit_id=visit.id) }}?flow=claim"
-    class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow">
-    ➕ Tambah Rekam Medis
+       class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow">
+       ➕ Tambah Rekam Medis
     </a>
   {% endif %}
   <a href="{{ url_for('dashboard') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">

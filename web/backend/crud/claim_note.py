@@ -1,10 +1,72 @@
 from sqlalchemy.orm import Session
 from backend import models
 
-def create_note(db: Session, claim_id: int, item_id: int | None, user_id: int, role: str,
-                note_text: str, parent_id: int | None = None, timestamp=None):
-    from backend import models
 
+# ==============================
+# BAGIAN: CRUD KLAIM UTAMA
+# ==============================
+
+def get_claim(db: Session, claim_id: int):
+    """Ambil satu klaim berdasarkan ID"""
+    return db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+
+
+def get_claims(
+    db: Session,
+    status=None,
+    tanggal_kunjungan=None,
+    patient_name=None,
+    jenis_kunjungan=None,
+    claim_id=None,
+    visit_id=None,
+):
+    """Ambil daftar klaim dengan filter opsional"""
+    query = db.query(models.Claim)
+
+    if status:
+        query = query.filter(models.Claim.status == status)
+    if claim_id:
+        query = query.filter(models.Claim.id == claim_id)
+    if visit_id:
+        query = query.filter(models.Claim.visit_id == visit_id)
+    # Tambahkan filter lain sesuai kebutuhan
+    return query.all()
+
+
+def delete_claim(db: Session, id: int):
+    """Hapus klaim"""
+    claim = db.query(models.Claim).get(id)
+    if claim:
+        db.delete(claim)
+        db.commit()
+
+
+def export_claims(db: Session, status=None, start_date=None, end_date=None):
+    """Ambil semua klaim untuk diexport"""
+    query = db.query(models.Claim)
+    if status:
+        query = query.filter(models.Claim.status == status)
+    if start_date and end_date:
+        query = query.filter(models.Claim.created_at.between(start_date, end_date))
+    return query.all()
+
+
+# ==============================
+# BAGIAN: CATATAN (NOTES)
+# ==============================
+
+def create_note(
+    db: Session,
+    claim_id: int,
+    item_id: int | None,
+    user_id: int,
+    role: str,
+    note_text: str,
+    parent_id: int | None = None,
+    field_key: str | None = None,   # ✅ ditambahkan
+    stage: str | None = None,
+    timestamp=None
+):
     note = models.ClaimNote(
         claim_id=claim_id,
         item_id=item_id,
@@ -12,9 +74,26 @@ def create_note(db: Session, claim_id: int, item_id: int | None, user_id: int, r
         role=role,
         note_text=note_text,
         parent_id=parent_id,
-        timestamp=timestamp   # fallback UTC kalau tidak dikirim
+        field_key=field_key,   # ✅ sekarang valid
+        stage=stage,
+        timestamp=timestamp
     )
     db.add(note)
     db.commit()
     db.refresh(note)
     return note
+
+
+def get_notes(db: Session, claim_id: int, stage: str | None = None):
+    query = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id)
+    if stage:
+        query = query.filter(models.ClaimNote.stage == stage)
+    return query.all()
+
+
+def delete_note(db: Session, note_id: int):
+    """Hapus satu note"""
+    note = db.query(models.ClaimNote).get(note_id)
+    if note:
+        db.delete(note)
+        db.commit()

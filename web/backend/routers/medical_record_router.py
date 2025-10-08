@@ -3,13 +3,15 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 import json
-
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+import io
 from backend import models, form_configs
 from backend.database import get_db
 from backend.utils.templates import templates
 from backend.utils.flash import flash
 from backend.auth import require_roles_session, require_csrf_dep, issue_csrf_token
-import backend.crud.medical_record as mr_crud
+from backend.crud import medical_record as mr_crud
 
 router = APIRouter()
 
@@ -51,6 +53,122 @@ def list_medical_records(
         "current_user": user,
     })
 
+
+# =========================================================
+# 📤 EXPORT MEDICAL RECORDS (Excel)
+# =========================================================
+@router.get("/medical-records/export", name="export_medical_records")
+def export_medical_records(
+    db: Session = Depends(get_db),
+    q: str | None = Query(None, description="Cari pasien berdasarkan nama"),
+    status: str | None = Query(None, description="Filter status rekam medis (final/draft)"),
+    date: str | None = Query(None, description="Tanggal rekam medis (YYYY-MM-DD)"),
+    start_date: str | None = Query(None, description="Tanggal awal rentang"),
+    end_date: str | None = Query(None, description="Tanggal akhir rentang"),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin")),
+):
+    """
+    Ekspor data rekam medis ke Excel — mengikuti filter tampilan daftar.
+    Jika user sudah melakukan filter (q, status, date), maka hasil ekspor menyesuaikan.
+    """
+    # Base query
+    query = db.query(models.MedicalRecord).join(models.Patient)
+
+    # 🔹 Filter: Nama Pasien
+    if q:
+        query = query.filter(models.Patient.nama.ilike(f"%{q}%"))
+
+    # 🔹 Filter: Status
+    if status:
+        if status == "final":
+            query = query.filter(models.MedicalRecord.is_final == True)
+        elif status == "draft":
+            query = query.filter(models.MedicalRecord.is_final == False)
+
+    # 🔹 Filter: Tanggal tunggal
+    from datetime import date as date_cls
+    if date:
+        try:
+            parsed_date = date_cls.fromisoformat(date)
+            query = query.filter(models.MedicalRecord.notes_date == parsed_date)
+        except ValueError:
+            pass  # abaikan jika kosong / tidak valid
+
+    # 🔹 Filter: Rentang tanggal (opsional)
+    if start_date:
+        try:
+            start_date_val = date_cls.fromisoformat(start_date)
+            query = query.filter(models.MedicalRecord.notes_date >= start_date_val)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_date_val = date_cls.fromisoformat(end_date)
+            query = query.filter(models.MedicalRecord.notes_date <= end_date_val)
+        except ValueError:
+            pass
+
+    # Ambil data
+    records = query.order_by(models.MedicalRecord.notes_date.desc()).all()
+    if not records:
+        raise HTTPException(status_code=404, detail="Tidak ada data rekam medis untuk diekspor.")
+
+    # =========================================================
+    # 📘 Membuat file Excel
+    # =========================================================
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Rekam Medis"
+
+    headers = [
+        "ID Rekam Medis", "Tanggal Catatan", "Jenis Rekam",
+        "Nama Pasien", "No. RM", "Jenis Kelamin", "Tanggal Lahir",
+        "Dokter", "Rumah Sakit", "Keluhan", "Diagnosis Awal",
+        "Diagnosis Akhir", "Tindakan", "Obat",
+        "Catatan Dokter", "Validasi Fornas", "Status Final"
+    ]
+    ws.append(headers)
+
+    for rec in records:
+        patient = rec.patient
+        hospital = rec.visit.hospital if rec.visit else None
+
+        ws.append([
+            rec.id,
+            rec.notes_date.strftime("%Y-%m-%d") if rec.notes_date else "-",
+            rec.record_type or "-",
+            patient.nama if patient else "-",
+            patient.no_rm if patient else "-",
+            patient.jenis_kelamin if patient else "-",
+            patient.tanggal_lahir.strftime("%Y-%m-%d") if (patient and patient.tanggal_lahir) else "-",
+            rec.doctor_name or "-",
+            hospital.nama if hospital else "-",
+            rec.keluhan or "-",
+            rec.diagnosis_awal or "-",
+            rec.diagnosis_akhir or "-",
+            rec.tindakan or "-",
+            rec.obat or "-",
+            rec.notes_doctor or "-",
+            rec.validasi_fornas or "-",
+            "Final" if rec.is_final else "Draft",
+        ])
+
+    # Atur lebar kolom otomatis
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max(12, min(max_length + 2, 60))
+
+    # Simpan ke buffer memory
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"rekam_medis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 # =========================
 # EDIT FORM
