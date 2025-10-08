@@ -36,6 +36,63 @@
     if (summInput) summInput.value = JSON.stringify(state.summary || {});
   }
 
+  // Tambahan utility functions untuk normalisasi data
+
+  // Function untuk normalisasi data array
+  window.normalizeArrayData = function(data) {
+    if (!data) {
+      return [];
+    }
+    
+    if (Array.isArray(data)) {
+      return data;
+    }
+    
+    // Jika object dengan rows atau items property
+    if (data.rows && Array.isArray(data.rows)) {
+      return data.rows;
+    }
+    
+    if (data.items && Array.isArray(data.items)) {
+      return data.items;
+    }
+    
+    // Jika object tapi bukan array, bungkus dalam array
+    if (typeof data === 'object') {
+      return [data];
+    }
+    
+    return [];
+  };
+
+  // Utility functions untuk rendering iDRG data
+
+  // Function untuk render checklist sebagai HTML
+  window.renderChecklistHtml = function(checklist) {
+    if (!checklist) return '-';
+    
+    if (Array.isArray(checklist) && checklist.length > 0) {
+      return `<ul class="list-disc pl-5 space-y-1">${checklist.map(item => `<li>${item}</li>`).join('')}</ul>`;
+    } else if (typeof checklist === 'string') {
+      return checklist;
+    }
+    
+    return '-';
+  };
+
+  // Function untuk render rekomendasi sebagai HTML
+  window.renderRekomendasi = function(rekomendasi) {
+    if (!rekomendasi) return '-';
+    
+    if (Array.isArray(rekomendasi) && rekomendasi.length > 0) {
+      return `<ul class="list-disc pl-5 space-y-1">${rekomendasi.map(item => `<li>${item}</li>`).join('')}</ul>`;
+    } else if (typeof rekomendasi === 'string') {
+      return rekomendasi;
+    }
+    
+    return '-';
+  };
+
   // Export ke window
   window.statusIcon = statusIcon;
   window.truncateText = truncateText;

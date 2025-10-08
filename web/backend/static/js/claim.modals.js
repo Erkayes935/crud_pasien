@@ -126,7 +126,7 @@
       // 🔥 NEW: Jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis (core_engine)
       if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
         console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
-        const res = await fetch("/analyze_diagnosis", {
+        const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -291,13 +291,8 @@
           </div>
         </section>
 
-        <!-- i-DRG Section -->
-        <section class="rounded shadow overflow-hidden">
-          <div class="bg-blue-600 text-white px-3 py-2 font-bold">i-DRG</div>
-          <div class="p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderIdrgSection(it.idrg_diagnosis)}
-          </div>
-        </section>
+        <!-- i-DRG Section - PERBAIKAN: HAPUS CONTAINER NESTED -->
+        ${renderIdrgSection(it.idrg_diagnosis)}
 
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
@@ -345,49 +340,219 @@
     `;
   }
 
-  function renderIdrgSection(idrg, claimId) {
-    if (!idrg) {
-      return `<div class="italic text-gray-500">Tidak ada prediksi i-DRG</div>`;
+  // Fungsi renderIdrgSection yang dioptimalkan (single dropdown)
+
+  function renderIdrgSection(idrg, claimId, diagnosisName = null) {
+    // Get claim ID dan diagnosis name dari context jika tidak ada parameter
+    if (!claimId) {
+        claimId = document.getElementById("claimRoot")?.dataset.claimId || 
+                 window.claimState?.currentClaimId || 
+                 document.querySelector('[data-claim-id]')?.dataset.claimId;
+    }
+    
+    if (!diagnosisName) {
+        diagnosisName = window.claimState?.currentDiagnosisTitle || 
+                       document.querySelector('.modal-title')?.textContent?.trim();
     }
 
-    const renderRow = (label, value) => `
+    // Helper function untuk render rows
+    const renderPredictionRow = (label, value) => `
       <div class="grid grid-cols-2">
-        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2">${value || "-"}</div>
+        <div class="bg-blue-600 text-white px-3 py-2 font-medium">${label}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${value || "-"}</div>
       </div>
     `;
 
-    const renderRowClickable = (label, value, field) => `
-      <div class="grid grid-cols-2">
-        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2"
-            onclick="openRegulationModal('${claimId}', '${field}')">
-          ${value || "-"}
+    const renderExistingRow = (label, value, field) => {
+      const isClickable = field && value !== "-";
+      return `
+        <div class="grid grid-cols-2">
+          <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 ${isClickable ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors' : ''}"
+               ${isClickable ? `onclick="openRegulationModal('${claimId}', '${field}')"` : ''}>
+            ${value || "-"}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    };
 
+    // TEMPLATE BARU - LANGSUNG TANPA NESTED
     return `
-      <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-blue-600 text-white px-3 py-2 font-bold cursor-pointer"
-            @click="open = !open">
-          <span>Prediksi i-DRG (Diagnosis)</span>
-          <span x-text="open ? '▼' : '▶'"></span>
+      <div x-data="{ 
+        open: false, 
+        loading: false, 
+        data: null, 
+        error: null,
+        async toggleAndPredict() {
+          this.open = !this.open;
+          
+          if (this.open && !this.data && !this.loading && !this.error) {
+            this.loading = true;
+            
+            try {
+              console.log('🤖 Auto-predicting i-DRG on section open');
+              const result = await predictIdrgForDiagnosis('${claimId}', '${diagnosisName}');
+              this.data = result;
+            } catch (err) {
+              this.error = err.message;
+              console.error('Prediction error:', err);
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      }">
+        
+        <!-- HEADER UTAMA i-DRG (KLIK DROPDOWN INI LANGSUNG PREDIKSI) -->
+        <div class="flex items-center justify-between bg-blue-600 text-white px-3 py-2 font-bold cursor-pointer"
+            @click="toggleAndPredict()">
+          <span>i-DRG</span>
+          <span class="flex items-center">
+            <span x-show="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+            <span x-text="open ? '▼' : '▶'"></span>
+          </span>
         </div>
-        <div class="accordion-body" x-show="open" x-transition>
-          ${renderRowClickable("Group i-DRG", idrg.group_idrg, "idrg_diagnosis_group")}
-          ${renderRowClickable("Severity Index", idrg.severity_index, "idrg_diagnosis_severity")}
-          ${renderRowClickable("Checklist Dokumentasi", idrg.checklist, "idrg_diagnosis_checklist")}
-          ${renderRow("Faktor Severity", idrg.faktor_severity)}
-          ${renderRowClickable("Ungroupable Alert", idrg.ungroupable_alert, "idrg_diagnosis_ungroupable")}
-          ${renderRow("Simulasi Tarif", idrg.simulasi_tarif)}
-          ${renderRow("Gap Analysis", idrg.gap_analysis)}
+        
+        <!-- CONTENT AREA (LANGSUNG HASIL) -->
+        <div x-show="open" x-transition>
+          
+          <!-- Loading State -->
+          <div x-show="loading" class="p-4 text-center">
+            <div class="inline-flex items-center">
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+              <span class="text-blue-600 font-medium">Menganalisis dengan OpenAI...</span>
+            </div>
+          </div>
+          
+          <!-- Prediction Results -->
+          <div x-show="!loading && data && data.status === 'success'">
+            <template x-if="data.data && data.data.idrg_prediction">
+              <div class="space-y-2 p-4">
+                ${renderPredictionRow("Kode i-DRG", "<span x-text='data.data.idrg_prediction.group_idrg || \"-\"'></span>")}
+                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(data.data.idrg_prediction.severity_index) || \"-\"'></span>")}
+                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(data.data.idrg_prediction.checklist_dokumentasi)'></span>")}
+                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(data.data.idrg_prediction.faktor_penentu_severity)'></span>")}
+                ${renderPredictionRow("Ungroupable Alert", "<span x-text='data.data.idrg_prediction.ungroupable_alert || \"-\"'></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"data.data.idrg_prediction.estimasi_tarif_idrg ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Gap Analysis", "<span x-text='data.data.idrg_prediction.gap_analysis || \"-\"'></span>")}
+                
+                <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+                  <strong>Engine:</strong> <span x-text="data.data.engine_version || 'OpenAI GPT-4'"></span> • 
+                  <strong>Mode:</strong> Single Diagnosis • 
+                  <strong>Generated:</strong> ${new Date().toLocaleString()}
+                </div>
+                
+                <!-- Refresh button -->
+                <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })"
+                        class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm mt-2">
+                  🔄 Prediksi Ulang
+                </button>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Error State -->
+          <div x-show="!loading && error" class="p-4 bg-red-50 border border-red-200 rounded m-4">
+            <div class="flex items-center text-red-700">
+              <span class="text-xl mr-3">❌</span>
+              <span class="font-semibold">Error Prediksi i-DRG:</span>
+            </div>
+            <div class="mt-2 text-sm text-red-600" x-text="error"></div>
+            <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })" 
+                    class="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+              🔄 Coba Lagi
+            </button>
+          </div>
+          
+          <!-- Saved Data Section, jika ada -->
+          ${idrg ? `
+          <div class="p-4 space-y-2 border-t" x-show="!loading">
+            <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-2">Data i-DRG Tersimpan</h3>
+            
+            ${renderExistingRow("Group i-DRG", idrg.group_idrg || "-", "idrg_diagnosis_group")}
+            ${renderExistingRow("Severity Index", idrg.severity_index || "-", "idrg_diagnosis_severity")}
+            ${renderExistingRow("Checklist Dokumentasi", idrg.checklist || "-", "idrg_diagnosis_checklist")}
+            ${renderExistingRow("Faktor Severity", idrg.faktor_severity || "-")}
+            ${renderExistingRow("Ungroupable Alert", idrg.ungroupable_alert || "-", "idrg_diagnosis_ungroupable")}
+            ${renderExistingRow("Simulasi Tarif", idrg.simulasi_tarif || "-")}
+            ${renderExistingRow("Gap Analysis", idrg.gap_analysis || "-")}
+          </div>
+          ` : ''}
         </div>
       </div>
     `;
   }
 
+  // Update renderIdrgPredictionResult untuk tampil lebih simple
 
+  window.renderIdrgPredictionResult = function(data) {
+    if (!data || !data.idrg_prediction) {
+      return `<div class="p-4 text-red-500">Data prediksi i-DRG tidak lengkap</div>`;
+    }
+    
+    const prediction = data.idrg_prediction;
+    
+    const renderPredictionRow = (label, value, isClickable = false) => {
+      const content = isClickable ? 
+        `<span class="cursor-pointer hover:underline hover:text-blue-600">${value}</span>` :
+        value;
+        
+      return `
+        <div class="grid grid-cols-2">
+          <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
+          <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+        </div>
+      `;
+    };
+    
+    // Render checklist dokumentasi sebagai list jika array
+    let checklistHtml = "-";
+    if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
+        prediction.checklist_dokumentasi.length > 0) {
+      checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
+      checklistHtml = `<ul class="list-none pl-0">${checklistHtml}</ul>`;
+    } else if (prediction.checklist_dokumentasi) {
+      checklistHtml = prediction.checklist_dokumentasi;
+    }
+    
+    // Render faktor severity sebagai list jika array
+    let faktorSeverityHtml = "-";
+    if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
+        prediction.faktor_penentu_severity.length > 0) {
+      faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
+      faktorSeverityHtml = `<ul class="list-none pl-0">${faktorSeverityHtml}</ul>`;
+    } else if (prediction.faktor_penentu_severity) {
+      faktorSeverityHtml = prediction.faktor_penentu_severity;
+    }
+    
+    // Map severity index ke label
+    const severityLabel = {
+      "1": "Minor (1)",
+      "2": "Moderate (2)",
+      "3": "Major (3)",
+      "4": "Extreme (4)"
+    };
+    
+    // Field yang tepat sesuai idrg_service.py
+    return `
+      <div class="space-y-2 px-4">      
+        ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
+        ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+        ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
+        ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
+        ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
+        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
+        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+        
+        <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+          <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
+          <strong>Mode:</strong> Single Diagnosis • 
+          <strong>Diagnosis:</strong> ${data.diagnosis} •
+          <strong>Generated:</strong> ${new Date().toLocaleString()}
+        </div>
+      </div>
+    `;
+  }
 
   function renderTindakan(list) {
     const tindakanList = (list && list.length > 0)
@@ -458,7 +623,7 @@
     try {
       // 🔥 NEW: Request ke core_engine /analyze_procedure
       console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
-      const res = await fetch("/analyze_procedure", {
+      const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -576,7 +741,7 @@
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    let url = `/claims/${claimId}/regulations?`;
+    let url = `/claims/${claimId}/regulation_detail`;
 
     if (type === "diagnosis") url += `diagnosis_id=${id}`;
     else if (type === "procedure") url += `procedure_id=${id}`;
@@ -764,22 +929,26 @@ window.saveNote = function(fieldKey) {
     const claimId = state.selectedClaimId || state.id || 1; // fallback to 1 if not found
     
     try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        field_name: fieldName
-      });
+      // Buat payload untuk POST request
+      const payload = {
+        claim_id: claimId,
+        field: fieldName
+      };
       
-      if (diagnosisId) params.append('diagnosis_id', diagnosisId);
-      if (procedureId) params.append('procedure_id', procedureId);
+      // Tambahkan diagnosisId atau procedureId jika ada
+      if (diagnosisId) payload.item_id = diagnosisId;
+      if (procedureId) payload.item_id = procedureId;
       
-      const endpoint = `/claims/${claimId}/regulations?${params.toString()}`;
-      console.log('Requesting regulation detail from:', endpoint);
+      const endpoint = `/claims/${claimId}/regulation_detail`;
+      console.log('Requesting regulation detail from:', endpoint, 'with payload:', payload);
       
+      // Ubah dari GET ke POST dan kirim payload
       const response = await fetch(endpoint, {
-        method: 'GET',
+        method: 'POST', // Ubah dari GET ke POST
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify(payload) // Tambahkan payload sebagai body
       });
       
       if (!response.ok) {
@@ -837,3 +1006,264 @@ window.saveNote = function(fieldKey) {
   }
 
 })();
+
+// ==================================================
+// i-DRG PREDICTION
+// ==================================================
+
+// Function untuk prediksi i-DRG individual diagnosis
+window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
+  console.log("🤖 Predicting i-DRG for diagnosis:", diagnosisName);
+  
+  try {
+    // Get current diagnosis data from window state
+    const currentDiagnosis = window.claimState?.currentDiagnosis || {};
+    
+    const payload = {
+      mode: "single",
+      claim_id: parseInt(claimId),
+      diagnosis_name: diagnosisName,
+      diagnosis_data: {
+        justifikasi: currentDiagnosis.klinis?.justifikasi || currentDiagnosis.justifikasi || "",
+        bukti_klinis: currentDiagnosis.klinis?.bukti_klinis || currentDiagnosis.bukti_klinis || "",
+        tindakan: currentDiagnosis.tindakan || []
+      }
+    };
+    
+    console.log("[REQ] POST /predict_idrg", payload);
+    
+    const response = await fetch(`/claims/${claimId}/predict_idrg`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log("[RESP] /predict_idrg", result);
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    return {
+      status: 'success',
+      data: result
+    };
+    
+  } catch (error) {
+    console.error("❌ Error predicting i-DRG:", error);
+    throw error;
+  }
+};
+
+// Tambahkan fungsi helper untuk render format array dan severity label
+
+// Fungsi untuk convert severity index ke label
+window.getSeverityLabel = function(index) {
+  const severityLabel = {
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
+  };
+  return severityLabel[index] || index;
+};
+
+// Fungsi untuk render checklist dokumentasi
+window.renderChecklistHtml = function(checklist) {
+  if (!checklist) return '-';
+  
+  if (Array.isArray(checklist) && checklist.length > 0) {
+    return `<ul class="list-none pl-0">${checklist.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof checklist === 'string') {
+    return checklist;
+  }
+  
+  return '-';
+};
+
+// Fungsi untuk render faktor severity
+window.renderFaktorSeverityHtml = function(faktor) {
+  if (!faktor) return '-';
+  
+  if (Array.isArray(faktor) && faktor.length > 0) {
+    return `<ul class="list-none pl-0">${faktor.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof faktor === 'string') {
+    return faktor;
+  }
+  
+  return '-';
+};
+
+// Function untuk render hasil prediksi i-DRG
+window.renderIdrgPredictionResult = function(data) {
+  if (!data || !data.idrg_prediction) {
+    return `<div class="p-4 text-red-500">Data prediksi i-DRG tidak lengkap</div>`;
+  }
+  
+  const prediction = data.idrg_prediction;
+  
+  const renderPredictionRow = (label, value, isClickable = false) => {
+    const content = isClickable ? 
+      `<span class="cursor-pointer hover:underline hover:text-blue-600">${value}</span>` :
+      value;
+      
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+      </div>
+    `;
+  };
+  
+  // Render checklist dokumentasi sebagai list jika array
+  let checklistHtml = "-";
+  if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
+      prediction.checklist_dokumentasi.length > 0) {
+    checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
+    checklistHtml = `<ul class="list-none pl-0">${checklistHtml}</ul>`;
+  } else if (prediction.checklist_dokumentasi) {
+    checklistHtml = prediction.checklist_dokumentasi;
+  }
+  
+  // Render faktor severity sebagai list jika array
+  let faktorSeverityHtml = "-";
+  if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
+      prediction.faktor_penentu_severity.length > 0) {
+    faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
+    faktorSeverityHtml = `<ul class="list-none pl-0">${faktorSeverityHtml}</ul>`;
+  } else if (prediction.faktor_penentu_severity) {
+    faktorSeverityHtml = prediction.faktor_penentu_severity;
+  }
+  
+  // Map severity index ke label
+  const severityLabel = {
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
+  };
+  
+  // Field yang tepat sesuai idrg_service.py
+  return `
+    <div class="space-y-2 px-4">      
+      ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
+      ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+      ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
+      ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
+      ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
+      ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
+      ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+      
+      <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+        <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
+        <strong>Mode:</strong> Single Diagnosis • 
+        <strong>Diagnosis:</strong> ${data.diagnosis} •
+        <strong>Generated:</strong> ${new Date().toLocaleString()}
+      </div>
+    </div>
+  `;
+};
+
+// Function untuk refresh prediksi i-DRG
+window.refreshIdrgPrediction = async function(claimId, diagnosisName) {
+  try {
+    const result = await predictIdrgForDiagnosis(claimId, diagnosisName);
+    
+    // Update section i-DRG di modal yang sedang terbuka
+    const idrgSection = document.querySelector('[x-data*="open: false, loading: false, data: null"]');
+    if (idrgSection) {
+      // Trigger Alpine.js untuk update data
+      const alpineData = Alpine.$data(idrgSection);
+      alpineData.data = result;
+      alpineData.loading = false;
+      alpineData.error = null;
+    }
+    
+    console.log("✅ i-DRG prediction refreshed successfully");
+  } catch (error) {
+    console.error("❌ Error refreshing i-DRG prediction:", error);
+    alert("Gagal refresh prediksi i-DRG: " + error.message);
+  }
+};
+
+// Tambahkan fungsi tindakanAutocomplete
+
+function tindakanAutocomplete() {
+  return {
+    query: "",
+    results: [],
+    async search() {
+      if (!this.query) { this.results = []; return; }
+      try {
+        if (window.searchTindakan) {
+          const res = await window.searchTindakan(this.query);
+          this.results = res.data || [];
+        } else {
+          console.warn("searchTindakan function not available");
+          this.results = [];
+        }
+      } catch (err) {
+        console.error("Error searching tindakan:", err);
+        this.results = [];
+      }
+    },
+    async select(item) {
+      this.query = item.procedure_text;
+      this.results = [];
+      if (window.addManualTindakanFromAutocomplete) {
+        await window.addManualTindakanFromAutocomplete(window.claimState?.tab || 'admission', item);
+      }
+    }
+  }
+}
+
+// Expose the function
+window.tindakanAutocomplete = tindakanAutocomplete;
+
+// Add statusIcon function if not exists
+if (!window.statusIcon) {
+  window.statusIcon = function(status) {
+    if (!status) return '⚫';
+    const s = String(status).toLowerCase();
+    
+    if (s.includes('valid') || s.includes('normal') || s.includes('yes') || s.includes('ya')) {
+      return '🟢';
+    }
+    
+    if (s.includes('invalid') || s.includes('warning') || s.includes('no') || s.includes('tidak')) {
+      return '🔴';
+    }
+    
+    if (s.includes('caution') || s.includes('bersyarat') || s.includes('partial')) {
+      return '🟠';
+    }
+    
+    return '⚫';
+  };
+}
+
+// Add handleAddManualTindakan function if missing
+if (!window.handleAddManualTindakan) {
+  window.handleAddManualTindakan = function(tab) {
+    const input = document.getElementById('manualNamaTindakan');
+    const value = input?.value?.trim();
+    
+    if (!value) {
+      alert("Nama tindakan tidak boleh kosong");
+      return;
+    }
+    
+    if (window.addManualTindakan) {
+      window.addManualTindakan(tab, value);
+    } else {
+      console.warn("addManualTindakan function not available");
+    }
+    
+    if (input) input.value = '';
+  };
+}

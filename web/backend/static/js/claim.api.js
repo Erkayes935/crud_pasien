@@ -6,33 +6,97 @@
     if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
 
     try {
-      // 🔥 Update untuk core_engine
       const state = Alpine.$data(document.getElementById("claimRoot"));
       const stage = state.tab || "admission";
-      const res = await fetch("/generate_ai/predict_ddx", {
+
+      // Show loading state
+      const loadingMsg = document.createElement('div');
+      loadingMsg.id = 'ai-loading';
+      loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
+      loadingMsg.innerHTML = 'Generating AI recommendations...';
+      document.body.appendChild(loadingMsg);
+
+      const res = await fetch(`/claims/${claimId}/predict_ddx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claim_id: claimId, stage })
+        body: JSON.stringify({ 
+          claim_id: claimId, 
+          stage,
+          global_record: state.globalRecord || {} 
+        })
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail?.error || errorData.detail || 'Failed to generate AI recommendations');
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const result = await res.json();
       console.log("📥 Data core_engine:", result);
       
-      // 🔥 Render each category separately untuk compatibility dengan core_engine
-      if (result.diagnosis) {
-        console.log("🔥 DEBUG diagnosis:", result.diagnosis);
-        window.renderAI && window.renderAI(result.diagnosis, "diagnosis", stage);
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format from core_engine');
       }
-      if (result.komorbid) {
-        console.log("🔥 DEBUG komorbid:", result.komorbid);
-        window.renderAI && window.renderAI(result.komorbid, "komorbid", stage);
+
+      // Render predictions by category
+      const categories = ['diagnosis', 'komorbid', 'komplikasi'];
+      for (const category of categories) {
+        if (Array.isArray(result[category])) {
+          console.log(`🔥 DEBUG ${category}:`, result[category]);
+          window.renderAI && window.renderAI(result[category], category, stage);
+        }
       }
-      if (result.komplikasi) {
-        console.log("🔥 DEBUG komplikasi:", result.komplikasi);
-        window.renderAI && window.renderAI(result.komplikasi, "komplikasi", stage);
-      }
+
+      // Save draft after successful AI generation
+      await saveDraft(claimId, {
+        ai_recommendations: result,
+        stage: stage
+      });
+
+      alert("✅ AI recommendations generated successfully");
+
     } catch (err) {
       console.error("❌ Error generate AI:", err);
-      alert("Gagal generate AI");
+      alert(`Gagal generate AI: ${err.message}`);
+    } finally {
+      // Remove loading message
+      const loadingMsg = document.getElementById('ai-loading');
+      if (loadingMsg) {
+        loadingMsg.remove();
+      }
+    }
+  }
+
+  async function saveDraft(claimId, data) {
+    try {
+      const res = await fetch(`/claims/${claimId}/update-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const result = await res.json();
+      console.log("📥 Draft saved:", result);
+      return result;
+    } catch (err) {
+      console.error("❌ Error generate AI:", err);
+      alert(`Gagal generate AI: ${err.message}`);
+      
+      // Log detailed error for debugging
+      if (err.response) {
+        console.error("Response status:", err.response.status);
+        console.error("Response headers:", err.response.headers);
+        const text = await err.response.text();
+        console.error("Response body:", text);
+      }
     }
   }
 
@@ -92,32 +156,196 @@ window.getDiagnosisDetail = getDiagnosisDetail;
     if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
 
     try {
-      const state = Alpine.$data(document.getElementById("claimRoot"));
-      const payload = { claim_id: claimId, simulasi: state.simulasi };
+      // Show loading message
+      const loadingMsg = document.createElement('div');
+      loadingMsg.id = 'summary-loading';
+      loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
+      loadingMsg.innerHTML = 'Generating claim summary...';
+      document.body.appendChild(loadingMsg);
 
-      const res = await fetch(`/claims/ai/summary/${claimId}`, {
+      const state = Alpine.$data(document.getElementById("claimRoot"));
+      
+      // Ambil tab aktif
+      const currentTab = state.tab || 'admission';
+      
+      // Ekstrak data diagnosa dan tindakan dari simulasi tab saat ini
+      const simData = state.simulasi[currentTab];
+
+      if (!simData) {
+        throw new Error("Tidak ada data simulasi di tab ini");
+      }
+
+      // Format payload sesuai dengan core_engine
+      const payload = { 
+        claim_id: parseInt(claimId),
+        stage: currentTab,
+        // Field sesuai dengan yang diharapkan oleh idrg_service.py
+        primary_claim: simData.utama?.name || "",
+        secondary_claims: (simData.sekunder || []).map(d => d.name).filter(Boolean),
+        primary_action: simData.tindakanUtama?.name || "",
+        secondary_actions: (simData.tindakanSekunder || [])
+          .filter(t => t && t.name)
+          .map(t => t.name)
+      };
+
+      console.log("📤 Sending payload to generate_claim_combos:", payload);
+
+      const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Gagal request summary");
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Gagal request summary (${res.status}): ${errorText}`);
+      }
 
       const data = await res.json();
+      console.log("📥 Full summary result:", data);
 
-      window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(data.diagnosis || {});
-      window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(data.procedure || {});
-      window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(data.idrg_summary || {});
-      window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(data.alternatif || []);
+      if (data.error) {
+        throw new Error(`Error from server: ${data.error}`);
+      }
+
+      // Detailed debugging
+      console.log("===== DEBUGGING RESPONSE STRUCTURE =====");
+      
+      // Check for result property
+      console.log("Has 'result' property:", data.hasOwnProperty('result'));
+      if (data.result) {
+        console.log("Result structure:", Object.keys(data.result));
+      }
+      
+      // Check for various i-DRG fields
+      const idrgPaths = [
+        'idrg_summary',
+        'result.idrg_summary',
+        'result.idrg_prediction',
+        'idrg_prediction'
+      ];
+      
+      idrgPaths.forEach(path => {
+        const pathParts = path.split('.');
+        let value = data;
+        
+        for (const part of pathParts) {
+          if (value && value.hasOwnProperty(part)) {
+            value = value[part];
+          } else {
+            value = null;
+            break;
+          }
+        }
+        
+        console.log(`Path '${path}' exists:`, value !== null);
+        if (value) {
+          console.log(`Fields in '${path}':`, Object.keys(value));
+        }
+      });
+
+      // Normalisasi format result untuk konsistensi
+      const resultData = data.result || data;
+      
+      // Extract diagnosis data
+      const diagnosisData = resultData.evaluasi_diagnosis || resultData.diagnosis || {};
+      console.log("📊 Extracted diagnosis data:", diagnosisData);
+      
+      // Extract procedure data
+      let procedureData = resultData.evaluasi_tindakan || resultData.procedure || [];
+      if (procedureData && typeof procedureData === 'object' && !Array.isArray(procedureData)) {
+        procedureData = procedureData.rows || procedureData.items || [procedureData];
+      }
+      console.log("📊 Extracted procedure data:", procedureData);
+      
+      // Extract iDRG data with priority checking
+      let idrgData = null;
+      
+      // Priority 1: resultData.idrg_summary
+      if (resultData.idrg_summary && Object.keys(resultData.idrg_summary).length > 0) {
+        idrgData = resultData.idrg_summary;
+        console.log("📊 Found iDRG data in resultData.idrg_summary");
+      } 
+      // Priority 2: resultData.result.idrg_summary
+      else if (resultData.result && resultData.result.idrg_summary) {
+        idrgData = resultData.result.idrg_summary;
+        console.log("📊 Found iDRG data in resultData.result.idrg_summary");
+      }
+      // Priority 3: resultData.idrg_prediction
+      else if (resultData.idrg_prediction) {
+        idrgData = resultData.idrg_prediction;
+        console.log("📊 Found iDRG data in resultData.idrg_prediction");
+      } 
+      // Create dummy data if nothing found
+      else {
+        console.log("⚠️ No iDRG data found, creating dummy structure");
+        idrgData = {
+          prediksi_group_idrg_kombinasi: "-",
+          severity_kombinasi: "-",
+          checklist_idrg_kombinasi: [],
+          faktor_penentu_severity: [],
+          risiko_ungroupable: "-",
+          estimasi_tarif_idrg: "-",
+          gap_analysis: "-",
+          rekomendasi_ai: []
+        };
+      }
+      
+      console.log("📊 Final iDRG data for rendering:", idrgData);
+      
+      // Extract alternatif kombinasi
+      let alternatifData = resultData.alternatif || [];
+      console.log("📊 Extracted alternatif data:", alternatifData);
+      
+      // Update UI sections dengan try/catch untuk isolasi error
+      try {
+        console.log("🔄 Rendering diagnosis evaluation...");
+        window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(diagnosisData);
+        console.log("✅ Diagnosis evaluation rendered");
+      } catch (err) {
+        console.error("❌ Error rendering diagnosis evaluation:", err);
+      }
+      
+      try {
+        console.log("🔄 Rendering procedure evaluation...");
+        window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(procedureData);
+        console.log("✅ Procedure evaluation rendered");
+      } catch (err) {
+        console.error("❌ Error rendering procedure evaluation:", err);
+      }
+      
+      try {
+        console.log("🔄 Rendering iDRG summary...");
+        window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(idrgData, claimId);
+        console.log("✅ iDRG summary rendered");
+      } catch (err) {
+        console.error("❌ Error rendering iDRG summary:", err);
+        console.error("Error details:", err.stack);
+      }
+      
+      try {
+        console.log("🔄 Rendering alternatif kombinasi...");
+        window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(alternatifData);
+        console.log("✅ Alternative combinations rendered");
+      } catch (err) {
+        console.error("❌ Error rendering alternative combinations:", err);
+      }
 
       const summaryField = document.getElementById("summaryField");
-      if (summaryField) summaryField.value = JSON.stringify(data);
-      window.claimState.summary = data;
+      if (summaryField) summaryField.value = JSON.stringify(resultData);
+      window.claimState.summary = resultData;
 
       alert("✅ Summary berhasil digenerate");
     } catch (err) {
-      console.error("Error generate summary:", err);
-      alert("❌ Gagal generate summary");
+      console.error("❌ Error generate summary:", err);
+      console.error("Stack trace:", err.stack);
+      alert(`❌ Gagal generate summary: ${err.message}`);
     } finally {
+      // Remove loading message
+      const loadingMsg = document.getElementById('summary-loading');
+      if (loadingMsg) {
+        loadingMsg.remove();
+      }
       window.syncHiddenInputs && window.syncHiddenInputs();
     }
   }

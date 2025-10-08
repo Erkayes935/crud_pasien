@@ -9,7 +9,7 @@ import asyncio
 from services.predict_ddx_service import process_predict_ddx
 from services.analyze_diagnosis_service import process_analyze_diagnosis
 from services.analyze_procedure_service import process_analyze_procedure
-from services.generate_claim_combos_service import process_generate_claim_combos
+from services.generate_claim_combos_service import process_generate_claim_combos, process_generate_alternatives
 from services.resume_service import process_resume_medis
 from services.regulation_service import process_regulation_detail
 from services.idrg_service import predict_idrg
@@ -86,7 +86,54 @@ async def analyze_procedure(payload: dict):
 
 @router.post("/generate_claim_combos")
 async def generate_claim_combos(payload: dict):
+    """
+    Generate evaluasi diagnosis dan tindakan tanpa alternatif kombinasi.
+    
+    Expects: {
+      "claim_id": int,
+      "primary_claim": str,
+      "secondary_claims": list[str],
+      "primary_action": str,
+      "secondary_actions": list[str]
+    }
+    
+    Returns: {
+      "evaluasi_diagnosis": {...},
+      "evaluasi_tindakan": {...},
+      "alternatif": [],  # Kosong, akan diisi melalui request terpisah
+      "engine_version": str
+    }
+    """
     result = process_generate_claim_combos(payload)
+    return result
+
+@router.post("/generate_alternatives")
+async def generate_alternatives(payload: dict):
+    """
+    Generate hanya alternatif kombinasi diagnosis-tindakan.
+    
+    Expects: {
+      "claim_id": int,
+      "primary_claim": str,
+      "secondary_claims": list[str],
+      "primary_action": str,
+      "secondary_actions": list[str]
+    }
+    
+    Returns: {
+      "alternatif": [
+        {
+          "judul": str,
+          "catatan": str,
+          "syarat": str,
+          "tindakan": list[str]
+        },
+        ...
+      ],
+      "engine_version": str
+    }
+    """
+    result = process_generate_alternatives(payload)
     return result
 
 @router.post("/resume_medis")
@@ -98,15 +145,20 @@ async def regulation_detail(payload: dict):
     field = payload.get("field", "")
     return process_regulation_detail(payload, field)
 
-@router.post("/predict_idrg/{mode}")
-async def predict_idrg_endpoint(mode: str, payload: dict):
+@router.post("/predict_idrg")
+async def predict_idrg_endpoint(payload: dict):
     """
+    Endpoint untuk prediksi i-DRG (single atau combo)
+    
     Expects:
-      - mode = "single" (detail diagnosis) | "combo" (kombinasi klaim)
-      - payload = dict dari FE sesuai mode
+      - payload["mode"] = "single" | "combo"  
+      - payload = data sesuai mode dari frontend
+    
     Returns:
       - JSON prediksi i-DRG + engine_version
     """
+    mode = payload.get("mode", "single")
+    print(f"[CORE_ENGINE] Predicting i-DRG mode: {mode}")
     out = predict_idrg(mode, payload)
     return out
 

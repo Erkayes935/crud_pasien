@@ -24,7 +24,7 @@ load_dotenv()
 
 # Read required Auth0 settings from environment and validate
 missing = []
-CORE_ENGINE_URL = "http://core_engine:8002"
+CORE_ENGINE_URL = os.getenv("CORE_ENGINE_URL", "http://core_engine:8002")
 
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
 if not AUTH0_DOMAIN:
