@@ -55,9 +55,18 @@ def export_claims(db: Session, status=None, start_date=None, end_date=None):
 # BAGIAN: CATATAN (NOTES)
 # ==============================
 
-def create_note(db: Session, claim_id: int, item_id: int | None, user_id: int, role: str,
-                note_text: str, parent_id: int | None = None, timestamp=None):
-    """Buat catatan (note) baru untuk klaim"""
+def create_note(
+    db: Session,
+    claim_id: int,
+    item_id: int | None,
+    user_id: int,
+    role: str,
+    note_text: str,
+    parent_id: int | None = None,
+    field_key: str | None = None,   # ✅ ditambahkan
+    stage: str | None = None,
+    timestamp=None
+):
     note = models.ClaimNote(
         claim_id=claim_id,
         item_id=item_id,
@@ -65,6 +74,8 @@ def create_note(db: Session, claim_id: int, item_id: int | None, user_id: int, r
         role=role,
         note_text=note_text,
         parent_id=parent_id,
+        field_key=field_key,   # ✅ sekarang valid
+        stage=stage,
         timestamp=timestamp
     )
     db.add(note)
@@ -73,9 +84,11 @@ def create_note(db: Session, claim_id: int, item_id: int | None, user_id: int, r
     return note
 
 
-def get_notes(db: Session, claim_id: int):
-    """Ambil semua notes untuk 1 klaim"""
-    return db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id).all()
+def get_notes(db: Session, claim_id: int, stage: str | None = None):
+    query = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id)
+    if stage:
+        query = query.filter(models.ClaimNote.stage == stage)
+    return query.all()
 
 
 def delete_note(db: Session, note_id: int):

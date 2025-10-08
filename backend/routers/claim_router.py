@@ -328,7 +328,7 @@ def coder_review_page(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("coder")),
 ):
-    """Tampilkan data simulasi dokter untuk diverifikasi coder."""
+    """Halaman verifikasi ICD oleh coder"""
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -337,7 +337,7 @@ def coder_review_page(
     csrf_token = issue_csrf_token(request)
 
     return templates.TemplateResponse(
-        "claims/edit_coder.html",
+        "edit_coder.html",
         {
             "request": request,
             "claim": claim,
@@ -348,6 +348,7 @@ def coder_review_page(
         },
     )
 
+
 @router.post("/{claim_id}/coder")
 async def coder_submit_verification(
     request: Request,
@@ -355,11 +356,10 @@ async def coder_submit_verification(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("coder")),
 ):
-    """Simpan hasil verifikasi ICD coder."""
+    """Simpan hasil verifikasi ICD coder"""
     form_data = await request.form()
     updated = sim_service.save_coder_verification(db, claim_id, form_data, user.name)
-
-    flash(request, f"✅ {updated} simulasi berhasil diverifikasi oleh coder.", "success")
+    flash(request, f"✅ {updated} entri berhasil diverifikasi oleh coder.", "success")
     return RedirectResponse(url=f"/claims/{claim_id}/coder", status_code=303)
 
 # ==================================================
@@ -447,15 +447,175 @@ def search_tindakan_detail(procedure_text: str):
     return {"status": "ok", "data": dummy_tindakan_detail(procedure_text)}
 
 @router.get("/{claim_id}/notes")
-def get_notes(claim_id: int, db: Session = Depends(get_db)):
-    notes = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id).all()
-    return {"data": [
-        {
-            "id": n.id,
-            "item_id": n.item_id,
-            "role": n.role,
-            "user_id": n.user_id,
-            "note_text": n.note_text,
-            "timestamp": n.timestamp.isoformat()
-        } for n in notes
-    ]}
+def get_notes(
+    claim_id: int,
+    stage: str | None = None,
+    field_key: str | None = None,
+    item_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session(
+        "doctor", "coder", "verifikator", "admin_rs", "superadmin"))
+):
+    """
+    Ambil daftar notes untuk klaim tertentu.
+    - Bisa difilter per stage
+    - Bisa fallback agar note lama tetap terbaca (item_id beda)
+    """
+    try:
+        notes = claim_crud.get_notes(db=db, claim_id=claim_id, stage=stage)
+
+        # daftar item_id lama (hash versi sebelumnya)
+        old_ids = [804880226, 2184760293, 32548051, 1, 2]
+
+        # filter per field_key (jika dikirim)
+        if field_key:
+            notes = [n for n in notes if n.field_key == field_key]
+
+        # filter per item_id (dengan fallback ID lama)
+        if item_id is not None:
+            notes = [
+                n for n in notes
+                if (n.item_id == item_id) or (n.item_id in old_ids)
+            ]
+
+        print(f"📤 get_notes: stage={stage}, field_key={field_key}, item_id={item_id}, hasil={len(notes)}")
+        return {
+            "status": "ok",
+            "count": len(notes),
+            "data": [
+                {
+                    "id": n.id,
+                    "claim_id": n.claim_id,
+                    "item_id": n.item_id,
+                    "role": n.role,
+                    "user_id": n.user_id,
+                    "note_text": n.note_text,
+                    "timestamp": n.timestamp,
+                    "parent_id": n.parent_id,
+                    "stage": n.stage,
+                    "field_key": n.field_key,
+                }
+                for n in notes
+            ],
+        }
+    except Exception as e:
+        print("❌ Gagal ambil notes:", e)
+        raise HTTPException(status_code=500, detail=f"Gagal ambil notes: {e}")
+
+
+# ==================================================
+# CODER
+# ==================================================
+
+# ==================================================
+# SEARCH ICD AUTOCOMPLETE UNTUK CODER
+# ==================================================
+@router.get("/api/search/icd")
+def search_icd(
+    q: str = Query(..., min_length=1),
+    version: str = Query("icd10")
+):
+    """
+    Autocomplete kode ICD untuk coder (tanpa database).
+    Gunakan data dummy ICD10 dan ICD9 agar fitur autocomplete tetap jalan.
+    """
+
+    # ==== data dummy ICD10 ====
+    icd10_data = [
+        {"code": "J18.9", "name": "Pneumonia, unspecified organism"},
+        {"code": "E11.9", "name": "Type 2 diabetes mellitus without complications"},
+        {"code": "I10",   "name": "Essential (primary) hypertension"},
+        {"code": "A09",   "name": "Infectious gastroenteritis and colitis, unspecified"},
+        {"code": "N39.0", "name": "Urinary tract infection, site not specified"},
+        {"code": "K35.9", "name": "Acute appendicitis, unspecified"},
+        {"code": "J45.9", "name": "Asthma, unspecified"},
+        {"code": "G40.9", "name": "Epilepsy, unspecified"},
+        {"code": "B34.9", "name": "Viral infection, unspecified"},
+        {"code": "E78.5", "name": "Hyperlipidemia, unspecified"},
+    ]
+
+    # ==== data dummy ICD9 ====
+    icd9_data = [
+        {"code": "99.04", "name": "Blood transfusion"},
+        {"code": "45.13", "name": "Endoscopy of small intestine"},
+        {"code": "38.93", "name": "Venous catheterization, not elsewhere classified"},
+        {"code": "54.11", "name": "Exploratory laparotomy"},
+        {"code": "37.22", "name": "Left heart cardiac catheterization"},
+        {"code": "87.03", "name": "Diagnostic ultrasound of abdomen"},
+        {"code": "96.04", "name": "Insertion of endotracheal tube"},
+        {"code": "93.90", "name": "Physical therapy, not elsewhere classified"},
+        {"code": "99.15", "name": "Injection of antibiotic"},
+        {"code": "31.41", "name": "Closed biopsy of lung"},
+    ]
+
+    # pilih dataset
+    data = icd9_data if version == "icd9" else icd10_data
+
+    # filter pencarian
+    results = [
+        r for r in data
+        if q.lower() in r["code"].lower() or q.lower() in r["name"].lower()
+    ]
+
+    return {
+        "status": "ok",
+        "count": len(results),
+        "data": results[:25]  # limit hasil
+    }
+
+# ==================================================
+# ✳️ CODER VERIFIKASI ICD
+# ==================================================
+from ..services.claim import simulation as sim_service
+
+@router.get("/claims/{claim_id}/coder", response_class=HTMLResponse)
+def edit_coder_page(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session(["coder", "verifikator", "admin_rs", "superadmin"])),
+):
+    """
+    Halaman verifikasi ICD oleh coder.
+    """
+    claim = db.query(models.Claim).filter_by(id=claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim tidak ditemukan")
+
+    # Ambil data simulasi diagnosis & tindakan untuk coder
+    stages = sim_service.get_simulations_for_coder(db, claim_id)
+
+    context = {
+        "request": request,
+        "claim": claim,
+        "stages": stages,
+        "user": user,
+    }
+    return templates.TemplateResponse("edit_coder.html", context)
+
+
+@router.post("/claims/{claim_id}/coder")
+async def save_coder_verification(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session(["coder", "admin_rs", "superadmin"])),
+):
+    """
+    Simpan hasil verifikasi ICD oleh coder.
+    """
+    form = await request.form()
+    form_data = dict(form)
+
+    updated_count = sim_service.save_coder_verification(
+        db=db,
+        claim_id=claim_id,
+        form_data=form_data,
+        coder_name=user.name or "Coder",
+    )
+
+    flash(request, f"✅ {updated_count} item berhasil diverifikasi oleh {user.name}", "success")
+    return RedirectResponse(
+        url=f"/claims/{claim_id}/coder",
+        status_code=303,
+    )

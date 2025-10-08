@@ -359,7 +359,7 @@ def get_simulations_service(db: Session, claim_id: int):
 def get_simulations_for_coder(db: Session, claim_id: int):
     """
     Ambil seluruh kombinasi diagnosis & tindakan dokter untuk diverifikasi coder.
-    Sekaligus pastikan field_key konsisten antar-role agar notes terbaca lintas user.
+    Return: { stage: { diagnosis: [...], procedure: [...] } }
     """
     sims = (
         db.query(models.ClaimSimulation)
@@ -372,119 +372,126 @@ def get_simulations_for_coder(db: Session, claim_id: int):
         .filter(
             models.ClaimSimulation.claim_id == claim_id,
             models.ClaimSimulation.is_deleted == False,
-            (
-                models.ClaimSimulation.diagnosis_utama_id.isnot(None)
-                | models.ClaimSimulation.diagnosis_sekunder_id.isnot(None)
-                | models.ClaimSimulation.tindakan_utama_id.isnot(None)
-                | models.ClaimSimulation.tindakan_sekunder_id.isnot(None)
-            ),
         )
         .order_by(models.ClaimSimulation.stage.asc(), models.ClaimSimulation.id.asc())
         .all()
     )
 
     stages = {}
-    for s in sims:
-        items = []
 
-        # ========================
-        # DIAGNOSIS
-        # ========================
+    for s in sims:
+        # pastikan tiap stage sudah ada struktur awal
+        if s.stage not in stages:
+            stages[s.stage] = {"diagnosis": [], "procedure": []}
+
+        # ======== Diagnosis ========
         if s.diagnosis_utama_id and s.diagnosis_utama:
-            items.append({
+            stages[s.stage]["diagnosis"].append({
                 "type": "Diagnosis Utama",
                 "text": s.diagnosis_utama.diagnosis_text,
                 "icd_doctor": s.diagnosis_utama.icd10_code,
-                "field": "primary_diagnosis",   # ✅ konsisten antar-role
                 "icd_final": s.coder_icd10_utama,
                 "verified_by": s.coder_verified_by,
                 "verified_at": s.coder_verified_at,
-                "item_id": s.diagnosis_utama_id
+                "field": "primary_diagnosis",
+                "item_id": s.diagnosis_utama_id,
             })
 
         if s.diagnosis_sekunder_id and s.diagnosis_sekunder:
-            items.append({
+            stages[s.stage]["diagnosis"].append({
                 "type": "Diagnosis Sekunder",
                 "text": s.diagnosis_sekunder.diagnosis_text,
                 "icd_doctor": s.diagnosis_sekunder.icd10_code,
-                "field": "secondary_diagnosis",  # ✅ konsisten antar-role
                 "icd_final": s.coder_icd10_sekunder,
                 "verified_by": s.coder_verified_by,
                 "verified_at": s.coder_verified_at,
-                "item_id": s.diagnosis_sekunder_id
+                "field": "secondary_diagnosis",
+                "item_id": s.diagnosis_sekunder_id,
             })
 
-        # ========================
-        # TINDAKAN
-        # ========================
+        # ======== Tindakan ========
         if s.tindakan_utama_id and s.tindakan_utama:
             icd9_code = None
-            # ambil icd9 dari ClaimProcedureDetail jika ada
             if s.tindakan_utama.procedure_details:
                 icd9_code = s.tindakan_utama.procedure_details[0].icd9_tindakan
-            items.append({
+            stages[s.stage]["procedure"].append({
                 "type": "Tindakan Utama",
                 "text": s.tindakan_utama.procedure_text,
                 "icd_doctor": icd9_code,
-                "field": "primary_action",       # ✅ konsisten antar-role
-                "icd_final": s.coder_icd10_utama,
+                "icd_final": s.coder_icd9_utama if hasattr(s, "coder_icd9_utama") else None,
                 "verified_by": s.coder_verified_by,
                 "verified_at": s.coder_verified_at,
-                "item_id": s.tindakan_utama_id
+                "field": "primary_action",
+                "item_id": s.tindakan_utama_id,
             })
 
         if s.tindakan_sekunder_id and s.tindakan_sekunder:
             icd9_code = None
             if s.tindakan_sekunder.procedure_details:
                 icd9_code = s.tindakan_sekunder.procedure_details[0].icd9_tindakan
-            items.append({
+            stages[s.stage]["procedure"].append({
                 "type": "Tindakan Sekunder",
                 "text": s.tindakan_sekunder.procedure_text,
                 "icd_doctor": icd9_code,
-                "field": "secondary_action",     # ✅ konsisten antar-role
-                "icd_final": s.coder_icd10_sekunder,
+                "icd_final": s.coder_icd9_sekunder if hasattr(s, "coder_icd9_sekunder") else None,
                 "verified_by": s.coder_verified_by,
                 "verified_at": s.coder_verified_at,
-                "item_id": s.tindakan_sekunder_id
+                "field": "secondary_action",
+                "item_id": s.tindakan_sekunder_id,
             })
-
-        if items:
-            stages.setdefault(s.stage, []).extend(items)
 
     return stages
 
 def save_coder_verification(db: Session, claim_id: int, form_data: dict, coder_name: str):
-    """Simpan hasil verifikasi ICD dari coder ke claim_simulations."""
+    """
+    Simpan hasil verifikasi ICD Final oleh coder.
+    Jika ICD final kosong, gunakan ICD dokter.
+    """
+    now = datetime.utcnow()
     updated = 0
-    now = datetime.now(ZoneInfo("Asia/Jakarta"))
 
-    sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).all()
-    if not sims:
-        return 0
+    # Diagnosis
+    diags = db.query(models.ClaimDiagnosis).filter_by(claim_id=claim_id).all()
+    for d in diags:
+        icd_key = f"icd_final_diag_{d.id}"
+        icd_final = form_data.get(icd_key)
 
-    for key, value in form_data.items():
-        val = (value or "").strip()
-        if not val:
-            continue
+        if icd_final and icd_final.strip():
+            d.icd10_final_by_coder = icd_final.strip()
+        else:
+            # fallback ke ICD dokter
+            d.icd10_final_by_coder = d.icd10_code
 
-        # ============================
-        # Mode baru: key tanpa ID suffix
-        # ============================
-        for sim in sims:
-            if key == "primary_diagnosis" and sim.diagnosis_utama_id:
-                sim.coder_icd10_utama = val
-            elif key == "secondary_diagnosis" and sim.diagnosis_sekunder_id:
-                sim.coder_icd10_sekunder = val
-            elif key == "primary_action" and sim.tindakan_utama_id:
-                sim.coder_icd10_utama = val
-            elif key == "secondary_action" and sim.tindakan_sekunder_id:
-                sim.coder_icd10_sekunder = val
+        d.verified_by = coder_name
+        d.verified_at = now
+        updated += 1
+
+    # Tindakan
+    procs = db.query(models.ClaimProcedure).filter_by(claim_id=claim_id).all()
+    for p in procs:
+        icd_key = f"icd_final_proc_{p.id}"
+        icd_final = form_data.get(icd_key)
+
+        if icd_final and icd_final.strip():
+            p.icd9_final_by_coder = icd_final.strip()
+        else:
+            # fallback ke ICD dokter
+            # ambil dari detail tindakan kalau ada
+            if p.procedure_details and len(p.procedure_details) > 0:
+                p.icd9_final_by_coder = p.procedure_details[0].icd9_tindakan
             else:
-                continue
+                p.icd9_final_by_coder = None
 
-            sim.coder_verified_by = coder_name
-            sim.coder_verified_at = now
-            updated += 1
+        p.verified_by = coder_name
+        p.verified_at = now
+        updated += 1
+
+    # Sinkron ke ClaimSimulation (opsional)
+    sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).all()
+    for s in sims:
+        s.coder_verified_by = coder_name
+        s.coder_verified_at = now
 
     db.commit()
+    print(f"✅ save_coder_verification: {updated} items updated by {coder_name}")
     return updated

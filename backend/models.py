@@ -252,7 +252,7 @@ class ClaimDiagnosis(Base):
     icd10_final_by_coder = Column(String(20), nullable=True)
     verified_by = Column(String(100), nullable=True)
     verified_at = Column(DateTime, nullable=True)
-
+    stage = Column(String(50), nullable=False, default="admission")  # admission / daily / discharge
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
@@ -281,7 +281,10 @@ class ClaimProcedure(Base):
 
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))
     is_dummy = Column(Boolean, nullable=False, server_default=text("false"))
-
+    stage = Column(String(50), nullable=False, default="admission")  # admission / daily / discharge
+    icd9_final_by_coder = Column(String(20), nullable=True)   # ICD-9 final yang diketik coder
+    verified_by = Column(String(100), nullable=True)          # siapa coder yang verifikasi
+    verified_at = Column(DateTime, nullable=True)
     @property
     def description(self):
         if not self.procedure_details:
@@ -389,6 +392,8 @@ class ClaimSimulation(Base):
     # 🆕 hasil verifikasi coder di level simulasi
     coder_icd10_utama = Column(String(20), nullable=True)
     coder_icd10_sekunder = Column(String(20), nullable=True)
+    coder_icd9_utama = Column(String(20), nullable=True)
+    coder_icd9_sekunder = Column(String(20), nullable=True)
     coder_verified_by = Column(String(100), nullable=True)
     coder_verified_at = Column(DateTime, nullable=True)
     coder_note = Column(Text, nullable=True)
@@ -721,7 +726,10 @@ class ClaimNote(Base):
     note_text = Column(Text, nullable=False)
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(pytz.timezone("Asia/Jakarta")))
     parent_id = Column(Integer, ForeignKey("claim_notes.id", ondelete="CASCADE"), nullable=True)
+    field_key = Column(String, nullable=True)  # <--- untuk primary_diagnosis / primary_action, dll
+    stage = Column(String, nullable=True)      # <--- admission, daily-0, discharge, dst.
 
+    
     # relasi
     claim = relationship("Claim", back_populates="notes")
     user = relationship("User")
