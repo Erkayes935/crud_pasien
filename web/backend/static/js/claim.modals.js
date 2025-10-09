@@ -115,11 +115,48 @@
     try {
       let dx;
       if (dbId && !isNaN(Number(dbId))) {
-        const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
-        const res = await fetch(url);
+        // 🔥 FIXED: Use core_engine endpoints instead of dummy AI recommendation
+        let url, payload;
+        if (type === "diagnosis") {
+          url = `/claims/${claimId}/analyze_diagnosis`;
+          payload = {
+            claim_id: parseInt(claimId),
+            disease_name: tr?.textContent?.trim() || "Unknown diagnosis",
+            item_id: dbId
+          };
+        } else if (type === "procedure" || type === "tindakan") {
+          url = `/claims/${claimId}/analyze_procedure`;  
+          
+          // 🔥 Extract proper procedure name from row
+          const nameCell = tr?.querySelector('td:first-child') || tr?.querySelector('.procedure-name');
+          const procedureName = nameCell?.textContent?.trim() || 
+                               tr?.dataset?.procedureName || 
+                               "General Medical Procedure";
+          
+          payload = {
+            claim_id: parseInt(claimId),
+            procedure_name: procedureName,
+            item_id: dbId,
+            stage: "admission"
+          };
+        } else {
+          // 🔥 FIXED: Use analyze_diagnosis as fallback instead of dummy endpoint
+          url = `/claims/${claimId}/analyze_diagnosis`;
+          payload = {
+            claim_id: parseInt(claimId),
+            disease_name: tr?.textContent?.trim() || `Unknown ${type}`,
+            item_id: dbId
+          };
+        }
+
+        const res = await fetch(url, {
+          method: payload ? "POST" : "GET",
+          headers: payload ? { "Content-Type": "application/json" } : {},
+          body: payload ? JSON.stringify(payload) : undefined
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = await res.json();
-        dx = result.data || {};
+        dx = result.data || result || {};
 
         if (Array.isArray(dx.tindakan)) {
           dx.tindakan = dx.tindakan.map(td => ({ ...td, source: td.source || "AI" }));
@@ -129,8 +166,9 @@
         if (!dx.idrg_diagnosis && dx.icd10_code && type === "diagnosis") {
           try {
             console.log("🔍 Fetching i-DRG data for diagnosis:", dx.nama_kategori);
-            const idrgUrl = `/claims/${claimId}/analyze_diagnosis`;
+            const idrgUrl = `/claims/${claimId}/predict_idrg`;
             const idrgPayload = {
+              mode: "single",
               diagnosis: {
                 icd10_code: dx.icd10_code,
                 name: dx.nama_kategori || dx.kategori
@@ -548,13 +586,23 @@
     }
 
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=procedure&item_id=${procId}`;
+    // 🔥 FIXED: Use core_engine analyze_procedure endpoint instead of dummy
+    const url = `/claims/${claimId}/analyze_procedure`;
+    const payload = {
+      claim_id: parseInt(claimId),
+      procedure_name: "Unknown procedure", // Could be enhanced
+      item_id: procId
+    };
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      const data = json?.data || {};
+      const data = json?.data || json || {};
       const d = (data?.tindakan && data.tindakan[0]) ? data.tindakan[0] : data;
 
       const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
@@ -701,17 +749,21 @@
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    let url = `/claims/${claimId}/regulations?`;
-
-    if (type === "diagnosis") url += `diagnosis_id=${id}`;
-    else if (type === "procedure") url += `procedure_id=${id}`;
-    else if (type === "diagnosis_eval") url += `diagnosis_evaluation_id=${id}`;
-    else if (type === "procedure_eval") url += `procedure_evaluation_id=${id}`;
-    else if (type === "idrg_diagnosis") url += `idrg_diagnosis_id=${id}`;
-    else if (type === "idrg_summary") url += `idrg_summary_id=${id}`;
+    
+    // 🔥 FIXED: Use correct regulation_detail endpoint
+    const payload = {
+      claim_id: parseInt(claimId),
+      field: type,
+      context_type: type,
+      item_id: id
+    };
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(`/claims/${claimId}/regulation_detail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
       const json = await res.json();
       const { data } = json;
 

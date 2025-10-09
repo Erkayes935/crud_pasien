@@ -14,101 +14,59 @@
     }
 
     try {
-      // 🔹 Fetch utama rekomendasi AI
-      const res = await fetch("/claims/ai/recommendation", {
+      // � FIXED: Use core_engine endpoint instead of dummy endpoint
+      const res = await fetch(`/claims/${claimId}/predict_ddx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claim_id: claimId })
+        body: JSON.stringify({ 
+          claim_id: parseInt(claimId),
+          stage: state.tab || "admission"
+        })
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
-      const rows = result.data || [];
-      console.log("🔍 result.data:", rows);
-
-      // ------------------------------------------------------------------
-      // 🧠 PREFETCH semua detail diagnosis untuk ambil tindakan AI-nya
-      // ------------------------------------------------------------------
-      window.claimState.cache = window.claimState.cache || {};
-      if (!Array.isArray(window.claimState.cache.tindakanAI))
-        window.claimState.cache.tindakanAI = [];
-
-      // buat semua request paralel
-      const detailPromises = rows.map(async row => {
-        const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=diagnosis&item_id=${row.id}`;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) return [];
-          const detail = await res.json();
-          const tindakanList = detail.data?.data?.tindakan || detail.data?.tindakan || [];
-          return tindakanList.map(td => ({
-            ...td,
-            stage: row.stage || "admission",
-            isManual: false,
-            source: "AI",
-          }));
-        } catch (e) {
-          console.warn("prefetch gagal:", e);
-          return [];
-        }
-      });
-
-      const allDetails = (await Promise.all(detailPromises)).flat();
-      window.claimState.cache.tindakanAI.push(...allDetails);
-      console.log("✅ Cache tindakanAI global:", window.claimState.cache.tindakanAI.length);
-
-      // ------------------------------------------------------------------
-      // 🔹 Render tabel AI + update simulasi state
-      // ------------------------------------------------------------------
-      window.renderAI && window.renderAI(rows);
-
-      const tindakanAll = [];
-
-      // dari nested tindakan di tiap diagnosis (kalau ada)
-      rows.forEach(row => {
-        if (Array.isArray(row.tindakan) && row.tindakan.length) {
-          row.tindakan.forEach(td => {
-            tindakanAll.push({
-              ...td,
-              diagnosis_id: row.id,
-              diagnosis_code: row.icd10_code,
-              stage: row.stage || "admission",
-              isManual: false,
-              source: "AI",
-            });
+      console.log("🔍 Core engine result:", result);
+      
+      // 🔥 Transform core_engine response to frontend format
+      const coreData = result.data || result;
+      const transformedRows = [];
+      
+      // 🔥 GET CORRECT STAGE from form or default to admission
+      const currentStage = document.querySelector('[x-data*="claimData"]')?.getAttribute('x-data')?.includes('admission') ? 'admission' : 
+                          (state.tab && state.tab !== 'discharge' ? state.tab : 'admission');
+      
+      console.log("🔍 Current stage for transformation:", currentStage);
+      
+      // Transform each category (diagnosis, komorbid, komplikasi)
+      ['diagnosis', 'komorbid', 'komplikasi'].forEach(category => {
+        const items = coreData[category] || [];
+        items.forEach(item => {
+          // Add parent as main item
+          transformedRows.push({
+            id: `${category}-${Date.now()}-${Math.random()}`,
+            stage: currentStage,
+            category: category,
+            kategori: item.parent,
+            nama_kategori: item.parent,
+            confidence: item.confidence,
+            score: item.confidence,
+            children: item.children || []
           });
-        }
-      });
-
-      // tambahkan hasil prefetch detail ke list tindakanAll
-      tindakanAll.push(...allDetails);
-
-      // simpan ke simulasi agar bisa dibaca cache global
-      tindakanAll.forEach(td => {
-        const stage = td.stage || "admission";
-        if (!window.claimState.simulasi[stage]) window.claimState.simulasi[stage] = {};
-        if (!Array.isArray(window.claimState.simulasi[stage].tindakan))
-          window.claimState.simulasi[stage].tindakan = [];
-        window.claimState.simulasi[stage].tindakan.push(td);
-      });
-
-      console.log("✅ Tindakan AI global ditambahkan:", tindakanAll.length);
-
-      // sinkronisasi cache global
-      setTimeout(() => {
-        const allAI = [];
-        Object.values(window.claimState.simulasi).forEach(stageObj => {
-          if (Array.isArray(stageObj.tindakan)) {
-            allAI.push(...stageObj.tindakan.filter(td => !(td.isManual || td.is_manual)));
-          }
         });
-        window.claimState.cache.tindakanAI = allAI;
-        console.log("✅ [Synced] Cache tindakanAI global:", allAI.length, "item");
-      }, 500);
+      });
 
-      // ------------------------------------------------------------------
-      // 3️⃣ Kembalikan tindakan manual yg dibackup sebelumnya
-      // ------------------------------------------------------------------
+      console.log("🔍 Transformed rows:", transformedRows);
+
+      // 🔥 CORE_ENGINE: Render transformed recommendations
+      if (transformedRows && transformedRows.length > 0) {
+        window.renderAI && window.renderAI(transformedRows);
+        console.log("✅ Core engine AI recommendations rendered:", transformedRows.length);
+      } else {
+        console.warn("⚠️ No AI recommendations received from core engine");
+      }
+
+      // 🔥 CORE_ENGINE: Restore manual backups if needed
       for (const tab in manualBackup) {
         const manualList = manualBackup[tab];
         if (!manualList?.length) continue;
@@ -122,14 +80,7 @@
         state.simulasi[tab].tindakan = merged;
       }
 
-      // ------------------------------------------------------------------
-      // 4️⃣ Refresh tampilan list tindakan di modal
-      // ------------------------------------------------------------------
-      Object.keys(state.simulasi).forEach(tab => {
-        window.renderManualTindakanList &&
-          window.renderManualTindakanList(tab);
-      });
-
+      // Sync hidden inputs
       window.syncHiddenInputs && window.syncHiddenInputs();
 
     } catch (err) {
@@ -204,19 +155,33 @@
 
     try {
       const state = Alpine.$data(document.getElementById("claimRoot"));
-      const payload = { claim_id: claimId, simulasi: state.simulasi };
+      
+      // 🔥 FIXED: Use core_engine generate_claim_combos endpoint instead of dummy
+      const payload = { 
+        claim_id: parseInt(claimId), 
+        simulasi: state.simulasi,
+        // Add required fields for generate_claim_combos
+        primary_claim: "Primary diagnosis", // Could be extracted from simulasi
+        secondary_claims: [], // Could be extracted from simulasi 
+        primary_action: "Primary procedure", // Could be extracted from simulasi
+        secondary_actions: [] // Could be extracted from simulasi
+      };
 
-      const res = await fetch(`/claims/ai/summary/${claimId}`, {
+      const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Gagal request summary");
+      if (!res.ok) throw new Error(`HTTP ${res.status} - Gagal request evaluasi`);
 
-      const data = await res.json();
+      const result = await res.json();
+      console.log("🔍 Core engine evaluasi result:", result);
+      
+      // Handle core_engine response format
+      const data = result.data || result;
 
-      window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(data.diagnosis || {});
-      window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(data.procedure || {});
+      window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(data.evaluasi_diagnosis || data.diagnosis || {});
+      window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(data.evaluasi_tindakan || data.procedure || {});
       window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(data.idrg_summary || {});
       window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(data.alternatif || []);
 
@@ -224,10 +189,10 @@
       if (summaryField) summaryField.value = JSON.stringify(data);
       window.claimState.summary = data;
 
-      alert("✅ Summary berhasil digenerate");
+      alert("✅ Evaluasi berhasil digenerate");
     } catch (err) {
-      console.error("Error generate summary:", err);
-      alert("❌ Gagal generate summary");
+      console.error("❌ Error generate evaluasi:", err);
+      alert(`❌ Gagal generate evaluasi: ${err.message}`);
     } finally {
       window.syncHiddenInputs && window.syncHiddenInputs();
     }
@@ -280,7 +245,12 @@
                        document.querySelector('[name="csrf_token"]')?.value;
       
       const headers = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      if (csrfToken) {
+        headers["X-CSRF-Token"] = csrfToken;
+        console.log("🔒 CSRF token found:", csrfToken);
+      } else {
+        console.warn("⚠️ No CSRF token found");
+      }
       
       // 🔥 If no data provided, extract from form like development branch
       const payload = data || get_form_as_dict();

@@ -449,13 +449,14 @@ function addManual(type, tab) {
 
   // 🚨 Enrichment BE kalau endpoint memang ada
 
-  fetch("/ai/recommendation/detail", {
+  // 🔥 FIXED: Use core_engine endpoint instead of dummy
+  fetch(`/claims/${state.claimId}/analyze_diagnosis`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       claim_id: state.claimId,
-      type,
-      ...newItem
+      disease_name: newItem.nama_kategori || newItem.kategori || "Unknown",
+      item_id: newItem.id
     })
   })
   .then(res => res.json())
@@ -627,12 +628,24 @@ async function openModalFromAttr(el, type) {
       // Gunakan langsung response JSON untuk modal
       dx = result;
     } else if (dbId && !isNaN(Number(dbId))) {
-      // fallback legacy detail
-      const url = `/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
-      const res = await fetch(url);
+      // 🔥 FIXED: Use core_engine endpoint instead of dummy
+      const url = type === "diagnosis" ? 
+        `/claims/${claimId}/analyze_diagnosis` : 
+        `/claims/${claimId}/analyze_procedure`;
+      const payload = {
+        claim_id: parseInt(claimId),
+        [type === "diagnosis" ? "disease_name" : "procedure_name"]: 
+          tr?.textContent?.trim() || `Unknown ${type}`,
+        item_id: dbId
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = await res.json();
-      dx = result.data;
+      dx = result.data || result;
     } else {
       dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
     }
@@ -1189,7 +1202,8 @@ async function generateSummary() {
       simulasi: state.simulasi,
     };
 
-    const res = await fetch(`/ai/summary/${claimId}`, {
+    // 🔥 FIXED: Use core_engine endpoint instead of dummy
+    const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
