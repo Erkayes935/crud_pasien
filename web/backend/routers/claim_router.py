@@ -191,33 +191,48 @@ async def update_claim_draft(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
-    payload: dict = Body(...),
+    csrf_token: str = Form(...),
+    simulasi: str = Form(None),
+    summary: str = Form(None),
+    ai_recommendations: str = Form(None),
+    stage: str = Form("admission"),
 ):
+    """
+    Save draft klaim (dokter) dengan data simulasi & summary dari form.
+    Format pengiriman: multipart/form-data (bukan JSON)
+    """
     try:
-        ai_recommendations = payload.get("ai_recommendations")
-        stage = payload.get("stage", "admission")
+        payload = {
+            "simulasi": simulasi,
+            "summary": summary,
+            "ai_recommendations": ai_recommendations,
+            "stage": stage,
+        }
 
-        if ai_recommendations:
-            ai.clear_ai_results(db, claim_id)
-            ai.store_ai_recommendations(
-                db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
-            )
-
+        # Simpan ke database
         core.update_claim_draft_service(db, claim_id, user, payload)
-        return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+
+        flash(request, "✅ Draft klaim berhasil diperbarui", "success")
+        return RedirectResponse(f"/claims/{claim_id}/edit", status_code=303)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
 
 
 @router.post("/{claim_id}/finalize", name="finalize_claim")
-def finalize_claim(
+async def finalize_claim(
     request: Request,
     claim_id: int,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
-    **form_data,
+    simulasiField: str = Form(None),
+    summaryField: str = Form(None)
 ):
+    form_data = {
+        "simulasi": simulasiField,
+        "summary": summaryField
+    }
     core.finalize_claim_service(db, claim_id, user, form_data)
     flash(request, "Klaim difinalisasi", "success")
     return RedirectResponse("/dashboard", status_code=303)

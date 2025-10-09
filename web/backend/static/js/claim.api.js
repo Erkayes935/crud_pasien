@@ -71,34 +71,64 @@
     }
   }
 
-  async function saveDraft(claimId, data) {
+  // ==================== SAVE DRAFT UNIVERSAL ====================
+  async function saveDraft(claimId) {
     try {
+      const root = document.getElementById("claimRoot");
+      const state = Alpine.$data(root);
+      const csrfToken = document.querySelector("input[name='csrf_token']")?.value || "";
+
+      // Buat formData (biar cocok dengan Form() di backend)
+      const formData = new FormData();
+      formData.append("csrf_token", csrfToken);
+      formData.append("simulasi", JSON.stringify(state.simulasi || {}));
+      formData.append("summary", JSON.stringify(window.claimState?.summary || {}));
+      formData.append("ai_recommendations", JSON.stringify(state.ai_recommendations || {}));
+      formData.append("stage", state.tab || "admission");
+
+      console.log("📤 Sending draft as FormData:", Object.fromEntries(formData));
+
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        credentials: "include", // biar cookie session ikut
+        body: formData,
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const text = await res.text();
+        throw new Error(`Gagal simpan draft (HTTP ${res.status}): ${text}`);
       }
 
-      const result = await res.json();
-      console.log("📥 Draft saved:", result);
-      return result;
-    } catch (err) {
-      console.error("❌ Error generate AI:", err);
-      alert(`Gagal generate AI: ${err.message}`);
-      
-      // Log detailed error for debugging
-      if (err.response) {
-        console.error("Response status:", err.response.status);
-        console.error("Response headers:", err.response.headers);
-        const text = await err.response.text();
-        console.error("Response body:", text);
+      // Kalau backend redirect → res.redirected true
+      if (res.redirected) {
+        console.log("🔁 Redirected ke:", res.url);
+        window.location.href = res.url; // optional reload
+        return;
       }
+
+      showToast("💾 Draft berhasil disimpan");
+      console.log("✅ Draft saved successfully");
+
+    } catch (err) {
+      console.error("❌ Error saat menyimpan draft:", err);
+      showToast(`❌ Gagal menyimpan draft: ${err.message}`, true);
     }
   }
+  function showToast(msg, isError = false) {
+    const div = document.createElement("div");
+    div.textContent = msg;
+    div.style.position = "fixed";
+    div.style.bottom = "20px";
+    div.style.right = "20px";
+    div.style.padding = "10px 16px";
+    div.style.borderRadius = "6px";
+    div.style.color = "white";
+    div.style.backgroundColor = isError ? "#dc2626" : "#16a34a";
+    div.style.zIndex = 9999;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 2500);
+  }
+  window.saveDraft = saveDraft;
 
   async function loadSimulations(claimId) {
     try {
