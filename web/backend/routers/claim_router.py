@@ -20,6 +20,7 @@ from ..database import get_db
 from ..auth import require_roles_session, require_csrf_dep, issue_csrf_token
 from ..utils.templates import templates
 from ..utils.flash import flash
+from ..utils.dummy_data import make_dummy, dummy_diagnosis_list, dummy_diagnosis_detail, dummy_tindakan_list, dummy_tindakan_detail
 from ..crud import claim as claim_crud
 from ..crud import claim_note as note_crud
 from ..services.claim import core, simulation, ai

@@ -322,4 +322,9 @@
   window.generateAI = generateAI;
   window.generateSummary = generateSummary;
   window.generateResumeMedis = generateResumeMedis;
+  window.loadSimulations = loadSimulations;
+  window.searchDiagnosis = searchDiagnosis;
+  window.getDiagnosisDetail = getDiagnosisDetail;
+  window.searchTindakan = searchTindakan;
+  window.getTindakanDetail = getTindakanDetail;
 })();
