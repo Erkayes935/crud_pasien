@@ -307,13 +307,13 @@
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
             <td class="col-klinis border px-3 py-2 w-[25%]">
-              <span class="block w-full truncate">${renderValue(klinisText)}</span>
+              <span class="block w-full truncate" title="${titleKlinis}">${renderValue(klinisText)}</span>
             </td>
             <td class="col-icd border px-3 py-2 w-[10%] text-center">
               <span class="block w-full truncate">${renderValue(icdText)}</span>
             </td>
             <td class="col-tindakan border px-3 py-2 w-[25%]">
-              <span class="block w-full truncate">${renderValue(tindakanText)}</span>
+              <span class="block w-full truncate" title="${titleTindakan}">${renderValue(tindakanText)}</span>
             </td>
             <td class="border px-3 py-2 w-[10%] text-center">
               <span class="block w-full truncate">${renderValue(parent.score)}</span>

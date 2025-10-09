@@ -171,7 +171,7 @@
 
 
   // ====================== Tambah Tindakan Manual ======================
-  window.addManualTindakanFromAutocomplete = async function (tab, selected) {
+  async function addManualTindakanFromAutocomplete(tab, selected) {
     try {
       const root = document.getElementById("claimRoot");
       const state = Alpine.$data(root);
@@ -208,7 +208,8 @@
     } catch (err) {
       console.error("❌ Gagal tambah tindakan manual:", err);
     }
-  };
+  }
+
 
 
   // ====================== Tombol "+" ======================
