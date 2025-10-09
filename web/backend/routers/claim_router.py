@@ -594,3 +594,46 @@ async def generate_alternatives_endpoint(
         return {"result": fallback_data}
 
 
+# ==================================================
+# SEARCH AUTOCOMPLETE
+# ==================================================
+
+@router.get("/search/diagnosis")
+def search_diagnosis(query: str):
+    dummy = dummy_diagnosis_list()
+    results = [d for d in dummy if query.lower() in d["name"].lower()]
+    return {"status": "ok", "data": results}
+
+@router.get("/search/diagnosis/detail/{code}")
+def search_diagnosis_detail(code: str):
+    return {"status": "ok", "data": dummy_diagnosis_detail(code)}
+
+# Autocomplete list tindakan (opsional, kalau nanti mau dipakai dropdown)
+@router.get("/search/tindakan")
+def search_tindakan(query: str = ""):
+    dummy = dummy_tindakan_list()
+    if query:
+        results = [d for d in dummy if query.lower() in d["procedure_text"].lower()]
+    else:
+        results = dummy
+    return {"status": "ok", "data": results}
+
+
+# Detail tindakan (nested modal)
+@router.get("/search/tindakan/detail/{procedure_text}")
+def search_tindakan_detail(procedure_text: str):
+    return {"status": "ok", "data": dummy_tindakan_detail(procedure_text)}
+
+@router.get("/{claim_id}/notes")
+def get_notes(claim_id: int, db: Session = Depends(get_db)):
+    notes = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id).all()
+    return {"data": [
+        {
+            "id": n.id,
+            "item_id": n.item_id,
+            "role": n.role,
+            "user_id": n.user_id,
+            "note_text": n.note_text,
+            "timestamp": n.timestamp.isoformat()
+        } for n in notes
+    ]}

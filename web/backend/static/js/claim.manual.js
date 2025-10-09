@@ -79,7 +79,8 @@
     state.simulasi[tab].diagnosis.push(newItem);
 
     // render ulang tabel
-    window.renderTable && window.renderTable(`diagnosis-${tab}`, state.simulasi[tab].diagnosis, "diagnosis", tab);
+    window.renderTable &&
+      window.renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab);
     window.syncHiddenInputs && window.syncHiddenInputs();
   }
 
@@ -107,43 +108,135 @@
     namaEl.value = "";
   }
 
-  function renderManualTindakanList() {
+  function renderManualTindakanList(tab, containerEl) {
     const state = window.claimState || {};
-    const listContainer = document.querySelector(".tindakan-list");
+    const listContainer =
+      containerEl?.querySelector(".tindakan-list") ||
+      document.querySelector(".modal-content .tindakan-list") ||
+      document.querySelector(".tindakan-list");
     if (!listContainer) return;
 
-    state.manualTindakan = (state.manualTindakan || []).filter(td => td.nama && td.nama !== "-" && td.nama !== "undefined");
+    const rawList = (state.simulasi?.[tab]?.tindakan || [])
+      .filter(td => td.procedure_text && td.procedure_text !== "-");
+
+    // 🔥 filter unik biar tidak looping terus
+    const list = [];
+    const seen = new Set();
+    for (const td of rawList) {
+      const key = td.procedure_text + (td.source || "");
+      if (!seen.has(key)) {
+        list.push(td);
+        seen.add(key);
+      }
+    }
     listContainer.innerHTML = "";
 
-    (state.manualTindakan || []).forEach((td, idx) => {
-      listContainer.insertAdjacentHTML("beforeend", `
-        <div class="grid grid-cols-3 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2 gap-4">
+    if (!list.length) {
+      listContainer.innerHTML =
+        `<div class="italic text-gray-500 text-center py-2">Belum ada tindakan manual</div>`;
+      return;
+    }
+
+    list.forEach((td, idx) => {
+      const nama = td.procedure_text || td.nama || "-";
+      const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
+      listContainer.insertAdjacentHTML(
+        "beforeend",
+        `
+        <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+            data-id="manual-tindakan-${tab}-${idx}"
+            data-manual-idx="${idx}">
           <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-              onclick="openManualNestedProcedureModal(${idx})">
-            ${td.nama}
+              onclick="openManualDetailModal({ procedure_text: '${nama}' }, '${tab}', ${idx})">
+            ${nama}
           </div>
-          <div class="px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
-                      text-gray-900 dark:text-gray-100 rounded shadow-sm truncate"
-              title="${(td.deskripsi && td.deskripsi.includes('ICD-9:')) ? td.deskripsi : '-'}">
-            ${(td.deskripsi && td.deskripsi.includes("ICD-9:")) ? td.deskripsi : '-'}
+          <div>
+            <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
+                        text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                  title="${deskripsi}">${deskripsi || "&nbsp;"}</span>
           </div>
-          ${state.role === "doctor" ? `
-            <div class="flex space-x-2 justify-end">
-              <button type="button"
-                      onclick="updateSimulasi('tindakan','Primary','${td.nama}','Manual', window.claimState.tab)"
-                      class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-              <button type="button"
-                      onclick="updateSimulasi('tindakan','Secondary','${td.nama}','Manual', window.claimState.tab)"
-                      class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-            </div>` : ``}
-        </div>
-      `);
+          ${window.claimState?.role === "doctor"
+            ? `<div class="flex space-x-2 justify-end">
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Primary','${nama}','Manual','${tab}')"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+                <button type="button"
+                        onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual','${tab}')"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+              </div>`
+            : ``}
+        </div>`
+      );
     });
+  }
+
+  // ====================== Tambah Tindakan Manual ======================
+  async function addManualTindakanFromAutocomplete(tab, selected) {
+    try {
+      const root = document.getElementById("claimRoot");
+      const state = Alpine.$data(root);
+      if (!state.simulasi[tab]) state.simulasi[tab] = { tindakan: [] };
+      if (!Array.isArray(state.simulasi[tab].tindakan)) state.simulasi[tab].tindakan = [];
+
+      // ambil detail dari backend (dummy_data.py)
+      const res = await fetch(`/claims/search/tindakan/detail/${encodeURIComponent(selected.procedure_text)}`);
+      const json = await res.json();
+      const detail = json.data || {};
+
+      const newItem = {
+        ...selected,
+        ...detail,
+        isManual: true,
+        source: "Manual",
+        procedure_text: selected.procedure_text || detail.procedure_text || "-",
+        deskripsi: "", // awalnya kosong, nanti diisi setelah fetch detail
+      };
+
+      // 🧹 hapus duplikat nama sama sebelum push
+      state.simulasi[tab].tindakan = state.simulasi[tab].tindakan.filter(
+        td => td.procedure_text !== newItem.procedure_text
+      );
+
+      state.simulasi[tab].tindakan.push(newItem);
+
+      // 🔁 render ulang list manual di modal
+      setTimeout(() => {
+        window.renderManualTindakanList && window.renderManualTindakanList(tab);
+      }, 50);
+
+      window.syncHiddenInputs && window.syncHiddenInputs();
+    } catch (err) {
+      console.error("❌ Gagal tambah tindakan manual:", err);
+    }
+  }
+
+
+
+  // ====================== Tombol "+" ======================
+  async function handleAddManualTindakan(tab) {
+    // ambil konteks Alpine autocomplete
+    const alpineCtx = Alpine.$data(document.querySelector('[x-data="tindakanAutocomplete()"]'));
+    const text = alpineCtx?.query?.trim?.() || "";
+    if (!text) return;
+
+    const found = window.cachedTindakan?.some(td =>
+      td.procedure_text.toLowerCase() === text.toLowerCase()
+    );
+
+    if (!found) {
+      const confirmAdd = confirm(`Tindakan "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`);
+      if (!confirmAdd) return;
+    }
+
+    addManualTindakanFromAutocomplete(tab, { procedure_text: text });
+    alpineCtx.query = ""; // reset input
   }
 
   // Export
   window.addManual = addManual;
   window.addManualFromAutocomplete = addManualFromAutocomplete;
+  window.handleAddManualTindakan = handleAddManualTindakan;
   window.addManualTindakan = addManualTindakan;
+  window.addManualTindakanFromAutocomplete = addManualTindakanFromAutocomplete;
   window.renderManualTindakanList = renderManualTindakanList;
 })();
