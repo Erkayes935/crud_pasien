@@ -1,6 +1,68 @@
 // =============== Semua modal (diagnosis/procedure/regulasi) ===============
 
 (function () {
+  // Helper function untuk truncate text
+  function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  }
+  // Field regulation mapping based on requirements
+  const REGULATION_FIELDS = {
+    // Detail Diagnosis - Aspek Klinis
+    'justifikasi': true,           // ✅ Perlu regulasi (PNPK/CP/Permenkes)
+    'bukti_klinis': false,         // ❌ Tidak perlu regulasi (hanya evidence klinis)
+    'syarat_klinis': true,         // ✅ Perlu regulasi (PNPK, CP, Permenkes)
+    'confidence_ai': false,        // ❌ Tidak perlu regulasi (murni hasil AI)
+    
+    // ICD-10
+    'kode_icd': true,             // ✅ Perlu regulasi (ICD-10 WHO + mapping BPJS)
+    'struktur_icd10': true,       // ✅ Perlu regulasi (aturan ICD-10 resmi)
+    'kode_ganda': true,           // ✅ Perlu regulasi (aturan ICD-10 resmi)
+    'z_code': true,               // ✅ Perlu regulasi (aturan ICD-10 resmi)
+    'kode_bpjs_khusus': true,     // ✅ Perlu regulasi (aturan BPJS/e-Claim)
+    
+    // Tindakan terkait
+    'syarat_klinis_tindakan': true,   // ✅ Perlu regulasi (PNPK/CP)
+    'status_tindakan': true,          // ✅ Perlu regulasi (CP/INA-CBG)
+    'ina_cbg_impact': true,           // ✅ Perlu regulasi (Casemix INA-CBG)
+    
+    // Rawat Inap
+    'indikasi': true,             // ✅ Perlu regulasi (CP/PNPK)
+    'kriteria': true,             // ✅ Perlu regulasi (CP/PNPK)
+    'lama_rawat': true,           // ✅ Perlu regulasi (INA-CBG)
+    
+    // Faskes
+    'tingkat': true,              // ✅ Perlu regulasi (Permenkes RS)
+    'justifikasi_faskes': true,   // ✅ Perlu regulasi (Permenkes RS)
+    'kompetensi': true,           // ✅ Perlu regulasi (Permenkes RS)
+    
+    // Rujukan
+    'indikasi_rujukan': true,     // ✅ Perlu regulasi (Permenkes Rujukan)
+    'tujuan': true,               // ✅ Perlu regulasi (Permenkes Rujukan)
+    'kriteria_rujukan': true,     // ✅ Perlu regulasi (Permenkes Rujukan)
+    
+    // INA-CBG
+    'kode': true,                 // ✅ Perlu regulasi (INA-CBG resmi)
+    'deskripsi': true,            // ✅ Perlu regulasi (INA-CBG resmi)
+    'tarif': true,                // ✅ Perlu regulasi (Casemix INA-CBG)
+    
+    // Detail Tindakan (Modal Procedure)
+    'icd9_code': true,            // ✅ Perlu regulasi (ICD-9-CM resmi)
+    'icd9_desc': true,            // ✅ Perlu regulasi (ICD-9-CM resmi)
+    'deskripsi': true,            // ✅ Perlu regulasi (ICD-9-CM resmi)
+    'validitas': false,           // ❌ Tidak perlu regulasi (logic sistem AI)
+    'status': true,               // ✅ Perlu regulasi (CP/PNPK, INA-CBG)
+    'ina_cbg': true,              // ✅ Perlu regulasi (Casemix INA-CBG)
+    'faskes': true,               // ✅ Perlu regulasi (Permenkes RS)
+    'rawat_inap': true,           // ✅ Perlu regulasi (INA-CBG, PNPK)
+    'syarat_klinis': true,        // ✅ Perlu regulasi (CP/PNPK)
+    'rawat_inap_tindakan': true,  // ✅ Perlu regulasi (INA-CBG, PNPK)
+  };
+
+  function checkFieldHasRegulation(fieldName) {
+    if (!fieldName) return false;
+    return REGULATION_FIELDS[fieldName] === true;
+  }
   function openModal(title, content, { hideDefaultClose = false } = {}) {
     const root = document.getElementById('claimRoot');
     const state = Alpine.$data(root);
@@ -11,290 +73,166 @@
   }
 
   function updateRingkasanFromRow(itemId, dx) {
-    if (!dx || !itemId) return;
-    if (dx.isManual) {
-      const stage = dx.stage || window.claimState?.tab || "admission";
-      window.renderManualTindakanList && window.renderManualTindakanList(stage);
+    if (!dx || !itemId) {
+      console.log("❌ updateRingkasanFromRow: Missing data or itemId", { itemId, dx });
       return;
     }
 
+    console.log("🔍 updateRingkasanFromRow called with:", { itemId, dx });
     const row = document.querySelector(`[data-id="${itemId}"]`);
-    if (!row) return;
-    if (row.closest(".tindakan-list")) {
-      const descEl = row.querySelector("span[title], span.block");
-      if (descEl) {
-        const newText = dx.deskripsi || "-";
-        descEl.textContent = newText;
-        descEl.setAttribute("title", newText);
-      }
+    if (!row) {
+      console.log("❌ updateRingkasanFromRow: Row not found for itemId:", itemId);
+      console.log("Available rows:", document.querySelectorAll('[data-id]'));
       return;
     }
+    
+    console.log("✅ Found row to update:", row);
 
     // kolom Klinis
     const klinisCell = row.querySelector(".col-klinis");
     if (klinisCell) {
       let text = "";
-      if (Array.isArray(dx.klinis)) text = dx.klinis.filter(Boolean).join(", ");
-      else if (typeof dx.klinis === "string") text = dx.klinis;
-      else if (typeof dx.klinis === "object" && dx.klinis !== null) {
-        text = [dx.klinis.justifikasi, dx.klinis.bukti_klinis, dx.klinis.syarat_klinis].filter(Boolean).join(", ");
+      
+      // Handle different formats from core_engine response
+      if (dx.klinis) {
+        if (Array.isArray(dx.klinis)) {
+          text = dx.klinis.filter(Boolean).join(", ");
+        } else if (typeof dx.klinis === "string") {
+          text = dx.klinis;
+        } else if (typeof dx.klinis === "object") {
+          text = [dx.klinis.justifikasi, dx.klinis.bukti_klinis, dx.klinis.syarat_klinis].filter(Boolean).join(", ");
+        }
+      } else {
+        // Direct fields from core_engine
+        text = [dx.justifikasi, dx.bukti_klinis, dx.syarat_klinis].filter(Boolean).join(", ");
       }
+      
+      console.log("🔍 Setting klinis text:", text);
       klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "-";
     }
 
     // kolom ICD
     const icdCell = row.querySelector(".col-icd");
     if (icdCell) {
-      if (dx.icd10_code) icdCell.innerText = dx.icd10_code;
-      else if (dx.icd10 && dx.icd10.kode_icd) icdCell.innerText = dx.icd10.kode_icd;
-      else if (dx.icd9_code) icdCell.innerText = dx.icd9_code;
-      else icdCell.innerText = "-";
+      let icdCode = "-";
+      
+      // Handle different ICD formats from core_engine
+      if (dx.icd10_code) {
+        icdCode = dx.icd10_code;
+      } else if (dx.icd10 && dx.icd10.kode_icd) {
+        icdCode = dx.icd10.kode_icd;
+      } else if (dx.icd9_code) {
+        icdCode = dx.icd9_code;
+      }
+      
+      console.log("🔍 Setting ICD code:", icdCode);
+      icdCell.innerText = icdCode;
     }
 
     // kolom Tindakan
     const tindakanCell = row.querySelector(".col-tindakan");
     if (tindakanCell) {
-      if (dx.tindakan && dx.tindakan.length > 0) {
-        const text = dx.tindakan.map(t => t.procedure_text || t.tindakan).join(", ");
-        tindakanCell.innerHTML = `<span title="${text}">${truncateText(text, 44)}</span>`;
-      } else {
-        tindakanCell.innerText = "-";
+      let text = "-";
+      
+      if (dx.tindakan && Array.isArray(dx.tindakan) && dx.tindakan.length > 0) {
+        text = dx.tindakan.map(t => 
+          t.procedure_text || t.tindakan || t.nama || t.name || t.description || t
+        ).join(", ");
       }
-    }
-
-    // Persist semua perubahan hasil modal ke state simulasi
-    try {
-      const stage = dx.stage || window.claimState?.tab || "admission";
-      const sim = window.claimState?.simulasi?.[stage];
-      if (sim && Array.isArray(sim.diagnosis)) {
-        const item = sim.diagnosis.find(d =>
-          d.id === dx.id ||
-          d.kategori === dx.kategori ||
-          d.icd10_code === dx.icd10_code
-        );
-        if (item) {
-          if (dx.klinis) {
-            let klinisText = "";
-            if (typeof dx.klinis === "object" && dx.klinis !== null) {
-              const k = dx.klinis;
-              klinisText = [k.justifikasi, k.bukti_klinis, k.syarat_klinis]
-                .filter(Boolean)
-                .join(", ");
-            } else if (Array.isArray(dx.klinis)) {
-              klinisText = dx.klinis.filter(Boolean).join(", ");
-            } else {
-              klinisText = dx.klinis;
-            }
-            item.klinis = `<span title="${klinisText}">${truncateText(klinisText, 44)}</span>`;
-          }
-
-          if (dx.icd10_code || dx.icd10) {
-            item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "-";
-            item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
-          }
-
-          if (Array.isArray(dx.tindakan)) {
-            const texts = dx.tindakan.map(t => t.procedure_text || t.tindakan).filter(Boolean);
-            const tindakanText = texts.join(", ");
-            item.tindakan = `<span title="${tindakanText}">${truncateText(tindakanText, 44)}</span>`;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("⚠️ gagal persist ringkasan ke state:", err);
+      
+      console.log("🔍 Setting tindakan text:", text);
+      tindakanCell.innerHTML = text !== "-" ? `<span title="${text}">${truncateText(text, 44)}</span>` : "-";
     }
   }
 
-  // ================== Modal detail dari tabel ==================
+  // Buka modal dari klik kategori
   async function openModalFromAttr(el, type) {
     const tr = el.closest("tr");
     const dbId = tr?.dataset.dbId;
     const uiId = tr?.dataset.id;
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+    
+    // Ambil nama penyakit dari cell yang diklik
+    let diseaseName = "";
+    if (el.textContent) {
+      diseaseName = el.textContent.replace(/^→+\s*/, "").trim();
+    } else {
+      diseaseName = tr?.querySelector(".kategori-cell")?.textContent?.trim() || tr?.dataset.nama || "";
+    }
 
     try {
-      let dx;
-      if (dbId && !isNaN(Number(dbId))) {
-        // 🔥 FIXED: Use core_engine endpoints instead of dummy AI recommendation
-        let url, payload;
-        if (type === "diagnosis") {
-          url = `/claims/${claimId}/analyze_diagnosis`;
-          payload = {
-            claim_id: parseInt(claimId),
-            disease_name: tr?.textContent?.trim() || "Unknown diagnosis",
-            item_id: dbId
-          };
-        } else if (type === "procedure" || type === "tindakan") {
-          url = `/claims/${claimId}/analyze_procedure`;  
-          
-          // 🔥 Extract proper procedure name from row
-          const nameCell = tr?.querySelector('td:first-child') || tr?.querySelector('.procedure-name');
-          const procedureName = nameCell?.textContent?.trim() || 
-                               tr?.dataset?.procedureName || 
-                               "General Medical Procedure";
-          
-          payload = {
-            claim_id: parseInt(claimId),
-            procedure_name: procedureName,
-            item_id: dbId,
-            stage: "admission"
-          };
-        } else {
-          // 🔥 FIXED: Use analyze_diagnosis as fallback instead of dummy endpoint
-          url = `/claims/${claimId}/analyze_diagnosis`;
-          payload = {
-            claim_id: parseInt(claimId),
-            disease_name: tr?.textContent?.trim() || `Unknown ${type}`,
-            item_id: dbId
-          };
-        }
-
-        const res = await fetch(url, {
-          method: payload ? "POST" : "GET",
-          headers: payload ? { "Content-Type": "application/json" } : {},
-          body: payload ? JSON.stringify(payload) : undefined
+      let dx = {};
+      // 🔥 NEW: Jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis (core_engine)
+      if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
+        console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
+        const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            claim_id: parseInt(claimId), 
+            disease_name: diseaseName,
+            rekam_medis: []
+          })
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const result = await res.json();
+        console.log("[RESP] /analyze_diagnosis", result);
+        
+        // 🔥 Process core_engine response untuk modal
+        dx = result; // Set dx untuk updateRingkasanFromRow
+        window.claimState.currentDiagnosis = result;
+        window.claimState.currentDiagnosisTitle = diseaseName;
+        
+        const modalContent = renderDiagnosisDetail(result);
+        openModal(`<div class="flex flex-col items-start items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${diseaseName}</span>
+        </div>`, modalContent);
+        
+        // 🔥 CRITICAL: Call updateRingkasanFromRow setelah modal dibuka!
+        console.log("🔥 Auto-filling table with data:", { uiId, dx });
+        updateRingkasanFromRow(uiId, dx);
+        return;
+      } else if (dbId && !isNaN(Number(dbId))) {
+        // fallback legacy detail
+        const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = await res.json();
-        dx = result.data || result || {};
-
-        if (Array.isArray(dx.tindakan)) {
-          dx.tindakan = dx.tindakan.map(td => ({ ...td, source: td.source || "AI" }));
-        }
-
-        // 🔥 Fetch i-DRG data if not present (for core_engine compatibility)
-        if (!dx.idrg_diagnosis && dx.icd10_code && type === "diagnosis") {
-          try {
-            console.log("🔍 Fetching i-DRG data for diagnosis:", dx.nama_kategori);
-            const idrgUrl = `/claims/${claimId}/predict_idrg`;
-            const idrgPayload = {
-              mode: "single",
-              diagnosis: {
-                icd10_code: dx.icd10_code,
-                name: dx.nama_kategori || dx.kategori
-              }
-            };
-            
-            const idrgRes = await fetch(idrgUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(idrgPayload)
-            });
-            
-            if (idrgRes.ok) {
-              const idrgData = await idrgRes.json();
-              console.log("📥 i-DRG data received:", idrgData);
-              
-              // Map core_engine response to expected format
-              if (idrgData && (idrgData.data || idrgData.idrg_diagnosis)) {
-                dx.idrg_diagnosis = idrgData.data || idrgData.idrg_diagnosis || idrgData;
-              }
-            } else {
-              console.warn("⚠️ Could not fetch i-DRG data:", idrgRes.status);
-            }
-          } catch (err) {
-            console.warn("⚠️ Error fetching i-DRG data:", err);
-          }
-        }
-
-        if ((!Array.isArray(dx.tindakan) || !dx.tindakan.length) && window.claimState?.simulasi) {
-          const stage = dx.stage || window.claimState.tab || "admission";
-          const semua = window.claimState.simulasi[stage]?.tindakan || [];
-          const tindakanAI = semua.filter(td => td.is_manual === false);
-          if (tindakanAI.length) {
-            dx.tindakan = tindakanAI.map(td => ({
-              procedure_text: td.procedure_text || td.tindakan || "-",
-              deskripsi: td.deskripsi || "-",
-              icd9: td.icd9 || "-",
-              status: td.status || "-",
-              isManual: false,
-              source: "AI"
-            }));
-          }
-        }
-
-        if (dx && Array.isArray(dx.tindakan) && dx.tindakan.length) {
-          window.claimState.cache = window.claimState.cache || {};
-          if (!Array.isArray(window.claimState.cache.tindakanAI))
-            window.claimState.cache.tindakanAI = [];
-
-          const stage = dx.stage || window.claimState.tab || "admission";
-
-          dx.tindakan.forEach(td => {
-            const exists = window.claimState.cache.tindakanAI.some(
-              t => t.procedure_text === td.procedure_text && t.stage === stage
-            );
-            if (!exists) {
-              window.claimState.cache.tindakanAI.push({
-                ...td,
-                stage,
-                diagnosis_id: dx.id,
-                diagnosis_code: dx.icd10_code,
-                isManual: false,
-                source: "AI"
-              });
-            }
-          });
-        }
+        dx = result.data;
       } else {
         dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
-        const stage = dx.stage || window.claimState?.tab || "admission";
-
-        const tindakanAIAll = Array.isArray(window.claimState?.cache?.tindakanAI)
-          ? window.claimState.cache.tindakanAI.filter(td =>
-              td && (td.source === "AI" || td.isManual === false || td.is_manual === false)
-            )
-          : [];
-
-        const tindakanAIFinal = tindakanAIAll
-          .map(td => ({
-            ...td,
-            id: td.id ?? td.procedure_id ?? td.item_id ?? null,
-            diagnosis_id: td.diagnosis_id ?? td.parent_id ?? null,
-            diagnosis_code: td.diagnosis_code ?? td.icd10_code ?? null,
-            stage: td.stage || stage,
-            source: "AI",
-            isManual: false
-          }));
-
-        const existingManual = Array.isArray(dx.tindakan)
-          ? dx.tindakan.filter(t => t.isManual === true)
-          : [];
-
-        dx.tindakan = existingManual.length
-          ? [...tindakanAIFinal, ...existingManual]
-          : tindakanAIFinal;
-
-        const stageKey = dx.stage || window.claimState?.tab || "admission";
-        if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
-        const currentAll = window.claimState.simulasi[stageKey].tindakan || [];
-        const merged = [...currentAll];
-        dx.tindakan.forEach(td => {
-          if (!merged.some(m => m.procedure_text === td.procedure_text && m.source === td.source))
-            merged.push(td);
-        });
-        window.claimState.simulasi[stageKey].tindakan = merged;
       }
 
-      const rawText = tr?.querySelector("td")?.innerText.trim() || "-";
-      const namaPenyakit =
-        dx?.kategori || dx?.nama_kategori || dx?.diagnosis ||
-        dx?.komorbid || dx?.komplikasi || rawText || "-";
+      if ((!dbId || isNaN(Number(dbId))) && tr?.dataset.row) {
+        dx = JSON.parse(tr.dataset.row);
+        window.claimState.currentDiagnosis = dx;
+        window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
+        
+        // 🔥 Use new renderDiagnosisDetail for consistent parsing
+        const modalContent = renderDiagnosisDetail(dx);
+        openModal(`<div class="flex flex-col items-start items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
+        </div>`, modalContent);
+        return;
+      }
 
+      let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
+      rawText = rawText.replace(/^▶|^▼/, "").trim();
+      rawText = rawText.replace(/\s+\d+$/, "");
+      const namaPenyakit =
+        dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "-";
+
+      // 🔥 Use new renderDiagnosisDetail for consistent parsing
+      const modalContent = renderDiagnosisDetail(dx);
+      openModal(`<div class="flex flex-col items-start items-center">
+        <span class="text-lg font-bold">Detail Diagnosis</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
+      </div>`, modalContent);
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
 
-      const title = `
-        <div class="flex flex-col items-start items-center">
-          <span class="text-lg font-bold">Detail Diagnosis</span>
-          <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
-        </div>`;
-
-      const stageKey = dx.stage || window.claimState?.tab || "admission";
-      if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
-      window.claimState.simulasi[stageKey].tindakan = dx.tindakan;
-
-      openModal(title, buildModalContent(dx));
       updateRingkasanFromRow(uiId, dx);
     } catch (err) {
       console.error("❌ Gagal load modal detail:", err);
@@ -302,48 +240,77 @@
   }
 
   function renderDiagnosisDetail(it) {
-    const klinisRaw = it.klinis || {};
-    let klinis = {};
-    if (typeof klinisRaw === "string") klinis = { justifikasi: klinisRaw, bukti_klinis: "-", syarat_klinis: "-" };
-    else if (Array.isArray(klinisRaw)) klinis = { justifikasi: klinisRaw.join(", "), bukti_klinis: "-", syarat_klinis: "-" };
-    else if (typeof klinisRaw === "object" && klinisRaw !== null) {
-      klinis = {
-        justifikasi: klinisRaw.justifikasi || "-",
-        bukti_klinis: klinisRaw.bukti_klinis || "-",
-        syarat_klinis: klinisRaw.syarat_klinis || "-"
-      };
-    } else klinis = { justifikasi: "-", bukti_klinis: "-", syarat_klinis: "-" };
-
-    const icd10 = it.icd10 || {
-      kode_icd: it.icd10_code || "-",
-      struktur_icd10: it.struktur_icd10 || "-",
-      kode_ganda: it.kode_ganda || "-",
-      z_code: it.z_code || "-",
-      kode_bpjs_khusus: it.kode_bpjs_khusus || "-"
+    // 🔥 Parse data from /analyze_diagnosis response format (nested structure)
+    console.log("📋 renderDiagnosisDetail received data:", it);
+    console.log("📋 it.klinis:", it.klinis);
+    console.log("📋 it.icd10:", it.icd10);
+    console.log("📋 it.tindakan:", it.tindakan);
+    
+    // Fallback for diagnosisId - use available id fields
+    const diagnosisId = it.id || it.diagnosis_id || it.itemId || Date.now();
+    console.log("📋 Using diagnosisId:", diagnosisId);
+    
+    // Handle nested structure from core_engine - detailed parsing
+    const klinis = {
+      justifikasi: it.klinis?.justifikasi || it.justifikasi || "-",
+      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "-", 
+      syarat_klinis: it.klinis?.syarat_klinis || it.syarat_klinis || "-",
+      status: it.klinis?.status || it.status || "default"
     };
+
+    const icd10 = {
+      kode_icd: it.icd10?.kode_icd || it.icd10_code || "-",
+      struktur_icd10: it.icd10?.struktur_icd10 || it.struktur_icd10 || "-",
+      kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "-",
+      z_code: it.icd10?.z_code || it.z_code || "-",
+      kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "-",
+      status_icd: it.icd10?.status_icd || it.status_icd || "default"
+    };
+    
     const tindakan = it.tindakan || [];
-    const rawat = {
-      indikasi: it.rawat_inap?.indikasi || "-",
-      lama_rawat: it.rawat_inap?.lama_rawat || "-",
-      perpanjangan: it.rawat_inap?.perpanjangan || "-"
-    };
-    const faskes = { kesesuaian_rs: it.faskes?.kesesuaian_rs || "-" };
-    const rujukan = { syarat: it.rujukan?.syarat || "-", kelayakan: it.rujukan?.kelayakan || "-" };
+    const rawat = it.rawat || it.rawat_inap || {};
+    const faskes = it.faskes || {};
+    const rujukan = it.rujukan || {};
+    const inaCbg = it.inaCbg || it.ina_cbg || {};
+    
+    console.log("📋 Parsed klinis:", klinis);
+    console.log("📋 Parsed icd10:", icd10);
+    console.log("📋 Parsed tindakan count:", tindakan.length);
+    
+    // 🔥 Debug specific field values
+    console.log("📋 klinis.justifikasi:", klinis.justifikasi);
+    console.log("📋 klinis.bukti_klinis:", klinis.bukti_klinis);
+    console.log("📋 icd10.kode_icd:", icd10.kode_icd);
+    console.log("📋 rawat.indikasi:", rawat.indikasi);
 
-    const renderBox = (label, value, status = "default", diagnosisId = null) => {
-      let colorClass = "bg-gray-200 text-gray-800";
+    const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
+      let colorClass = "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100";
       if (status === "valid") colorClass = "bg-green-600 text-white";
       if (status === "invalid") colorClass = "bg-red-600 text-white";
+      
       const safeValue = value || "-";
-      const content = diagnosisId
-        ? `<span class="cursor-pointer" title="PNPK Sepsis 2020" onclick="openRegulationModal(${diagnosisId}, 'diagnosis')">${safeValue}</span>`
-        : safeValue;
-      return `
+      console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
+      
+      // Check if field has regulation based on field mapping
+      const hasRegulation = checkFieldHasRegulation(fieldName);
+      
+      let content = safeValue;
+      if (hasRegulation && diagnosisId && safeValue !== "-") {
+        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
+                         title="📋 Klik untuk melihat regulasi ${fieldName}" 
+                         data-field="${fieldName}"
+                         data-diagnosis-id="${diagnosisId}"
+                         onclick="openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
+      }
+      
+      const boxHtml = `
         <div class="grid grid-cols-2">
           <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
           <div class="${colorClass} px-3 py-2">${content}</div>
         </div>
       `;
+      console.log(`📋 renderBox(${label}) HTML:`, boxHtml);
+      return boxHtml;
     };
 
     return `
@@ -351,31 +318,27 @@
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Justifikasi", klinis.justifikasi, klinis.status, it.id)}
-            ${renderBox("Bukti Klinis", klinis.bukti_klinis)}
-            ${renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, it.id)}
+            ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
+            ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
+            ${(console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis), renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
           </div>
         </section>
 
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, it.id)}
-            ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, it.id)}
-            ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, it.id)}
-            ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, it.id)}
-            ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, it.id)}
+            ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
+            ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
+            ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
+            ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
+            ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus")}
           </div>
         </section>
+
+        <!-- i-DRG Section - PERBAIKAN: HAPUS CONTAINER NESTED -->
+        ${renderIdrgSection(it.idrg_diagnosis)}
 
         <section class="rounded shadow overflow-hidden">
-          <div class="bg-blue-600 text-white px-3 py-2 font-bold">i-DRG</div>
-          <div class="p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderIdrgSection(it.idrg_diagnosis)}
-          </div>
-        </section>
-
-        <section class="rounded shadow overflow-visible">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
           <div class="p-3 bg-gray-100 dark:bg-gray-700">
             ${renderTindakan(tindakan)}
@@ -385,385 +348,462 @@
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, it.id)}
-            ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, it.id)}
-            ${renderBox("Perpanjangan", rawat.perpanjangan, rawat.status_perpanjangan, it.id)}
+            ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi")}
+            ${renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria")}
+            ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat")}
           </div>
         </section>
 
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">FASKES</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Kesesuaian RS", faskes.kesesuaian_rs, faskes.status, it.id)}
+            ${renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat")}
+            ${renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi_faskes")}
+            ${renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi")}
           </div>
         </section>
 
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${renderBox("Syarat", rujukan.syarat, rujukan.status_syarat, it.id)}
-            ${renderBox("Kelayakan", rujukan.kelayakan, rujukan.status_kelayakan, it.id)}
+            ${renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan")}
+            ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
+            ${renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")}
+          </div>
+        </section>
+
+        <section class="rounded shadow overflow-hidden">
+          <div class="bg-blue-600 text-white px-3 py-2 font-bold">INA-CBG</div>
+          <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
+            ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
+            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${parseInt(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
           </div>
         </section>
       </div>
     `;
   }
 
-  function renderIdrgSection(idrg, claimId) {
-    if (!idrg) {
-      return `<div class="italic text-gray-500">Tidak ada prediksi i-DRG</div>`;
+  // Fungsi renderIdrgSection yang dioptimalkan (single dropdown)
+
+  function renderIdrgSection(idrg, claimId, diagnosisName = null) {
+    // Get claim ID dan diagnosis name dari context jika tidak ada parameter
+    if (!claimId) {
+        claimId = document.getElementById("claimRoot")?.dataset.claimId || 
+                 window.claimState?.currentClaimId || 
+                 document.querySelector('[data-claim-id]')?.dataset.claimId;
+    }
+    
+    if (!diagnosisName) {
+        diagnosisName = window.claimState?.currentDiagnosisTitle || 
+                       document.querySelector('.modal-title')?.textContent?.trim();
     }
 
-    const renderRow = (label, value) => `
+    // Helper function untuk render rows
+    const renderPredictionRow = (label, value) => `
       <div class="grid grid-cols-2">
-        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2">${value || "-"}</div>
+        <div class="bg-blue-600 text-white px-3 py-2 font-medium">${label}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${value || "-"}</div>
       </div>
     `;
 
-    const renderRowClickable = (label, value, field) => `
-      <div class="grid grid-cols-2">
-        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-        <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2"
-            onclick="openRegulationModal('${claimId}', '${field}')">
-          ${value || "-"}
+    const renderExistingRow = (label, value, field) => {
+      const isClickable = field && value !== "-";
+      return `
+        <div class="grid grid-cols-2">
+          <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 ${isClickable ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors' : ''}"
+               ${isClickable ? `onclick="openRegulationModal('${claimId}', '${field}')"` : ''}>
+            ${value || "-"}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    };
 
+    // TEMPLATE BARU - LANGSUNG TANPA NESTED
     return `
-      <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-blue-600 text-white px-3 py-2 font-bold cursor-pointer"
-            @click="open = !open">
-          <span>Prediksi i-DRG (Diagnosis)</span>
-          <span x-text="open ? '▼' : '▶'"></span>
+      <div x-data="{ 
+        open: false, 
+        loading: false, 
+        data: null, 
+        error: null,
+        async toggleAndPredict() {
+          this.open = !this.open;
+          
+          if (this.open && !this.data && !this.loading && !this.error) {
+            this.loading = true;
+            
+            try {
+              console.log('🤖 Auto-predicting i-DRG on section open');
+              const result = await predictIdrgForDiagnosis('${claimId}', '${diagnosisName}');
+              this.data = result;
+            } catch (err) {
+              this.error = err.message;
+              console.error('Prediction error:', err);
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      }">
+        
+        <!-- HEADER UTAMA i-DRG (KLIK DROPDOWN INI LANGSUNG PREDIKSI) -->
+        <div class="flex items-center justify-between bg-blue-600 text-white px-3 py-2 font-bold cursor-pointer"
+            @click="toggleAndPredict()">
+          <span>i-DRG</span>
+          <span class="flex items-center">
+            <span x-show="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+            <span x-text="open ? '▼' : '▶'"></span>
+          </span>
         </div>
-        <div class="accordion-body" x-show="open" x-transition>
-          ${renderRowClickable("Group i-DRG", idrg.group_idrg, "idrg_diagnosis_group")}
-          ${renderRowClickable("Severity Index", idrg.severity_index, "idrg_diagnosis_severity")}
-          ${renderRowClickable("Checklist Dokumentasi", idrg.checklist, "idrg_diagnosis_checklist")}
-          ${renderRow("Faktor Severity", idrg.faktor_severity)}
-          ${renderRowClickable("Ungroupable Alert", idrg.ungroupable_alert, "idrg_diagnosis_ungroupable")}
-          ${renderRow("Simulasi Tarif", idrg.simulasi_tarif)}
-          ${renderRow("Gap Analysis", idrg.gap_analysis)}
+        
+        <!-- CONTENT AREA (LANGSUNG HASIL) -->
+        <div x-show="open" x-transition>
+          
+          <!-- Loading State -->
+          <div x-show="loading" class="p-4 text-center">
+            <div class="inline-flex items-center">
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+              <span class="text-blue-600 font-medium">Menganalisis dengan OpenAI...</span>
+            </div>
+          </div>
+          
+          <!-- Prediction Results -->
+          <div x-show="!loading && data && data.status === 'success'">
+            <template x-if="data.data && data.data.idrg_prediction">
+              <div class="space-y-2 p-4">
+                ${renderPredictionRow("Kode i-DRG", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.group_idrg) || \"-\"'></span>")}
+                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel((data.data && data.data.idrg_prediction && data.data.idrg_prediction.severity_index)) || \"-\"'></span>")}
+                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml((data.data && data.data.idrg_prediction && data.data.idrg_prediction.checklist_dokumentasi))'></span>")}
+                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml((data.data && data.data.idrg_prediction && data.data.idrg_prediction.faktor_penentu_severity))'></span>")}
+                ${renderPredictionRow("Ungroupable Alert", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.ungroupable_alert) || \"-\"'></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"(data.data && data.data.idrg_prediction && data.data.idrg_prediction.estimasi_tarif_idrg) ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Gap Analysis", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.gap_analysis) || \"-\"'></span>")}
+                
+                <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+                  <strong>Engine:</strong> <span x-text="(data.data && data.data.engine_version) || 'OpenAI GPT-4'"></span> • 
+                  <strong>Mode:</strong> Single Diagnosis • 
+                  <strong>Generated:</strong> ${new Date().toLocaleString()}
+                </div>
+                
+                <!-- Refresh button -->
+                <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })"
+                        class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm mt-2">
+                  🔄 Prediksi Ulang
+                </button>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Error State -->
+          <div x-show="!loading && error" class="p-4 bg-red-50 border border-red-200 rounded m-4">
+            <div class="flex items-center text-red-700">
+              <span class="text-xl mr-3">❌</span>
+              <span class="font-semibold">Error Prediksi i-DRG:</span>
+            </div>
+            <div class="mt-2 text-sm text-red-600" x-text="error"></div>
+            <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })" 
+                    class="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+              🔄 Coba Lagi
+            </button>
+          </div>
+          
+          <!-- Saved Data Section, jika ada -->
+          ${idrg ? `
+          <div class="p-4 space-y-2 border-t" x-show="!loading">
+            <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-2">Data i-DRG Tersimpan</h3>
+            
+            ${renderExistingRow("Group i-DRG", idrg.group_idrg || "-", "idrg_diagnosis_group")}
+            ${renderExistingRow("Severity Index", idrg.severity_index || "-", "idrg_diagnosis_severity")}
+            ${renderExistingRow("Checklist Dokumentasi", idrg.checklist || "-", "idrg_diagnosis_checklist")}
+            ${renderExistingRow("Faktor Severity", idrg.faktor_severity || "-")}
+            ${renderExistingRow("Ungroupable Alert", idrg.ungroupable_alert || "-", "idrg_diagnosis_ungroupable")}
+            ${renderExistingRow("Simulasi Tarif", idrg.simulasi_tarif || "-")}
+            ${renderExistingRow("Gap Analysis", idrg.gap_analysis || "-")}
+          </div>
+          ` : ''}
         </div>
       </div>
     `;
   }
 
-  function tindakanAutocomplete() {
-    return {
-      query: "",
-      results: [],
-      async search() {
-        if (!this.query) { this.results = []; return; }
-        const res = await window.searchTindakan(this.query);
-        this.results = res.data || [];
-      },
-      async select(item) {
-        this.query = item.procedure_text;
-        this.results = [];
-        await window.addManualTindakanFromAutocomplete(window.claimState.tab, item);
-      }
+  // Update renderIdrgPredictionResult untuk tampil lebih simple
+
+  window.renderIdrgPredictionResult = function(data) {
+    if (!data || !data.idrg_prediction) {
+      return `<div class="p-4 text-red-500">Data prediksi i-DRG tidak lengkap</div>`;
     }
+    
+    const prediction = data.idrg_prediction;
+    
+    const renderPredictionRow = (label, value, isClickable = false) => {
+      const content = isClickable ? 
+        `<span class="cursor-pointer hover:underline hover:text-blue-600">${value}</span>` :
+        value;
+        
+      return `
+        <div class="grid grid-cols-2">
+          <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
+          <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+        </div>
+      `;
+    };
+    
+    // Render checklist dokumentasi sebagai list jika array
+    let checklistHtml = "-";
+    if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
+        prediction.checklist_dokumentasi.length > 0) {
+      checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
+      checklistHtml = `<ul class="list-none pl-0">${checklistHtml}</ul>`;
+    } else if (prediction.checklist_dokumentasi) {
+      checklistHtml = prediction.checklist_dokumentasi;
+    }
+    
+    // Render faktor severity sebagai list jika array
+    let faktorSeverityHtml = "-";
+    if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
+        prediction.faktor_penentu_severity.length > 0) {
+      faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
+      faktorSeverityHtml = `<ul class="list-none pl-0">${faktorSeverityHtml}</ul>`;
+    } else if (prediction.faktor_penentu_severity) {
+      faktorSeverityHtml = prediction.faktor_penentu_severity;
+    }
+    
+    // Map severity index ke label
+    const severityLabel = {
+      "1": "Minor (1)",
+      "2": "Moderate (2)",
+      "3": "Major (3)",
+      "4": "Extreme (4)"
+    };
+    
+    // Field yang tepat sesuai idrg_service.py
+    return `
+      <div class="space-y-2 px-4">      
+        ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
+        ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+        ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
+        ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
+        ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
+        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
+        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+        
+        <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+          <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
+          <strong>Mode:</strong> Single Diagnosis • 
+          <strong>Diagnosis:</strong> ${data.diagnosis} •
+          <strong>Generated:</strong> ${new Date().toLocaleString()}
+        </div>
+      </div>
+    `;
   }
 
   function renderTindakan(list) {
-    const all = Array.isArray(list) ? list : [];
-
-    const normalized = all.map(td => ({
-      ...td,
-      source: (td.source || "").toUpperCase(),
-      isManual: td.isManual ?? td.is_manual ?? false,
-    }));
-
-    const unique = [];
-    const seen = new Set();
-    for (const td of normalized) {
-      const key = `${td.procedure_text || td.nama || td.tindakan}-${td.source}`;
-      if (!seen.has(key)) {
-        unique.push(td);
-        seen.add(key);
-      }
-    }
-
-    const aiList = unique.filter(td => !td.isManual && td.source === "AI");
-
-    const aiSection = aiList.length
-      ? aiList
-          .map(td => {
-            const nama = td.procedure_text || td.nama || td.procedure_name || td.tindakan;
-            const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
-            const procId = td.id || td.procedure_id || "";
-            return `
-              <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
-                  data-procid="${procId}">
-                <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-                    onclick="openProcedureModal('${procId}')">${nama}</div>
-                <div>
-                  <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700
-                              text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-                        title="${deskripsi}">${deskripsi}</span>
-                </div>
-                ${window.claimState?.role === "doctor" ? `
-                  <div class="flex space-x-2 justify-end">
-                    <button type="button"
-                            onclick="updateSimulasi('tindakan','Primary','${nama}','AI', window.claimState.tab)"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
-                    <button type="button"
-                            onclick="updateSimulasi('tindakan','Secondary','${nama}','AI', window.claimState.tab)"
-                            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-                  </div>` : ``}
+    const tindakanList = (list && list.length > 0)
+      ? list.map(td => {
+          const nama = td.nama || td.tindakan || "-";
+          const deskripsi = td.deskripsi || td.description || "-";
+          const procId = td.id || td.procedure_id || "";
+          return `
+            <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
+                data-procid="${procId}">
+              <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+                   onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
+              <div>
+                <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+                      title="${deskripsi}">${deskripsi}</span>
               </div>
-            `;
-          })
-          .join("")
+              ${window.claimState?.role === "doctor" ? `
+                <div class="flex space-x-2 justify-end">
+                  <button type="button"
+                          onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
+                          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Pilih Utama</button>
+                  <button type="button"
+                          onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
+                          class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
+                </div>` : ``}
+            </div>
+          `;
+        }).join("")
       : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
 
-    const manualArea = `
-      <div class="tindakan-list"></div>
+    const manualForm = window.claimState?.role === "doctor" ? `
+      <div class="tindakan-list mt-4"></div>
       <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
         <div class="font-semibold mb-2">Tambah Tindakan Manual</div>
-        <div class="relative flex gap-2 mt-2" x-data="tindakanAutocomplete()">
-          <input type="text"
-                x-model="query"
-                @input.debounce.300ms="search"
-                @keydown.enter.prevent="results.length && select(results[0])"
-                placeholder="Nama Tindakan"
-                class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
-                        text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-          <button type="button"
-                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-                  @click="handleAddManualTindakan(window.claimState.tab)">+</button>
-
-          <ul x-show="results.length > 0"
-              class="absolute top-full left-0 mt-1 z-50 
-                    bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
-                    rounded shadow-lg w-full max-h-40 overflow-y-auto">
-            <template x-for="item in results" :key="item.procedure_text">
-              <li @click="select(item)"
-                  class="px-2 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-                  x-text="item.procedure_text"></li>
-            </template>
-          </ul>
+        <div class="flex gap-2">
+          <input id="manualNamaTindakan" placeholder="Nama Tindakan"
+                 class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600" />
+          <button type="button" onclick="addManualTindakan()"
+                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center">➕ Tambah</button>
         </div>
       </div>
-    `;
+    ` : '';
 
-    setTimeout(() => {
-      const tab = window.claimState?.tab || "admission";
-      const sim = window.claimState?.simulasi?.[tab];
-      if (sim?.tindakan?.some(td => td.isManual)) {
-        window.renderManualTindakanList(tab);
-      }
-    }, 0);
+    // render list manual setelah modal terbuka
+    setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
 
-    return aiSection + manualArea;
+    return tindakanList + manualForm;
   }
 
   function buildModalContent(it) {
-    if (it.icd10) {
-      let content = renderDiagnosisDetail(it);
-      content += `<div class="tindakan-list mt-4"></div>`;
-      setTimeout(() => {
-        const tab = window.claimState?.tab || "admission";
-        window.renderManualTindakanList && window.renderManualTindakanList(tab);
-      }, 0);
-      return content;
-    }
-
-    if (it.icd9 || it.detail) {
-      return renderProcedureDetail(it);
-    }
-
-    return `<div class="italic text-gray-500">Tidak ada detail tersedia</div>`;
+    let content = renderDiagnosisDetail(it);
+    content += `<div class="tindakan-list mt-4"></div>`;
+    setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
+    return content;
   }
 
-  async function openProcedureModal(procId) {
-    if (!procId || procId === "undefined" || procId === "null") {
-      console.warn("⚠️ Tidak bisa buka detail tindakan: procId kosong");
-      return;
-    }
-
+  async function openProcedureModal(procId, procedureName) {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    // 🔥 FIXED: Use core_engine analyze_procedure endpoint instead of dummy
-    const url = `/claims/${claimId}/analyze_procedure`;
-    const payload = {
-      claim_id: parseInt(claimId),
-      procedure_name: "Unknown procedure", // Could be enhanced
-      item_id: procId
-    };
+    
+    // Get procedure name from DOM if not provided
+    if (!procedureName) {
+      const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
+      procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
+    }
+    
+    console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
     try {
-      const res = await fetch(url, {
+      // 🔥 NEW: Request ke core_engine /analyze_procedure
+      console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
+      const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ 
+          claim_id: parseInt(claimId), 
+          procedure_name: procedureName,
+          rekam_medis: []
+        })
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const data = json?.data || json || {};
-      const d = (data?.tindakan && data.tindakan[0]) ? data.tindakan[0] : data;
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const result = await res.json();
+      console.log("[RESP] /analyze_procedure", result);
+      
+      const d = result.data || result;
+      console.log("🧮 INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
-      const deskripsiGabungan = `ICD-9: ${d.icd9 || '-'}, Status: ${d.status || '-'}, INA-CBG: ${d.ina_cbg || '-'}`;
-      const procedureName = data?.procedure_text || d.procedure_text || "-";
-
-      const dx = window.claimState.currentDiagnosis;
-      if (dx && Array.isArray(dx.tindakan)) {
-        dx.tindakan.forEach(td => {
-          if (td.id == procId || td.procedure_id == procId)
-            td.deskripsi = deskripsiGabungan;
-        });
-      }
-
-      const renderProcBox = (label, value, skipReg = false) => {
-        const safeValue = value || "-";
-        const content = (!skipReg)
-          ? `<span class="cursor-pointer" title="PNPK Sepsis 2020"
-                  onclick="openRegulationModal(${procId}, 'procedure')">${safeValue}</span>`
-          : safeValue;
+      const renderProcBox = (label, value, fieldName = null) => {
+        let safeValue = value || "-";
+        
+        // 🧮 Special handling untuk tarif INA-CBG
+        if (fieldName === "ina_cbg" && value && value !== "-") {
+          console.log("💰 Formatting tarif:", value, typeof value);
+          const numericValue = parseInt(value);
+          if (!isNaN(numericValue)) {
+            safeValue = `Rp ${numericValue.toLocaleString('id-ID')}`;
+          } else {
+            safeValue = value; // keep original if not numeric
+          }
+        }
+        
+        // Check if field has regulation
+        const hasRegulation = checkFieldHasRegulation(fieldName);
+        
+        let content = `<span class="text-white">${safeValue}</span>`;
+        if (hasRegulation && fieldName && safeValue !== "-") {
+          content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200" 
+                           title="📋 Klik untuk melihat regulasi ${fieldName}" 
+                           data-field="${fieldName}"
+                           data-procedure-id="${procId}"
+                           onclick="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+        }
+        
         return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
-                <div class="bg-gray-800 px-3 py-2 rounded">${content}</div>`;
+                <div class="bg-gray-800 px-3 py-2 rounded text-white">${content}</div>`;
       };
 
       const content = `
-        <div class="flex justify-end items-start mb-3">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-lg font-bold">Detail Tindakan: ${procedureName}</h3>
           <button type="button" onclick="closeNestedModal()"
                   class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          ${renderProcBox("Kode ICD-9", d.icd9)}
-          ${renderProcBox("Deskripsi", deskripsiGabungan)}
-          ${renderProcBox("Validitas", d.validitas, true)}
-          ${renderProcBox("Status", d.status)}
-          ${renderProcBox("INA-CBG", d.ina_cbg)}
-          ${renderProcBox("Faskes", d.faskes)}
-          ${renderProcBox("Rawat Inap", d.rawat_inap)}
-          ${renderProcBox("Syarat Klinis", d.syarat_klinis)}
+          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
+          ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
+          ${renderProcBox("Validitas", d.validitas, "validitas")}
+          ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
+          ${renderProcBox("INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+          ${renderProcBox("Faskes", d.faskes, "faskes")}
+          ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
+          ${renderProcBox("Syarat Klinis", d.syarat_klinis, "syarat_klinis")}
         </div>
       `;
 
-      openModal(
-        `<div class="flex flex-col items-start items-center">
-          <span class="text-lg font-semibold">Detail Tindakan</span>
-          <span class="font-bold text-2xl mb-2 text-yellow-500">${procedureName}</span>
-        </div>`,
-        content,
-        { hideDefaultClose: true }
-      );
+      openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true });
 
+      // ✅ simpan reference supaya regulasi tahu asalnya
+      window.claimState = window.claimState || {};
       window.claimState.currentProcedure = { id: procId };
 
+      // update tampilan deskripsi list tindakan (instant)
       const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
+      const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
       if (itemEl) itemEl.textContent = deskripsiGabungan;
     } catch (err) {
-      console.error("❌ Gagal load detail tindakan:", err);
+      console.error("Gagal load detail tindakan", err);
     }
   }
 
-  async function openManualDetailModal(it, tab, idx) {
-    try {
-      const url = `/claims/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error("Gagal load detail");
-
-      const detail = json.data;
-      const deskripsiGabungan = `ICD-9: ${detail.icd9 || "-"}, Status: ${detail.status || "-"}, INA-CBG: ${detail.ina_cbg || "-"}`;
-      detail.deskripsi = deskripsiGabungan;
-
-      if (window.claimState?.simulasi?.[tab]?.tindakan?.[idx]) {
-        window.claimState.simulasi[tab].tindakan[idx].deskripsi = deskripsiGabungan;
-      }
-
-      const title = `<div class="flex flex-col items-start items-center">
-        <span class="text-sm font-semibold">Detail Tindakan Manual</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${detail.procedure_text}</span>
-      </div>`;
-
-      openModal(title, renderProcedureDetail(detail), { hideDefaultClose: true });
-
-      window.claimState.currentProcedure = detail;
-      const uiId = `manual-tindakan-${tab}-${idx}`;
-      updateRingkasanFromRow(uiId, detail);
-    } catch (err) {
-      console.error("❌ Gagal load detail tindakan manual:", err);
-    }
-  }
-
-  function renderProcedureDetail(it) {
-    const d = (it.detail && it.detail[0]) || it;
-    const deskripsi = d.icd9 && d.status && d.ina_cbg
-      ? `ICD-9: ${d.icd9}, Status: ${d.status}, INA-CBG: ${d.ina_cbg}`
-      : (d.icd9 || d.status || d.ina_cbg || "-");
-    const renderProcBox = (label, value, skipReg = false) => {
-      const safeValue = value || "-";
-      const content = (!skipReg)
-        ? `<span class="cursor-pointer" title="PNPK Sepsis 2020"
-                  onclick="openRegulationModal('${d.icd9}', 'procedure')">${safeValue}</span>`
-        : safeValue;
-
-      return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
-              <div class="bg-gray-800 px-3 py-2 rounded">${content}</div>`;
+  function openManualDetailModal(it) {
+    const dummy = {
+      kategori: it.kategori || "Manual",
+      klinis: it.klinis || "-",
+      icd10: { kode_icd: it.icd10_code || "-", deskripsi: "-" },
+      tindakan: it.procedure_text ? [{ procedure_text: it.procedure_text }] : [],
+      validitas: "-",
+      status: "-",
+      ina_cbg: "-",
+      faskes: "-",
+      rawat_inap: "-",
+      syarat_klinis: "-"
     };
-
-    return `
-      <div class="flex justify-end items-start mb-3">
-            <button type="button" onclick="closeNestedModal()"
-                    class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
-      </div>
-      <div class="grid grid-cols-2 gap-2 text-sm">
-        ${renderProcBox("Kode ICD-9", d.icd9)}
-        ${renderProcBox("Deskripsi", d.deskripsi || deskripsi)}
-        ${renderProcBox("Validitas", d.validitas, true)}
-        ${renderProcBox("Status", d.status)}
-        ${renderProcBox("INA-CBG", d.ina_cbg)}
-        ${renderProcBox("Faskes", d.faskes)}
-        ${renderProcBox("Rawat Inap", d.rawat_inap)}
-        ${renderProcBox("Syarat Klinis", d.syarat_klinis)}
-      </div>
-    `;
+    const title = `<div class="flex flex-col items-start items-center">
+      <span class="text-lg font-bold">Detail Tindakan Manual</span>
+      <span class="text-sm font-normal">${it.procedure_text || "-"}</span>
+    </div>`;
+    openModal(title, buildModalContent(dummy));
+    window.claimState.currentProcedure = dummy;
+    updateRingkasanFromRow(dummy);
   }
 
   function closeNestedModal() {
     const dx = window.claimState.currentDiagnosis;
-    if (!dx) {
+    if (dx) {
+      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
+      openModal(`<div class="flex flex-col items-start items-center">
+        <span class="text-lg font-bold">Detail Diagnosis</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
+        </div>`, buildModalContent(dx), { hideDefaultClose: false });
+    } else {
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;
-      return;
     }
-
-    const stage = dx.stage || window.claimState?.tab || "admission";
-    const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
-
-    openModal(`<div class="flex flex-col items-start items-center">
-      <span class="text-lg font-bold">Detail Diagnosis</span>
-      <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
-    </div>`, buildModalContent(dx), { hideDefaultClose: false });
-
-    setTimeout(() => {
-      window.renderManualTindakanList && window.renderManualTindakanList(stage);
-    }, 0);
   }
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    
-    // 🔥 FIXED: Use correct regulation_detail endpoint
-    const payload = {
-      claim_id: parseInt(claimId),
-      field: type,
-      context_type: type,
-      item_id: id
-    };
+    let url = `/claims/${claimId}/regulation_detail`;
+
+    if (type === "diagnosis") url += `diagnosis_id=${id}`;
+    else if (type === "procedure") url += `procedure_id=${id}`;
+    else if (type === "diagnosis_eval") url += `diagnosis_evaluation_id=${id}`;
+    else if (type === "procedure_eval") url += `procedure_evaluation_id=${id}`;
+
+    // 🔹 Tambahin untuk i-DRG Diagnosis
+    else if (type === "idrg_diagnosis") {
+      url += `idrg_diagnosis_id=${id}`;
+    }
+
+    // 🔹 Tambahin untuk i-DRG Summary
+    else if (type === "idrg_summary") {
+      url += `idrg_summary_id=${id}`;
+    }
 
     try {
-      const res = await fetch(`/claims/${claimId}/regulation_detail`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const res = await fetch(url);
       const json = await res.json();
       const { data } = json;
 
@@ -772,18 +812,23 @@
         return;
       }
 
+      // ✅ simpan source biar tau entry point
       window.claimState = window.claimState || {};
       window.claimState.regulationSource = { type, id };
 
       const isEval =
         type === "diagnosis_eval" ||
         type === "procedure_eval" ||
-        type.startsWith("idrg_summary");
+        type.startsWith("idrg_summary");   // ✅ hanya summary yang close langsung
+
+      const isIdrgDiagnosis = type.startsWith("idrg_diagnosis"); // treat i-DRG juga seperti evaluasi
 
       let closeBtn = "";
       if (isEval) {
+        // evaluasi & summary → pakai default close bawaan modal
         closeBtn = "";
       } else {
+        // diagnosis/procedure/i-DRG diagnosis → render tombol merah manual
         closeBtn = `<div class="flex justify-end items-start mb-3">
                       <button type="button" onclick="closeRegulationModal()"
                               class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
@@ -815,21 +860,31 @@
     }
   }
 
+
+
+  // === Tutup Regulasi (Balik ke modal asal) ===
   function closeRegulationModal() {
     const source = window.claimState?.regulationSource;
 
     if (source?.type === "procedure" && window.claimState?.currentProcedure) {
+      // Balik ke modal tindakan
       openProcedureModal(window.claimState.currentProcedure.id);
+
     } else if (source?.type?.startsWith("idrg_diagnosis") && window.claimState?.currentDiagnosis) {
+      // Balik ke modal diagnosis
       closeNestedModal();
+
     } else if (source?.type?.startsWith("idrg_summary")) {
+      // i-DRG Summary → langsung close modal (kayak evaluasi)
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;
+
     } else {
+      // default → close diagnosis
       closeNestedModal();
     }
   }
-
+// ✅ ID stabil tanpa hash (supaya sama setiap reload)
   // ================= SISTEM NOTES YANG DIPERBAIKI =================
   
 // ======================== SISTEM NOTES FINAL STABIL ========================
@@ -916,38 +971,35 @@ window.openNoteModal = async function(title, fieldKey, item = null) {
   state.modalTitle = `${title} - ${currentStage.toUpperCase()}`;
   state.modalContent = `
     <div class="space-y-4">
-      <div class="bg-blue-50 dark:bg-blue-900 p-3 rounded">
-        <p class="text-sm"><strong>Stage:</strong> ${currentStage}</p>
-        <p class="text-sm"><strong>Field:</strong> ${fieldKey}</p>
-        <p class="text-sm"><strong>Item:</strong> ${itemName}</p>
-      </div>
-
       <label class="block text-sm font-medium">Tambahkan Catatan:</label>
       <textarea id="noteField"
-                class="w-full border rounded p-2 text-sm"
+                class="w-full border rounded p-2 text-sm bg-white text-gray-800
+                      focus:outline-none focus:ring-2 focus:ring-blue-400
+                      dark:bg-gray-100 dark:text-gray-900"
                 rows="4"
                 placeholder="Tulis catatan..."></textarea>
 
       <div class="flex justify-end gap-2">
         <button type="button"
-                class="px-4 py-2 bg-gray-300 rounded"
+                class="px-4 py-2 bg-gray-300 dark:bg-gray-700 dark:text-gray-200 rounded"
                 onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
           Close
         </button>
         <button type="button"
-                class="px-4 py-2 bg-blue-600 text-white rounded"
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onclick="saveNote('${fieldKey}', '${currentStage}', ${itemId})">
           Save & Close
         </button>
       </div>
 
-      <hr class="my-4">
+      <hr class="my-4 border-gray-300 dark:border-gray-700">
       <h4 class="font-semibold text-sm">Riwayat Catatan (${notes.length}):</h4>
-      <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs whitespace-pre-wrap max-h-60 overflow-y-auto">
+      <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs whitespace-pre-wrap max-h-60 overflow-y-auto text-gray-800 dark:text-gray-100">
         ${currentText || 'Belum ada catatan.'}
       </pre>
     </div>
   `;
+
 
   state.modalOpen = true;
   console.log("✅ openNoteModal - loaded notes:", notes.length);
@@ -1027,10 +1079,360 @@ window.saveNote = async function(fieldKey, stage, itemId) {
   window.renderDiagnosisDetail = renderDiagnosisDetail;
   window.renderIdrgSection = renderIdrgSection;
   window.renderTindakan = renderTindakan;
-  window.tindakanAutocomplete = tindakanAutocomplete;
   window.openProcedureModal = openProcedureModal;
   window.openManualDetailModal = openManualDetailModal;
   window.closeNestedModal = closeNestedModal;
   window.openRegulationModal = openRegulationModal;
   window.closeRegulationModal = closeRegulationModal;
+
+  // ================= Note Modal (Diagnosis / Tindakan) =================
+// ======================== SISTEM NOTES FINAL STABIL (MERGED FOR VERSION B) ========================
+
+  // Function to open regulation detail modal
+  window.openRegulationDetailModal = async function(fieldName, diagnosisId, procedureId = null) {
+    console.log('Opening regulation modal for:', fieldName, 'diagnosisId:', diagnosisId, 'procedureId:', procedureId);
+    
+    // Get current claim ID from Alpine state
+    const root = document.getElementById('claimRoot');
+    const state = Alpine.$data(root);
+    const claimId = state.selectedClaimId || state.id || 1; // fallback to 1 if not found
+    
+    try {
+      // Buat payload untuk POST request
+      const payload = {
+        claim_id: claimId,
+        field: fieldName
+      };
+      
+      // Tambahkan diagnosisId atau procedureId jika ada
+      if (diagnosisId) payload.item_id = diagnosisId;
+      if (procedureId) payload.item_id = procedureId;
+      
+      const endpoint = `/claims/${claimId}/regulation_detail`;
+      console.log('Requesting regulation detail from:', endpoint, 'with payload:', payload);
+      
+      // Ubah dari GET ke POST dan kirim payload
+      const response = await fetch(endpoint, {
+        method: 'POST', // Ubah dari GET ke POST
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload) // Tambahkan payload sebagai body
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Regulation detail response:', data);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Render regulation detail modal
+      const regulationContent = renderRegulationDetail(data, fieldName);
+      openModal(`Regulasi: ${fieldName}`, regulationContent);
+      
+    } catch (error) {
+      console.error('Error fetching regulation detail:', error);
+      openModal('Error', `<p class="text-red-500">Gagal memuat detail regulasi: ${error.message}</p>`);
+    }
+  };
+
+  function renderRegulationDetail(response, fieldName) {
+    if (!response || response.status !== 'success' || !response.data || response.data.length === 0) {
+      return `<div class="text-center py-8">
+        <p class="text-gray-500">Tidak ada regulasi tersedia untuk field: ${fieldName}</p>
+        <p class="text-xs text-gray-400 mt-2">Field ini tidak memerlukan regulasi atau belum dikonfigurasi</p>
+      </div>`;
+    }
+    
+    const regulationData = response.data[0]; // Get first regulation
+    const { dasar_hukum, judul_regulasi, bab_pasal, isi } = regulationData;
+    
+    return `
+      <div class="space-y-4 text-sm">
+        <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded">
+          <h3 class="font-bold text-blue-800 dark:text-blue-200 mb-2">${judul_regulasi || 'Regulasi ' + fieldName}</h3>
+          <div class="grid grid-cols-1 gap-2 text-xs">
+            <div><strong>Dasar Hukum:</strong> ${dasar_hukum || '-'}</div>
+            <div><strong>Bab/Pasal:</strong> ${bab_pasal || '-'}</div>
+          </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 p-4 rounded border">
+          <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-200">Isi Regulasi:</h4>
+          <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${isi || 'Detail regulasi sedang dimuat...'}</div>
+        </div>
+        
+        <div class="text-xs text-gray-500 text-center">
+          Field: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">${fieldName}</code>
+        </div>
+      </div>
+    `;
+  }
+
 })();
+
+// ==================================================
+// i-DRG PREDICTION
+// ==================================================
+
+// Function untuk prediksi i-DRG individual diagnosis
+window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
+  console.log("🤖 Predicting i-DRG for diagnosis:", diagnosisName);
+  
+  try {
+    // Get current diagnosis data from window state
+    const currentDiagnosis = window.claimState?.currentDiagnosis || {};
+    
+    const payload = {
+      mode: "single",
+      claim_id: parseInt(claimId),
+      diagnosis_name: diagnosisName,
+      diagnosis_data: {
+        justifikasi: currentDiagnosis.klinis?.justifikasi || currentDiagnosis.justifikasi || "",
+        bukti_klinis: currentDiagnosis.klinis?.bukti_klinis || currentDiagnosis.bukti_klinis || "",
+        tindakan: currentDiagnosis.tindakan || []
+      }
+    };
+    
+    console.log("[REQ] POST /predict_idrg", payload);
+    
+    const response = await fetch(`/claims/${claimId}/predict_idrg`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log("[RESP] /predict_idrg", result);
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    return {
+      status: 'success',
+      data: result
+    };
+    
+  } catch (error) {
+    console.error("❌ Error predicting i-DRG:", error);
+    throw error;
+  }
+};
+
+// Tambahkan fungsi helper untuk render format array dan severity label
+
+// Fungsi untuk convert severity index ke label
+window.getSeverityLabel = function(index) {
+  const severityLabel = {
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
+  };
+  return severityLabel[index] || index;
+};
+
+// Fungsi untuk render checklist dokumentasi
+window.renderChecklistHtml = function(checklist) {
+  if (!checklist) return '-';
+  
+  if (Array.isArray(checklist) && checklist.length > 0) {
+    return `<ul class="list-none pl-0">${checklist.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof checklist === 'string') {
+    return checklist;
+  }
+  
+  return '-';
+};
+
+// Fungsi untuk render faktor severity
+window.renderFaktorSeverityHtml = function(faktor) {
+  if (!faktor) return '-';
+  
+  if (Array.isArray(faktor) && faktor.length > 0) {
+    return `<ul class="list-none pl-0">${faktor.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof faktor === 'string') {
+    return faktor;
+  }
+  
+  return '-';
+};
+
+// Function untuk render hasil prediksi i-DRG
+window.renderIdrgPredictionResult = function(data) {
+  if (!data || !data.idrg_prediction) {
+    return `<div class="p-4 text-red-500">Data prediksi i-DRG tidak lengkap</div>`;
+  }
+  
+  const prediction = data.idrg_prediction;
+  
+  const renderPredictionRow = (label, value, isClickable = false) => {
+    const content = isClickable ? 
+      `<span class="cursor-pointer hover:underline hover:text-blue-600">${value}</span>` :
+      value;
+      
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+      </div>
+    `;
+  };
+  
+  // Render checklist dokumentasi sebagai list jika array
+  let checklistHtml = "-";
+  if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
+      prediction.checklist_dokumentasi.length > 0) {
+    checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
+    checklistHtml = `<ul class="list-none pl-0">${checklistHtml}</ul>`;
+  } else if (prediction.checklist_dokumentasi) {
+    checklistHtml = prediction.checklist_dokumentasi;
+  }
+  
+  // Render faktor severity sebagai list jika array
+  let faktorSeverityHtml = "-";
+  if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
+      prediction.faktor_penentu_severity.length > 0) {
+    faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
+    faktorSeverityHtml = `<ul class="list-none pl-0">${faktorSeverityHtml}</ul>`;
+  } else if (prediction.faktor_penentu_severity) {
+    faktorSeverityHtml = prediction.faktor_penentu_severity;
+  }
+  
+  // Map severity index ke label
+  const severityLabel = {
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
+  };
+  
+  // Field yang tepat sesuai idrg_service.py
+  return `
+    <div class="space-y-2 px-4">      
+      ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
+      ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+      ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
+      ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
+      ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
+      ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
+      ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+      
+      <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
+        <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
+        <strong>Mode:</strong> Single Diagnosis • 
+        <strong>Diagnosis:</strong> ${data.diagnosis} •
+        <strong>Generated:</strong> ${new Date().toLocaleString()}
+      </div>
+    </div>
+  `;
+};
+
+// Function untuk refresh prediksi i-DRG
+window.refreshIdrgPrediction = async function(claimId, diagnosisName) {
+  try {
+    const result = await predictIdrgForDiagnosis(claimId, diagnosisName);
+    
+    // Update section i-DRG di modal yang sedang terbuka
+    const idrgSection = document.querySelector('[x-data*="open: false, loading: false, data: null"]');
+    if (idrgSection) {
+      // Trigger Alpine.js untuk update data
+      const alpineData = Alpine.$data(idrgSection);
+      alpineData.data = result;
+      alpineData.loading = false;
+      alpineData.error = null;
+    }
+    
+    console.log("✅ i-DRG prediction refreshed successfully");
+  } catch (error) {
+    console.error("❌ Error refreshing i-DRG prediction:", error);
+    alert("Gagal refresh prediksi i-DRG: " + error.message);
+  }
+};
+
+// Tambahkan fungsi tindakanAutocomplete
+
+function tindakanAutocomplete() {
+  return {
+    query: "",
+    results: [],
+    async search() {
+      if (!this.query) { this.results = []; return; }
+      try {
+        if (window.searchTindakan) {
+          const res = await window.searchTindakan(this.query);
+          this.results = res.data || [];
+        } else {
+          console.warn("searchTindakan function not available");
+          this.results = [];
+        }
+      } catch (err) {
+        console.error("Error searching tindakan:", err);
+        this.results = [];
+      }
+    },
+    async select(item) {
+      this.query = item.procedure_text;
+      this.results = [];
+      if (window.addManualTindakanFromAutocomplete) {
+        await window.addManualTindakanFromAutocomplete(window.claimState?.tab || 'admission', item);
+      }
+    }
+  }
+}
+
+// Expose the function
+window.tindakanAutocomplete = tindakanAutocomplete;
+
+// Add statusIcon function if not exists
+if (!window.statusIcon) {
+  window.statusIcon = function(status) {
+    if (!status) return '⚫';
+    const s = String(status).toLowerCase();
+    
+    if (s.includes('valid') || s.includes('normal') || s.includes('yes') || s.includes('ya')) {
+      return '🟢';
+    }
+    
+    if (s.includes('invalid') || s.includes('warning') || s.includes('no') || s.includes('tidak')) {
+      return '🔴';
+    }
+    
+    if (s.includes('caution') || s.includes('bersyarat') || s.includes('partial')) {
+      return '🟠';
+    }
+    
+    return '⚫';
+  };
+}
+
+// Add handleAddManualTindakan function if missing
+if (!window.handleAddManualTindakan) {
+  window.handleAddManualTindakan = function(tab) {
+    const input = document.getElementById('manualNamaTindakan');
+    const value = input?.value?.trim();
+    
+    if (!value) {
+      alert("Nama tindakan tidak boleh kosong");
+      return;
+    }
+    
+    if (window.addManualTindakan) {
+      window.addManualTindakan(tab, value);
+    } else {
+      console.warn("addManualTindakan function not available");
+    }
+    
+    if (input) input.value = '';
+  };
+}

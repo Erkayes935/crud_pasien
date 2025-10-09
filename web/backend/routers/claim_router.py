@@ -188,14 +188,18 @@ def edit_claim_form(
 async def update_claim_draft(
     request: Request,
     claim_id: int,
+    payload: str = Form(...),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
-    payload: dict = Body(...),
 ):
     try:
-        ai_recommendations = payload.get("ai_recommendations")
-        stage = payload.get("stage", "admission")
+        # Parse JSON payload from form field
+        import json
+        payload_dict = json.loads(payload)
+        
+        ai_recommendations = payload_dict.get("ai_recommendations")
+        stage = payload_dict.get("stage", "admission")
 
         if ai_recommendations:
             ai.clear_ai_results(db, claim_id)
@@ -203,8 +207,10 @@ async def update_claim_draft(
                 db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
             )
 
-        core.update_claim_draft_service(db, claim_id, user, payload)
+        core.update_claim_draft_service(db, claim_id, user, payload_dict)
         return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
 

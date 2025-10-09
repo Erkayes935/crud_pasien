@@ -28,30 +28,38 @@
       const result = await res.json();
       console.log("🔍 Core engine result:", result);
       
-      // 🔥 Transform core_engine response to frontend format
-      const coreData = result.data || result;
+      // 🔥 Handle response from core_engine (already in correct format!)
+      const responseData = result.data || result;
+      
+      // 🔥 GET CORRECT STAGE from current tab
+      const currentStage = state.tab || "admission";
+      console.log("🔍 Current stage for transformation:", currentStage);
+      console.log("🔍 Response data structure:", responseData);
+      
+      // 🔥 DIRECT USE: Response is already in correct format with kategori/children
       const transformedRows = [];
       
-      // 🔥 GET CORRECT STAGE from form or default to admission
-      const currentStage = document.querySelector('[x-data*="claimData"]')?.getAttribute('x-data')?.includes('admission') ? 'admission' : 
-                          (state.tab && state.tab !== 'discharge' ? state.tab : 'admission');
-      
-      console.log("🔍 Current stage for transformation:", currentStage);
-      
-      // Transform each category (diagnosis, komorbid, komplikasi)
+      // Process each category (diagnosis, komorbid, komplikasi)  
       ['diagnosis', 'komorbid', 'komplikasi'].forEach(category => {
-        const items = coreData[category] || [];
-        items.forEach(item => {
-          // Add parent as main item
+        const items = responseData[category] || [];
+        items.forEach((item, index) => {
+          // 🔥 Fix children klinis to be "-" by default
+          const fixedChildren = (item.children || []).map(child => ({
+            ...child,
+            klinis: "-",  // Children klinis should be "-" until filled by modal
+            icd10_code: "-",
+            procedure_text: "-"
+          }));
+          
+          // Item already has correct structure: kategori, klinis, children, etc.
           transformedRows.push({
-            id: `${category}-${Date.now()}-${Math.random()}`,
+            ...item,
+            id: `${category}-${Date.now()}-${index}`,
             stage: currentStage,
             category: category,
-            kategori: item.parent,
-            nama_kategori: item.parent,
-            confidence: item.confidence,
-            score: item.confidence,
-            children: item.children || []
+            // Fix parent klinis to be "-" instead of diagnosis name
+            klinis: "-",
+            children: fixedChildren
           });
         });
       });
@@ -209,9 +217,8 @@
     const formData = new FormData(form);
     const result = {};
     
-    // Convert FormData entries
+    // Convert FormData entries (KEEP CSRF token!)
     for (let [key, value] of formData.entries()) {
-      if (key === 'csrf_token') continue; // Skip CSRF token
       result[key] = value;
     }
     
@@ -239,36 +246,65 @@
   // 🔥 Save draft function (adapted from development branch for core_engine)
   async function saveDraft(claimId, data = null) {
     try {
-      // Get CSRF token
-      const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || 
-                       document.querySelector('meta[name="csrf-token"]')?.content ||
-                       document.querySelector('[name="csrf_token"]')?.value;
+      // Get CSRF token with debugging
+      console.log("🔍 Looking for CSRF token...");
+      const csrfInput = document.querySelector('input[name="csrf_token"]');
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfGeneric = document.querySelector('[name="csrf_token"]');
       
-      const headers = { "Content-Type": "application/json" };
-      if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken;
-        console.log("🔒 CSRF token found:", csrfToken);
-      } else {
-        console.warn("⚠️ No CSRF token found");
-      }
+      console.log("CSRF sources:", {
+        input: csrfInput?.value || null,
+        meta: csrfMeta?.content || null, 
+        generic: csrfGeneric?.value || null
+      });
+      
+      const csrfToken = csrfInput?.value || csrfMeta?.content || csrfGeneric?.value;
       
       // 🔥 If no data provided, extract from form like development branch
       const payload = data || get_form_as_dict();
       
-      console.log("📦 Save draft payload:", payload);
+      // � Backend expects CSRF as form data, so create FormData
+      const formData = new FormData();
       
-      // Send data directly as backend expects payload: dict = Body(...)
+      // Add CSRF token as form field (required by require_csrf_dep)
+      if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+        console.log("🔒 CSRF token added to form data:", csrfToken);
+      } else {
+        console.warn("⚠️ No CSRF token found");
+        throw new Error("CSRF token required");
+      }
+      
+      // Add payload as JSON string in 'payload' field
+      formData.append('payload', JSON.stringify(payload));
+      
+      console.log("📦 Save draft payload:", payload);
+      console.log("📦 FormData keys:", Array.from(formData.keys()));
+      console.log("📦 Request URL:", `/claims/${claimId}/update-draft`);
+      
+      // Send as form data (no Content-Type header needed, browser sets multipart/form-data)
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        headers: headers,
         credentials: "include",
-        body: JSON.stringify(payload)
+        body: formData
       });
+      
+      console.log("📡 Response:", res.status, res.statusText);
 
       if (!res.ok) {
         const errorData = await res.json();
         console.error("❌ Save draft error response:", errorData);
-        throw new Error(`HTTP error! status: ${res.status} - ${errorData.detail || 'Unknown error'}`);
+        
+        // 🔥 Better error display for debugging
+        let errorMsg = `HTTP error! status: ${res.status}`;
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMsg += ` - ${errorData.detail.map(e => e.msg || e).join(', ')}`;
+          } else {
+            errorMsg += ` - ${errorData.detail}`;
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       const result = await res.json();

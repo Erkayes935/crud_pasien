@@ -110,18 +110,29 @@ function claimData(init) {
           alert("❌ Claim ID tidak ditemukan.");
           return;
         }
+        
         const state = this;
         try {
-          const res = await fetch(`/claims/${claimId}/save_simulasi`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ simulasi: state.simulasi })
-          });
-          if (!res.ok) throw new Error("Gagal simpan draft simulasi");
-          alert("✅ Draft simulasi berhasil disimpan.");
+          console.log("🔄 Saving simulasi draft via window.saveDraft...");
+          
+          // Use saveDraft from claim.api.js which calls /update-draft with CSRF
+          if (typeof window.saveDraft === 'function') {
+            // Sync hidden fields before saving
+            if (typeof window.syncHiddenInputs === 'function') {
+              window.syncHiddenInputs();
+            }
+            
+            // Call the proper saveDraft function from claim.api.js
+            await window.saveDraft(claimId);
+            alert("✅ Draft simulasi berhasil disimpan!");
+            
+          } else {
+            console.error("❌ window.saveDraft function not available");
+            alert("❌ Save draft function tidak tersedia");
+          }
         } catch (err) {
-          console.error("❌ Error simpan draft simulasi:", err);
-          alert("❌ Gagal simpan draft simulasi");
+          console.error("❌ Error save simulasi draft:", err);
+          alert("❌ Gagal simpan draft: " + err.message);
         }
       },
   };
