@@ -164,90 +164,20 @@
           `);
         }
 
-        renderTable(`diagnosis-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
-        renderTable(`komorbid-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
-        renderTable(`komplikasi-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
+        renderTable(`diagnosis-${tab}`, mappedRows.filter(r => r.category === "diagnosis"), "diagnosis", tab);
+        renderTable(`komorbid-${tab}`, mappedRows.filter(r => r.category === "komorbid"), "komorbid", tab);
+        renderTable(`komplikasi-${tab}`, mappedRows.filter(r => r.category === "komplikasi"), "komplikasi", tab);
+
         return;
       }
     }
+  }
 
-    // 🔥 Legacy support untuk format lama
-    if (!Array.isArray(rows)) return;
-    attachTindakan(rows);
-
-    const admission = rows.filter(r => r.stage === "admission");
-    const daily = rows.filter(r => r.stage && r.stage.startsWith("daily"));
-    const discharge = rows.filter(r => r.stage === "discharge");
-
-    // Admission
-    renderTable("diagnosis-admission", admission.filter(r => r.category==="diagnosis"), "diagnosis", "admission");
-    renderTable("komorbid-admission", admission.filter(r => r.category==="komorbid"), "komorbid", "admission");
-    renderTable("komplikasi-admission", admission.filter(r => r.category==="komplikasi"), "komplikasi", "admission");
-
-    // Daily (accordion per hari)
-    const dailyContainer = document.getElementById("daily-accordion");
-    if (dailyContainer) dailyContainer.innerHTML = "";
-
-    const groupedDaily = {};
-    daily.forEach(r => {
-      if (!groupedDaily[r.stage]) groupedDaily[r.stage] = [];
-      groupedDaily[r.stage].push(r);
-    });
-
-    Object.keys(groupedDaily).forEach((stage, idx) => {
-      const hari = groupedDaily[stage];
-      const dayId = `daily-${idx}`;
-
-      window.ensureDaily && window.ensureDaily(dayId);
-
-      dailyContainer && dailyContainer.insertAdjacentHTML("beforeend", `
-        <div class="bg-white dark:bg-gray-700 rounded shadow-sm mb-2" x-data="{open:false}">
-          <button type="button" @click="open=!open"
-            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-            <span>Hari ${idx+1} </span>
-            <div class="flex items-center gap-3">
-              <span id="count-daily-${dayId}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              <span x-show="open">⬆</span>
-              <span x-show="!open">⬇</span>
-            </div>
-          </button>
-          <div x-show="open" class="p-2 space-y-2">
-            ${["diagnosis","komorbid","komplikasi"].map(k => `
-              <details class="border rounded mb-2">
-                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-                  <span class="font-semibold">${k[0].toUpperCase() + k.slice(1)}</span>
-                  <span id="count-${k}-${dayId}"
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                </summary>
-                <div class="p-3 overflow-x-auto">
-                  <table class="w-full text-xs border">
-                    <tbody id="${k}-${dayId}"></tbody>
-                  </table>
-                </div>
-              </details>
-            `).join("")}
-          </div>
-        </div>
-      `);
-
-      renderTable(`diagnosis-${dayId}`, hari.filter(r => r.category==="diagnosis"), "diagnosis", dayId);
-      renderTable(`komorbid-${dayId}`, hari.filter(r => r.category==="komorbid"), "komorbid", dayId);
-      renderTable(`komplikasi-${dayId}`, hari.filter(r => r.category==="komplikasi"), "komplikasi", dayId);
-
-      const dailyCounter = document.getElementById(`count-daily-${dayId}`);
-      if (dailyCounter) {
-        const totalDaily =
-          (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0)) +
-          (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent || 0)) +
-          (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent || 0));
-        dailyCounter.textContent = totalDaily;
-      }
-    });
-
-    // Discharge
-    renderTable("diagnosis-discharge", discharge.filter(r => r.category==="diagnosis"), "diagnosis", "discharge");
-    renderTable("komorbid-discharge", discharge.filter(r => r.category==="komorbid"), "komorbid", "discharge");
-    renderTable("komplikasi-discharge", discharge.filter(r => r.category==="komplikasi"), "komplikasi", "discharge");
+  function renderValue(val) {
+    if (val && String(val).trim()) {
+      return `<span class="block w-full truncate overflow-hidden">${val}</span>`;
+    }
+    return '<span class="block w-full text-center text-gray-400">-</span>';
   }
 
   function renderMappingSelect(item, tab, type) {
@@ -263,14 +193,7 @@
         <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
       </select>
     `;
-  }
-
-  function renderValue(val) {
-    if (val && String(val).trim()) {
-      return `<span class="block w-full truncate overflow-hidden">${val}</span>`;
-    }
-    return '<span class="block w-full text-center text-gray-400">-</span>';
-  }
+  }  
 
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
@@ -455,14 +378,19 @@
     if (!skipManualRow && (Alpine.$data(document.getElementById("claimRoot")).role === "doctor")) {
       if (tab === "admission" || tab === "discharge" || String(tab).startsWith("daily-")) {
         const manualTbody = document.createElement("tbody");
-        const tabPath = String(tab).startsWith("daily-")
-          ? `manualInput.daily['${tab}'].${type}`
-          : `manualInput.${tab}.${type}`;
+        if (!state.manualInput) state.manualInput = {};
+        if (!state.manualInput.daily) state.manualInput.daily = {};
+        if (!state.manualInput.daily[tab]) {
+          state.manualInput.daily[tab] = { diagnosis: {}, komorbid: {}, komplikasi: {} };
+        }
+       const tabPath = String(tab).startsWith("daily-")
+        ? `manualInput.daily[\`${tab}\`].${type}`
+        : `manualInput.${tab}.${type}`;
 
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
-              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}')" class="relative">
+              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')" class="relative">
                 <input type="text"
                       x-model="query"
                       @input.debounce.300ms="search"
@@ -511,4 +439,6 @@
   window.renderAI = renderAI;
   window.renderTable = renderTable;
   window.addManualIfNotFound = addManualIfNotFound;
+  window.renderValue = renderValue;
+  window.renderMappingSelect = renderMappingSelect;
 })();
