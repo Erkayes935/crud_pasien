@@ -18,16 +18,15 @@
           <!-- Judul dan Tombol Generate AI -->
           <div class="flex items-center justify-between mb-3">
             <h3 class="font-semibold text-lg">Rekomendasi Klaim</h3>
-            <div class="flex space-x-2">
-            <button type="button" onclick="generateAI()" 
-                    class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
-                Generate AI
-            </button>
-            <button type="button" id="generateResumeBtn" 
-                class="bg-info-600 hover:bg-info-700 text-white px-4 py-2 rounded font-semibold"
-                style="background-color: #17a2b8;">
-                Generate Resume
-            </button>
+            <div class="flex gap-2">
+              <button type="button" onclick="generateAI()" 
+                      class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
+                  Generate AI
+              </button>
+              <button type="button" id="generateResumeBtn"
+                      class="bg-green-600 text-white px-4 py-2 rounded font-semibold">
+                  Generate Resume
+              </button>
             </div>
           </div>
 
@@ -330,4 +329,80 @@
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.resume.js') }}"></script>
+
+<script>
+// Wait for all scripts to load before attaching form handler
+document.addEventListener('DOMContentLoaded', function() {
+  // Intercept form submission untuk convert ke JSON format
+  document.getElementById('claimForm').addEventListener('submit', async function(e) {
+    e.preventDefault(); // Stop normal form submission
+    
+    console.log('🔄 Form submitted, converting to JSON...');
+    
+    // Check if saveDraft is available, if not define inline backup
+    if (typeof window.saveDraft !== 'function') {
+      console.warn('⚠️ window.saveDraft not available, using inline backup');
+      window.saveDraft = async function(claimId, data) {
+        try {
+          // Get CSRF token
+          const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || 
+                           document.querySelector('meta[name="csrf-token"]')?.content ||
+                           document.querySelector('[name="csrf_token"]')?.value;
+          
+          const headers = { "Content-Type": "application/json" };
+          if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+          
+          // Send data directly as backend expects payload: dict = Body(...)
+          
+          const res = await fetch(`/claims/${claimId}/update-draft`, {
+            method: "POST",
+            headers: headers,
+            credentials: "include",
+            body: JSON.stringify(data)  // Send data directly
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            console.error("❌ Save draft error response:", errorData);
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+
+          const result = await res.json();
+          console.log("📥 Draft saved:", result);
+          return result;
+        } catch (err) {
+          console.error("❌ Error save draft inline:", err);
+          throw err;
+        }
+      };
+    }
+    
+    const claimId = this.dataset.claimId;
+    
+    // 🔥 Use get_form_as_dict helper from claim.api.js like development branch
+    let payload = {};
+    if (typeof window.get_form_as_dict === 'function') {
+      payload = window.get_form_as_dict();
+    } else {
+      // Fallback to manual FormData conversion
+      const formData = new FormData(this);
+      for (let [key, value] of formData.entries()) {
+        if (key === 'csrf_token') continue; // Skip CSRF from payload
+        payload[key] = value;
+      }
+    }
+    
+    console.log('📦 Form payload:', payload);
+    
+    // Use saveDraft function from claim.api.js
+    try {
+      await window.saveDraft(claimId, payload);
+      alert('✅ Draft berhasil disimpan!');
+    } catch (error) {
+      console.error('❌ Save draft error:', error);
+      alert('❌ Gagal menyimpan draft: ' + error.message);
+    }
+  });
+});
+</script>
 {% endblock %}

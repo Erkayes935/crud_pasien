@@ -4,99 +4,92 @@
   function attachTindakan(rows) {
     const tindakanAll = rows.filter(r => r.category === "tindakan");
     rows.forEach(d => {
-      const arr = tindakanAll.filter(t => t.stage === d.stage && t.category === d.category);
+      const arr = tindakanAll.filter(
+        t => t.stage === d.stage &&
+            (t.diagnosis_id === d.id || t.diagnosis_code === d.icd10_code)
+      );
       d.tindakan = arr.length ? arr : "-";
     });
   }
 
-  // Pure renderer untuk data pecahan (support core_engine format)
-  function renderAI(rows, type, tab) {
-    // 🔥 Support format core_engine (renderAI(diagnosis_array, "diagnosis", "admission"))
-    if (type && tab) {
-      // Map AI result to expected table row format
-      const mappedRows = rows.map(item => ({
-        kategori: item.parent || "-",
-        klinis: "-", // parent klinis always strip  
-        icd10_code: item.icd10_code || item.icd || "-",
-        icd9_code: item.icd9_code || "-",
-        procedure_text: item.tindakan || item.procedure_text || "-",
-        score: item.confidence || "-",
-        mapping: "", // Fill if needed
-        children: (item.children && Array.isArray(item.children)) ? item.children.map(child => ({
-          kategori: `→ ${child.name || '-'}`,
-          klinis: '-', // always strip for child
-          icd10_code: child.icd10_code || child.icd || '-',
-          icd9_code: child.icd9_code || '-',
-          procedure_text: child.tindakan || child.procedure_text || '-',
-          score: child.confidence || '-',
-          mapping: ""
-        })) : []
-      }));
-      
-      console.log(`🔥 DEBUG mappedRows for ${type}:`, mappedRows);
-      
-      // Render to specific target based on tab and type
-      if (tab === "admission") {
-        renderTable(`${type}-admission`, mappedRows, type, tab);
-        return;
-      }
+  // ================= Diagnosis Autocomplete =================
+  function diagnosisAutocomplete(tab, tabPath, type = "diagnosis") {
+    return {
+      query: "",
+      results: [],
 
-      if (tab === "discharge") {
-        renderTable(`${type}-discharge`, mappedRows, type, tab);
-        return;
-      }
-
-      if (String(tab).startsWith("daily")) {
-        const container = document.getElementById("daily-accordion");
-        if (container && !document.getElementById(`section-${tab}`)) {
-          container.insertAdjacentHTML("beforeend", `
-            <details id="section-${tab}" class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-                <span class="font-semibold">Diagnosis</span>
-                <span id="count-diagnosis-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </summary>
-              <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border" id="diagnosis-${tab}">
-                  <tbody id="diagnosis-${tab}"></tbody>
-                </table>
-              </div>
-            </details>
-
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-                <span class="font-semibold">Komorbid</span>
-                <span id="count-komorbid-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </summary>
-              <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border" id="komorbid-${tab}">
-                  <tbody id="komorbid-${tab}"></tbody>
-                </table>
-              </div>
-            </details>
-
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-                <span class="font-semibold">Komplikasi</span>
-                <span id="count-komplikasi-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              </summary>
-              <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border" id="komplikasi-${tab}">
-                  <tbody id="komplikasi-${tab}"></tbody>
-                </table>
-              </div>
-            </details>
-          `);
+      // 🔍 cari diagnosis dari backend
+      async search() {
+        if (!this.query) {
+          this.results = [];
+          return;
         }
+        try {
+          const res = await window.searchDiagnosis(this.query);
+          this.results = res?.data || [];
+        } catch (err) {
+          console.error("❌ Gagal cari diagnosis:", err);
+        }
+      },
 
-        renderTable(`diagnosis-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
-        renderTable(`komorbid-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
-        renderTable(`komplikasi-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
-        return;
-      }
+      // 🩺 pilih hasil dari dropdown
+      async select(item) {
+        this.query = `${item.code} - ${item.name}`;
+        this.results = [];
+        await window.addManualFromAutocomplete(tab, item, type);
+      },
+
+      // ➕ tombol tambah manual
+      async addManualIfNotFound() {
+        await window.addManualIfNotFound(tab, type); // panggil versi global
+      },
+    };
+  }
+
+  // ================= Fungsi Global: Add Manual If Not Found =================
+  async function addManualIfNotFound(tab, type = "diagnosis") {
+    // 🔎 cari komponen Alpine yang punya x-data diagnosisAutocomplete dan mengandung tab + type
+    let el = document.querySelector(
+      `[x-data*="diagnosisAutocomplete('${tab}'"][x-data*="'${type}')"]`
+    );
+
+    // fallback untuk daily tab (kadang id bisa berubah)
+    if (!el && String(tab).startsWith("daily-")) {
+      el = document.querySelector(
+        `[x-data*="diagnosisAutocomplete('daily"][x-data*="'${type}')"]`
+      );
     }
 
-    // 🔥 Legacy support untuk format lama
-    if (!Array.isArray(rows)) return;
+    const ctx = el ? Alpine.$data(el) : null;
+    if (!ctx) {
+      console.warn("⚠️ addManualIfNotFound: konteks Alpine tidak ditemukan untuk", tab, type);
+      return;
+    }
+
+    const text = ctx.query?.trim?.();
+    if (!text) return;
+
+    const found = (ctx.results || []).some(
+      dx =>
+        dx.name?.toLowerCase() === text.toLowerCase() ||
+        dx.code?.toLowerCase() === text.toLowerCase()
+    );
+
+    if (!found) {
+      const confirmAdd = confirm(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`
+      );
+      if (!confirmAdd) return;
+      await window.addManualFromAutocomplete(tab, { name: text, code: null }, type);
+      ctx.query = "";
+      ctx.results = [];
+    }
+  }
+
+
+
+  // Pure renderer untuk data pecahan
+  function renderAI(rows) {
     attachTindakan(rows);
 
     const admission = rows.filter(r => r.stage === "admission");
@@ -137,14 +130,14 @@
           </button>
           <div x-show="open" class="p-2 space-y-2">
             ${["diagnosis","komorbid","komplikasi"].map(k => `
-              <details class="border rounded mb-2">
+              <details class="border rounded">
                 <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                   <span class="font-semibold">${k[0].toUpperCase() + k.slice(1)}</span>
                   <span id="count-${k}-${dayId}"
                         class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
                 </summary>
-                <div class="p-3">
-                  <table class="w-full text-xs border table-fixed">
+                <div class="p-3 overflow-x-auto">
+                  <table class="w-full text-xs border" id="${k}-${dayId}">
                     <tbody id="${k}-${dayId}"></tbody>
                   </table>
                 </div>
@@ -178,7 +171,7 @@
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
     return `
       <select onchange="onMappingChange(event, '${tab}', '${type}', ${item.id})"
-              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
+              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate"
               ${disabled}>
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
         <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
@@ -188,6 +181,15 @@
       </select>
     `;
   }
+
+  function renderValue(val) {
+    if (val && String(val).trim()) {
+      return `<span class="block w-full truncate overflow-hidden">${val}</span>`;
+    }
+    return '<span class="block w-full text-center text-gray-400">-</span>';
+  }
+
+
 
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
@@ -202,9 +204,21 @@
     const newAiItems = (items || []).filter(it => !it.isManual);
     const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems;
 
+    if (aiItems.length === 0 && type === "tindakan") {
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="text-center italic text-gray-500 py-2">
+              Menunggu hasil AI...
+            </td>
+          </tr>`;
+      }
+      return; // jangan lanjut render tabel kosong
+    }
+
     let merged;
     if (type === "tindakan") {
-      merged = [...aiItems]; // manual tindakan terpisah
+      merged = aiItems.filter(it => it.procedure_text && it.procedure_text !== "-");
     } else {
       merged = [...aiItems, ...manualItems];
     }
@@ -224,31 +238,47 @@
     if (!target) return;
     target.innerHTML = "";
 
-    // Group parent/child
+    // Group parent/child - support both formats
     let grouped = [];
-    
-    // 🔥 Handle both formats: core_engine (with children array) and legacy (with child flag)
+    let parentMap = {};
+    let lastParentKey = null;
+
     merged.forEach(it => {
       const name = (it.nama_kategori || it.kategori || "").trim();
       if (!name) return;
-      
+      const itemType = it.type || type || "diagnosis";
+
       // 🔥 Core_engine format: parent already has children array
       if (it.children && Array.isArray(it.children)) {
         grouped.push({
           ...it,
           kategori: name,
           nama_kategori: name,
-          children: it.children || []
+          children: it.children.map(child => ({
+            ...child,
+            kategori: child.nama_kategori || child.kategori || child.name || '-',
+            nama_kategori: child.nama_kategori || child.kategori || child.name || '-',
+            klinis: child.klinis || '-',
+            icd10_code: child.icd10_code || child.icd || '-',
+            procedure_text: child.tindakan || child.procedure_text || '-',
+            score: child.score || child.confidence || '-'
+          }))
         });
       }
-      // 🔥 Legacy format: child flag
-      else if (it.child !== true) {
-        grouped.push({
-          ...it,
-          kategori: name,
-          nama_kategori: name,
-          children: []
-        });
+      // 🔥 Development branch format: child flag
+      else if (it.child === true) {
+        if (lastParentKey && parentMap[lastParentKey]) {
+          parentMap[lastParentKey].children.push({
+            ...it,
+            kategori: `${name} ${String.fromCharCode(97 + parentMap[lastParentKey].children.length)}`,
+            nama_kategori: name
+          });
+        }
+      } else {
+        const parentKey = `${itemType}:${name}`;
+        parentMap[parentKey] = { ...it, kategori: name, nama_kategori: name, children: [] };
+        grouped.push(parentMap[parentKey]);
+        lastParentKey = parentKey;
       }
     });
 
@@ -259,12 +289,12 @@
       thead.className = "bg-gray-100 dark:bg-gray-800";
       thead.innerHTML = `
         <tr>
-          <th class="border px-3 py-2 w-[15.5%]">Kategori</th>
-          <th class="border px-3 py-2 w-[30.5%]">Klinis</th>
-          <th class="border px-3 py-2 w-[5.5%]">ICD</th>
-          <th class="border px-3 py-2 w-[32.75%]">Tindakan</th>
-          <th class="border px-3 py-2 w-[3.75%]">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[13%]">Mapping</th>` : ``}
+          <th class="border px-3 py-2 w-[20%]">Kategori</th>
+          <th class="border px-3 py-2 w-[25%]">Klinis</th>
+          <th class="border px-3 py-2 w-[10%]">ICD</th>
+          <th class="border px-3 py-2 w-[25%]">Tindakan</th>
+          <th class="border px-3 py-2 w-[10%]">Score</th>
+          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ``}
         </tr>`;
       table.insertBefore(thead, table.firstChild);
     }
@@ -275,9 +305,9 @@
       const tbody = document.createElement("tbody");
       tbody.setAttribute("x-data", "{ open:false }");
 
-      const tindakanText = parent.tindakan || parent.procedure_text || "-";
-      const klinisText = parent.klinis || "";
-      const icdText = parent.icd10_code || parent.icd9_code || "-";
+      const tindakanText = parent.tindakan || parent.procedure_text;
+      const klinisText = parent.klinis;
+      const icdText = parent.icd10_code || parent.icd9_code;
       const titleTindakan = tindakanText;
       const titleKlinis = klinisText;
 
@@ -291,21 +321,21 @@
                 <span x-show="!open" x-cloak>▶</span>
                 <span x-show="open" x-cloak>▼</span>
               </span>
-              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || "-"}</span>
+              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori}</span>
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
-            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleKlinis}">
-                ${klinisText || "-"}
-              </div>
+            <td class="col-klinis border px-3 py-2 w-[25%]">
+              <span class="block w-full truncate">${renderValue(klinisText)}</span>
             </td>
-            <td class="col-icd border px-3 py-2 text-center">${icdText}</td>
-            <td class="col-tindakan border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${titleTindakan}">
-                ${tindakanText}
-              </div>
+            <td class="col-icd border px-3 py-2 w-[10%] text-center">
+              <span class="block w-full truncate">${renderValue(icdText)}</span>
             </td>
-            <td class="border px-3 py-2 text-center">${parent.score || "-"}</td>
+            <td class="col-tindakan border px-3 py-2 w-[25%]">
+              <span class="block w-full truncate">${renderValue(tindakanText)}</span>
+            </td>
+            <td class="border px-3 py-2 w-[10%] text-center">
+              <span class="block w-full truncate">${renderValue(parent.score)}</span>
+            </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
               ${renderMappingSelect(parent, tab, type)}
@@ -314,9 +344,9 @@
       `);
 
       parent.children.forEach((child, cIdx) => {
-        const tText = child.tindakan || child.procedure_text || "-";
-        const kText = child.klinis || "";
-        const iText = child.icd10_code || child.icd9_code || "-";
+        const tText = child.tindakan || child.procedure_text;
+        const kText = child.klinis;
+        const iText = child.icd10_code || child.icd9_code;
 
         tbody.insertAdjacentHTML("beforeend", `
           <tr x-show="open" x-cloak
@@ -326,20 +356,20 @@
             data-row='${child.rowData ? JSON.stringify(child.rowData) : ""}'>
             <td class="border px-5 py-2 cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis"
                 onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')">
-              → ${child.nama_kategori || child.kategori || "-"}
+              ${child.nama_kategori || child.kategori}
             </td>
-            <td class="col-klinis border px-6 py-2 whitespace-nowrap">
-              <div class="flex items-center overflow-hidden text-ellipsis" title="${kText}">
-                ${kText || "-"}
-              </div>
+            <td class="col-klinis border px-3 py-2 w-[25%] italic" title="${kText}">
+              <span class="block w-full truncate">${renderValue(kText)}</span>
             </td>
-            <td class="col-icd border px-3 py-2 text-center">${iText}</td>
-            <td class="col-tindakan border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis" title="${tText}">
-              <div class="flex items-center overflow-hidden text-ellipsis">
-                ${tText}
-              </div>
+            <td class="col-icd border px-3 py-2 w-[10%] text-center" title="${iText}">
+              <span class="block w-full truncate">${renderValue(iText)}</span>
             </td>
-            <td class="border px-3 py-2 text-center">${child.score || "-"}</td>
+            <td class="col-tindakan border px-3 py-2 w-[25%] italic" title="${tText}">
+              <span class="block w-full truncate">${renderValue(tText)}</span>
+            </td>
+            <td class="border px-3 py-2 text-center w-[10%]">
+              <span class="block w-full truncate">${renderValue(child.score)}</span>
+            </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
               ${renderMappingSelect(child, tab, type)}
@@ -375,17 +405,18 @@
       if (tab === "admission" || tab === "discharge" || String(tab).startsWith("daily-")) {
         const manualTbody = document.createElement("tbody");
         const tabPath = String(tab).startsWith("daily-")
-          ? `manualInput.daily['${tab}'].${type}`
+          ? `manualInput.daily[\`${tab}\`].${type}`
           : `manualInput.${tab}.${type}`;
 
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
-              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}')" class="relative">
+              <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')" class="relative">
                 <input type="text"
                       x-model="query"
                       @input.debounce.300ms="search"
-                      placeholder="Cari diagnosis..."
+                      @keydown.enter.prevent="results.length ? select(results[0]) : addManualIfNotFound()"
+                      placeholder="Cari penyakit..."
                       class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
                               text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
 
@@ -413,7 +444,7 @@
               <input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
             </td>
             <td class="border px-3 py-2 text-center">
-              <button type="button" onclick="addManual('${type}','${tab}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
+              <button type="button" @click="addManualIfNotFound('${tab}', '${type}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
             </td>
           </tr>
         `);
@@ -422,27 +453,16 @@
         Alpine.initTree(manualTbody);
       }
     }
-  }
-
-  function diagnosisAutocomplete(tab, tabPath) {
-    return {
-      query: "",
-      results: [],
-      async search() {
-        if (!this.query) { this.results = []; return; }
-        const res = await window.searchDiagnosis(this.query);
-        this.results = res.data || [];
-      },
-      async select(item) {
-        this.query = item.code + " - " + item.name;
-        this.results = [];
-        await window.addManualFromAutocomplete(tab, item);
-      }
+    // === Sinkron render list tindakan manual di modal ===
+    if (type === "diagnosis" && typeof window.renderManualTindakanList === "function") {
+      setTimeout(() => window.renderManualTindakanList(tab), 0);
     }
   }
+
 
   // export
   window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
+  window.addManualIfNotFound = addManualIfNotFound;
 })();
