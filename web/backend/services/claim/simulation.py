@@ -7,6 +7,8 @@ Berisi fungsi untuk menyimpan & mengambil data simulasi klaim
 
 from sqlalchemy.orm import Session, joinedload
 from typing import Dict, Any
+from datetime import datetime
+import json
 from ... import models
 
 # ==================================================
@@ -24,6 +26,36 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
     """
     sim: dict = {}
     summ: dict = {}
+    
+    # Load AI recommendations first to build simulasi structure
+    ai_recs = db.query(models.ClaimAIRecommendation).options(
+        joinedload(models.ClaimAIRecommendation.diagnosis)
+    ).filter_by(claim_id=claim_id, is_deleted=False).all()
+    
+    # Build simulasi structure from AI recommendations
+    for rec in ai_recs:
+        stage = rec.stage or "admission"
+        category = rec.category or "diagnosis"
+        
+        if stage not in sim:
+            sim[stage] = {}
+        if category not in sim[stage]:
+            sim[stage][category] = []
+            
+        # Build item data from diagnosis relationship
+        item_data = {
+            "id": rec.id,
+            "name": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "kategori": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "nama_kategori": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "mapping": rec.diagnosis.diagnosis_type if rec.diagnosis else "",
+            "icd10_code": rec.diagnosis.icd10_code if rec.diagnosis else "",
+            "klinis": rec.diagnosis.justifikasi if rec.diagnosis else "",
+            "confidence": rec.confidence_score or 0,
+            "score": rec.confidence_score or 0,
+            "child": rec.child or False
+        }
+        sim[stage][category].append(item_data)
 
     # === ClaimSimulation ===
     sims = db.query(models.ClaimSimulation).filter_by(claim_id=claim_id).all()
@@ -99,7 +131,8 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
                       .all()
         ]
 
-    return sim, summ
+    # Wrap simulasi in expected format
+    return {"simulasi": sim}, summ
 
 
 # ==================================================
@@ -108,40 +141,170 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
 
 def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any]) -> None:
     """
-    Simpan ulang simulasi ke tabel ClaimSimulation.
+    Simpan ulang simulasi ke tabel ClaimSimulation dan juga simpan mapping individual items.
 
     Args:
         db (Session): DB session
         claim_id (int): ID klaim
-        sim_data (dict): struktur dict { stage: { utama, sekunder } }
+        sim_data (dict): struktur dict { stage: { diagnosis: [], komorbid: [], komplikasi: [], tindakan: [] } }
     """
+    print(f"[SAVE_SIMULASI] Saving simulasi for claim {claim_id}")
+    print(f"[SAVE_SIMULASI] Data: {sim_data}")
+    
+    # Clear existing data
     db.query(models.ClaimSimulation).filter(models.ClaimSimulation.claim_id == claim_id).delete()
+    
+    # Clear existing AI recommendations to update with new mappings
+    db.query(models.ClaimAIRecommendation).filter_by(claim_id=claim_id, is_deleted=False).update({"is_deleted": True})
 
-    for stage, arr in (sim_data or {}).items():
-        if not isinstance(arr, dict):
+    for stage, stage_data in (sim_data or {}).items():
+        if not isinstance(stage_data, dict):
             continue
+            
+        print(f"[SAVE_SIMULASI] Processing stage: {stage}")
 
-        if arr.get("utama"):
-            utama_item = arr["utama"] if isinstance(arr["utama"], dict) else None
-            if utama_item:
-                db.add(models.ClaimSimulation(
-                    claim_id=claim_id,
-                    stage=stage,
-                    type="utama",
-                    diagnosis_id=utama_item.get("diagnosis_id"),
-                    procedure_id=utama_item.get("procedure_id"),
-                ))
-
-        for sekunder_item in arr.get("sekunder", []):
-            db.add(models.ClaimSimulation(
-                claim_id=claim_id,
-                stage=stage,
-                type="sekunder",
-                diagnosis_id=sekunder_item.get("diagnosis_id"),
-                procedure_id=sekunder_item.get("procedure_id"),
-            ))
+        # Save individual items with mappings
+        for category in ["diagnosis", "komorbid", "komplikasi", "tindakan"]:
+            items = stage_data.get(category, [])
+            if not isinstance(items, list):
+                continue
+                
+            print(f"[SAVE_SIMULASI] Processing {category}: {len(items)} items")
+            
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                    
+                mapping = item.get("mapping", "")
+                print(f"[SAVE_SIMULASI] Item mapping: {mapping} for {item.get('name', 'unknown')}")
+                
+                # Store diagnosis with mapping information
+                if category in ["diagnosis", "komorbid", "komplikasi"] and mapping:
+                    # Store in ClaimDiagnosis with mapping as diagnosis_type
+                    diag = models.ClaimDiagnosis(
+                        claim_id=claim_id,
+                        diagnosis_type=mapping,  # Use mapping as diagnosis_type (Primary, Secondary-Komorbid, etc.)
+                        diagnosis_text=item.get("name") or item.get("kategori") or item.get("nama_kategori"),
+                        icd10_code=item.get("icd10_code") or item.get("icd"),
+                        justifikasi=item.get("klinis"),
+                        is_deleted=False,
+                        is_dummy=False,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(diag)
+                    db.flush()  # Get ID
+                    
+                    # Create AI recommendation linked to diagnosis
+                    rec = models.ClaimAIRecommendation(
+                        claim_id=claim_id,
+                        stage=stage,
+                        category=category,
+                        diagnosis_id=diag.id,
+                        confidence_score=item.get("confidence") or item.get("score"),
+                        child=item.get("child", False),
+                        is_deleted=False,
+                        is_dummy=False,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
+                    db.add(rec)
+                
+                elif category == "tindakan" and mapping:
+                    # For procedures, store mapping in a note or description field
+                    # Since we don't have ClaimProcedure model with mapping, use existing structure
+                    pass
+                
+                # Legacy ClaimSimulation records for backwards compatibility
+                if mapping == "Primary" and category in ["diagnosis"]:
+                    db.add(models.ClaimSimulation(
+                        claim_id=claim_id,
+                        stage=stage,
+                        type="utama",
+                        diagnosis_name=item.get("name") or item.get("kategori"),
+                    ))
+                elif mapping in ["Secondary-Komorbid", "Secondary-Komplikasi"] and category in ["diagnosis", "komorbid", "komplikasi"]:
+                    db.add(models.ClaimSimulation(
+                        claim_id=claim_id,
+                        stage=stage,
+                        type="sekunder", 
+                        diagnosis_name=item.get("name") or item.get("kategori"),
+                    ))
 
     db.commit()
+    print(f"[SAVE_SIMULASI] Successfully saved simulasi for claim {claim_id}")
+
+
+# ==================================================
+# LOAD EXISTING MAPPINGS
+# ==================================================
+
+def load_existing_mappings(db: Session, claim_id: int) -> Dict[str, Any]:
+    """
+    Load existing AI recommendation mappings for a claim.
+    
+    Returns:
+        dict: { stage: { category: [items_with_mappings] } }
+    """
+    # Get AI recommendations with related diagnoses
+    recs = db.query(models.ClaimAIRecommendation).options(
+        joinedload(models.ClaimAIRecommendation.diagnosis)
+    ).filter_by(claim_id=claim_id, is_deleted=False).all()
+    
+    mappings = {}
+    for rec in recs:
+        stage = rec.stage or "admission"
+        category = rec.category or "diagnosis"
+        
+        if stage not in mappings:
+            mappings[stage] = {}
+        if category not in mappings[stage]:
+            mappings[stage][category] = []
+            
+        # Build item data from diagnosis relationship
+        item_data = {
+            "id": rec.id,
+            "name": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "kategori": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "nama_kategori": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
+            "mapping": rec.diagnosis.diagnosis_type if rec.diagnosis else "",  # mapping stored as diagnosis_type
+            "icd10_code": rec.diagnosis.icd10_code if rec.diagnosis else "",
+            "klinis": rec.diagnosis.justifikasi if rec.diagnosis else "",
+            "confidence": rec.confidence_score,
+            "child": rec.child
+        }
+        mappings[stage][category].append(item_data)
+    
+    print(f"[LOAD_MAPPINGS] Loaded {len(recs)} mappings for claim {claim_id}")
+    return mappings
+
+
+def apply_mappings_to_simulasi(simulasi_data: Dict[str, Any], mappings: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Apply saved mappings back to simulasi data structure.
+    """
+    print(f"[APPLY_MAPPINGS] Applying mappings to simulasi")
+    
+    for stage, stage_mappings in mappings.items():
+        if stage not in simulasi_data:
+            simulasi_data[stage] = {}
+            
+        for category, mapped_items in stage_mappings.items():
+            if category not in simulasi_data[stage]:
+                simulasi_data[stage][category] = []
+                
+            # Apply mappings to existing items
+            for sim_item in simulasi_data[stage][category]:
+                # Find matching mapped item by name/kategori
+                item_name = sim_item.get("name") or sim_item.get("kategori") or sim_item.get("nama_kategori")
+                for mapped_item in mapped_items:
+                    mapped_name = mapped_item.get("name") or mapped_item.get("kategori") or mapped_item.get("nama_kategori")
+                    if item_name and mapped_name and item_name == mapped_name:
+                        sim_item["mapping"] = mapped_item.get("mapping", "")
+                        print(f"[APPLY_MAPPINGS] Applied mapping '{mapped_item.get('mapping')}' to {item_name}")
+                        break
+    
+    return simulasi_data
 
 
 # ==================================================

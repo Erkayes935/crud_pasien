@@ -68,6 +68,7 @@ def store_ai_recommendations(
 
             for category in ["diagnosis", "komorbid", "komplikasi"]:
                 for item in ai_data.get(category, []):
+                    # Store parent item
                     diag = models.ClaimDiagnosis(
                         claim_id=claim_id,
                         diagnosis_type=category,
@@ -85,13 +86,40 @@ def store_ai_recommendations(
                         stage=stage,
                         category=category,
                         diagnosis_id=diag.id,
-                        child=item.get("child", False),
+                        child=False,
                         confidence_score=item.get("score"),
                         is_deleted=False,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
                     )
                     db.add(rec)
+                    
+                    # Store children items
+                    for child in item.get("children", []):
+                        child_diag = models.ClaimDiagnosis(
+                            claim_id=claim_id,
+                            diagnosis_type=category,
+                            diagnosis_text=child.get("kategori"),
+                            confidence_score=child.get("score"),
+                            is_deleted=False,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                        )
+                        db.add(child_diag)
+                        db.flush()
+
+                        child_rec = models.ClaimAIRecommendation(
+                            claim_id=claim_id,
+                            stage=stage,
+                            category=category,
+                            diagnosis_id=child_diag.id,
+                            child=True,
+                            confidence_score=child.get("score"),
+                            is_deleted=False,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                        )
+                        db.add(child_rec)
 
         elif mode == "diagnosis":
             diag = models.ClaimDiagnosis(
@@ -171,12 +199,22 @@ def store_ai_recommendations(
                 ))
 
         elif mode == "regulation":
+            # Extract data from regulation service response format
+            regulation_data = ai_data
+            if "data" in ai_data and isinstance(ai_data["data"], list) and len(ai_data["data"]) > 0:
+                regulation_data = ai_data["data"][0]  # Get first regulation item
+            
+            # Convert isi list to JSON string if needed
+            isi = regulation_data.get("isi", [])
+            if isinstance(isi, list):
+                isi = "\n".join(isi) if isi else ""
+            
             reg = models.ClaimRegulationDetail(
                 claim_id=claim_id,
-                dasar_hukum=ai_data.get("dasar_hukum"),
-                judul_regulasi=ai_data.get("judul_regulasi"),
-                bab_pasal=ai_data.get("bab_pasal"),
-                isi=ai_data.get("isi"),
+                dasar_hukum=regulation_data.get("dasar_hukum", ""),
+                judul_regulasi=regulation_data.get("judul_regulasi", ""),
+                bab_pasal=regulation_data.get("bab_pasal", ""),
+                isi=isi,
                 is_deleted=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
