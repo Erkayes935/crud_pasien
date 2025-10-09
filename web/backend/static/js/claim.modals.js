@@ -441,12 +441,6 @@
                   <strong>Mode:</strong> Single Diagnosis • 
                   <strong>Generated:</strong> ${new Date().toLocaleString()}
                 </div>
-                
-                <!-- Refresh button -->
-                <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })"
-                        class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm mt-2">
-                  🔄 Prediksi Ulang
-                </button>
               </div>
             </template>
           </div>
