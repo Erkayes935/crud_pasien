@@ -166,6 +166,17 @@ def edit_claim_form(
 
     sim, summ = load_sim_and_summary(db, claim_id, include_summary=not is_doctor)
     template_name = "claim_left.html" if is_doctor else "claim_right.html"
+    
+    # Load existing medical record data for form pre-population
+    existing_medical_data = {}
+    if claim.medical_record_id:
+        medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
+        if medical_record:
+            # Convert medical record object to dict for form population
+            for field in form_configs.form_configs["claim_medical_record"]:
+                field_name = field.get("name")
+                if field_name and hasattr(medical_record, field_name):
+                    existing_medical_data[field_name] = getattr(medical_record, field_name)
 
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -181,6 +192,7 @@ def edit_claim_form(
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
+        "existing_medical_data": existing_medical_data,
     })
 
 
@@ -194,6 +206,17 @@ async def update_claim_draft(
     _=Depends(require_csrf_dep),
 ):
     try:
+        # Debug: Check what form data we actually receive
+        form_data = await request.form()
+        print(f"🔍 Form data keys: {list(form_data.keys())}")
+        print(f"🔍 Has payload field: {'payload' in form_data}")
+        print(f"🔍 Has csrf_token field: {'csrf_token' in form_data}")
+        
+        # Debug logging
+        print(f"🔍 Received payload type: {type(payload)}")
+        print(f"🔍 Payload length: {len(payload) if payload else 0}")
+        print(f"🔍 Payload preview: {payload[:200] if payload else 'None'}...")
+        
         # Parse JSON payload from form field
         import json
         payload_dict = json.loads(payload)

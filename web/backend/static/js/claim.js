@@ -1440,6 +1440,7 @@ window.resumeMedis = resumeMedis;
 
 window.addManual = addManual
 window.openProcedureModal = openProcedureModal;
+window.openManualNestedProcedureModal = openManualNestedProcedureModal;
 window.closeNestedModal = closeNestedModal;
 window.generateSummary = generateSummary;
 window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;

@@ -170,7 +170,7 @@
   function renderMappingSelect(item, tab, type) {
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
     return `
-      <select onchange="onMappingChange(event, '${tab}', '${type}', ${item.id})"
+      <select onchange="onMappingChange(event, '${tab}', '${type}', '${item.id}')"
               class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate"
               ${disabled}>
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>

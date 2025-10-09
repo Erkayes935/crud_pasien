@@ -276,10 +276,32 @@
       }
       
       // Add payload as JSON string in 'payload' field
-      formData.append('payload', JSON.stringify(payload));
+      const payloadJson = JSON.stringify(payload);
+      formData.append('payload', payloadJson);
       
       console.log("📦 Save draft payload:", payload);
+      console.log("📦 Payload JSON string:", payloadJson);
       console.log("📦 FormData keys:", Array.from(formData.keys()));
+      console.log("📦 FormData entries:");
+      for (let [key, value] of formData.entries()) {
+        if (key === 'payload') {
+          console.log(`  ${key} (${typeof value}):`, value.substring(0, 100) + '...');
+          console.log(`  payload length:`, value.length);
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
+      
+      // Additional validation
+      if (!formData.has('payload')) {
+        console.error("❌ FormData missing payload field!");
+        throw new Error("Payload field missing from FormData");
+      }
+      
+      if (!formData.has('csrf_token')) {
+        console.error("❌ FormData missing csrf_token field!");
+        throw new Error("CSRF token field missing from FormData");
+      }
       console.log("📦 Request URL:", `/claims/${claimId}/update-draft`);
       
       // Send as form data (no Content-Type header needed, browser sets multipart/form-data)
@@ -292,8 +314,60 @@
       console.log("📡 Response:", res.status, res.statusText);
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         console.error("❌ Save draft error response:", errorData);
+        
+        // 🔥 Auto-retry with fresh CSRF token on 403 CSRF error
+        if (res.status === 403 && errorData.detail && errorData.detail.includes('CSRF')) {
+          console.log("🔄 CSRF error detected, attempting to refresh CSRF token...");
+          
+          try {
+            // Try to get fresh CSRF token by reloading the page section
+            const pageRes = await fetch(window.location.href, { 
+              method: 'GET',
+              credentials: 'include'
+            });
+            
+            if (pageRes.ok) {
+              const pageText = await pageRes.text();
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(pageText, 'text/html');
+              const newCsrfInput = doc.querySelector('input[name="csrf_token"]');
+              
+              if (newCsrfInput && newCsrfInput.value) {
+                console.log("✅ Found fresh CSRF token, retrying save...");
+                
+                // Update CSRF token in current page
+                const currentCsrfInput = document.querySelector('input[name="csrf_token"]');
+                if (currentCsrfInput) {
+                  currentCsrfInput.value = newCsrfInput.value;
+                }
+                
+                // Retry the request with new CSRF token
+                const retryFormData = new FormData();
+                retryFormData.append('csrf_token', newCsrfInput.value);
+                retryFormData.append('payload', JSON.stringify(payload));
+                
+                const retryRes = await fetch(`/claims/${claimId}/update-draft`, {
+                  method: "POST",
+                  credentials: "include",
+                  body: retryFormData
+                });
+                
+                if (retryRes.ok) {
+                  const retryResult = await retryRes.json();
+                  console.log("✅ Draft saved successfully after CSRF refresh:", retryResult);
+                  return retryResult;
+                } else {
+                  const retryError = await retryRes.json().catch(() => ({}));
+                  console.error("❌ Retry also failed:", retryError);
+                }
+              }
+            }
+          } catch (retryErr) {
+            console.error("❌ CSRF refresh failed:", retryErr);
+          }
+        }
         
         // 🔥 Better error display for debugging
         let errorMsg = `HTTP error! status: ${res.status}`;

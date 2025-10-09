@@ -469,15 +469,19 @@
           </div>
           
           <!-- Prediction Results -->
-          <div x-show="!loading && data && data.status === 'success'">
-            <template x-if="data.data && data.data.idrg_prediction">
+          <div x-show="!loading && data && data.status === 'success'" x-data="{ 
+            getPrediction(field) { 
+              return (this.data && this.data.data && this.data.data.idrg_prediction && this.data.data.idrg_prediction[field]) || '-';
+            }
+          }">
+            <template x-if="data && data.data && data.data.idrg_prediction">
               <div class="space-y-2 p-4">
-                ${renderPredictionRow("Kode i-DRG", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.group_idrg) || \"-\"'></span>")}
-                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel((data.data && data.data.idrg_prediction && data.data.idrg_prediction.severity_index)) || \"-\"'></span>")}
-                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml((data.data && data.data.idrg_prediction && data.data.idrg_prediction.checklist_dokumentasi))'></span>")}
-                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml((data.data && data.data.idrg_prediction && data.data.idrg_prediction.faktor_penentu_severity))'></span>")}
-                ${renderPredictionRow("Ungroupable Alert", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.ungroupable_alert) || \"-\"'></span>")}
-                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"(data.data && data.data.idrg_prediction && data.data.idrg_prediction.estimasi_tarif_idrg) ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Kode i-DRG", "<span x-text='getPrediction(\"group_idrg\")'></span>")}
+                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(getPrediction(\"severity_index\")) || \"-\"'></span>")}
+                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(getPrediction(\"checklist_dokumentasi\"))'></span>")}
+                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(getPrediction(\"faktor_penentu_severity\"))'></span>")}
+                ${renderPredictionRow("Ungroupable Alert", "<span x-text='getPrediction(\"ungroupable_alert\")'></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"getPrediction('estimasi_tarif_idrg') !== '-' ? 'Rp ' + parseInt(getPrediction('estimasi_tarif_idrg')).toLocaleString('id-ID') : '-'\"></span>")}
                 ${renderPredictionRow("Gap Analysis", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.gap_analysis) || \"-\"'></span>")}
                 
                 <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
@@ -487,7 +491,21 @@
                 </div>
                 
                 <!-- Refresh button -->
-                <button @click="loading = true; error = null; predictIdrgForDiagnosis('${claimId}', '${diagnosisName}').then(result => { data = result; loading = false; }).catch(err => { error = err.message; loading = false; })"
+                <button @click="
+                  console.log('🔄 Prediksi Ulang clicked'); 
+                  loading = true; 
+                  error = null; 
+                  predictIdrgForDiagnosis('${claimId}', '${diagnosisName}')
+                    .then(result => { 
+                      console.log('✅ i-DRG prediction success:', result); 
+                      data = result; 
+                      loading = false; 
+                    })
+                    .catch(err => { 
+                      console.error('❌ i-DRG prediction error:', err); 
+                      error = err.message; 
+                      loading = false; 
+                    })"
                         class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm mt-2">
                   🔄 Prediksi Ulang
                 </button>
