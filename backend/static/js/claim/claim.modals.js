@@ -18,7 +18,6 @@
       return;
     }
 
-
     const row = document.querySelector(`[data-id="${itemId}"]`);
     if (!row) return;
     if (row.closest(".tindakan-list")) {
@@ -30,7 +29,6 @@
       }
       return;
     }
-
 
     // kolom Klinis
     const klinisCell = row.querySelector(".col-klinis");
@@ -63,7 +61,8 @@
         tindakanCell.innerText = "-";
       }
     }
-    // 🧩 Persist semua perubahan hasil modal ke state simulasi
+
+    // Persist semua perubahan hasil modal ke state simulasi
     try {
       const stage = dx.stage || window.claimState?.tab || "admission";
       const sim = window.claimState?.simulasi?.[stage];
@@ -74,7 +73,6 @@
           d.icd10_code === dx.icd10_code
         );
         if (item) {
-          // --- KLINIS ---
           if (dx.klinis) {
             let klinisText = "";
             if (typeof dx.klinis === "object" && dx.klinis !== null) {
@@ -87,17 +85,14 @@
             } else {
               klinisText = dx.klinis;
             }
-            // simpan versi HTML biar tetap truncate + tooltip
             item.klinis = `<span title="${klinisText}">${truncateText(klinisText, 44)}</span>`;
           }
 
-          // --- ICD ---
           if (dx.icd10_code || dx.icd10) {
             item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "-";
             item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
           }
 
-          // --- TINDAKAN ---
           if (Array.isArray(dx.tindakan)) {
             const texts = dx.tindakan.map(t => t.procedure_text || t.tindakan).filter(Boolean);
             const tindakanText = texts.join(", ");
@@ -110,7 +105,6 @@
     }
   }
 
-  // Buka modal dari klik kategori
   // ================== Modal detail dari tabel ==================
   async function openModalFromAttr(el, type) {
     const tr = el.closest("tr");
@@ -121,19 +115,16 @@
     try {
       let dx;
       if (dbId && !isNaN(Number(dbId))) {
-        // 🔹 ENTRYPOINT AI
         const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = await res.json();
         dx = result.data || {};
 
-        // pastikan semua tindakan punya source AI
         if (Array.isArray(dx.tindakan)) {
           dx.tindakan = dx.tindakan.map(td => ({ ...td, source: td.source || "AI" }));
         }
 
-        // 🧠 fallback tindakan kalau BE kosong
         if ((!Array.isArray(dx.tindakan) || !dx.tindakan.length) && window.claimState?.simulasi) {
           const stage = dx.stage || window.claimState.tab || "admission";
           const semua = window.claimState.simulasi[stage]?.tindakan || [];
@@ -147,11 +138,9 @@
               isManual: false,
               source: "AI"
             }));
-            console.log(`🧩 Fallback tindakan AI: ${tindakanAI.length} item`);
           }
         }
 
-        // 🧠 Simpan tindakan AI yang baru dibuka ke cache global
         if (dx && Array.isArray(dx.tindakan) && dx.tindakan.length) {
           window.claimState.cache = window.claimState.cache || {};
           if (!Array.isArray(window.claimState.cache.tindakanAI))
@@ -174,26 +163,17 @@
               });
             }
           });
-
-          console.log(
-            `🧠 Cache tindakanAI diperbarui total: ${window.claimState.cache.tindakanAI.length} item`
-          );
         }
       } else {
-        // 🔹 ENTRYPOINT MANUAL
         dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
         const stage = dx.stage || window.claimState?.tab || "admission";
 
-        // ambil semua tindakan hasil AI dari cache
-        // ambil semua tindakan hasil AI dari cache
         const tindakanAIAll = Array.isArray(window.claimState?.cache?.tindakanAI)
           ? window.claimState.cache.tindakanAI.filter(td =>
               td && (td.source === "AI" || td.isManual === false || td.is_manual === false)
             )
           : [];
 
-
-        // normalisasi id agar tidak undefined (pakai id asli dari AI)
         const tindakanAIFinal = tindakanAIAll
           .map(td => ({
             ...td,
@@ -205,7 +185,6 @@
             isManual: false
           }));
 
-        // gabungkan manual dan AI
         const existingManual = Array.isArray(dx.tindakan)
           ? dx.tindakan.filter(t => t.isManual === true)
           : [];
@@ -216,7 +195,6 @@
 
         const stageKey = dx.stage || window.claimState?.tab || "admission";
         if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
-        // ⛔ Jangan overwrite total, tapi merge aman
         const currentAll = window.claimState.simulasi[stageKey].tindakan || [];
         const merged = [...currentAll];
         dx.tindakan.forEach(td => {
@@ -224,15 +202,8 @@
             merged.push(td);
         });
         window.claimState.simulasi[stageKey].tindakan = merged;
-
-
-        console.log(
-          `🧠 Injected ${tindakanAIFinal.length} tindakan AI ke modal manual (stage: ${stage})`
-        );
-
       }
 
-      // --- Render modal diagnosis ---
       const rawText = tr?.querySelector("td")?.innerText.trim() || "-";
       const namaPenyakit =
         dx?.kategori || dx?.nama_kategori || dx?.diagnosis ||
@@ -247,7 +218,6 @@
           <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
         </div>`;
 
-      // simpan hasil injeksi AI manual ke state.simulasi agar tidak terhapus saat render ulang
       const stageKey = dx.stage || window.claimState?.tab || "admission";
       if (!window.claimState.simulasi[stageKey]) window.claimState.simulasi[stageKey] = {};
       window.claimState.simulasi[stageKey].tindakan = dx.tindakan;
@@ -259,7 +229,6 @@
     }
   }
 
-  
   function renderDiagnosisDetail(it) {
     const klinisRaw = it.klinis || {};
     let klinis = {};
@@ -327,7 +296,6 @@
           </div>
         </section>
 
-        <!-- i-DRG Section -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">i-DRG</div>
           <div class="p-3 bg-gray-100 dark:bg-gray-700">
@@ -411,7 +379,6 @@
     `;
   }
 
-
   function tindakanAutocomplete() {
     return {
       query: "",
@@ -432,11 +399,10 @@
   function renderTindakan(list) {
     const all = Array.isArray(list) ? list : [];
 
-  // 🔧 normalisasi properti agar filter tidak buang data sah
     const normalized = all.map(td => ({
       ...td,
-      source: (td.source || "").toUpperCase(),        // pastikan "AI" konsisten
-      isManual: td.isManual ?? td.is_manual ?? false,  // gabungkan dua varian boolean
+      source: (td.source || "").toUpperCase(),
+      isManual: td.isManual ?? td.is_manual ?? false,
     }));
 
     const unique = [];
@@ -450,12 +416,10 @@
     }
 
     const aiList = unique.filter(td => !td.isManual && td.source === "AI");
-    const manualList = unique.filter(td => td.isManual);
-    // --- Render tindakan AI ---
+
     const aiSection = aiList.length
       ? aiList
           .map(td => {
-            console.log("🧾 tindakan item:", td);
             const nama = td.procedure_text || td.nama || td.procedure_name || td.tindakan;
             const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
             const procId = td.id || td.procedure_id || "";
@@ -484,7 +448,6 @@
           .join("")
       : `<div class="italic text-gray-500">Tidak ada tindakan AI</div>`;
 
-    // --- Render area manual ---
     const manualArea = `
       <div class="tindakan-list"></div>
       <div class="mt-4 p-3 border rounded bg-gray-50 dark:bg-gray-700">
@@ -515,7 +478,6 @@
       </div>
     `;
 
-    // --- Render manual list jika ada data manual ---
     setTimeout(() => {
       const tab = window.claimState?.tab || "admission";
       const sim = window.claimState?.simulasi?.[tab];
@@ -527,10 +489,7 @@
     return aiSection + manualArea;
   }
 
-
-
   function buildModalContent(it) {
-    // kalau ada icd10 → diagnosis
     if (it.icd10) {
       let content = renderDiagnosisDetail(it);
       content += `<div class="tindakan-list mt-4"></div>`;
@@ -541,7 +500,6 @@
       return content;
     }
 
-    // kalau ada icd9/detail → tindakan
     if (it.icd9 || it.detail) {
       return renderProcedureDetail(it);
     }
@@ -549,8 +507,6 @@
     return `<div class="italic text-gray-500">Tidak ada detail tersedia</div>`;
   }
 
-
-  // ================== Modal detail tindakan ==================
   async function openProcedureModal(procId) {
     if (!procId || procId === "undefined" || procId === "null") {
       console.warn("⚠️ Tidak bisa buka detail tindakan: procId kosong");
@@ -623,7 +579,6 @@
     }
   }
 
-
   async function openManualDetailModal(it, tab, idx) {
     try {
       const url = `/claims/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
@@ -633,11 +588,9 @@
       if (json.status !== "ok") throw new Error("Gagal load detail");
 
       const detail = json.data;
-      // 🧩 Tambahkan deskripsi gabungan setelah fetch sukses
       const deskripsiGabungan = `ICD-9: ${detail.icd9 || "-"}, Status: ${detail.status || "-"}, INA-CBG: ${detail.ina_cbg || "-"}`;
       detail.deskripsi = deskripsiGabungan;
 
-      // sinkron ke state biar muncul di list
       if (window.claimState?.simulasi?.[tab]?.tindakan?.[idx]) {
         window.claimState.simulasi[tab].tindakan[idx].deskripsi = deskripsiGabungan;
       }
@@ -649,7 +602,6 @@
 
       openModal(title, renderProcedureDetail(detail), { hideDefaultClose: true });
 
-      // simpan state + update ringkasan
       window.claimState.currentProcedure = detail;
       const uiId = `manual-tindakan-${tab}-${idx}`;
       updateRingkasanFromRow(uiId, detail);
@@ -692,8 +644,6 @@
     `;
   }
 
-
-
   function closeNestedModal() {
     const dx = window.claimState.currentDiagnosis;
     if (!dx) {
@@ -705,7 +655,6 @@
     const stage = dx.stage || window.claimState?.tab || "admission";
     const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
 
-    // render ulang modal diagnosis tanpa ubah state
     openModal(`<div class="flex flex-col items-start items-center">
       <span class="text-lg font-bold">Detail Diagnosis</span>
       <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
@@ -716,8 +665,6 @@
     }, 0);
   }
 
-
-
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     let url = `/claims/${claimId}/regulations?`;
@@ -726,16 +673,8 @@
     else if (type === "procedure") url += `procedure_id=${id}`;
     else if (type === "diagnosis_eval") url += `diagnosis_evaluation_id=${id}`;
     else if (type === "procedure_eval") url += `procedure_evaluation_id=${id}`;
-
-    // 🔹 Tambahin untuk i-DRG Diagnosis
-    else if (type === "idrg_diagnosis") {
-      url += `idrg_diagnosis_id=${id}`;
-    }
-
-    // 🔹 Tambahin untuk i-DRG Summary
-    else if (type === "idrg_summary") {
-      url += `idrg_summary_id=${id}`;
-    }
+    else if (type === "idrg_diagnosis") url += `idrg_diagnosis_id=${id}`;
+    else if (type === "idrg_summary") url += `idrg_summary_id=${id}`;
 
     try {
       const res = await fetch(url);
@@ -747,23 +686,18 @@
         return;
       }
 
-      // ✅ simpan source biar tau entry point
       window.claimState = window.claimState || {};
       window.claimState.regulationSource = { type, id };
 
       const isEval =
         type === "diagnosis_eval" ||
         type === "procedure_eval" ||
-        type.startsWith("idrg_summary");   // ✅ hanya summary yang close langsung
-
-      const isIdrgDiagnosis = type.startsWith("idrg_diagnosis"); // treat i-DRG juga seperti evaluasi
+        type.startsWith("idrg_summary");
 
       let closeBtn = "";
       if (isEval) {
-        // evaluasi & summary → pakai default close bawaan modal
         closeBtn = "";
       } else {
-        // diagnosis/procedure/i-DRG diagnosis → render tombol merah manual
         closeBtn = `<div class="flex justify-end items-start mb-3">
                       <button type="button" onclick="closeRegulationModal()"
                               class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
@@ -795,189 +729,209 @@
     }
   }
 
-
-
-  // === Tutup Regulasi (Balik ke modal asal) ===
   function closeRegulationModal() {
     const source = window.claimState?.regulationSource;
 
     if (source?.type === "procedure" && window.claimState?.currentProcedure) {
-      // Balik ke modal tindakan
       openProcedureModal(window.claimState.currentProcedure.id);
-
     } else if (source?.type?.startsWith("idrg_diagnosis") && window.claimState?.currentDiagnosis) {
-      // Balik ke modal diagnosis
       closeNestedModal();
-
     } else if (source?.type?.startsWith("idrg_summary")) {
-      // i-DRG Summary → langsung close modal (kayak evaluasi)
       const state = Alpine.$data(document.getElementById('claimRoot'));
       state.modalOpen = false;
-
     } else {
-      // default → close diagnosis
       closeNestedModal();
     }
-    
   }
-  // --- fungsi renderDiagnosisDetail, renderIdrgSection, renderTindakan, buildModalContent, openProcedureModal, dll ---
-  // (isinya sama persis dengan versi kamu, tidak saya potong di sini biar tetap jalan normal)
 
-  // ================= Note Modal (Diagnosis / Tindakan) =================
-    // ==== Helper: stable numeric id dari claimId + fieldKey (djb2a 32-bit, unsigned, >0) ====
-    function getStableItemId(claimId, fieldKey) {
-      const s = `${claimId}:${fieldKey}`;
-      let hash = 5381;
-      for (let i = 0; i < s.length; i++) {
-        hash = ((hash << 5) + hash) ^ s.charCodeAt(i); // djb2a with XOR
-      }
-      return (hash >>> 0) + 1; // unsigned + pastikan > 0
-    }
+  // ================= SISTEM NOTES YANG DIPERBAIKI =================
+  
+// ======================== SISTEM NOTES FINAL STABIL ========================
 
-    // ================= Note Modal (Diagnosis / Tindakan) =================
-    window.openNoteModal = async function(title, fieldKey, item = null) {
-    const root = document.getElementById("claimRoot");
-    const state = Alpine.$data(root);
+// ✅ ID stabil tanpa hash (supaya sama setiap reload)
+function getStableItemId(claimId, stage, fieldKey, itemName = "") {
+  const key = fieldKey.toLowerCase();
+  if (key === "primary_diagnosis" || key === "primary_action") return 1;
+  if (key === "secondary_diagnosis" || key === "secondary_action") return 2;
+  return 9999; // fallback umum
+}
 
-    state.currentDiagnosis = null;
-    state.currentProcedure = null;
+// ✅ Buka modal catatan (dengan context lengkap)
+window.openNoteModal = async function(title, fieldKey, item = null) {
+  const root = document.getElementById("claimRoot");
+  let state = null;
+  try {
+    state = Alpine.$data(root);
+  } catch (e) {
+    console.warn("⚠️ fallback ke window.claimState karena Alpine belum aktif");
+    state = window.claimState || {};
+  }
 
-    if (fieldKey.includes("diagnosis") && item) state.currentDiagnosis = item;
-    if (fieldKey.includes("action") && item) state.currentProcedure = item;
+  const claimId = root.dataset.claimId;
+  const currentStage = state.tab || window.claimState?.tab || "admission";
 
-    const claimId = root.dataset.claimId;
-    let itemId = state.currentDiagnosis?.id || state.currentProcedure?.id || null;
-    if (!itemId) {
-      itemId = getStableItemId(claimId, fieldKey); // fungsi hash/bigint tadi
-    }
+  // Simpan context
+  state.currentNoteItem = item;
+  state.currentNoteField = fieldKey;
+  state.currentNoteStage = currentStage;
 
-    // 🔹 fetch notes dari backend
-    let notes = [];
-    try {
-      const res = await fetch(`/claims/${claimId}/notes`);
-      const json = await res.json();
-      if (res.ok) {
-        notes = json.data.filter(n => String(n.item_id) === String(itemId));
-      }
-    } catch (err) {
-      console.error("Gagal fetch notes:", err);
-    }
+  // Tentukan itemId (stabil)
+  const itemName = item?.name || "primary";
+  const itemId = item?.id || getStableItemId(claimId, currentStage, fieldKey, itemName);
 
-    const existingLogs = notes.map(n => {
-      // Pastikan timestamp dianggap UTC dulu
-      const utcString = n.timestamp.endsWith('Z') ? n.timestamp : n.timestamp + 'Z';
-      const time = new Date(utcString).toLocaleString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      return `[${n.role} ${time} WIB] ${n.note_text}`;
-    });
+  console.log("📝 openNoteModal context:", { stage: currentStage, fieldKey, itemId, itemName });
 
-    const currentText = existingLogs.join("\n");
+  // Ambil notes dari backend
+  let notes = [];
+  try {
+    const url = `/claims/${claimId}/notes?stage=${currentStage}&field_key=${fieldKey}&item_id=${itemId}`;
+    console.log("🔍 Fetching notes from:", url);
+    const res = await fetch(url);
+    const json = await res.json();
 
-    state.modalTitle = title;
-    state.modalContent = `
-      <div class="space-y-4">
-        <label class="block text-sm font-medium">Tambahkan Catatan:</label>
-        <textarea id="noteField"
-                  class="w-full border rounded p-2 text-sm"
-                  rows="4"
-                  placeholder="Tulis catatan..."></textarea>
+    if (res.ok) {
+      // Tambahkan fallback ID lama agar note lama tetap terbaca
+      const oldIds = [804880226, 2184760293, 32548051, 1, 2];
+      notes = (json.data || []).filter(n =>
+        n.stage === currentStage &&
+        n.field_key === fieldKey &&
+        (String(n.item_id) === String(itemId) || oldIds.includes(Number(n.item_id)))
+      );
 
-        <div class="flex justify-end gap-2">
-          <button type="button"
-                  class="px-4 py-2 bg-gray-300 rounded"
-                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
-            Close
-          </button>
-          <button type="button"
-                  class="px-4 py-2 bg-blue-600 text-white rounded"
-                  onclick="saveNote('${fieldKey}')">
-            Save & Close
-          </button>
-        </div>
-
-        <hr class="my-4">
-        <h4 class="font-semibold text-sm">Riwayat Catatan:</h4>
-        <pre class="bg-gray-100 p-2 rounded text-xs whitespace-pre-wrap">${currentText || 'Belum ada catatan.'}</pre>
-      </div>
-    `;
-    state.modalOpen = true;
-
-    console.log("✅ openNoteModal - loaded notes:", notes);
-  };
-
-    window.saveNote = async function(fieldKey) {
-      const root = document.getElementById("claimRoot");
-      const state = Alpine.$data(root);
-
-      const textarea = document.getElementById("noteField");
-      const val = textarea.value.trim();
-      if (!val) {
-        state.modalOpen = false;
-        return;
-      }
-
-      const claimId = root.dataset.claimId;
-
-      // Ambil itemId dari state, jika tidak ada → gunakan stable numeric
-      let itemId = state.currentDiagnosis?.id || state.currentProcedure?.id || null;
-      if (itemId == null) {
-        itemId = getStableItemId(claimId, fieldKey);
-        console.log("🆕 Auto-generate stable numeric itemId:", itemId);
-      }
-
-      console.log("📝 saveNote FINAL:", {
+      console.log("🧩 Filter debug", {
+        currentStage,
         fieldKey,
         itemId,
-        currentDiagnosis: state.currentDiagnosis,
-        currentProcedure: state.currentProcedure,
-        valueToSend: val
+        totalBefore: (json.data || []).length,
+        totalAfter: notes.length,
+        exampleMatch: notes.slice(0, 2).map(n => n.item_id)
       });
+    }
+  } catch (err) {
+    console.error("❌ Gagal fetch notes:", err);
+  }
 
-      try {
-        const headers = { "Content-Type": "application/json" };
-        // jika kamu menyimpan CSRF ke window.csrfToken, kirimkan juga
-        if (window.csrfToken) headers["X-CSRF-Token"] = window.csrfToken;
+  // Render riwayat catatan
+  const existingLogs = notes.map(n => {
+    const utcString = n.timestamp?.endsWith("Z") ? n.timestamp : n.timestamp + "Z";
+    const time = new Date(utcString).toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    return `[${n.role} ${time} WIB] ${n.note_text}`;
+  });
 
-        const resp = await fetch(`/claims/${claimId}/notes`, {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            item_id: itemId,           // sekarang integer
-            note_text: val,
-            parent_id: null,
-            field_key: fieldKey
-          })
-        });
+  const currentText = existingLogs.join("\n");
 
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.detail || `HTTP ${resp.status}`);
-        }
+  state.modalTitle = `${title} - ${currentStage.toUpperCase()}`;
+  state.modalContent = `
+    <div class="space-y-4">
+      <div class="bg-blue-50 dark:bg-blue-900 p-3 rounded">
+        <p class="text-sm"><strong>Stage:</strong> ${currentStage}</p>
+        <p class="text-sm"><strong>Field:</strong> ${fieldKey}</p>
+        <p class="text-sm"><strong>Item:</strong> ${itemName}</p>
+      </div>
 
-        // sukses → update state lokal pakai key stable numeric
-        const now = new Date();
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const role = (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : "User");
-        const log = `[${role} ${hh}:${mm}] ${val}`;
+      <label class="block text-sm font-medium">Tambahkan Catatan:</label>
+      <textarea id="noteField"
+                class="w-full border rounded p-2 text-sm"
+                rows="4"
+                placeholder="Tulis catatan..."></textarea>
 
-        if (!state.notes[itemId]) state.notes[itemId] = [];
-        state.notes[itemId].push(log);
+      <div class="flex justify-end gap-2">
+        <button type="button"
+                class="px-4 py-2 bg-gray-300 rounded"
+                onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
+          Close
+        </button>
+        <button type="button"
+                class="px-4 py-2 bg-blue-600 text-white rounded"
+                onclick="saveNote('${fieldKey}', '${currentStage}', ${itemId})">
+          Save & Close
+        </button>
+      </div>
 
-      } catch (e) {
-        console.error("❌ saveNote error:", e);
-        alert("Gagal menyimpan catatan: " + e.message);
-      }
+      <hr class="my-4">
+      <h4 class="font-semibold text-sm">Riwayat Catatan (${notes.length}):</h4>
+      <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs whitespace-pre-wrap max-h-60 overflow-y-auto">
+        ${currentText || 'Belum ada catatan.'}
+      </pre>
+    </div>
+  `;
 
-      state.modalOpen = false;
-    };
+  state.modalOpen = true;
+  console.log("✅ openNoteModal - loaded notes:", notes.length);
+};
+
+
+// ✅ Simpan note baru (frontend + backend sync)
+window.saveNote = async function(fieldKey, stage, itemId) {
+  const root = document.getElementById("claimRoot");
+  const state = Alpine.$data(root);
+  const textarea = document.getElementById("noteField");
+  const val = textarea.value.trim();
+
+  if (!val) {
+    state.modalOpen = false;
+    return;
+  }
+
+  const claimId = root.dataset.claimId;
+
+  console.log("💾 saveNote FINAL:", { fieldKey, itemId, stage, valueToSend: val });
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (window.csrfToken) headers["X-CSRF-Token"] = window.csrfToken;
+
+    const resp = await fetch(`/claims/${claimId}/notes`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        item_id: itemId,
+        note_text: val,
+        parent_id: null,
+        field_key: fieldKey,
+        stage: stage
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+
+    // Tambahkan ke local state (agar langsung muncul tanpa reload)
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const role = state.role ? state.role : "User";
+    const log = `[${role} ${hh}:${mm}] ${val}`;
+
+    if (!state.notes) state.notes = {};
+    if (!state.notes[stage]) state.notes[stage] = {};
+    if (!state.notes[stage][fieldKey]) state.notes[stage][fieldKey] = {};
+    if (!state.notes[stage][fieldKey][itemId]) state.notes[stage][fieldKey][itemId] = [];
+    state.notes[stage][fieldKey][itemId].push(log);
+
+    console.log("✅ Note saved successfully", {
+      stage,
+      fieldKey,
+      itemId,
+      totalNotes: state.notes[stage][fieldKey][itemId].length
+    });
+  } catch (e) {
+    console.error("❌ saveNote error:", e);
+    alert("Gagal menyimpan catatan: " + e.message);
+  }
+
+  state.modalOpen = false;
+};
 
 
   // Export
@@ -987,7 +941,6 @@
   window.renderDiagnosisDetail = renderDiagnosisDetail;
   window.renderIdrgSection = renderIdrgSection;
   window.renderTindakan = renderTindakan;
-  window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.tindakanAutocomplete = tindakanAutocomplete;
   window.openProcedureModal = openProcedureModal;
   window.openManualDetailModal = openManualDetailModal;
