@@ -7,153 +7,210 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
+<div class="min-h-screen">
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    
+    <!-- Header Section -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="flex items-center space-x-2 mb-2">
+            <svg class="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            {% if patient_name %}
+              <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Daftar Klaim</h1>
+            {% else %}
+              <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Semua Klaim</h1>
+            {% endif %}
+          </div>
+          {% if patient_name %}
+            <p class="text-sm text-gray-600 dark:text-gray-400 ml-9">Pasien: <span class="font-semibold">{{ patient_name }}</span></p>
+          {% endif %}
+        </div>
 
-  {% if patient_name %}
-    <h1 class="text-3xl font-bold mb-4">Daftar Klaim untuk Pasien: <strong>{{ patient_name }}</strong></h1>
-  {% else %}
-    <h1 class="text-3xl font-bold mb-4">Daftar Semua Klaim</h1>
-  {% endif %}
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          {% if user and (user.role in ['doctor','coder']) %}
+          <a href="/patients?flow=claim" 
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Tambah Klaim
+          </a>
+          {% endif %}
+          <a href="/claims/export" 
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export Klaim
+          </a>
+        </div>
+      </div>
 
-  <!-- Tombol tambah klaim -->
-  
-  <div class="mb-4 flex gap-2">
-    {% if user and (user.role in ['doctor','coder']) %}
-    <a href="/patients?flow=claim" 
-       class="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-1 rounded">
-      Tambah Klaim
-    </a>
-    {% endif %}
-    <a href="/claims/export" 
-       class="bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-3 py-1 rounded">
-      Export Semua Klaim
-    </a>
-  </div>
-  
+      <!-- Search & Filter Form -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          Pencarian & Filter
+        </h3>
 
-  <form method="get" action="{{ list_claims_url }}" class="flex flex-wrap gap-4 mb-4 items-end">
+        <form method="get" action="{{ list_claims_url }}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Search Fields -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Pasien</label>
+            <div class="relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input type="text" name="patient_name" placeholder="Cari nama pasien..."
+                     class="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+            </div>
+          </div>
 
-  <!-- 🔍 Search -->
-    <div>
-      <label class="block">Cari Nama Pasien</label>
-      <input type="text" name="patient_name" placeholder="Nama Pasien"
-            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Klaim</label>
+            <input type="number" name="claim_id" placeholder="Masukkan ID klaim"
+                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Visit</label>
+            <input type="number" name="visit_id" placeholder="Masukkan ID visit"
+                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+          </div>
+
+          <!-- Filter Fields -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+            <select name="status" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+              <option value="">-- Semua Status --</option>
+              <option value="draft">Draft</option>
+              <option value="submitted">Submitted</option>
+              <option value="verified">Verified</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jenis Kunjungan</label>
+            <select name="jenis_kunjungan" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+              <option value="">-- Semua Jenis --</option>
+              <option value="rawat_inap">Rawat Inap</option>
+              <option value="rawat_jalan">Rawat Jalan</option>
+              <option value="igd">IGD</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Kunjungan</label>
+            <input type="date" name="tanggal_kunjungan"
+                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-end gap-2">
+            <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              Terapkan
+            </button>
+            <a href="/claims" class="px-4 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+              Reset
+            </a>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <div>
-      <label class="block">Cari ID Klaim</label>
-      <input type="number" name="claim_id" placeholder="ID Klaim"
-            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
+    <!-- Table Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-24">ID Pasien</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama Pasien</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Tanggal</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Diagnosis</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-28">Status</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for claim in claims %}
+            <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ claim.id }}</td>
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ claim.patient.id if claim.patient else '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ claim.patient.nama if claim.patient else '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ claim.tanggal_kunjungan or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ claim.doctor_name or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ claim.diagnosis_awal or '-' }}</td>
+              <td class="py-4 px-3 text-center">
+                {% if claim.status == 'draft' %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    Draft
+                  </span>
+                {% elif claim.status == 'submitted' %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    Submitted
+                  </span>
+                {% elif claim.status == 'verified' %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    Verified
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                    {{ claim.status or '-' }}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="py-4 px-3 text-center">
+                <a href="/claims/{{ claim.id }}" 
+                   class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <span class="group-hover:underline">Detail</span>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not claims %}
+            <tr>
+              <td colspan="8" class="py-12">
+                <div class="text-center">
+                  <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim ditemukan</p>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div>
-      <label class="block">Cari ID Visit</label>
-      <input type="number" name="visit_id" placeholder="ID Visit"
-            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
-    </div>
-
-    <!-- 🗂️ Filter -->
-    <div>
-      <label class="block">Status</label>
-      <select name="status" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
-        <option value="">-- Semua --</option>
-        <option value="draft">Draft</option>
-        <option value="submitted">Submitted</option>
-        <option value="verified">Verified</option>
-      </select>
-    </div>
-
-    <div>
-      <label class="block">Jenis Kunjungan</label>
-      <select name="jenis_kunjungan" class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
-        <option value="">-- Semua --</option>
-        <option value="rawat_inap">Rawat Inap</option>
-        <option value="rawat_jalan">Rawat Jalan</option>
-        <option value="igd">IGD</option>
-      </select>
-    </div>
-
-    <div>
-      <label class="block">Tanggal Kunjungan</label>
-      <input type="date" name="tanggal_kunjungan"
-            class="border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600">
-    </div>
-
-    <div>
-      <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded">
-        Terapkan
-      </button>
-      <a href="/claims" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded">
-        Reset
+    <!-- Back Button -->
+    <div class="mt-6">
+      <a href="/dashboard" 
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Kembali ke Dashboard
       </a>
     </div>
-  </form>
 
-
-  <!-- Table -->
-  <div class="overflow-x-auto">
-    <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded">
-      <thead class="bg-gray-200 dark:bg-gray-700">
-        <tr class="text-center">
-          <th class="px-4 py-2">ID Klaim</th>
-          <th class="px-4 py-2">ID Pasien</th>
-          <th class="px-4 py-2">ID Visit</th>
-          <th class="px-4 py-2">ID RS</th>
-          <th class="px-4 py-2">Nama Pasien</th>
-          <th class="px-4 py-2">Tanggal Kunjungan</th>
-          <th class="px-4 py-2">Dokter</th>
-          <th class="px-4 py-2">Diagnosis Awal</th>
-          <th class="px-4 py-2">Kode ICD</th>
-          <th class="px-4 py-2">Tindakan</th>
-          <th class="px-4 py-2">Obat</th>
-          <th class="px-4 py-2">Status</th>
-          <th class="px-4 py-2">Hasil</th>
-          <th class="px-4 py-2">Dibuat</th>
-          {% if user and user.role == 'doctor' %}
-          <th class="px-4 py-2">Aksi</th>
-          {% endif %}
-        </tr>
-      </thead>
-      <tbody class="text-center">
-        {% for claim in claims %}
-        <tr class="border-b dark:border-gray-700">
-          <td class="px-4 py-2">{{ claim.id }}</td>
-          <td class="px-4 py-2">{{ claim.patient.id if claim.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.visit.id if claim.visit else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.hospital.id if claim.hospital else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.patient.nama if claim.patient else '-' }}</td>
-          <td class="px-4 py-2">{{ claim.tanggal_kunjungan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.doctor_name or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.diagnosis_awal or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.kode_icd or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.tindakan or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.obat or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.status or '-' }}</td>
-          <td class="px-4 py-2">{{ claim.hasil or '-' }}</td>
-          <td class="px-4 py-2 whitespace-nowrap">{{ claim.created_at.strftime("%Y-%m-%d %H:%M") if claim.created_at else '-' }}</td>
-          <td class="px-4 py-2 text-center whitespace-nowrap">
-            <a href="/claims/{{ claim.id }}" 
-              class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded">
-              🔍 Detail
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-        {% if not claims %}
-        <tr>
-          <td colspan="15" class="px-4 py-2 text-center">Tidak ada klaim</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="mt-4">
-    <a href="/dashboard" 
-       class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-3 py-1 rounded">
-      Kembali ke Dashboard
-    </a>
-  </div>
+  </main>
 </div>
-
 {% endblock %}

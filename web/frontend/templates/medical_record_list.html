@@ -1,93 +1,175 @@
 {% extends "base.html" %}
 {% block title %}Daftar Rekam Medis{% endblock %}
 
+{% block head %}
+  <meta name="description" content="Daftar Rekam Medis">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+{% endblock %}
+
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">📋 Daftar Rekam Medis</h1>
+<div class="min-h-screen">
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    
+    <!-- Header Section -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="flex items-center space-x-2 mb-2">
+            <svg class="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Daftar Rekam Medis</h1>
+          </div>
+        </div>
 
-<form method="get" 
-      class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-  <div>
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cari Pasien</label>
-    <input type="text" name="q" value="{{ q or '' }}"
-           class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
-  </div>
-  <div>
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal</label>
-    <input type="date" name="date" value="{{ date or '' }}"
-           class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
-  </div>
-  <div>
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-    <select name="status" class="w-full border rounded px-3 py-2 text-sm bg-white dark:bg-gray-700">
-      <option value="">Semua</option>
-      <option value="final" {% if status=='final' %}selected{% endif %}>Final</option>
-      <option value="draft" {% if status=='draft' %}selected{% endif %}>Draft</option>
-    </select>
-  </div>
-  <div class="flex items-end gap-2">
-    <button type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-      🔍 Filter
-    </button>
-  </div>
-</form>
-
-<!-- ✅ Tombol Export Rekam Medis -->
-<div class="flex justify-end mb-4">
-  <a href="{{ url_for('export_medical_records') }}?q={{ q or '' }}&status={{ status or '' }}&date={{ date or '' }}"
-    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
-    📤 Export Rekam Medis (Excel)
-  </a>
-</div>
-
-<div class="overflow-x-auto rounded-lg shadow">
-  <table class="w-full text-sm text-center">
-    <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
-      <tr>
-        <th class="px-4 py-3">ID</th>
-        <th class="px-4 py-3">Pasien</th>
-        <th class="px-4 py-3">Tanggal</th>
-        <th class="px-4 py-3">Dokter</th>
-        <th class="px-4 py-3">Diagnosis Awal</th>
-        <th class="px-4 py-3">Status</th>
-        <th class="px-4 py-3">Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for record in medical_records %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-        <td class="px-4 py-2">{{ record.id }}</td>
-        <td class="px-4 py-2">{{ record.patient.nama if record.patient else '-' }}</td>
-        <td class="px-4 py-2">{{ record.notes_date.strftime('%d %b %Y') if record.notes_date else '-' }}</td>
-        <td class="px-4 py-2">{{ record.doctor_name or '-' }}</td>
-        <td class="px-4 py-2">{{ record.diagnosis_awal or '-' }}</td>
-        <td class="px-4 py-2">
-          {% if record.is_final %}
-            <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">Final</span>
-          {% else %}
-            <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700">Draft</span>
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          {% if patient and visit %}
+          <a href="{{ url_for('wizard_add_medical_record', patient_id=patient.id, visit_id=visit.id) }}?flow=claim"
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Tambah Rekam Medis
+          </a>
           {% endif %}
-        </td>
-        <td class="px-4 py-2 text-center">
-          <a href="{{ url_for('medical_record_logs', record_id=record.id) }}" class="text-blue-600 hover:underline">🔍</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500">Tidak ada data</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+          <a href="{{ url_for('export_medical_records') }}?q={{ q or '' }}&status={{ status or '' }}&date={{ date or '' }}"
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export Rekam Medis
+          </a>
+        </div>
+      </div>
 
-<div class="p-4 flex gap-3">
-  {% if patient and visit %}
-    <a href="{{ url_for('wizard_add_medical_record', patient_id=patient.id, visit_id=visit.id) }}?flow=claim"
-       class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow">
-       ➕ Tambah Rekam Medis
-    </a>
-  {% endif %}
-  <a href="{{ url_for('dashboard') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
-    ← Kembali
-  </a>
+      <!-- Search & Filter Form -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          Pencarian & Filter
+        </h3>
+
+        <form method="get" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Search Fields -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Pasien</label>
+            <div class="relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input type="text" name="q" value="{{ q or '' }}" placeholder="Cari nama pasien..."
+                     class="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal</label>
+            <input type="date" name="date" value="{{ date or '' }}"
+                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+          </div>
+
+          <!-- Filter Fields -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+            <select name="status" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
+              <option value="">-- Semua Status --</option>
+              <option value="final" {% if status=='final' %}selected{% endif %}>Final</option>
+              <option value="draft" {% if status=='draft' %}selected{% endif %}>Draft</option>
+            </select>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-end gap-2">
+            <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              Terapkan
+            </button>
+            <a href="{{ url_for('list_medical_records') }}" class="px-4 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+              Reset
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama Pasien</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Tanggal</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Diagnosis Awal</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-28">Status</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in medical_records %}
+            <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ record.id }}</td>
+              <td class="py-4 px-3 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ record.patient.nama if record.patient else '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ record.notes_date.strftime('%d %b %Y') if record.notes_date else '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ record.doctor_name or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ record.diagnosis_awal or '-' }}</td>
+              <td class="py-4 px-3 text-center">
+                {% if record.is_final %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    Final
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    Draft
+                  </span>
+                {% endif %}
+              </td>
+              <td class="py-4 px-3 text-center">
+                <a href="{{ url_for('medical_record_logs', record_id=record.id) }}" 
+                   class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <span class="group-hover:underline">Detail</span>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="py-12">
+                <div class="text-center">
+                  <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada rekam medis ditemukan</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="mt-6">
+      <a href="{{ url_for('dashboard') }}" 
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Kembali ke Dashboard
+      </a>
+    </div>
+
+  </main>
 </div>
 {% endblock %}

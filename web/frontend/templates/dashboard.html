@@ -2,256 +2,328 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto p-6 space-y-6">
-
-  <!-- Judul -->
-    {% if current_user.role in ['superadmin', 'admin_rs'] %}
-      <h1 class="text-2xl font-bold mb-4">📊 Dashboard Users</h1>
-    {% else %}
-      <h1 class="text-2xl font-bold mb-4">📊 Dashboard Klaim</h1>
-    {% endif %}
-
-  <!-- Tombol cepat -->
-  <div class="flex flex-wrap gap-3">
-    {% if current_user.role == 'superadmin' %}
-    <a href="/hospitals" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       🏥 List Semua RS
-    </a>
-    <a href="/users" 
-       class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-       👥 List Semua Users
-    </a>
-    {% else %}
-      {% if current_user.role == 'admin_rs' %}
-        <a href="/users" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          👥 List Semua Users
-        </a>
-      {% endif %}
-      {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
-        <a href="/patients?flow=claim" 
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
-          + Klaim Baru
-        </a>
-        <a href="/patients" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          👤 Pasien
-        </a>
-        <a href="/medical-records" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          📝 Rekam Medis
-        </a>
-        <a href="/visits" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          🏥 Kunjungan
-        </a>
-        <a href="/claims" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          📝 Klaim
-        </a>
-        <a href="/claims/export" 
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded shadow flex items-center gap-2">
-          ⬇️ Ekspor Klaim
-        </a>
-      {% endif %}
-    {% endif %}
-  </div>
-
-  <!-- Daftar User -->
-  {% if current_user.role in ['superadmin', 'admin_rs'] %}
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
-      <h2 class="text-lg font-semibold mb-3">User Terbaru</h2>
-      <table class="w-full text-sm border text-center">
-        <thead class="bg-gray-100 dark:bg-gray-700">
-          <tr>
-            <th class="p-2 border">ID</th>
-            <th class="p-2 border">Email</th>
-            <th class="p-2 border">Nama</th>
-            <th class="p-2 border">Role</th>
-            {% if current_user.role == 'admin_rs' %}
-            <th class="p-2 border">RS</th>
-            {% endif %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for user in users %}
-          <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
-            <td class="p-2 border">{{ user.id }}</td>
-            <td class="p-2 border">{{ user.email }}</td>
-            <td class="p-2 border">{{ user.name }}</td>
-            <td class="p-2 border">{{ user.role }}</td>
-            {% if current_user.role == 'admin_rs' %}
-            <td class="p-2 border">{{ user.hospital.nama if user.hospital else '-' }}</td>
-            {% endif %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Statistik Klaim -->
-  {% else %}
-  <!-- Stats Cards Row -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-6">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
-      <div class="text-sm text-gray-500 dark:text-gray-400">Total klaim bulan ini</div>
-      <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_claims_bulan_ini or "1.250" }}</div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
-      <div class="text-sm text-gray-500 dark:text-gray-400">Klaim resmi INA-CBGs</div>
-      <div class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ klaim_resmi or "9,85 M" }}</div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
-      <div class="text-sm text-gray-500 dark:text-gray-400">Gap estimasi</div>
-      <div class="text-2xl font-bold text-green-600">+Rp {{ gap_estimasi or "1,07 M" }}</div>
-      <div class="text-xs text-gray-500 dark:text-gray-400">(+10,8%)</div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
-      <div class="text-sm text-gray-500 dark:text-gray-400">Ungroupable</div>
-      <div class="text-2xl font-bold text-yellow-500">{{ ungroupable or "10%" }}</div>
-    </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 text-center">
-      <div class="text-sm text-gray-500 dark:text-gray-400">Mismatch</div>
-      <div class="text-2xl font-bold text-red-500">{{ mismatch or "18%" }}</div>
-    </div>
-  </div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-    <!-- Donut Chart -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Distribusi Klaim</h2>
-      <div class="h-64">
-        <canvas id="donutChart"></canvas>
+<div class="min-h-screen">
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <!-- Header Section -->
+    <div class="mb-8">
+      <div class="flex items-center space-x-2 mb-3">
+        <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        {% if current_user.role in ['superadmin', 'admin_rs'] %}
+          <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Dashboard Users</h2>
+        {% else %}
+          <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Dashboard Klaim</h2>
+        {% endif %}
       </div>
-    </div>
 
-    <!-- Bar Chart -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Top 5 Diagnosis/Tindakan</h2>
-      <div class="h-64">
-        <canvas id="barChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Line Chart -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Trend Mismatch Bulanan</h2>
-      <div class="h-64">
-        <canvas id="lineChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
-      <h2 class="text-lg font-semibold mb-3">Statistik Klaim</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-green-100 text-green-800 p-4 rounded-lg shadow">
-          <h3 class="text-sm font-medium">Total Klaim</h3>
-          <p class="text-2xl font-bold">{{ total_claims }}</p>
-        </div>
-        <div class="bg-blue-100 text-blue-800 p-4 rounded-lg shadow">
-          <h3 class="text-sm font-medium">Klaim Final</h3>
-          <p class="text-2xl font-bold">{{ final_claims }}</p>
-        </div>
-        <div class="bg-yellow-100 text-yellow-800 p-4 rounded-lg shadow">
-          <h3 class="text-sm font-medium">Klaim Draft</h3>
-          <p class="text-2xl font-bold">{{ draft_claims }}</p>
-        </div>
-      </div>
-    </div>
-    <!-- Daftar Klaim Draft -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
-      <h2 class="text-lg font-semibold mb-3">Klaim Draft</h2>
-      <div class="space-y-2">
-        <table class="w-full text-sm border text-center">
-          <thead class="bg-gray-100 dark:bg-gray-700">
-            <tr>
-              <th class="p-2 border">ID</th>
-              <th class="p-2 border">Pasien</th>
-              <th class="p-2 border">Status</th>
-              <th class="p-2 border">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for claim in claims %}
-              {% if claim and claim.status == 'draft' %}
-                  <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
-                    <td class="p-2 border">{{ claim.id }}</td>
-                    <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
-                    <td class="p-2 border">
-                      <span class="px-2 py-1 bg-yellow-200 text-yellow-800 rounded text-xs">Draft</span>
-                    </td>
-                    <td class="p-2 border text-center">
-                      {% if user and user.role in ['doctor', 'coder'] %}
-                        <a href="/claims/{{ claim.id }}/edit" 
-                        class="text-blue-600 hover:underline">Edit</a>
-                      {% endif %}
-                      {% if user and user.role == 'verifikator' %}
-                        <a href="/claims/{{ claim.id }}/edit" 
-                        class="text-blue-600 hover:underline">Review</a>
-                      {% endif %}
-                    </td>
-                  </tr>
-              {% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
-        {% if not claims or (claims and claims|selectattr("status", "equalto", "draft")|list|length == 0) %}
-          <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim draft.</p>
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap gap-3 mt-6">
+        {% if current_user.role == 'superadmin' %}
+          <a href="/hospitals" 
+             class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-all flex items-center gap-2">
+            🏥 List Semua RS
+          </a>
+          <a href="/users" 
+             class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-all flex items-center gap-2">
+            👥 List Semua Users
+          </a>
+        {% else %}
+          {% if current_user.role == 'admin_rs' %}
+            <a href="/users" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-all flex items-center gap-2">
+              👥 List Semua Users
+            </a>
+          {% endif %}
+          {% if current_user.role in ['doctor', 'coder', 'costing', 'validator', 'manajemen'] %}
+            <a href="/patients?flow=claim" 
+               class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5">
+              + Klaim Baru
+            </a>
+            <a href="/patients" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+              Pasien
+            </a>
+            <a href="/medical-records" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Rekam Medis
+            </a>
+            <a href="/visits" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Kunjungan
+            </a>
+            <a href="/claims" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Klaim
+            </a>
+            <a href="/claims/export" 
+               class="px-5 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              Ekspor Klaim
+            </a>
+          {% endif %}
         {% endif %}
       </div>
     </div>
-    <!-- Daftar Klaim Final -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mt-6">
-      <h2 class="text-lg font-semibold mb-3">Klaim Final</h2>
-      <table class="w-full text-sm border text-center">
-        <thead class="bg-gray-100 dark:bg-gray-700">
-          <tr>
-            <th class="p-2 border">ID</th>
-            <th class="p-2 border">Pasien</th>
-            <th class="p-2 border">Dokter</th>
-            <th class="p-2 border">Status</th>
-            <th class="p-2 border">Tanggal</th>
-            <th class="p-2 border">Lihat Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for claim in claims %}
-            {% if claim and claim.status == 'final' %}
-              <tr class="odd:bg-gray-100 dark:odd:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600">
-                <td class="p-2 border">{{ claim.id }}</td>
-                <td class="p-2 border">{{ claim.patient.nama if claim.patient else '-' }}</td>
-                <td class="p-2 border">{{ claim.doctor_name or '-' }}</td>
-                <td class="p-2 border">
-                  <span class="px-2 py-1 bg-green-200 text-green-800 rounded text-xs">Final</span>
-                </td>
-                <td class="p-2 border">{{ claim.created_at.strftime("%Y-%m-%d") }}</td>
-                <td class="p-2 border text-center">
-                  <a href="/claims/{{ claim.id }}" 
-                    class="text-blue-600 hover:underline">Detail</a>
-                </td>
+
+    <!-- User List for Admin -->
+    {% if current_user.role in ['superadmin', 'admin_rs'] %}
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+          <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+          User Terbaru
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-700">
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">ID</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Email</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Nama</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Role</th>
+                {% if current_user.role == 'admin_rs' %}
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">RS</th>
+                {% endif %}
               </tr>
-            {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-      {% if not claims or (claims and claims|selectattr("status", "equalto", "final")|list|length == 0) %}
-        <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim final.</p>
-      {% endif %}
-    </div>
-  {% endif %}
+            </thead>
+            <tbody>
+              {% for user in users %}
+              <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">{{ user.id }}</td>
+                <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ user.email }}</td>
+                <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">{{ user.name }}</td>
+                <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">{{ user.role }}</td>
+                {% if current_user.role == 'admin_rs' %}
+                <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">{{ user.hospital.nama if user.hospital else '-' }}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    {% else %}
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-blue-700/50">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Total klaim bulan ini</p>
+          <p class="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-1">{{ total_claims_bulan_ini or "1,250" }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-emerald-700/50">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Klaim resmi INA-CBGs</p>
+          <p class="text-3xl font-bold text-emerald-900 dark:text-emerald-100 mb-1">Rp {{ klaim_resmi or "9,85 M" }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/30 dark:to-teal-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-teal-700/50">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Gap estimasi</p>
+          <p class="text-3xl font-bold text-teal-900 dark:text-teal-100 mb-1">+Rp {{ gap_estimasi or "1,07 M" }}</p>
+          <p class="text-sm text-teal-600 dark:text-teal-400 font-semibold flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+            (+10,8%)
+          </p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-amber-700/50">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Ungroupable</p>
+          <p class="text-3xl font-bold text-amber-900 dark:text-amber-100 mb-1">{{ ungroupable or "10%" }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/30 dark:to-rose-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-rose-700/50">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Mismatch</p>
+          <p class="text-3xl font-bold text-rose-900 dark:text-rose-100 mb-1">{{ mismatch or "18%" }}</p>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+        <div class="lg:col-span-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+          <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+            <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+            Distribusi Klaim
+          </h3>
+          <div class="h-64">
+            <canvas id="donutChart"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+          <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+            <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+            Top 5 Diagnosis/Tindakan
+          </h3>
+          <div class="h-64">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistik Klaim -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+          <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+          Statistik Klaim
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-6 border border-emerald-200/50 dark:border-emerald-700/50">
+            <p class="text-sm text-emerald-700 dark:text-emerald-300 mb-2 font-medium">Total Klaim</p>
+            <p class="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{{ total_claims }}</p>
+          </div>
+          <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-6 border border-blue-200/50 dark:border-blue-700/50">
+            <p class="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">Klaim Final</p>
+            <p class="text-4xl font-bold text-blue-900 dark:text-blue-100">{{ final_claims }}</p>
+          </div>
+          <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-6 border border-amber-200/50 dark:border-amber-700/50">
+            <p class="text-sm text-amber-700 dark:text-amber-300 mb-2 font-medium">Klaim Draft</p>
+            <p class="text-4xl font-bold text-amber-900 dark:text-amber-100">{{ draft_claims }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Klaim Draft Table -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+          <div class="w-1 h-6 bg-amber-500 rounded-full mr-3"></div>
+          Klaim Draft
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-700">
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Pasien</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-32">Status</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-32">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for claim in claims %}
+                {% if claim and claim.status == 'draft' %}
+                  <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">{{ claim.id }}</td>
+                    <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ claim.patient.nama if claim.patient else '-' }}</td>
+                    <td class="py-4 px-4 text-center">
+                      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        Draft
+                      </span>
+                    </td>
+                    <td class="py-4 px-4 text-center">
+                      {% if user and user.role in ['doctor', 'coder'] %}
+                        <a href="/claims/{{ claim.id }}/edit" 
+                           class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          </svg>
+                          <span class="group-hover:underline">Edit</span>
+                        </a>
+                      {% endif %}
+                      {% if user and user.role == 'verifikator' %}
+                        <a href="/claims/{{ claim.id }}/edit" 
+                           class="inline-flex items-center justify-center gap-1 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 text-sm font-medium group">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                          </svg>
+                          <span class="group-hover:underline">Review</span>
+                        </a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+          {% if not claims or (claims and claims|selectattr("status", "equalto", "draft")|list|length == 0) %}
+            <div class="text-center py-12">
+              <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim draft.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Klaim Final Table -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+          <div class="w-1 h-6 bg-emerald-500 rounded-full mr-3"></div>
+          Klaim Final
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-700">
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Pasien</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-28">Status</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-36">Tanggal</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-32">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for claim in claims %}
+                {% if claim and claim.status == 'final' %}
+                  <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">{{ claim.id }}</td>
+                    <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ claim.patient.nama if claim.patient else '-' }}</td>
+                    <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">{{ claim.doctor_name or '-' }}</td>
+                    <td class="py-4 px-4 text-center">
+                      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                        Final
+                      </span>
+                    </td>
+                    <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400 text-center">{{ claim.created_at.strftime("%Y-%m-%d") }}</td>
+                    <td class="py-4 px-4 text-center">
+                      <a href="/claims/{{ claim.id }}" 
+                         class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        <span class="group-hover:underline">Detail</span>
+                      </a>
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+          {% if not claims or (claims and claims|selectattr("status", "equalto", "final")|list|length == 0) %}
+            <div class="text-center py-12">
+              <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim final.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </main>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
-  // ============ Fungsi Helper Warna ============
   function getChartColors() {
     const isDark = document.documentElement.classList.contains('dark');
     return {
-      textColor: isDark ? '#f9fafb' : '#1f2937',          // abu terang vs abu gelap
+      textColor: isDark ? '#f9fafb' : '#1f2937',
       gridColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
     };
   }
@@ -273,7 +345,6 @@
     chart.update();
   }
 
-  // ============ INIT CHARTS ============
   const { textColor, gridColor } = getChartColors();
 
   const donutChart = new Chart(document.getElementById('donutChart'), {
@@ -281,8 +352,8 @@
     data: {
       labels: ['Match', 'Mismatch', 'Ungroupable'],
       datasets: [{
-        data: [72, 15, 13],
-        backgroundColor: ['#3b82f6', '#f59e0b', '#8b5cf6'],
+        data: [72, 18, 10],
+        backgroundColor: ['#3b82f6', '#8b5cf6', '#f59e0b'],
         borderWidth: 0
       }]
     },
@@ -291,8 +362,12 @@
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'right',
-          labels: { color: textColor }
+          position: 'bottom',
+          labels: { 
+            color: textColor,
+            padding: 15,
+            font: { size: 12 }
+          }
         }
       }
     }
@@ -304,65 +379,34 @@
       labels: ['Sepsis', 'Pneumonia', 'DM komplikasi', 'Stroke', 'Appendisitis'],
       datasets: [{
         label: 'Jumlah Kasus',
-        data: [43, 22, 23, 22, 13],
-        backgroundColor: ['#8b5cf6','#f59e0b','#3b82f6','#3b82f6','#f59e0b'],
-        borderRadius: 6
+        data: [45, 32, 38, 28, 18],
+        backgroundColor: ['#8b5cf6','#f59e0b','#3b82f6','#60a5fa','#fbbf24'],
+        borderRadius: 8
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       indexAxis: 'y',
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: textColor }, grid: { color: gridColor }},
-        y: { ticks: { color: textColor }, grid: { display: false }}
-      }
-    }
-  });
-
-  const lineChart = new Chart(document.getElementById('lineChart'), {
-    type: 'line',
-    data: {
-      labels: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'],
-      datasets: [
-        {
-          label: 'Ungroupable RS',
-          data: [12, 11, 13, 10, 9, 11, 10, 12, 11, 10, 8, 10],
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          fill: true,
-          tension: 0.4
-        },
-        {
-          label: 'Mismatch RS',
-          data: [20, 19, 21, 18, 17, 19, 18, 20, 19, 18, 14, 18],
-          borderColor: '#ef4444',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          fill: true,
-          tension: 0.4
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { color: textColor, usePointStyle: true } }
+      plugins: { 
+        legend: { display: false }
       },
       scales: {
-        x: { ticks: { color: textColor }, grid: { color: gridColor }},
-        y: { ticks: { color: textColor }, grid: { color: gridColor }}
+        x: { 
+          ticks: { color: textColor }, 
+          grid: { color: gridColor }
+        },
+        y: { 
+          ticks: { color: textColor }, 
+          grid: { display: false }
+        }
       }
     }
   });
 
-  // ============ OBSERVE MODE CHANGE ============
-  // Perhatikan perubahan class="dark" di <html>
   const observer = new MutationObserver(() => {
     applyColors(donutChart);
     applyColors(barChart);
-    applyColors(lineChart);
   });
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 </script>

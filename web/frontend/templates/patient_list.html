@@ -1,124 +1,218 @@
 {% extends "base.html" %}
+{% block title %}Daftar Pasien{% endblock %}
+
+{% block head %}
+  <meta name="description" content="Daftar Pasien">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+{% endblock %}
+
 {% block content %}
-<div class="p-6">
-    <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Daftar Pasien</h1>
-        <a href="/patients/export?search={{ search or '' }}&gender={{ gender or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}"
-            class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow"> 📤 Export Pasien (Excel)
-        </a>
-    </div>
+<div class="min-h-screen">
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    
+    <!-- Header Section -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="flex items-center space-x-2 mb-2">
+            <svg class="w-7 h-7 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Daftar Pasien</h1>
+          </div>
+        </div>
 
-    <!-- Form Cari -->
-    <div class="mb-4">
-        <form method="get" action="/patients" class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <input type="text" name="search" placeholder="Nama / No. KTP / No. RM / No. BPJS"
-                   value="{{ request.get('search', '') }}" 
-                   class="border rounded px-3 py-2 w-full bg-white dark:bg-gray-800 
-                          border-gray-300 dark:border-gray-600 
-                          text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400"/>
-            <div class="flex space-x-2">
-                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Cari</button>
-                <a href="/patients" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">Reset</a>
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          {% if user and user.role == 'doctor' %}
+          <a href="/patients/add" 
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Tambah Pasien
+          </a>
+          {% endif %}
+          <a href="/patients/export?search={{ search or '' }}&gender={{ gender or '' }}&start_date={{ start_date or '' }}&end_date={{ end_date or '' }}" 
+             class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all transform hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export Pasien
+          </a>
+        </div>
+      </div>
+
+      <!-- Search & Filter Form -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          Pencarian
+        </h3>
+
+        <form method="get" action="/patients" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Search Fields -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cari Pasien</label>
+            <div class="relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input type="text" name="search" value="{{ request.get('search', '') }}" placeholder="Nama / No. KTP / No. RM / No. BPJS"
+                     class="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all">
             </div>
-        </form>
-    </div>
-  
-    <!-- Tabel Pasien -->
-    <div class="overflow-x-auto">
-        <table class="min-w-full border-collapse bg-white dark:bg-gray-800 shadow rounded-lg">
-            <thead class="bg-gray-200 dark:bg-gray-700">
-                <tr>
-                    <th class="px-4 py-2 text-left">No. RM</th>
-                    <th class="px-4 py-2 text-left">No. KTP</th>
-                    <th class="px-4 py-2 text-left">No. BPJS</th>
-                    <th class="px-4 py-2 text-left">Nama RS</th>
-                    <th class="px-4 py-2 text-left">ID Eksternal</th>
-                    <th class="px-4 py-2 text-left">Sumber</th>
-                    <th class="px-4 py-2 text-left">Nama</th>
-                    <th class="px-4 py-2 text-left">Tanggal Lahir</th>
-                    <th class="px-4 py-2 text-left">Jenis Kelamin</th>
-                    <th class="px-4 py-2 text-left">Alamat</th>
-                    <th class="px-4 py-2 text-left">Email</th>
-                    <th class="px-4 py-2 text-left">Nomor HP</th>
-                    <th class="px-4 py-2 text-left">Dibuat</th>
-                    <th class="px-4 py-2 text-center">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in patients %}
-                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
-                    <td class="px-4 py-2">{{ p.no_rm or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.no_ktp or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.no_bpjs or '-' }}</td>
-                    <td class="px-4 py-2">{{ user.hospital.nama or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.eksternal_id or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.source or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.nama }}</td>
-                    <td class="px-4 py-2">{{ p.tanggal_lahir or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.jenis_kelamin or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.alamat or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.email or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.no_hp or '-' }}</td>
-                    <td class="px-4 py-2">{{ p.created_at or '-' }}</td>
-                    <td class="px-4 py-2 text-center">
-                    {% if flow == "claim" %}
-                        <!-- Mode wizard klaim -->
-                        <a href="/patients/{{ p.id }}/visits?flow=claim"
-                        class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
-                        Pilih
-                        </a>
-                    {% else %}
-                        {% if user and user.role == 'doctor' %}
-                        <div class="flex gap-2 justify-center">
-                        <a href="/claims?patient_name={{ p.nama | urlencode }}"
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded whitespace-nowrap">
-                            📑 View Klaim
-                        </a>
-                        <a href="/patients/edit/{{ p.id }}"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded">Edit</a>
-                        <form method="post" action="/patients/delete/{{ p.id }}" onsubmit="return confirm('Yakin ingin menghapus pasien ini?');" class="inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded">Hapus</button>
-                        </form>
-                        {% endif %}
-                    {% endif %}
-                    </td>
+          </div>
 
-                </tr>
-                {% endfor %}
-                {% if not patients %}
-                <tr>
-                    <td colspan="15" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
-                        Tidak ada data pasien
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Tambah Pasien -->
-    <div class="mt-6 flex justify-between items-center">
-        {% if user and user.role == 'doctor' %}
-        <a href="/patients/add" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded shadow transition">
-            ➕ Tambah Pasien
-        </a>
-        {% endif %}
-        <form action="/import" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
-            <input type="file" name="file"
-                   class="border rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 
-                          border-gray-300 dark:border-gray-600"/>
-            <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded shadow transition">
-                📥 Import
+          <!-- Action Buttons -->
+          <div class="flex items-end gap-2">
+            <button type="submit" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              Cari
             </button>
+            <a href="/patients" class="px-4 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+              Reset
+            </a>
+          </div>
         </form>
+      </div>
     </div>
 
-    <div class="mt-6">
-        <a href="{{ url_for('dashboard') }}" 
-           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded shadow transition">
-          ⬅ Kembali ke Dashboard
-        </a>
+    <!-- Table Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. RM</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. KTP</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. BPJS</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama RS</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">ID Eksternal</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Sumber</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tanggal Lahir</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Jenis Kelamin</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Alamat</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Email</th>
+              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nomor HP</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Dibuat</th>
+              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-52">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in patients %}
+            <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_rm or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_ktp or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_bpjs or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ user.hospital.nama or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.eksternal_id or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.source or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ p.nama }}</td>
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400">{{ p.tanggal_lahir or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.jenis_kelamin or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.alamat or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.email or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_hp or '-' }}</td>
+              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ p.created_at or '-' }}</td>
+              <td class="py-4 px-3 text-center">
+                {% if flow == "claim" %}
+                  <!-- Mode wizard klaim -->
+                  <a href="/patients/{{ p.id }}/visits?flow=claim"
+                     class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Pilih
+                  </a>
+                {% else %}
+                  {% if user and user.role == 'doctor' %}
+                  <div class="flex gap-2 justify-center">
+                    <a href="/claims?patient_name={{ p.nama | urlencode }}"
+                       class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      View Klaim
+                    </a>
+                    <a href="/patients/edit/{{ p.id }}"
+                       class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                      Edit
+                    </a>
+                    <form method="post" action="/patients/delete/{{ p.id }}" onsubmit="return confirm('Yakin ingin menghapus pasien ini?');" class="inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button type="submit" 
+                              class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Hapus
+                      </button>
+                    </form>
+                  </div>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not patients %}
+            <tr>
+              <td colspan="14" class="py-12">
+                <div class="text-center">
+                  <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                  </svg>
+                  <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada data pasien ditemukan</p>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- Import Section -->
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+        <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+        </svg>
+        Import Data Pasien
+      </h3>
+      <form action="/import" method="post" enctype="multipart/form-data" class="flex flex-col sm:flex-row gap-3">
+        <div class="flex-1">
+          <input type="file" name="file"
+                 class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:text-gray-200 transition-all"/>
+        </div>
+        <button type="submit" 
+                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          Import Data
+        </button>
+      </form>
+    </div>
+
+    <!-- Back Button -->
+    <div class="mt-6">
+      <a href="{{ url_for('dashboard') }}" 
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Kembali ke Dashboard
+      </a>
+    </div>
+
+  </main>
 </div>
 {% endblock %}
