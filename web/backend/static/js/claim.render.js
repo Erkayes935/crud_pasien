@@ -38,10 +38,61 @@
       // Render to specific target based on tab and type
       if (tab === "admission") {
         renderTable(`${type}-admission`, mappedRows, type, tab);
-      } else if (tab === "discharge") {
-        renderTable(`${type}-discharge`, mappedRows, type, tab);
+        return;
       }
-      return;
+
+      if (tab === "discharge") {
+        renderTable(`${type}-discharge`, mappedRows, type, tab);
+        return;
+      }
+
+      if (String(tab).startsWith("daily")) {
+        const container = document.getElementById("daily-accordion");
+        if (container && !document.getElementById(`section-${tab}`)) {
+          container.insertAdjacentHTML("beforeend", `
+            <details id="section-${tab}" class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Diagnosis</span>
+                <span id="count-diagnosis-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border" id="diagnosis-${tab}">
+                  <tbody id="diagnosis-${tab}"></tbody>
+                </table>
+              </div>
+            </details>
+
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komorbid</span>
+                <span id="count-komorbid-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border" id="komorbid-${tab}">
+                  <tbody id="komorbid-${tab}"></tbody>
+                </table>
+              </div>
+            </details>
+
+            <details class="border rounded">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komplikasi</span>
+                <span id="count-komplikasi-${tab}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border" id="komplikasi-${tab}">
+                  <tbody id="komplikasi-${tab}"></tbody>
+                </table>
+              </div>
+            </details>
+          `);
+        }
+
+        renderTable(`diagnosis-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
+        renderTable(`komorbid-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
+        renderTable(`komplikasi-${tab}`, mappedRows.filter(r => r.kategori), type, tab);
+        return;
+      }
     }
 
     // 🔥 Legacy support untuk format lama
