@@ -71,49 +71,82 @@
     }
   }
 
-  // ==================== SAVE DRAFT UNIVERSAL ====================
-  async function saveDraft(claimId) {
+  // ==================== SAVE DRAFT ====================
+  // 🔥 Helper untuk ambil form dan state Alpine sebagai dict
+  function get_form_as_dict() {
+    const form = document.getElementById('claimForm');
+    if (!form) {
+      console.error("❌ Form claimForm tidak ditemukan");
+      return {};
+    }
+
+    const formData = new FormData(form);
+    const result = {};
+
+    // Konversi field form (kecuali csrf)
+    for (let [key, value] of formData.entries()) {
+      if (key === 'csrf_token') continue;
+      result[key] = value;
+    }
+
+    // Tambahkan state Alpine (simulasi, summary)
+    const claimRoot = document.getElementById("claimRoot");
+    if (claimRoot && typeof Alpine !== 'undefined') {
+      try {
+        const state = Alpine.$data(claimRoot);
+        if (state?.simulasi) result.simulasi = JSON.stringify(state.simulasi);
+        if (window.claimState?.summary) result.summary = JSON.stringify(window.claimState.summary);
+      } catch (e) {
+        console.warn("⚠️ Gagal ambil state Alpine:", e);
+      }
+    }
+
+    console.log("📋 Form extracted:", result);
+    return result;
+  }
+
+  // 🔥 Fungsi utama untuk menyimpan draft
+  async function saveDraft(claimId, data = null) {
     try {
-      const root = document.getElementById("claimRoot");
-      const state = Alpine.$data(root);
-      const csrfToken = document.querySelector("input[name='csrf_token']")?.value || "";
+      // Ambil token CSRF dari form / meta
+      const csrfToken =
+        document.querySelector('input[name="csrf_token"]')?.value ||
+        document.querySelector('meta[name="csrf-token"]')?.content ||
+        document.querySelector('[name="csrf_token"]')?.value;
 
-      // Buat formData (biar cocok dengan Form() di backend)
-      const formData = new FormData();
-      formData.append("csrf_token", csrfToken);
-      formData.append("simulasi", JSON.stringify(state.simulasi || {}));
-      formData.append("summary", JSON.stringify(window.claimState?.summary || {}));
-      formData.append("ai_recommendations", JSON.stringify(state.ai_recommendations || {}));
-      formData.append("stage", state.tab || "admission");
+      const headers = { "Content-Type": "application/json" };
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
-      console.log("📤 Sending draft as FormData:", Object.fromEntries(formData));
+      // Ambil data dari form kalau belum dikasih parameter
+      const payload = data || get_form_as_dict();
+
+      console.log("📦 Save draft payload:", payload);
 
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        credentials: "include", // biar cookie session ikut
-        body: formData,
+        headers: headers,
+        credentials: "include",
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Gagal simpan draft (HTTP ${res.status}): ${text}`);
+        const errorData = await res.json().catch(() => ({}));
+        console.error("❌ Save draft error:", errorData);
+        throw new Error(`HTTP ${res.status}: ${errorData.detail || 'Gagal menyimpan draft'}`);
       }
 
-      // Kalau backend redirect → res.redirected true
-      if (res.redirected) {
-        console.log("🔁 Redirected ke:", res.url);
-        window.location.href = res.url; // optional reload
-        return;
-      }
-
+      const result = await res.json();
+      console.log("✅ Draft saved:", result);
       showToast("💾 Draft berhasil disimpan");
-      console.log("✅ Draft saved successfully");
+      return result;
 
     } catch (err) {
-      console.error("❌ Error saat menyimpan draft:", err);
+      console.error("❌ Error save draft:", err);
       showToast(`❌ Gagal menyimpan draft: ${err.message}`, true);
     }
   }
+
+  // Helper untuk notifikasi (biarkan yang ini tetap)
   function showToast(msg, isError = false) {
     const div = document.createElement("div");
     div.textContent = msg;
@@ -128,7 +161,10 @@
     document.body.appendChild(div);
     setTimeout(() => div.remove(), 2500);
   }
+
+  // ✅ Export ke global window
   window.saveDraft = saveDraft;
+  window.get_form_as_dict = get_form_as_dict;
 
   async function loadSimulations(claimId) {
     try {

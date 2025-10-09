@@ -191,17 +191,18 @@ async def update_claim_draft(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
-    csrf_token: str = Form(...),
-    simulasi: str = Form(None),
-    summary: str = Form(None),
-    ai_recommendations: str = Form(None),
-    stage: str = Form("admission"),
+    data: dict = Body(...),
 ):
     """
-    Save draft klaim (dokter) dengan data simulasi & summary dari form.
-    Format pengiriman: multipart/form-data (bukan JSON)
+    Save draft klaim (dokter) dengan data simulasi & summary dari JSON.
+    Format pengiriman: application/json
     """
     try:
+        simulasi = data.get("simulasi")
+        summary = data.get("summary")
+        ai_recommendations = data.get("ai_recommendations")
+        stage = data.get("stage", "admission")
+
         payload = {
             "simulasi": simulasi,
             "summary": summary,
@@ -212,8 +213,7 @@ async def update_claim_draft(
         # Simpan ke database
         core.update_claim_draft_service(db, claim_id, user, payload)
 
-        flash(request, "✅ Draft klaim berhasil diperbarui", "success")
-        return RedirectResponse(f"/claims/{claim_id}/edit", status_code=303)
+        return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
