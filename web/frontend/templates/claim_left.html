@@ -31,6 +31,7 @@
             </div>
           </div>
 
+
             <!-- Tabs -->
           <div class="tabs flex space-x-6 border-b mb-4">
             <button type="button" class="px-4 py-2" 
@@ -283,7 +284,7 @@
           </div>
 
             <!-- Hidden inputs -->
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" id="csrfToken" value="{{ csrf_token }}">
             <input type="hidden" name="simulasi" id="simulasiField">
             <input type="hidden" name="summary" id="summaryField">
 
@@ -293,7 +294,7 @@
               class="bg-yellow-600 text-white px-6 py-2 rounded font-semibold">
               Recalculate
             </button>
-            <button type="submit"
+            <button type="button" onclick="saveDraft('{{ record.id }}')"
             class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
               Save Draft
             </button>
