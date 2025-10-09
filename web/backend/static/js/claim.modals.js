@@ -195,23 +195,52 @@
     }
   }
 
+  function renderNotificationBox(section, notifications = {}) {
+    const colorMap = {
+      success: "bg-green-100 border-green-500 text-green-800",
+      warning: "bg-yellow-100 border-yellow-500 text-yellow-800",
+      error: "bg-red-100 border-red-500 text-red-800",
+      info: "bg-blue-100 border-blue-500 text-blue-800",
+      default: "bg-gray-100 border-gray-400 text-gray-700"
+    };
+
+    const iconMap = {
+      success: "✅",
+      warning: "⚠️",
+      error: "❌",
+      info: "ℹ️",
+      default: "🔔"
+    };
+
+    // Ambil notifikasi per section
+    const note = notifications?.[section] || {};
+    const status = note.status || "default";
+    const msg = note.message || `Belum ada notifikasi untuk bagian ${section.toUpperCase()}.`;
+    const cls = colorMap[status] || colorMap.default;
+    const icon = iconMap[status] || iconMap.default;
+
+    return `
+      <div class="notification-box ${cls} border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+        <span class="text-lg">${icon}</span>
+        <div>
+          <strong>Notifikasi AI (${section.toUpperCase()})</strong>
+          <div class="text-xs leading-snug mt-0.5">${msg}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 🔹 Fungsi render utama modal detail diagnosis
   function renderDiagnosisDetail(it) {
-    // 🔥 Parse data from /analyze_diagnosis response format (nested structure)
     console.log("📋 renderDiagnosisDetail received data:", it);
-    console.log("📋 it.klinis:", it.klinis);
-    console.log("📋 it.icd10:", it.icd10);
-    console.log("📋 it.tindakan:", it.tindakan);
-    
-    // Fallback for diagnosisId - use available id fields
-    const diagnosisId = it.id || it.diagnosis_id || it.itemId || Date.now();
-    console.log("📋 Using diagnosisId:", diagnosisId);
-    
-    // Handle nested structure from core_engine - detailed parsing
+
+    // === 1️⃣ Parsing data dasar ===
+    const diagnosisId = it.id || it.diagnosis_id || Date.now();
     const klinis = {
       justifikasi: it.klinis?.justifikasi || it.justifikasi || "-",
-      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "-", 
+      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "-",
       syarat_klinis: it.klinis?.syarat_klinis || it.syarat_klinis || "-",
-      status: it.klinis?.status || it.status || "default"
+      status: it.klinis?.status || it.status || "default",
     };
 
     const icd10 = {
@@ -220,70 +249,65 @@
       kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "-",
       z_code: it.icd10?.z_code || it.z_code || "-",
       kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "-",
-      status_icd: it.icd10?.status_icd || it.status_icd || "default"
+      status_icd: it.icd10?.status_icd || it.status_icd || "default",
     };
-    
+
     const tindakan = it.tindakan || [];
     const rawat = it.rawat || it.rawat_inap || {};
     const faskes = it.faskes || {};
     const rujukan = it.rujukan || {};
     const inaCbg = it.inaCbg || it.ina_cbg || {};
-    
-    console.log("📋 Parsed klinis:", klinis);
-    console.log("📋 Parsed icd10:", icd10);
-    console.log("📋 Parsed tindakan count:", tindakan.length);
-    
-    // 🔥 Debug specific field values
-    console.log("📋 klinis.justifikasi:", klinis.justifikasi);
-    console.log("📋 klinis.bukti_klinis:", klinis.bukti_klinis);
-    console.log("📋 icd10.kode_icd:", icd10.kode_icd);
-    console.log("📋 rawat.indikasi:", rawat.indikasi);
+    const notifications = it.notifications || {}; // 🔔 notifikasi per section dari core_engine
 
+    console.log("📋 Parsed notifications:", notifications);
+
+    // === 2️⃣ Helper: render box per field ===
     const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
       let colorClass = "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100";
       if (status === "valid") colorClass = "bg-green-600 text-white";
       if (status === "invalid") colorClass = "bg-red-600 text-white";
-      
+
       const safeValue = value || "-";
-      console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
-      
-      // Check if field has regulation based on field mapping
       const hasRegulation = checkFieldHasRegulation(fieldName);
-      
+
       let content = safeValue;
       if (hasRegulation && diagnosisId && safeValue !== "-") {
-        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
-                         title="📋 Klik untuk melihat regulasi ${fieldName}" 
-                         data-field="${fieldName}"
-                         data-diagnosis-id="${diagnosisId}"
-                         onclick="openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
+        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+                        title="📋 Klik untuk melihat regulasi ${fieldName}"
+                        data-field="${fieldName}"
+                        data-diagnosis-id="${diagnosisId}"
+                        onclick="openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
       }
-      
-      const boxHtml = `
+
+      return `
         <div class="grid grid-cols-2">
           <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
           <div class="${colorClass} px-3 py-2">${content}</div>
         </div>
       `;
-      console.log(`📋 renderBox(${label}) HTML:`, boxHtml);
-      return boxHtml;
     };
 
+    // === 3️⃣ Render keseluruhan modal ===
     return `
       <div class="space-y-6 text-sm">
+
+        <!-- 🩺 KLINIS -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
-            ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
-            ${(console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis), renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
+            ${renderNotificationBox("klinis", notifications)}
+            ${renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi")}
+            ${renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis")}
+            ${renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis")}
           </div>
         </section>
 
+        <!-- 🧾 ICD-10 -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
-            ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
+            ${renderNotificationBox("icd", notifications)}
+            ${renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd")}
             ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
             ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
             ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
@@ -291,54 +315,67 @@
           </div>
         </section>
 
-        <!-- i-DRG Section - PERBAIKAN: HAPUS CONTAINER NESTED -->
+        <!-- 📊 i-DRG -->
+        ${renderNotificationBox("idrg", notifications)}
         ${renderIdrgSection(it.idrg_diagnosis)}
 
+        <!-- ⚙️ TINDAKAN -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
           <div class="p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderNotificationBox("tindakan", notifications)}
             ${renderTindakan(tindakan)}
           </div>
         </section>
 
+        <!-- 🏥 RAWAT INAP -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderNotificationBox("rawat", notifications)}
             ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi")}
             ${renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria")}
             ${renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat")}
           </div>
         </section>
 
+        <!-- 🏢 FASKES -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">FASKES</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderNotificationBox("faskes", notifications)}
             ${renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat")}
             ${renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi_faskes")}
             ${renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi")}
           </div>
         </section>
 
+        <!-- 🔁 RUJUKAN -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderNotificationBox("rujukan", notifications)}
             ${renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan")}
             ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
             ${renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")}
           </div>
         </section>
 
+        <!-- 💰 INA-CBG -->
         <section class="rounded shadow overflow-hidden">
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">INA-CBG</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+            ${renderNotificationBox("inacbg", notifications)}
             ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
             ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
             ${renderBox("Tarif", inaCbg.tarif ? `Rp ${parseInt(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
           </div>
         </section>
+
       </div>
     `;
   }
+
 
   // Fungsi renderIdrgSection yang dioptimalkan (single dropdown)
 
@@ -604,98 +641,103 @@
   }
 
   async function openProcedureModal(procId, procedureName) {
-    const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    
-    // Get procedure name from DOM if not provided
-    if (!procedureName) {
-      const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
-      procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
-    }
-    
-    console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
+  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
-    try {
-      // 🔥 NEW: Request ke core_engine /analyze_procedure
-      console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
-      const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          claim_id: parseInt(claimId), 
-          procedure_name: procedureName,
-          rekam_medis: []
-        })
-      });
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const result = await res.json();
-      console.log("[RESP] /analyze_procedure", result);
-      
-      const d = result.data || result;
-      console.log("🧮 INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
-
-      const renderProcBox = (label, value, fieldName = null) => {
-        let safeValue = value || "-";
-        
-        // 🧮 Special handling untuk tarif INA-CBG
-        if (fieldName === "ina_cbg" && value && value !== "-") {
-          console.log("💰 Formatting tarif:", value, typeof value);
-          const numericValue = parseInt(value);
-          if (!isNaN(numericValue)) {
-            safeValue = `Rp ${numericValue.toLocaleString('id-ID')}`;
-          } else {
-            safeValue = value; // keep original if not numeric
-          }
-        }
-        
-        // Check if field has regulation
-        const hasRegulation = checkFieldHasRegulation(fieldName);
-        
-        let content = `<span class="text-white">${safeValue}</span>`;
-        if (hasRegulation && fieldName && safeValue !== "-") {
-          content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200" 
-                           title="📋 Klik untuk melihat regulasi ${fieldName}" 
-                           data-field="${fieldName}"
-                           data-procedure-id="${procId}"
-                           onclick="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
-        }
-        
-        return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
-                <div class="bg-gray-800 px-3 py-2 rounded text-white">${content}</div>`;
-      };
-
-      const content = `
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-lg font-bold">Detail Tindakan: ${procedureName}</h3>
-          <button type="button" onclick="closeNestedModal()"
-                  class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
-          ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
-          ${renderProcBox("Validitas", d.validitas, "validitas")}
-          ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
-          ${renderProcBox("INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
-          ${renderProcBox("Faskes", d.faskes, "faskes")}
-          ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
-          ${renderProcBox("Syarat Klinis", d.syarat_klinis, "syarat_klinis")}
-        </div>
-      `;
-
-      openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true });
-
-      // ✅ simpan reference supaya regulasi tahu asalnya
-      window.claimState = window.claimState || {};
-      window.claimState.currentProcedure = { id: procId };
-
-      // update tampilan deskripsi list tindakan (instant)
-      const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
-      const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
-      if (itemEl) itemEl.textContent = deskripsiGabungan;
-    } catch (err) {
-      console.error("Gagal load detail tindakan", err);
-    }
+  // Ambil nama tindakan dari DOM jika belum dikirim
+  if (!procedureName) {
+    const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
+    procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
   }
+
+  console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
+
+  try {
+    // 🔥 Request ke core_engine /analyze_procedure
+    console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
+    const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        claim_id: parseInt(claimId),
+        procedure_name: procedureName,
+        rekam_medis: []
+      })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const result = await res.json();
+    const d = result.data || result;
+
+    // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
+    const notifications = d.notifications || {
+      tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
+    };
+
+    console.log("📋 Notifications (procedure):", notifications);
+
+    const renderProcBox = (label, value, fieldName = null) => {
+      let safeValue = value || "-";
+      if (fieldName === "ina_cbg" && value && value !== "-") {
+        const numericValue = parseInt(value);
+        safeValue = !isNaN(numericValue)
+          ? `Rp ${numericValue.toLocaleString('id-ID')}`
+          : value;
+      }
+
+      const hasRegulation = checkFieldHasRegulation(fieldName);
+      let content = `<span class="text-white">${safeValue}</span>`;
+      if (hasRegulation && fieldName && safeValue !== "-") {
+        content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200"
+                         title="📋 Klik untuk melihat regulasi ${fieldName}"
+                         data-field="${fieldName}"
+                         data-procedure-id="${procId}"
+                         onclick="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+      }
+
+      return `
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded text-white">${content}</div>
+      `;
+    };
+
+    // 🔹 Tambahkan notifikasi di atas semua detail tindakan
+    const content = `
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold">Detail Tindakan: ${procedureName}</h3>
+        <button type="button" onclick="closeNestedModal()"
+                class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
+
+      ${renderNotificationBox("tindakan", notifications)}
+
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
+        ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
+        ${renderProcBox("Validitas", d.validitas, "validitas")}
+        ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
+        ${renderProcBox("INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+        ${renderProcBox("Faskes", d.faskes, "faskes")}
+        ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
+        ${renderProcBox("Syarat Klinis", d.syarat_klinis, "syarat_klinis")}
+      </div>
+    `;
+
+    openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true });
+
+    // Simpan referensi supaya regulasi tahu asalnya
+    window.claimState = window.claimState || {};
+    window.claimState.currentProcedure = { id: procId };
+
+    // Update deskripsi list tindakan (instan)
+    const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
+    const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
+    if (itemEl) itemEl.textContent = deskripsiGabungan;
+  } catch (err) {
+    console.error("❌ Gagal load detail tindakan:", err);
+    openModal("Error", `<div class='p-4 text-red-500'>Gagal memuat detail tindakan.<br>${err.message}</div>`);
+  }
+}
+
 
   function openManualDetailModal(it) {
     const dummy = {

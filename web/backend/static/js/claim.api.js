@@ -1,45 +1,64 @@
 // =============== Komunikasi ke Backend (fetch) ===============
 
-// =============== Komunikasi ke Backend (fetch) ===============
 (function () {
   // ============================================================
-  // 🔔 Universal Toast Function (popup auto-hide)
+  // 🔔 Universal Toast Function (popup auto-hide) - Enhanced Elegant Design
   // ============================================================
-  function showToast(message, isError = false, duration = 3000) {
+  function showToast(message, isError = false, duration = 4000) {
+    // Remove existing toast to prevent overlaps
     const existing = document.getElementById("global-toast");
     if (existing) existing.remove();
 
     const div = document.createElement("div");
     div.id = "global-toast";
     div.textContent = message;
+    div.setAttribute("role", "alert"); // Accessibility improvement
+    div.setAttribute("aria-live", "polite");
+
+    // Modern color palette (inspired by Tailwind CSS for elegance)
+    const bgColor = isError ? "#ef4444" : "#10b981"; // Red-500 / Green-500
+    const shadowColor = isError ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)";
 
     Object.assign(div.style, {
       position: "fixed",
-      bottom: "30px",
-      right: "30px",
-      background: isError ? "#dc2626" : "#16a34a",
-      color: "#fff",
-      padding: "12px 18px",
-      borderRadius: "8px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+      top: "20px", // Changed to top-right for modern feel (bottom-right alternative: bottom: "20px")
+      right: "20px",
+      background: `linear-gradient(135deg, ${bgColor} 0%, ${isError ? "#dc2626" : "#059669"} 100%)`, // Subtle gradient for depth
+      color: "#ffffff",
+      padding: "16px 20px", // Slightly more padding for breathing room
+      borderRadius: "12px", // Softer, more modern radius
+      boxShadow: `
+        0 20px 25px -5px ${shadowColor},
+        0 10px 10px -5px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.05) // Subtle inner glow
+      `,
       fontSize: "14px",
       fontWeight: "500",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif", // Modern system font stack
+      lineHeight: "1.4", // Better readability
+      maxWidth: "350px", // Prevent overflow on long messages
+      wordWrap: "break-word",
       zIndex: 9999,
       opacity: "0",
-      transition: "opacity 0.3s ease, transform 0.3s ease",
-      transform: "translateY(20px)"
+      transform: "translateX(100%) scale(0.95)", // Slide in from right with subtle scale for elegance
+      transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", // Smooth easing curve (ease-out)
+      backdropFilter: "blur(10px)", // Optional: subtle blur for modern glassmorphism (if supported)
+      border: "1px solid rgba(255, 255, 255, 0.1)" // Subtle border for definition
     });
 
     document.body.appendChild(div);
+
+    // Animate in
     requestAnimationFrame(() => {
       div.style.opacity = "1";
-      div.style.transform = "translateY(0)";
+      div.style.transform = "translateX(0) scale(1)";
     });
 
+    // Auto-hide with animation
     setTimeout(() => {
       div.style.opacity = "0";
-      div.style.transform = "translateY(20px)";
-      setTimeout(() => div.remove(), 400);
+      div.style.transform = "translateX(100%) scale(0.95)";
+      setTimeout(() => div.remove(), 500); // Slightly longer exit transition
     }, duration);
   }
 
@@ -48,7 +67,7 @@
   // ============================================================
   async function generateAI() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    if (!claimId) return showToast("❌ Claim ID tidak ditemukan.", true);
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
 
     try {
       const state = Alpine.$data(document.getElementById("claimRoot"));
@@ -81,7 +100,7 @@
       }
 
       const result = await res.json();
-      console.log("📥 Data core_engine:", result);
+      console.log(" Data core_engine:", result);
 
       if (!result || typeof result !== "object") {
         throw new Error("Invalid response format from core_engine");
@@ -99,17 +118,17 @@
         stage,
       });
 
-      showToast("✅ AI recommendations generated successfully");
+      showToast("AI recommendations generated successfully");
     } catch (err) {
-      console.error("❌ Error generate AI:", err);
-      showToast(`❌ Gagal generate AI: ${err.message}`, true);
+      console.error("Error generate AI:", err);
+      showToast(`Gagal generate AI: ${err.message}`, true);
     } finally {
       document.getElementById("ai-loading")?.remove();
     }
   }
 
   // ============================================================
-  // 💾 SAVE DRAFT UNIVERSAL
+  // SAVE DRAFT UNIVERSAL
   // ============================================================
   async function saveDraft(claimId) {
     try {
@@ -131,7 +150,7 @@
       );
       formData.append("stage", state.tab || "admission");
 
-      console.log("📤 Sending draft as FormData:", Object.fromEntries(formData));
+      console.log("Sending draft as FormData:", Object.fromEntries(formData));
 
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
@@ -144,32 +163,18 @@
         throw new Error(`Gagal simpan draft (HTTP ${res.status}): ${text}`);
       }
 
-      // 🚫 Jangan auto-refresh walau backend redirect
-      console.log("✅ Draft saved successfully (no page reload)");
-      showToast("💾 Draft berhasil disimpan");
+      // Jangan auto-refresh walau backend redirect
+      console.log("Draft saved successfully (no page reload)");
+      showToast("Draft berhasil disimpan");
     } catch (err) {
-      console.error("❌ Error saat menyimpan draft:", err);
-      showToast(`❌ Gagal menyimpan draft: ${err.message}`, true);
+      console.error("Error saat menyimpan draft:", err);
+      showToast(`Gagal menyimpan draft: ${err.message}`, true);
     }
   }
   window.saveDraft = saveDraft;
 
-  window.saveDraft = saveDraft;
-  function showToast(msg, isError = false) {
-    const div = document.createElement("div");
-    div.textContent = msg;
-    div.style.position = "fixed";
-    div.style.bottom = "20px";
-    div.style.right = "20px";
-    div.style.padding = "10px 16px";
-    div.style.borderRadius = "6px";
-    div.style.color = "white";
-    div.style.backgroundColor = isError ? "#dc2626" : "#16a34a";
-    div.style.zIndex = 9999;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 2500);
-  }
-  window.saveDraft = saveDraft;
+  // Remove duplicate and simpler showToast definitions - use the enhanced one above
+  // The following lines were duplicates and have been cleaned up
 
   async function loadSimulations(claimId) {
     try {
@@ -209,6 +214,7 @@
     }
   }
 
+
   async function searchDiagnosis(query) {
     const res = await fetch(`/claims/search/diagnosis?query=${query}`);
     return await res.json();
@@ -227,12 +233,13 @@
     const res = await fetch(`/claims/search/tindakan/detail/${procedure_text}`);
     return await res.json();
   }
-// ============================================================
+
+  // ============================================================
   // 🧠 Generate Summary
   // ============================================================
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    if (!claimId) return showToast("❌ Claim ID tidak ditemukan.", true);
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
 
     try {
       const loadingMsg = document.createElement("div");
@@ -285,10 +292,10 @@
       window.renderEvaluasiProcedure &&
         window.renderEvaluasiProcedure(procedureData);
 
-      showToast("✅ Summary berhasil digenerate");
+      showToast("Summary berhasil digenerate");
     } catch (err) {
-      console.error("❌ Error generate summary:", err);
-      showToast(`❌ Gagal generate summary: ${err.message}`, true);
+      console.error("Error generate summary:", err);
+      showToast(`Gagal generate summary: ${err.message}`, true);
     } finally {
       document.getElementById("summary-loading")?.remove();
       window.syncHiddenInputs && window.syncHiddenInputs();
@@ -299,7 +306,7 @@
   // 🩺 Resume Medis
   // ============================================================
   async function generateResumeMedis(claimId) {
-    if (!claimId) return showToast("❌ Claim ID tidak ditemukan.", true);
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
     try {
       const res = await fetch("/resume_medis", {
         method: "POST",
@@ -307,12 +314,12 @@
         body: JSON.stringify({ claim_id: claimId }),
       });
       const result = await res.json();
-      console.log("📥 Resume medis:", result);
-      showToast("✅ Resume medis berhasil dibuat");
+      console.log("Resume medis:", result);
+      showToast("Resume medis berhasil dibuat");
       return result;
     } catch (err) {
-      console.error("❌ Error generate resume medis:", err);
-      showToast("❌ Gagal generate resume medis", true);
+      console.error("Error generate resume medis:", err);
+      showToast("Gagal generate resume medis", true);
     }
   }
 
