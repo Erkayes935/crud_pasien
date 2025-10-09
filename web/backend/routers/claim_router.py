@@ -20,6 +20,7 @@ from ..database import get_db
 from ..auth import require_roles_session, require_csrf_dep, issue_csrf_token
 from ..utils.templates import templates
 from ..utils.flash import flash
+from ..utils.dummy_data import make_dummy, dummy_diagnosis_list, dummy_diagnosis_detail, dummy_tindakan_list, dummy_tindakan_detail
 from ..crud import claim as claim_crud
 from ..crud import claim_note as note_crud
 from ..services.claim import core, simulation, ai
@@ -609,3 +610,46 @@ async def generate_alternatives_endpoint(
         return {"result": fallback_data}
 
 
+# ==================================================
+# SEARCH AUTOCOMPLETE
+# ==================================================
+
+@router.get("/search/diagnosis")
+def search_diagnosis(query: str):
+    dummy = dummy_diagnosis_list()
+    results = [d for d in dummy if query.lower() in d["name"].lower()]
+    return {"status": "ok", "data": results}
+
+@router.get("/search/diagnosis/detail/{code}")
+def search_diagnosis_detail(code: str):
+    return {"status": "ok", "data": dummy_diagnosis_detail(code)}
+
+# Autocomplete list tindakan (opsional, kalau nanti mau dipakai dropdown)
+@router.get("/search/tindakan")
+def search_tindakan(query: str = ""):
+    dummy = dummy_tindakan_list()
+    if query:
+        results = [d for d in dummy if query.lower() in d["procedure_text"].lower()]
+    else:
+        results = dummy
+    return {"status": "ok", "data": results}
+
+
+# Detail tindakan (nested modal)
+@router.get("/search/tindakan/detail/{procedure_text}")
+def search_tindakan_detail(procedure_text: str):
+    return {"status": "ok", "data": dummy_tindakan_detail(procedure_text)}
+
+@router.get("/{claim_id}/notes")
+def get_notes(claim_id: int, db: Session = Depends(get_db)):
+    notes = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id).all()
+    return {"data": [
+        {
+            "id": n.id,
+            "item_id": n.item_id,
+            "role": n.role,
+            "user_id": n.user_id,
+            "note_text": n.note_text,
+            "timestamp": n.timestamp.isoformat()
+        } for n in notes
+    ]}

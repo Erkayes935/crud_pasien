@@ -1,170 +1,181 @@
 // =============== Komunikasi ke Backend (fetch) ===============
 
 (function () {
+  // ============================================================
+  // 🔔 Universal Toast Function (popup auto-hide) - Enhanced Elegant Design
+  // ============================================================
+  function showToast(message, isError = false, duration = 4000) {
+    // Remove existing toast to prevent overlaps
+    const existing = document.getElementById("global-toast");
+    if (existing) existing.remove();
+
+    const div = document.createElement("div");
+    div.id = "global-toast";
+    div.textContent = message;
+    div.setAttribute("role", "alert"); // Accessibility improvement
+    div.setAttribute("aria-live", "polite");
+
+    // Modern color palette (inspired by Tailwind CSS for elegance)
+    const bgColor = isError ? "#ef4444" : "#10b981"; // Red-500 / Green-500
+    const shadowColor = isError ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)";
+
+    Object.assign(div.style, {
+      position: "fixed",
+      top: "20px", // Changed to top-right for modern feel (bottom-right alternative: bottom: "20px")
+      right: "20px",
+      background: `linear-gradient(135deg, ${bgColor} 0%, ${isError ? "#dc2626" : "#059669"} 100%)`, // Subtle gradient for depth
+      color: "#ffffff",
+      padding: "16px 20px", // Slightly more padding for breathing room
+      borderRadius: "12px", // Softer, more modern radius
+      boxShadow: `
+        0 20px 25px -5px ${shadowColor},
+        0 10px 10px -5px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.05) // Subtle inner glow
+      `,
+      fontSize: "14px",
+      fontWeight: "500",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif", // Modern system font stack
+      lineHeight: "1.4", // Better readability
+      maxWidth: "350px", // Prevent overflow on long messages
+      wordWrap: "break-word",
+      zIndex: 9999,
+      opacity: "0",
+      transform: "translateX(100%) scale(0.95)", // Slide in from right with subtle scale for elegance
+      transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", // Smooth easing curve (ease-out)
+      backdropFilter: "blur(10px)", // Optional: subtle blur for modern glassmorphism (if supported)
+      border: "1px solid rgba(255, 255, 255, 0.1)" // Subtle border for definition
+    });
+
+    document.body.appendChild(div);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      div.style.opacity = "1";
+      div.style.transform = "translateX(0) scale(1)";
+    });
+
+    // Auto-hide with animation
+    setTimeout(() => {
+      div.style.opacity = "0";
+      div.style.transform = "translateX(100%) scale(0.95)";
+      setTimeout(() => div.remove(), 500); // Slightly longer exit transition
+    }, duration);
+  }
+
+  // ============================================================
+  // 🔮 Generate AI
+  // ============================================================
   async function generateAI() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
 
     try {
       const state = Alpine.$data(document.getElementById("claimRoot"));
       const stage = state.tab || "admission";
 
-      // Show loading state
-      const loadingMsg = document.createElement('div');
-      loadingMsg.id = 'ai-loading';
-      loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
-      loadingMsg.innerHTML = 'Generating AI recommendations...';
+      const loadingMsg = document.createElement("div");
+      loadingMsg.id = "ai-loading";
+      loadingMsg.style.cssText =
+        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;";
+      loadingMsg.innerHTML = "Generating AI recommendations...";
       document.body.appendChild(loadingMsg);
 
       const res = await fetch(`/claims/${claimId}/predict_ddx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          claim_id: claimId, 
+        body: JSON.stringify({
+          claim_id: claimId,
           stage,
-          global_record: state.globalRecord || {} 
-        })
+          global_record: state.globalRecord || {},
+        }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail?.error || errorData.detail || 'Failed to generate AI recommendations');
-      }
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        throw new Error(
+          errorData.detail?.error ||
+          errorData.detail ||
+          `HTTP ${res.status} error`
+        );
       }
 
       const result = await res.json();
-      console.log("📥 Data core_engine:", result);
-      
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format from core_engine');
+      console.log(" Data core_engine:", result);
+
+      if (!result || typeof result !== "object") {
+        throw new Error("Invalid response format from core_engine");
       }
 
-      // Render predictions by category
-      const categories = ['diagnosis', 'komorbid', 'komplikasi'];
+      const categories = ["diagnosis", "komorbid", "komplikasi"];
       for (const category of categories) {
         if (Array.isArray(result[category])) {
-          console.log(`🔥 DEBUG ${category}:`, result[category]);
           window.renderAI && window.renderAI(result[category], category, stage);
         }
       }
 
-      // Save draft after successful AI generation
       await saveDraft(claimId, {
         ai_recommendations: result,
-        stage: stage
+        stage,
       });
 
-      alert("✅ AI recommendations generated successfully");
-
+      showToast("AI recommendations generated successfully");
     } catch (err) {
-      console.error("❌ Error generate AI:", err);
-      alert(`Gagal generate AI: ${err.message}`);
+      console.error("Error generate AI:", err);
+      showToast(`Gagal generate AI: ${err.message}`, true);
     } finally {
-      // Remove loading message
-      const loadingMsg = document.getElementById('ai-loading');
-      if (loadingMsg) {
-        loadingMsg.remove();
-      }
+      document.getElementById("ai-loading")?.remove();
     }
   }
 
-  // ==================== SAVE DRAFT ====================
-  // 🔥 Helper untuk ambil form dan state Alpine sebagai dict
-  function get_form_as_dict() {
-    const form = document.getElementById('claimForm');
-    if (!form) {
-      console.error("❌ Form claimForm tidak ditemukan");
-      return {};
-    }
-
-    const formData = new FormData(form);
-    const result = {};
-
-    // Konversi field form (kecuali csrf)
-    for (let [key, value] of formData.entries()) {
-      if (key === 'csrf_token') continue;
-      result[key] = value;
-    }
-
-    // Tambahkan state Alpine (simulasi, summary)
-    const claimRoot = document.getElementById("claimRoot");
-    if (claimRoot && typeof Alpine !== 'undefined') {
-      try {
-        const state = Alpine.$data(claimRoot);
-        if (state?.simulasi) result.simulasi = JSON.stringify(state.simulasi);
-        if (window.claimState?.summary) result.summary = JSON.stringify(window.claimState.summary);
-      } catch (e) {
-        console.warn("⚠️ Gagal ambil state Alpine:", e);
-      }
-    }
-
-    console.log("📋 Form extracted:", result);
-    return result;
-  }
-
-  // 🔥 Fungsi utama untuk menyimpan draft
-  async function saveDraft(claimId, data = null) {
+  // ============================================================
+  // SAVE DRAFT UNIVERSAL
+  // ============================================================
+  async function saveDraft(claimId) {
     try {
-      // Ambil token CSRF dari form / meta
+      const root = document.getElementById("claimRoot");
+      const state = Alpine.$data(root);
       const csrfToken =
-        document.querySelector('input[name="csrf_token"]')?.value ||
-        document.querySelector('meta[name="csrf-token"]')?.content ||
-        document.querySelector('[name="csrf_token"]')?.value;
+        document.querySelector("input[name='csrf_token']")?.value || "";
 
-      const headers = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      const formData = new FormData();
+      formData.append("csrf_token", csrfToken);
+      formData.append("simulasi", JSON.stringify(state.simulasi || {}));
+      formData.append(
+        "summary",
+        JSON.stringify(window.claimState?.summary || {})
+      );
+      formData.append(
+        "ai_recommendations",
+        JSON.stringify(state.ai_recommendations || {})
+      );
+      formData.append("stage", state.tab || "admission");
 
-      // Ambil data dari form kalau belum dikasih parameter
-      const payload = data || get_form_as_dict();
-
-      console.log("📦 Save draft payload:", payload);
+      console.log("Sending draft as FormData:", Object.fromEntries(formData));
 
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        headers: headers,
         credentials: "include",
-        body: JSON.stringify(payload)
+        body: formData,
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("❌ Save draft error:", errorData);
-        throw new Error(`HTTP ${res.status}: ${errorData.detail || 'Gagal menyimpan draft'}`);
+        const text = await res.text();
+        throw new Error(`Gagal simpan draft (HTTP ${res.status}): ${text}`);
       }
 
-      const result = await res.json();
-      console.log("✅ Draft saved:", result);
-      showToast("💾 Draft berhasil disimpan");
-      return result;
-
+      // Jangan auto-refresh walau backend redirect
+      console.log("Draft saved successfully (no page reload)");
+      showToast("Draft berhasil disimpan");
     } catch (err) {
-      console.error("❌ Error save draft:", err);
-      showToast(`❌ Gagal menyimpan draft: ${err.message}`, true);
+      console.error("Error saat menyimpan draft:", err);
+      showToast(`Gagal menyimpan draft: ${err.message}`, true);
     }
   }
-
-  // Helper untuk notifikasi (biarkan yang ini tetap)
-  function showToast(msg, isError = false) {
-    const div = document.createElement("div");
-    div.textContent = msg;
-    div.style.position = "fixed";
-    div.style.bottom = "20px";
-    div.style.right = "20px";
-    div.style.padding = "10px 16px";
-    div.style.borderRadius = "6px";
-    div.style.color = "white";
-    div.style.backgroundColor = isError ? "#dc2626" : "#16a34a";
-    div.style.zIndex = 9999;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 2500);
-  }
-
-  // ✅ Export ke global window
   window.saveDraft = saveDraft;
   window.get_form_as_dict = get_form_as_dict;
+
+  // Remove duplicate and simpler showToast definitions - use the enhanced one above
+  // The following lines were duplicates and have been cleaned up
 
   async function loadSimulations(claimId) {
     try {
@@ -204,6 +215,7 @@
     }
   }
 
+
   async function searchDiagnosis(query) {
     const res = await fetch(`/claims/search/diagnosis?query=${query}`);
     return await res.json();
@@ -214,47 +226,46 @@
     return await res.json();
   }
 
-window.searchDiagnosis = searchDiagnosis;
-window.getDiagnosisDetail = getDiagnosisDetail;
+  async function searchTindakan(query) {
+    const res = await fetch(`/claims/search/tindakan?query=${query}`);
+    return await res.json();
+  }
+  async function getTindakanDetail(procedure_text) {
+    const res = await fetch(`/claims/search/tindakan/detail/${procedure_text}`);
+    return await res.json();
+  }
 
+  // ============================================================
+  // 🧠 Generate Summary
+  // ============================================================
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-    if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
 
     try {
-      // Show loading message
-      const loadingMsg = document.createElement('div');
-      loadingMsg.id = 'summary-loading';
-      loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
-      loadingMsg.innerHTML = 'Generating claim summary...';
+      const loadingMsg = document.createElement("div");
+      loadingMsg.id = "summary-loading";
+      loadingMsg.style.cssText =
+        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;";
+      loadingMsg.innerHTML = "Generating claim summary...";
       document.body.appendChild(loadingMsg);
 
       const state = Alpine.$data(document.getElementById("claimRoot"));
-      
-      // Ambil tab aktif
-      const currentTab = state.tab || 'admission';
-      
-      // Ekstrak data diagnosa dan tindakan dari simulasi tab saat ini
+      const currentTab = state.tab || "admission";
       const simData = state.simulasi[currentTab];
+      if (!simData) throw new Error("Tidak ada data simulasi di tab ini");
 
-      if (!simData) {
-        throw new Error("Tidak ada data simulasi di tab ini");
-      }
-
-      // Format payload sesuai dengan core_engine
-      const payload = { 
+      const payload = {
         claim_id: parseInt(claimId),
         stage: currentTab,
-        // Field sesuai dengan yang diharapkan oleh idrg_service.py
         primary_claim: simData.utama?.name || "",
-        secondary_claims: (simData.sekunder || []).map(d => d.name).filter(Boolean),
+        secondary_claims:
+          (simData.sekunder || []).map((d) => d.name).filter(Boolean),
         primary_action: simData.tindakanUtama?.name || "",
         secondary_actions: (simData.tindakanSekunder || [])
-          .filter(t => t && t.name)
-          .map(t => t.name)
+          .filter((t) => t && t.name)
+          .map((t) => t.name),
       };
-
-      console.log("📤 Sending payload to generate_claim_combos:", payload);
 
       const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
         method: "POST",
@@ -268,181 +279,60 @@ window.getDiagnosisDetail = getDiagnosisDetail;
       }
 
       const data = await res.json();
-      console.log("📥 Full summary result:", data);
-
-      if (data.error) {
-        throw new Error(`Error from server: ${data.error}`);
-      }
-
-      // Detailed debugging
-      console.log("===== DEBUGGING RESPONSE STRUCTURE =====");
-      
-      // Check for result property
-      console.log("Has 'result' property:", data.hasOwnProperty('result'));
-      if (data.result) {
-        console.log("Result structure:", Object.keys(data.result));
-      }
-      
-      // Check for various i-DRG fields
-      const idrgPaths = [
-        'idrg_summary',
-        'result.idrg_summary',
-        'result.idrg_prediction',
-        'idrg_prediction'
-      ];
-      
-      idrgPaths.forEach(path => {
-        const pathParts = path.split('.');
-        let value = data;
-        
-        for (const part of pathParts) {
-          if (value && value.hasOwnProperty(part)) {
-            value = value[part];
-          } else {
-            value = null;
-            break;
-          }
-        }
-        
-        console.log(`Path '${path}' exists:`, value !== null);
-        if (value) {
-          console.log(`Fields in '${path}':`, Object.keys(value));
-        }
-      });
-
-      // Normalisasi format result untuk konsistensi
       const resultData = data.result || data;
-      
-      // Extract diagnosis data
-      const diagnosisData = resultData.evaluasi_diagnosis || resultData.diagnosis || {};
-      console.log("📊 Extracted diagnosis data:", diagnosisData);
-      
-      // Extract procedure data
-      let procedureData = resultData.evaluasi_tindakan || resultData.procedure || [];
-      if (procedureData && typeof procedureData === 'object' && !Array.isArray(procedureData)) {
-        procedureData = procedureData.rows || procedureData.items || [procedureData];
-      }
-      console.log("📊 Extracted procedure data:", procedureData);
-      
-      // Extract iDRG data with priority checking
-      let idrgData = null;
-      
-      // Priority 1: resultData.idrg_summary
-      if (resultData.idrg_summary && Object.keys(resultData.idrg_summary).length > 0) {
-        idrgData = resultData.idrg_summary;
-        console.log("📊 Found iDRG data in resultData.idrg_summary");
-      } 
-      // Priority 2: resultData.result.idrg_summary
-      else if (resultData.result && resultData.result.idrg_summary) {
-        idrgData = resultData.result.idrg_summary;
-        console.log("📊 Found iDRG data in resultData.result.idrg_summary");
-      }
-      // Priority 3: resultData.idrg_prediction
-      else if (resultData.idrg_prediction) {
-        idrgData = resultData.idrg_prediction;
-        console.log("📊 Found iDRG data in resultData.idrg_prediction");
-      } 
-      // Create dummy data if nothing found
-      else {
-        console.log("⚠️ No iDRG data found, creating dummy structure");
-        idrgData = {
-          prediksi_group_idrg_kombinasi: "-",
-          severity_kombinasi: "-",
-          checklist_idrg_kombinasi: [],
-          faktor_penentu_severity: [],
-          risiko_ungroupable: "-",
-          estimasi_tarif_idrg: "-",
-          gap_analysis: "-",
-          rekomendasi_ai: []
-        };
-      }
-      
-      console.log("📊 Final iDRG data for rendering:", idrgData);
-      
-      // Extract alternatif kombinasi
-      let alternatifData = resultData.alternatif || [];
-      console.log("📊 Extracted alternatif data:", alternatifData);
-      
-      // Update UI sections dengan try/catch untuk isolasi error
-      try {
-        console.log("🔄 Rendering diagnosis evaluation...");
-        window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(diagnosisData);
-        console.log("✅ Diagnosis evaluation rendered");
-      } catch (err) {
-        console.error("❌ Error rendering diagnosis evaluation:", err);
-      }
-      
-      try {
-        console.log("🔄 Rendering procedure evaluation...");
-        window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(procedureData);
-        console.log("✅ Procedure evaluation rendered");
-      } catch (err) {
-        console.error("❌ Error rendering procedure evaluation:", err);
-      }
-      
-      try {
-        console.log("🔄 Rendering iDRG summary...");
-        window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary(idrgData, claimId);
-        console.log("✅ iDRG summary rendered");
-      } catch (err) {
-        console.error("❌ Error rendering iDRG summary:", err);
-        console.error("Error details:", err.stack);
-      }
-      
-      try {
-        console.log("🔄 Rendering alternatif kombinasi...");
-        window.renderAlternatifKombinasi && window.renderAlternatifKombinasi(alternatifData);
-        console.log("✅ Alternative combinations rendered");
-      } catch (err) {
-        console.error("❌ Error rendering alternative combinations:", err);
-      }
+      const diagnosisData =
+        resultData.evaluasi_diagnosis || resultData.diagnosis || {};
+      let procedureData =
+        resultData.evaluasi_tindakan ||
+        resultData.procedure ||
+        resultData.rows ||
+        [];
 
-      const summaryField = document.getElementById("summaryField");
-      if (summaryField) summaryField.value = JSON.stringify(resultData);
-      window.claimState.summary = resultData;
+      window.renderEvaluasiDiagnosis &&
+        window.renderEvaluasiDiagnosis(diagnosisData);
+      window.renderEvaluasiProcedure &&
+        window.renderEvaluasiProcedure(procedureData);
 
-      alert("✅ Summary berhasil digenerate");
+      showToast("Summary berhasil digenerate");
     } catch (err) {
-      console.error("❌ Error generate summary:", err);
-      console.error("Stack trace:", err.stack);
-      alert(`❌ Gagal generate summary: ${err.message}`);
+      console.error("Error generate summary:", err);
+      showToast(`Gagal generate summary: ${err.message}`, true);
     } finally {
-      // Remove loading message
-      const loadingMsg = document.getElementById('summary-loading');
-      if (loadingMsg) {
-        loadingMsg.remove();
-      }
+      document.getElementById("summary-loading")?.remove();
       window.syncHiddenInputs && window.syncHiddenInputs();
     }
   }
 
-  // 🔥 Resume Medis function untuk core_engine
+  // ============================================================
+  // 🩺 Resume Medis
+  // ============================================================
   async function generateResumeMedis(claimId) {
-    if (!claimId) {
-      alert("❌ Claim ID tidak ditemukan.");
-      return;
-    }
-    
+    if (!claimId) return showToast("Claim ID tidak ditemukan.", true);
     try {
       const res = await fetch("/resume_medis", {
-        method: "POST", 
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claim_id: claimId })
+        body: JSON.stringify({ claim_id: claimId }),
       });
       const result = await res.json();
-      console.log("📥 Resume medis:", result);
+      console.log("Resume medis:", result);
+      showToast("Resume medis berhasil dibuat");
       return result;
     } catch (err) {
-      console.error("❌ Error generate resume medis:", err);
-      alert("Gagal generate resume medis");
+      console.error("Error generate resume medis:", err);
+      showToast("Gagal generate resume medis", true);
     }
   }
 
-  // Export API
+  // ============================================================
+  // Exports
+  // ============================================================
   window.generateAI = generateAI;
   window.generateSummary = generateSummary;
+  window.generateResumeMedis = generateResumeMedis;
   window.loadSimulations = loadSimulations;
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
-  window.generateResumeMedis = generateResumeMedis;
+  window.searchTindakan = searchTindakan;
+  window.getTindakanDetail = getTindakanDetail;
 })();
