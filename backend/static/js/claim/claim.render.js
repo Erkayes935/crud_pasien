@@ -444,6 +444,8 @@
 
   // export
   window.diagnosisAutocomplete = diagnosisAutocomplete;
+  window.renderMappingSelect = renderMappingSelect;
+  window.renderValue = renderValue;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
   window.addManualIfNotFound = addManualIfNotFound;
