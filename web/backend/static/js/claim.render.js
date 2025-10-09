@@ -232,13 +232,26 @@
       return true;
     });
 
-    state.simulasi[tab][type] = merged;
+    // Store parent items and flatten children into the main array for mapping
+    const flatItems = [];
+    merged.forEach(item => {
+      flatItems.push(item);
+      if (item.children && Array.isArray(item.children)) {
+        item.children.forEach((child, childIdx) => {
+          // Give each child a unique ID for mapping
+          child.id = child.id || `${item.id || 'parent'}-child-${childIdx}`;
+          child.parentId = item.id;
+          flatItems.push(child);
+        });
+      }
+    });
+    state.simulasi[tab][type] = flatItems;
 
     const target = document.getElementById(targetId);
     if (!target) return;
     target.innerHTML = "";
 
-    // Group parent/child - support both formats
+    // Group parent/child for rendering - rebuild hierarchy
     let grouped = [];
     let parentMap = {};
     let lastParentKey = null;
@@ -250,7 +263,7 @@
 
       // 🔥 Core_engine format: parent already has children array
       if (it.children && Array.isArray(it.children)) {
-        grouped.push({
+        const parentWithChildren = {
           ...it,
           kategori: name,
           nama_kategori: name,
@@ -261,18 +274,22 @@
             klinis: child.klinis || '-',
             icd10_code: child.icd10_code || child.icd || '-',
             procedure_text: child.tindakan || child.procedure_text || '-',
-            score: child.score || child.confidence || '-'
+            score: child.score || child.confidence || '-',
+            id: child.id || `${it.id || 'parent'}-child-${child.name}` // ensure child has ID
           }))
-        });
+        };
+        grouped.push(parentWithChildren);
       }
       // 🔥 Development branch format: child flag
       else if (it.child === true) {
         if (lastParentKey && parentMap[lastParentKey]) {
-          parentMap[lastParentKey].children.push({
+          const childWithId = {
             ...it,
             kategori: `${name} ${String.fromCharCode(97 + parentMap[lastParentKey].children.length)}`,
-            nama_kategori: name
-          });
+            nama_kategori: name,
+            id: it.id || `${parentMap[lastParentKey].id}-child-${parentMap[lastParentKey].children.length}`
+          };
+          parentMap[lastParentKey].children.push(childWithId);
         }
       } else {
         const parentKey = `${itemType}:${name}`;

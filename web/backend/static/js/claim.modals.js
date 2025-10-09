@@ -682,8 +682,21 @@
     
     console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
+    // Check if this is a manual procedure - if so, use openManualDetailModal instead
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
+    const manualTindakan = allTindakan.find(t => 
+      t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
+    );
+    
+    if (manualTindakan) {
+      console.log("🔧 Detected manual procedure, using openManualDetailModal");
+      openManualDetailModal(manualTindakan);
+      return;
+    }
+
     try {
-      // 🔥 NEW: Request ke core_engine /analyze_procedure
+      // 🔥 NEW: Request ke core_engine /analyze_procedure (only for AI procedures)
       console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
       const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
@@ -1431,6 +1444,69 @@ if (!window.statusIcon) {
     }
     
     return '⚫';
+  };
+}
+
+// Add openManualNestedProcedureModal function for manual procedures
+if (!window.openManualNestedProcedureModal) {
+  window.openManualNestedProcedureModal = function(idx) {
+    const td = window.claimState?.manualTindakan?.[idx] || {};
+
+    const content = `
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-bold">Detail Tindakan (${td.nama || 'Manual'} - Manual)</h3>
+        <button type="button" onclick="closeNestedModal()" 
+                class="text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-icd9">${td.icd9 || '-'}</div>
+        
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.deskripsi || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.validitas || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-status">${td.status || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-inacbg">${td.ina_cbg || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.faskes || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.rawat_inap || '-'}</div>
+
+        <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.syarat_klinis || '-'}</div>
+      </div>
+    `;
+
+    if (window.openModal) {
+      window.openModal(`Detail Tindakan (${td.nama || 'Manual'} - Manual)`, content);
+    }
+  };
+}
+
+// Add closeNestedModal function
+if (!window.closeNestedModal) {
+  window.closeNestedModal = function() {
+    const dx = window.claimState?.currentDiagnosis;
+    if (dx && window.openModal && window.buildModalContent) {
+      // panggil ulang modal diagnosis
+      const title = `Detail Diagnosis (${dx.kategori || '-'})`;
+      window.openModal(title, window.buildModalContent(dx));
+    } else {
+      // fallback: tutup modal
+      const modal = document.getElementById('modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    }
   };
 }
 
