@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, date
 from typing import Optional
 import io
+import json
 from openpyxl import Workbook
 
 from .. import models, form_configs
@@ -25,7 +26,7 @@ from ..crud import claim as claim_crud
 from ..crud import claim_note as note_crud
 from ..services.claim import core, simulation, ai
 from ..services import claim_ai
-from backend.services.claim.simulation import load_sim_and_summary
+from backend.services.claim.simulation import load_sim_and_summary, load_existing_mappings, apply_mappings_to_simulasi
 from backend.services import claim_helper
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
@@ -168,6 +169,25 @@ def edit_claim_form(
     sim, summ = load_sim_and_summary(db, claim_id, include_summary=not is_doctor)
     template_name = "claim_left.html" if is_doctor else "claim_right.html"
 
+    # Load existing medical record data for form pre-population
+    existing_medical_data = {}
+    if claim.medical_record_id:
+        medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
+        if medical_record:
+            # Convert medical record object to dict for form population
+            for field in form_configs.form_configs["claim_medical_record"]:
+                field_name = field.get("name")
+                if field_name and hasattr(medical_record, field_name):
+                    existing_medical_data[field_name] = getattr(medical_record, field_name)
+
+    # Load existing AI mappings for form persistence
+    existing_mappings = load_existing_mappings(db, claim_id)
+    if existing_mappings:
+        print(f"[EDIT_CLAIM] Loaded {len(existing_mappings)} existing mappings for claim {claim_id}")
+        # Reconstruct simulasi structure with mappings
+        if sim and "simulasi" in sim:
+            sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
+
     return templates.TemplateResponse(template_name, {
         "request": request,
         "mode": "edit",
@@ -182,6 +202,7 @@ def edit_claim_form(
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
+        "existing_medical_data": existing_medical_data,
     })
 
 
@@ -189,36 +210,50 @@ def edit_claim_form(
 async def update_claim_draft(
     request: Request,
     claim_id: int,
+    payload: str = Form(...),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
-    csrf_token: str = Form(...),
-    simulasi: str = Form(None),
-    summary: str = Form(None),
-    ai_recommendations: str = Form(None),
-    stage: str = Form("admission"),
 ):
-    """
-    Save draft klaim (dokter) dengan data simulasi & summary dari form.
-    Format pengiriman: multipart/form-data (bukan JSON)
-    """
     try:
-        payload = {
-            "simulasi": simulasi,
-            "summary": summary,
-            "ai_recommendations": ai_recommendations,
-            "stage": stage,
-        }
+        # Debug: Check what form data we actually receive
+        form_data = await request.form()
+        print(f"🔍 RAW FORM DATA - Keys: {list(form_data.keys())}")
+        print(f"🔍 RAW FORM DATA - Items:")
+        for key, value in form_data.items():
+            if key == 'payload':
+                print(f"  {key} (len={len(str(value))}): {str(value)[:100]}...")
+            else:
+                print(f"  {key}: {value}")
+        
+        print(f"🔍 PARSED PAYLOAD - Type: {type(payload)}")
+        print(f"🔍 PARSED PAYLOAD - Length: {len(payload) if payload else 0}")
+        print(f"🔍 PARSED PAYLOAD - Content: {payload[:200] if payload else 'None'}...")
 
-        # Simpan ke database
-        core.update_claim_draft_service(db, claim_id, user, payload)
+        if not payload or payload.strip() == "":
+            print("❌ EMPTY PAYLOAD ERROR")
+            raise HTTPException(status_code=422, detail="Payload is empty or missing")
+        
+        # Parse JSON payload from form field
+        import json
+        payload_dict = json.loads(payload)
+        
+        ai_recommendations = payload_dict.get("ai_recommendations")
+        stage = payload_dict.get("stage", "admission")
 
-        flash(request, "✅ Draft klaim berhasil diperbarui", "success")
-        return RedirectResponse(f"/claims/{claim_id}/edit", status_code=303)
+        if ai_recommendations:
+            ai.clear_ai_results(db, claim_id)
+            ai.store_ai_recommendations(
+                db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
+            )
 
+        core.update_claim_draft_service(db, claim_id, user, payload_dict)
+        return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
-
+           
 
 @router.post("/{claim_id}/finalize", name="finalize_claim")
 async def finalize_claim(
@@ -227,13 +262,8 @@ async def finalize_claim(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
-    simulasiField: str = Form(None),
-    summaryField: str = Form(None)
+    **form_data,
 ):
-    form_data = {
-        "simulasi": simulasiField,
-        "summary": summaryField
-    }
     core.finalize_claim_service(db, claim_id, user, form_data)
     flash(request, "Klaim difinalisasi", "success")
     return RedirectResponse("/dashboard", status_code=303)
@@ -325,16 +355,38 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
     stage = (payload.get("stage") or "admission").strip()
     global_record = claim_helper.build_global_record(db, cid)
     forward = {"claim_id": cid, "stage": stage, "global_record": global_record}
-    # nyoba normalize di sini dulu
+    # Get response from core_engine
     raw_resp = await claim_ai.proxy_core_engine("/predict_ddx", forward)
     normalized = claim_helper.normalize_predict_ddx(raw_resp)
-    # return await claim_ai.proxy_core_engine("/predict_ddx", forward)
+
+    # Store AI results to database
+    try:
+        print(f"[PREDICT_DDX] Storing AI results for claim {cid}, stage {stage}")
+        ai.clear_ai_results(db, cid)
+        ai.store_ai_recommendations(db, cid, normalized, "predict", stage)
+        db.commit()
+        print(f"[PREDICT_DDX] Successfully stored AI results")
+    except Exception as e:
+        print(f"[PREDICT_DDX] Error storing results: {str(e)}")
+        db.rollback()
     return normalized
 
 
 @router.post("/{claim_id}/analyze_diagnosis")
-async def analyze_diagnosis(claim_id: int, payload: dict = Body(...)):
-    return await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
+async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
+    
+    # Store diagnosis analysis results to database
+    try:
+        print(f"[ANALYZE_DIAGNOSIS] Storing analysis results for claim {claim_id}")
+        ai.store_ai_recommendations(db, claim_id, result, "diagnosis", payload.get("stage", "admission"))
+        db.commit()
+        print(f"[ANALYZE_DIAGNOSIS] Successfully stored analysis results")
+    except Exception as e:
+        print(f"[ANALYZE_DIAGNOSIS] Error storing results: {str(e)}")
+        db.rollback()
+    
+    return result
 
 
 @router.post("/{claim_id}/analyze_procedure")
@@ -348,7 +400,20 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
     core_payload = {"claim_id": cid, "procedure_name": procedure_name, "stage": stage}
     if context:
         core_payload["context"] = context
-    return await claim_ai.proxy_core_engine("/analyze_procedure", core_payload)
+
+    result = await claim_ai.proxy_core_engine("/analyze_procedure", core_payload)
+
+    # Store procedure analysis results to database
+    try:
+        print(f"[ANALYZE_PROCEDURE] Storing analysis results for claim {cid}")
+        ai.store_ai_recommendations(db, cid, result, "procedure", stage)
+        db.commit()
+        print(f"[ANALYZE_PROCEDURE] Successfully stored analysis results")
+    except Exception as e:
+        print(f"[ANALYZE_PROCEDURE] Error storing results: {str(e)}")
+        db.rollback()
+    
+    return result
 
 
 @router.post("/{claim_id}/generate_claim_combos")
@@ -399,13 +464,43 @@ async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Se
 
 
 @router.post("/{claim_id}/resume_medis")
-async def resume_medis(claim_id: int, payload: dict = Body(...)):
-    return await claim_ai.proxy_core_engine("/resume_medis", payload)
+async def resume_medis(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    result = await claim_ai.proxy_core_engine("/resume_medis", payload)
+    
+    # Store resume medis results to database
+    try:
+        print(f"[RESUME_MEDIS] Storing resume results for claim {claim_id}")
+        # Create or update medical record with AI resume
+        if isinstance(result, dict) and result.get("resume"):
+            # Store as medical record or claim note
+            db.execute(
+                "UPDATE claims SET ai_medical_resume = :resume WHERE id = :claim_id",
+                {"resume": result["resume"], "claim_id": claim_id}
+            )
+            db.commit()
+            print(f"[RESUME_MEDIS] Successfully stored resume results")
+    except Exception as e:
+        print(f"[RESUME_MEDIS] Error storing results: {str(e)}")
+        db.rollback()
+    
+    return result
 
 
 @router.post("/{claim_id}/regulation_detail")
-async def regulation_detail(claim_id: int, payload: dict = Body(...)):
-    return await claim_ai.proxy_core_engine("/regulation_detail", payload)
+async def regulation_detail(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    result = await claim_ai.proxy_core_engine("/regulation_detail", payload)
+    
+    # Store regulation details to database
+    try:
+        print(f"[REGULATION_DETAIL] Storing regulation results for claim {claim_id}")
+        ai.store_ai_recommendations(db, claim_id, result, "regulation", payload.get("stage", "admission"))
+        db.commit()
+        print(f"[REGULATION_DETAIL] Successfully stored regulation results")
+    except Exception as e:
+        print(f"[REGULATION_DETAIL] Error storing results: {str(e)}")
+        db.rollback()
+    
+    return result
 
 
 # ==================================================
@@ -442,16 +537,50 @@ async def predict_idrg_endpoint(
 
 
 @router.post("/predict_idrg/single")
-async def predict_idrg_single_endpoint(payload: dict = Body(...)):
+async def predict_idrg_single_endpoint(payload: dict = Body(...), db: Session = Depends(get_db)):
     """
     Predict i-DRG untuk diagnosis single
     """
     try:
+        claim_id = payload.get("claim_id")
+
         # Forward ke core_engine
-        return await claim_ai.proxy_core_engine("/predict_idrg", {
+        result = await claim_ai.proxy_core_engine("/predict_idrg", {
             "mode": "single", 
             **payload
         })
+        # Store i-DRG results to database
+        if claim_id and isinstance(result, dict) and result.get("idrg_prediction"):
+            try:
+                print(f"[PREDICT_IDRG_SINGLE] Storing i-DRG results for claim {claim_id}")
+                
+                # Clear existing i-DRG diagnosis data
+                db.query(models.ClaimIDRGDiagnosis).filter_by(
+                    claim_id=claim_id, is_deleted=False
+                ).update({"is_deleted": True})
+                
+                # Store new i-DRG diagnosis data
+                idrg_data = result["idrg_prediction"]
+                idrg_diag = models.ClaimIDRGDiagnosis(
+                    claim_id=claim_id,
+                    group_idrg=idrg_data.get("group_idrg"),
+                    severity_index=idrg_data.get("severity_index"),
+                    checklist=json.dumps(idrg_data.get("checklist", {})),
+                    faktor_severity=json.dumps(idrg_data.get("faktor_severity", {})),
+                    ungroupable_alert=idrg_data.get("ungroupable_alert"),
+                    simulasi_tarif=str(idrg_data.get("simulasi_tarif", "")),
+                    gap_analysis=idrg_data.get("gap_analysis"),
+                    is_deleted=False,
+                    is_dummy=False
+                )
+                db.add(idrg_diag)
+                db.commit()
+                print(f"[PREDICT_IDRG_SINGLE] Successfully stored i-DRG results")
+            except Exception as e:
+                print(f"[PREDICT_IDRG_SINGLE] Error storing results: {str(e)}")
+                db.rollback()
+                
+        return result
     except Exception as e:
         print(f"❌ Error in predict_idrg_single: {str(e)}")
         return {"status": "error", "message": str(e)}
@@ -496,7 +625,38 @@ async def predict_idrg_combo_endpoint(
         if isinstance(result, dict) and result.get("error"):
             print(f"[PREDICT_IDRG_COMBO] Error from core_engine: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
-            
+
+        # Store i-DRG combo results to database
+        if isinstance(result, dict) and result.get("idrg_prediction"):
+            try:
+                print(f"[PREDICT_IDRG_COMBO] Storing i-DRG combo results for claim {claim_id}")
+                
+                # Clear existing i-DRG summary data
+                db.query(models.ClaimIDRGSummary).filter_by(
+                    claim_id=claim_id, is_deleted=False
+                ).update({"is_deleted": True})
+                
+                # Store new i-DRG summary data
+                idrg_data = result["idrg_prediction"]
+                idrg_summary = models.ClaimIDRGSummary(
+                    claim_id=claim_id,
+                    group_idrg_kombinasi=idrg_data.get("group_idrg_kombinasi"),
+                    severity_kombinasi=idrg_data.get("severity_kombinasi"),
+                    checklist_kombinasi=json.dumps(idrg_data.get("checklist_dokumentasi", [])),
+                    faktor_severity=json.dumps(idrg_data.get("faktor_penentu_severity", [])),
+                    risiko_ungroupable=idrg_data.get("risiko_ungroupable"),
+                    estimasi_tarif=str(idrg_data.get("estimasi_tarif", "")),
+                    gap_inacbg_vs_idrg=str(idrg_data.get("gap_inacbg_vs_idrg", "")),
+                    rekomendasi_ai=idrg_data.get("rekomendasi_ai"),
+                    is_deleted=False,
+                    is_dummy=False
+                )
+                db.add(idrg_summary)
+                db.commit()
+                print(f"[PREDICT_IDRG_COMBO] Successfully stored i-DRG combo results")
+            except Exception as e:
+                print(f"[PREDICT_IDRG_COMBO] Error storing results: {str(e)}")
+                db.rollback()    
         return result
         
     except Exception as e:
