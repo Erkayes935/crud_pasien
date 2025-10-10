@@ -25,7 +25,7 @@
 
   function normalizeItem(val) {
     if (typeof val === "string") {
-      return { name: val.split(" [")[0] || "-", label: "", mapping: "", source: "Manual", isManual: true };
+      return { name: val.split(" [")[0] || "", label: "", mapping: "", source: "Manual", isManual: true };
     }
     return {
       ...val,
@@ -36,8 +36,8 @@
   }
 
   function normalizeProcedure(td) {
-    if (!td) return { nama: "-" };
-    return { ...td, nama: td.nama || td.name || td.procedure_text || td.kategori || "-" };
+    if (!td) return { nama: "" };
+    return { ...td, nama: td.nama || td.name || td.procedure_text || td.kategori || "" };
   }
 
   // state utama (dipasang via x-data="claimData(init)")

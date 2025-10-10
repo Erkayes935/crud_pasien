@@ -23,11 +23,6 @@
                     class="bg-blue-600 text-white px-4 py-2 rounded font-semibold">
                 Generate AI
             </button>
-            <button type="button" id="generateResumeBtn" 
-                class="bg-info-600 hover:bg-info-700 text-white px-4 py-2 rounded font-semibold"
-                style="background-color: #17a2b8;">
-                Generate Resume
-            </button>
             </div>
           </div>
 
@@ -290,9 +285,10 @@
 
             <!-- Tombol -->
           <div class="flex justify-center space-x-4">
-            <button type="button" onclick="generateAI()" 
-              class="bg-yellow-600 text-white px-6 py-2 rounded font-semibold">
-              Recalculate
+            <button type="button" id="generateResumeBtn" 
+                class="bg-info-600 hover:bg-info-700 text-white px-4 py-2 rounded font-semibold"
+                style="background-color: #17a2b8;">
+                Generate Resume
             </button>
             <button type="button" onclick="saveDraft('{{ record.id }}')"
             class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">

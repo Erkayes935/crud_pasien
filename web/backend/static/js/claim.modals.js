@@ -88,7 +88,7 @@
     if (row.closest(".tindakan-list")) {
       const descEl = row.querySelector("span[title], span.block");
       if (descEl) {
-        const newText = dx.deskripsi || "-";
+        const newText = dx.deskripsi || "&nbsp;";
         descEl.textContent = newText;
         descEl.setAttribute("title", newText);
       }
@@ -113,13 +113,13 @@
         text = [dx.justifikasi, dx.bukti_klinis, dx.syarat_klinis].filter(Boolean).join(", ");
       }
       console.log("🔍 Setting klinis text:", text);
-      klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "-";
+      klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
     }
 
     // kolom ICD
     const icdCell = row.querySelector(".col-icd");
     if (icdCell) {
-      let icdCode = "-";
+      let icdCode = "";
       
       // Handle different ICD formats from core_engine
       if (dx.icd10_code) {
@@ -137,7 +137,7 @@
     // kolom Tindakan
     const tindakanCell = row.querySelector(".col-tindakan");
     if (tindakanCell) {
-      let text = "-";
+      let text = "";
 
       if (dx.tindakan && Array.isArray(dx.tindakan) && dx.tindakan.length > 0) {
         text = dx.tindakan.map(t => 
@@ -145,7 +145,7 @@
         ).join(", ");
       }
       console.log("🔍 Setting tindakan text:", text);
-      tindakanCell.innerHTML = text !== "-" ? `<span title="${text}">${truncateText(text, 44)}</span>` : "-";
+      tindakanCell.innerHTML = text !== "" ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
     }
 
     // Persist semua perubahan hasil modal ke state simulasi
@@ -175,7 +175,7 @@
           }
 
           if (dx.icd10_code || dx.icd10) {
-            item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "-";
+            item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "";
             item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
           }
 
@@ -269,7 +269,7 @@
       rawText = rawText.replace(/^▶|^▼/, "").trim();
       rawText = rawText.replace(/\s+\d+$/, "");
       const namaPenyakit =
-        dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "-";
+        dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "";
 
       // 🔥 Use new renderDiagnosisDetail for consistent parsing
       const modalContent = renderDiagnosisDetail(dx);
@@ -334,18 +334,18 @@
     
     // Handle nested structure from core_engine - detailed parsing
     const klinis = {
-      justifikasi: it.klinis?.justifikasi || it.justifikasi || "-",
-      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "-", 
-      syarat_klinis: it.klinis?.syarat_klinis || it.syarat_klinis || "-",
+      justifikasi: it.klinis?.justifikasi || it.justifikasi || "",
+      bukti_klinis: it.klinis?.bukti_klinis || it.bukti_klinis || "", 
+      syarat_klinis: it.klinis?.syarat_klinis || it.syarat_klinis || "",
       status: it.klinis?.status || it.status || "default"
     };
 
     const icd10 = {
-      kode_icd: it.icd10?.kode_icd || it.icd10_code || "-",
-      struktur_icd10: it.icd10?.struktur_icd10 || it.struktur_icd10 || "-",
-      kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "-",
-      z_code: it.icd10?.z_code || it.z_code || "-",
-      kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "-",
+      kode_icd: it.icd10?.kode_icd || it.icd10_code || "",
+      struktur_icd10: it.icd10?.struktur_icd10 || it.struktur_icd10 || "",
+      kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "",
+      z_code: it.icd10?.z_code || it.z_code || "",
+      kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "",
       status_icd: it.icd10?.status_icd || it.status_icd || "default"
     };
     
@@ -378,7 +378,7 @@
       const hasRegulation = checkFieldHasRegulation(fieldName);
 
       let content = safeValue;
-      if (hasRegulation && diagnosisId && safeValue !== "-") {
+      if (hasRegulation && diagnosisId && safeValue !== "") {
         content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
                          title="📋 Klik untuk melihat regulasi ${fieldName}" 
                          data-field="${fieldName}"
@@ -504,12 +504,12 @@
     const renderPredictionRow = (label, value) => `
       <div class="grid grid-cols-2">
         <div class="bg-blue-600 text-white px-3 py-2 font-medium">${label}</div>
-        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${value || "-"}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${value || ""}</div>
       </div>
     `;
 
     const renderExistingRow = (label, value, field) => {
-      const isClickable = field && value !== "-";
+      const isClickable = field && value !== "";
       return `
         <div class="grid grid-cols-2">
           <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
@@ -578,7 +578,7 @@
                 ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(getPrediction(\"checklist_dokumentasi\"))'></span>")}
                 ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(getPrediction(\"faktor_penentu_severity\"))'></span>")}
                 ${renderPredictionRow("Ungroupable Alert", "<span x-text='getPrediction(\"ungroupable_alert\")'></span>")}
-                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"getPrediction('estimasi_tarif_idrg') !== '-' ? 'Rp ' + parseInt(getPrediction('estimasi_tarif_idrg')).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"getPrediction('estimasi_tarif_idrg') !== '' ? 'Rp ' + parseInt(getPrediction('estimasi_tarif_idrg')).toLocaleString('id-ID') : '-'\"></span>")}
                 ${renderPredictionRow("Gap Analysis", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.gap_analysis) || \"-\"'></span>")}
               </div>
             </template>
@@ -602,13 +602,13 @@
           <div class="p-4 space-y-2 border-t" x-show="!loading">
             <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-2">Data i-DRG Tersimpan</h3>
             
-            ${renderExistingRow("Group i-DRG", idrg.group_idrg || "-", "idrg_diagnosis_group")}
-            ${renderExistingRow("Severity Index", idrg.severity_index || "-", "idrg_diagnosis_severity")}
-            ${renderExistingRow("Checklist Dokumentasi", idrg.checklist || "-", "idrg_diagnosis_checklist")}
-            ${renderExistingRow("Faktor Severity", idrg.faktor_severity || "-")}
-            ${renderExistingRow("Ungroupable Alert", idrg.ungroupable_alert || "-", "idrg_diagnosis_ungroupable")}
-            ${renderExistingRow("Simulasi Tarif", idrg.simulasi_tarif || "-")}
-            ${renderExistingRow("Gap Analysis", idrg.gap_analysis || "-")}
+            ${renderExistingRow("Group i-DRG", idrg.group_idrg || "", "idrg_diagnosis_group")}
+            ${renderExistingRow("Severity Index", idrg.severity_index || "", "idrg_diagnosis_severity")}
+            ${renderExistingRow("Checklist Dokumentasi", idrg.checklist || "", "idrg_diagnosis_checklist")}
+            ${renderExistingRow("Faktor Severity", idrg.faktor_severity || "")}
+            ${renderExistingRow("Ungroupable Alert", idrg.ungroupable_alert || "", "idrg_diagnosis_ungroupable")}
+            ${renderExistingRow("Simulasi Tarif", idrg.simulasi_tarif || "")}
+            ${renderExistingRow("Gap Analysis", idrg.gap_analysis || "")}
           </div>
           ` : ''}
         </div>
@@ -633,13 +633,13 @@
       return `
         <div class="grid grid-cols-2">
           <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
-          <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+          <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || ""}</div>
         </div>
       `;
     };
     
     // Render checklist dokumentasi sebagai list jika array
-    let checklistHtml = "-";
+    let checklistHtml = "";
     if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
         prediction.checklist_dokumentasi.length > 0) {
       checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
@@ -649,7 +649,7 @@
     }
     
     // Render faktor severity sebagai list jika array
-    let faktorSeverityHtml = "-";
+    let faktorSeverityHtml = "";
     if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
         prediction.faktor_penentu_severity.length > 0) {
       faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
@@ -669,13 +669,13 @@
     // Field yang tepat sesuai idrg_service.py
     return `
       <div class="space-y-2 px-4">      
-        ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
-        ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+        ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "", true)}
+        ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "", true)}
         ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
         ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
-        ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
-        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
-        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+        ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "")}
+        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "")}
+        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "")}
       </div>
     `;
   }
@@ -683,8 +683,8 @@
   function renderTindakan(list) {
     const tindakanList = (list && list.length > 0)
       ? list.map(td => {
-          const nama = td.nama || td.tindakan || "-";
-          const deskripsi = td.deskripsi || td.description || "-";
+          const nama = td.nama || td.tindakan || "";
+          const deskripsi = td.deskripsi || td.description || "";
           const procId = td.id || td.procedure_id || "";
           return `
             <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
@@ -741,13 +741,6 @@
 
     // render list manual setelah modal terbuka
     setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
-    // setTimeout(() => {
-    //   const tab = window.claimState?.tab || "admission";
-    //   const sim = window.claimState?.simulasi?.[tab];
-    //   if (sim?.tindakan?.some(td => td.isManual)) {
-    //     window.renderManualTindakanList(tab);
-    //   }
-    // }, 0);
 
     return tindakanList + manualForm;
   }
@@ -804,10 +797,10 @@
       console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
     const renderProcBox = (label, value, fieldName = null) => {
-      let safeValue = value || "-";
+      let safeValue = value || "";
       
       // Special handling untuk tarif INA-CBG
-      if (fieldName === "ina_cbg" && value && value !== "-") {
+      if (fieldName === "ina_cbg" && value && value !== "") {
         console.log("💰 Formatting tarif:", value, typeof value);
         const numericValue = parseInt(value);
         if (!isNaN(numericValue)) {
@@ -819,7 +812,7 @@
 
       const hasRegulation = checkFieldHasRegulation(fieldName);
       let content = `<span class="text-white">${safeValue}</span>`;
-      if (hasRegulation && fieldName && safeValue !== "-") {
+      if (hasRegulation && fieldName && safeValue !== "") {
         content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200"
                          title="📋 Klik untuk melihat regulasi ${fieldName}"
                          data-field="${fieldName}"
@@ -885,7 +878,7 @@
       if (json.status !== "ok") throw new Error("Gagal load detail");
 
       const detail = json.data;
-      const deskripsiGabungan = `ICD-9: ${detail.icd9 || "-"}, Status: ${detail.status || "-"}, INA-CBG: ${detail.ina_cbg || "-"}`;
+      const deskripsiGabungan = `ICD-9: ${detail.icd9 || ""}, Status: ${detail.status || ""}, INA-CBG: ${detail.ina_cbg || ""}`;
       detail.deskripsi = deskripsiGabungan;
 
       if (window.claimState?.simulasi?.[tab]?.tindakan?.[idx]) {
@@ -944,7 +937,7 @@
   function closeNestedModal() {
     const dx = window.claimState.currentDiagnosis;
     if (dx) {
-      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "-";
+      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "";
       openModal(`<div class="flex flex-col items-start items-center">
         <span class="text-lg font-bold">Detail Diagnosis</span>
         <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
@@ -1329,8 +1322,8 @@ window.saveNote = async function(fieldKey, stage, itemId) {
         <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded">
           <h3 class="font-bold text-blue-800 dark:text-blue-200 mb-2">${judul_regulasi || 'Regulasi ' + fieldName}</h3>
           <div class="grid grid-cols-1 gap-2 text-xs">
-            <div><strong>Dasar Hukum:</strong> ${dasar_hukum || '-'}</div>
-            <div><strong>Bab/Pasal:</strong> ${bab_pasal || '-'}</div>
+            <div><strong>Dasar Hukum:</strong> ${dasar_hukum || ''}</div>
+            <div><strong>Bab/Pasal:</strong> ${bab_pasal || ''}</div>
           </div>
         </div>
         
@@ -1429,7 +1422,7 @@ window.renderChecklistHtml = function(checklist) {
 
 // Fungsi untuk render faktor severity
 window.renderFaktorSeverityHtml = function(faktor) {
-  if (!faktor) return '-';
+  if (!faktor) return '';
   
   if (Array.isArray(faktor) && faktor.length > 0) {
     return `<ul class="list-none pl-0">${faktor.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
@@ -1437,7 +1430,7 @@ window.renderFaktorSeverityHtml = function(faktor) {
     return faktor;
   }
   
-  return '-';
+  return '';
 };
 
 // Function untuk render hasil prediksi i-DRG
@@ -1456,13 +1449,13 @@ window.renderIdrgPredictionResult = function(data) {
     return `
       <div class="grid grid-cols-2">
         <div class="bg-blue-700 text-white px-3 py-2 font-medium">${label}</div>
-        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || "-"}</div>
+        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${content || ""}</div>
       </div>
     `;
   };
   
   // Render checklist dokumentasi sebagai list jika array
-  let checklistHtml = "-";
+  let checklistHtml = "";
   if (prediction.checklist_dokumentasi && Array.isArray(prediction.checklist_dokumentasi) && 
       prediction.checklist_dokumentasi.length > 0) {
     checklistHtml = prediction.checklist_dokumentasi.map(item => `<li>• ${item}</li>`).join('');
@@ -1472,7 +1465,7 @@ window.renderIdrgPredictionResult = function(data) {
   }
   
   // Render faktor severity sebagai list jika array
-  let faktorSeverityHtml = "-";
+  let faktorSeverityHtml = "";
   if (prediction.faktor_penentu_severity && Array.isArray(prediction.faktor_penentu_severity) && 
       prediction.faktor_penentu_severity.length > 0) {
     faktorSeverityHtml = prediction.faktor_penentu_severity.map(item => `<li>• ${item}</li>`).join('');
@@ -1492,13 +1485,13 @@ window.renderIdrgPredictionResult = function(data) {
   // Field yang tepat sesuai idrg_service.py
   return `
     <div class="space-y-2 px-4">      
-      ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "-", true)}
-      ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "-", true)}
+      ${renderPredictionRow("Kode i-DRG", prediction.group_idrg || "", true)}
+      ${renderPredictionRow("Severity Index", severityLabel[prediction.severity_index] || prediction.severity_index || "", true)}
       ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
       ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
-      ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "-")}
-      ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "-")}
-      ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "-")}
+      ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "")}
+      ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "")}
+      ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "")}
       
       <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
         <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
@@ -1602,28 +1595,28 @@ if (!window.openManualNestedProcedureModal) {
 
       <div class="grid grid-cols-2 gap-2">
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Kode ICD-9:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded field-icd9">${td.icd9 || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-icd9">${td.icd9 || ''}</div>
         
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Deskripsi:</b></div> 
-        <div class="bg-gray-800 px-3 py-2 rounded">${td.deskripsi || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.deskripsi || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Validitas:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${td.validitas || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.validitas || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Status:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded field-status">${td.status || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-status">${td.status || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>INA-CBG:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded field-inacbg">${td.ina_cbg || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded field-inacbg">${td.ina_cbg || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Faskes:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${td.faskes || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.faskes || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Rawat Inap:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${td.rawat_inap || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.rawat_inap || ''}</div>
 
         <div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>Syarat Klinis:</b></div>
-        <div class="bg-gray-800 px-3 py-2 rounded">${td.syarat_klinis || '-'}</div>
+        <div class="bg-gray-800 px-3 py-2 rounded">${td.syarat_klinis || ''}</div>
       </div>
     `;
 
@@ -1639,7 +1632,7 @@ if (!window.closeNestedModal) {
     const dx = window.claimState?.currentDiagnosis;
     if (dx && window.openModal && window.buildModalContent) {
       // panggil ulang modal diagnosis
-      const title = `Detail Diagnosis (${dx.kategori || '-'})`;
+      const title = `Detail Diagnosis (${dx.kategori || ''})`;
       window.openModal(title, window.buildModalContent(dx));
     } else {
       // fallback: tutup modal

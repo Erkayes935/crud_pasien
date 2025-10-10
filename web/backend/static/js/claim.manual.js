@@ -60,9 +60,9 @@
 
     const newItem = {
       kategori: selected.name,
-      icd10_code: "-",
-      klinis: "-",
-      tindakan: "-",
+      icd10_code: "",
+      klinis: "",
+      tindakan: "",
       score: 80,
       mapping: "",
       isManual: true,
@@ -97,7 +97,7 @@
     if (!state.manualTindakan) state.manualTindakan = [];
 
     const idx = state.manualTindakan.findIndex(td => td.nama === nama);
-    let newTd = { nama, deskripsi: "-", source: "Manual", isManual: true };
+    let newTd = { nama, deskripsi: "", source: "Manual", isManual: true };
     newTd = window.normalizeProcedure ? window.normalizeProcedure(newTd) : newTd;
 
     if (idx !== -1) state.manualTindakan[idx] = newTd;
@@ -116,7 +116,7 @@
     if (!listContainer) return;
 
     const rawList = (state.simulasi?.[tab]?.tindakan || [])
-      .filter(td => td.procedure_text && td.procedure_text !== "-");
+      .filter(td => td.procedure_text && td.procedure_text !== "");
 
     // 🔥 filter unik biar tidak looping terus
     const list = [];
@@ -137,8 +137,8 @@
     }
 
     list.forEach((td, idx) => {
-      const nama = td.procedure_text || td.nama || "-";
-      const deskripsi = td.deskripsi && td.deskripsi !== "-" ? td.deskripsi : "";
+      const nama = td.procedure_text || td.nama || "";
+      const deskripsi = td.deskripsi && td.deskripsi !== "" ? td.deskripsi : "&nbsp;";
       listContainer.insertAdjacentHTML(
         "beforeend",
         `
@@ -187,8 +187,8 @@
         ...detail,
         isManual: true,
         source: "Manual",
-        procedure_text: selected.procedure_text || detail.procedure_text || "-",
-        deskripsi: "", // awalnya kosong, nanti diisi setelah fetch detail
+        procedure_text: selected.procedure_text || detail.procedure_text || "",
+        deskripsi: "&nbsp;", // awalnya kosong, nanti diisi setelah fetch detail
       };
 
       // 🧹 hapus duplikat nama sama sebelum push
