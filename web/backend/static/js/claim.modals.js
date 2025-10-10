@@ -717,7 +717,7 @@
           <input type="text"
                 x-model="query"
                 @input.debounce.300ms="search"
-                @keydown.enter.prevent="results.length && select(results[0])"
+                @keydown.enter.prevent="results.length ? select(results[0]) : addManualTindakanIfNotFound()"
                 placeholder="Nama Tindakan"
                 class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
                         text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
@@ -1249,6 +1249,8 @@ window.saveNote = async function(fieldKey, stage, itemId) {
   window.closeNestedModal = closeNestedModal;
   window.openRegulationModal = openRegulationModal;
   window.closeRegulationModal = closeRegulationModal;
+  window.tindakanAutocomplete = tindakanAutocomplete;
+  window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
 
   // ================= Note Modal (Diagnosis / Tindakan) =================
 // ======================== SISTEM NOTES FINAL STABIL (MERGED FOR VERSION B) ========================
@@ -1556,8 +1558,51 @@ function tindakanAutocomplete() {
   }
 }
 
-// Expose the function
-window.tindakanAutocomplete = tindakanAutocomplete;
+function isTindakanFound(ctx, text) {
+  return (ctx.results || []).some(
+    t =>
+      t.procedure_text?.toLowerCase() === text.toLowerCase() ||
+      t.nama?.toLowerCase() === text.toLowerCase()
+  );
+}
+
+// 🔹 fungsi utama — dipanggil dari tombol + atau Enter
+async function addManualTindakanIfNotFound() {
+  try {
+    // cari context Alpine (komponen tindakanAutocomplete aktif)
+    const root = document.querySelector('[x-data*="tindakanAutocomplete()"]');
+    const ctx = root ? Alpine.$data(root) : null;
+    if (!ctx) {
+      console.warn("⚠️ addManualTindakanIfNotFound: konteks Alpine tidak ditemukan");
+      return;
+    }
+
+    const text = ctx.query?.trim?.();
+    if (!text) return;
+
+    // panggil fungsi helper di atas
+    const found = isTindakanFound(ctx, text);
+
+    if (!found) {
+      const confirmAdd = confirm(
+        `Tindakan "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`
+      );
+      if (!confirmAdd) return;
+
+      if (typeof addManualTindakanFromAutocomplete === "function") {
+        await addManualTindakanFromAutocomplete(
+          window.claimState?.tab || "admission",
+          { procedure_text: text, isManual: true }
+        );
+      }
+
+      ctx.query = "";
+      ctx.results = [];
+    }
+  } catch (err) {
+    console.error("❌ Gagal addManualTindakanIfNotFound:", err);
+  }
+}
 
 // Add statusIcon function if not exists
 if (!window.statusIcon) {
