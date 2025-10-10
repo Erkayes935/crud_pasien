@@ -1,23 +1,23 @@
-// =============== Rendering simulasi, tabel, dan mapping select ===============
+// =============== Rendering simulasi, tabel, dan mapping select (FULL HYBRID VERSION) ===============
 
 (function () {
+  // ========================== 🔹 Helper: Hubungkan tindakan ke diagnosis ==========================
   function attachTindakan(rows) {
     const tindakanAll = rows.filter(r => r.category === "tindakan");
     rows.forEach(d => {
       const arr = tindakanAll.filter(
         t => t.stage === d.stage &&
-            (t.diagnosis_id === d.id || t.diagnosis_code === d.icd10_code)
+          (t.diagnosis_id === d.id || t.diagnosis_code === d.icd10_code)
       );
       d.tindakan = arr.length ? arr : "-";
     });
   }
 
+  // ========================== 🔹 Diagnosis Autocomplete ==========================
   function diagnosisAutocomplete(tab, tabPath, type = "diagnosis") {
     return {
       query: "",
       results: [],
-
-      // 🔍 cari diagnosis dari backend
       async search() {
         if (!this.query) {
           this.results = [];
@@ -30,29 +30,23 @@
           console.error("❌ Gagal cari diagnosis:", err);
         }
       },
-
-      // 🩺 pilih hasil dari dropdown
       async select(item) {
         this.query = `${item.code} - ${item.name}`;
         this.results = [];
         await window.addManualFromAutocomplete(tab, item, type);
       },
-
-      // ➕ tombol tambah manual
       async addManualIfNotFound() {
-        await window.addManualIfNotFound(tab, type); // panggil versi global
+        await window.addManualIfNotFound(tab, type);
       },
     };
   }
 
-  // ================= Fungsi Global: Add Manual If Not Found =================
+  // ========================== 🔹 Fungsi Global: Tambah Manual Jika Tidak Ditemukan ==========================
   async function addManualIfNotFound(tab, type = "diagnosis") {
-    // 🔎 cari komponen Alpine yang punya x-data diagnosisAutocomplete dan mengandung tab + type
     let el = document.querySelector(
       `[x-data*="diagnosisAutocomplete('${tab}'"][x-data*="'${type}')"]`
     );
 
-    // fallback untuk daily tab (kadang id bisa berubah)
     if (!el && String(tab).startsWith("daily-")) {
       el = document.querySelector(
         `[x-data*="diagnosisAutocomplete('daily"][x-data*="'${type}')"]`
@@ -85,6 +79,7 @@
     }
   }
 
+  // ========================== 🔹 Utility Render Value ==========================
   // Pure renderer untuk data pecahan (support core_engine format)
   function renderAI(rows, type, tab) {
     // 🔥 Support format core_engine (renderAI(diagnosis_array, "diagnosis", "admission"))
@@ -180,11 +175,12 @@
     return '<span class="block w-full text-center text-gray-400">-</span>';
   }
 
+  // ========================== 🔹 Utility Render Mapping Select ==========================
   function renderMappingSelect(item, tab, type) {
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
     return `
-      <select onchange="onMappingChange(event, '${tab}', '${type}', ${item.id})"
-              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[120px] truncate"
+      <select onchange="onMappingChange(event, '${tab}', '${type}', '${item.id}')"
+              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate text-sm"
               ${disabled}>
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
         <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
@@ -193,72 +189,49 @@
         <option value="None" ${item.mapping==="None"?"selected":""}>None</option>
       </select>
     `;
-  }  
+  }
 
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
-
     if (!state.simulasi[tab]) state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [] };
 
-    // Filter AI vs Manual
+    // Filter AI & Manual
     const oldItems = state.simulasi[tab][type] || [];
     const oldAiItems = oldItems.filter(it => !it.isManual);
     const manualItems = oldItems.filter(it => it.isManual);
-
     const newAiItems = (items || []).filter(it => !it.isManual);
     const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems;
 
-    let merged;
-    if (type === "tindakan") {
-      merged = [...aiItems]; // manual tindakan terpisah
-    } else {
-      merged = [...aiItems, ...manualItems];
-    }
+    let merged = [...aiItems, ...manualItems];
 
     // Dedup
     const seen = new Set();
     merged = merged.filter(it => {
-      const key = `${it.id}-${(it.nama_kategori || it.kategori || "").trim()}-${it.icd10_code || it.icd9_code || ""}-${it.tindakan || it.procedure_text || ""}-${it.child ? "child" : "parent"}`;
+      const key = `${it.id || ""}-${it.kategori || ""}-${it.icd10_code || ""}-${it.procedure_text || ""}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    state.simulasi[tab][type] = merged;
+    // Flatten children
+    const flatItems = [];
+    merged.forEach(item => {
+      flatItems.push(item);
+      if (item.children) item.children.forEach(child => flatItems.push(child));
+    });
+    state.simulasi[tab][type] = flatItems;
 
     const target = document.getElementById(targetId);
     if (!target) return;
     target.innerHTML = "";
 
-    // Group parent/child
-    let grouped = [];
-    
-    // 🔥 Handle both formats: core_engine (with children array) and legacy (with child flag)
-    merged.forEach(it => {
-      const name = (it.nama_kategori || it.kategori || "").trim();
-      if (!name) return;
-      
-      // 🔥 Core_engine format: parent already has children array
-      if (it.children && Array.isArray(it.children)) {
-        grouped.push({
-          ...it,
-          kategori: name,
-          nama_kategori: name,
-          children: it.children || []
-        });
-      }
-      // 🔥 Legacy format: child flag
-      else if (it.child !== true) {
-        grouped.push({
-          ...it,
-          kategori: name,
-          nama_kategori: name,
-          children: []
-        });
-      }
-    });
+    // Group parent-child
+    const grouped = merged.map(it => ({
+      ...it,
+      children: Array.isArray(it.children) ? it.children : [],
+    }));
 
-    // Header (sekali per table)
+    // Header
     const table = target.closest("table");
     if (table && !table.querySelector("thead")) {
       const thead = document.createElement("thead");
@@ -270,14 +243,13 @@
           <th class="border px-3 py-2 w-[10%]">ICD</th>
           <th class="border px-3 py-2 w-[25%]">Tindakan</th>
           <th class="border px-3 py-2 w-[10%]">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ``}
+          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ""}
         </tr>`;
       table.insertBefore(thead, table.firstChild);
     }
 
-    // Render rows
-    grouped.forEach((parent, idx) => {
-      const counter = 1 + (parent.children ? parent.children.length : 0);
+    // Rows
+    grouped.forEach((p, idx) => {
       const tbody = document.createElement("tbody");
       tbody.setAttribute("x-data", "{ open:true }");
 
@@ -356,50 +328,23 @@
       Alpine.initTree(tbody);
     });
 
-    // Counter badge
-    const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`;
-    const countEl = document.getElementById(counterId);
-    if (countEl) {
-      let total = grouped.reduce((sum, p) => sum + 1 + p.children.length, 0);
-      countEl.textContent = total;
-    }
-    if (dayId) {
-      const dailyCounter = document.getElementById(`count-daily-${dayId}`);
-      if (dailyCounter) {
-        const totalDaily =
-          (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent) || 0) +
-          (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent) || 0) +
-          (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent) || 0);
-        dailyCounter.textContent = totalDaily;
-      }
-    }
-
-    // Manual row (input) untuk doctor
-    if (!skipManualRow && (Alpine.$data(document.getElementById("claimRoot")).role === "doctor")) {
+    // Manual input baris bawah (untuk dokter)
+    if (!skipManualRow && state.role === "doctor") {
       if (tab === "admission" || tab === "discharge" || String(tab).startsWith("daily-")) {
         const manualTbody = document.createElement("tbody");
-        if (!state.manualInput) state.manualInput = {};
-        if (!state.manualInput.daily) state.manualInput.daily = {};
-        if (!state.manualInput.daily[tab]) {
-          state.manualInput.daily[tab] = { diagnosis: {}, komorbid: {}, komplikasi: {} };
-        }
-       const tabPath = String(tab).startsWith("daily-")
-        ? `manualInput.daily[\`${tab}\`].${type}`
-        : `manualInput.${tab}.${type}`;
+        const tabPath = String(tab).startsWith("daily-")
+          ? `manualInput.daily[\`${tab}\`].${type}`
+          : `manualInput.${tab}.${type}`;
 
         manualTbody.insertAdjacentHTML("beforeend", `
           <tr class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
               <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')" class="relative">
-                <input type="text"
-                      x-model="query"
-                      @input.debounce.300ms="search"
-                      @keydown.enter.prevent="results.length ? select(results[0]) : addManualIfNotFound()"
-                      placeholder="Cari diagnosis..."
-                      class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
-                              text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-
-                <!-- dropdown suggestion -->
+                <input type="text" x-model="query" @input.debounce.300ms="search"
+                  @keydown.enter.prevent="results.length ? select(results[0]) : addManualIfNotFound()"
+                  placeholder="Cari diagnosis..."
+                  class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
+                         text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
                 <ul x-show="results.length > 0"
                     class="absolute left-0 top-full mt-1 z-[9999] bg-white dark:bg-gray-800 border w-full rounded max-h-40 overflow-y-auto shadow-lg">
                   <template x-for="item in results" :key="item.code">
@@ -410,35 +355,24 @@
                 </ul>
               </div>
             </td>
-            <td class="col-klinis border px-6 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
-              <input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-            </td>
-            <td class="col-icd border px-3 py-2">
-              <input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-            </td>
-            <td class="col-tindakan border px-3 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[180px]">
-              <input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-            </td>
-            <td class="border px-3 py-2">
-              <input x-model="${tabPath}.score" placeholder="Score" readonly class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-            </td>
-            <td class="border px-3 py-2 text-center">
-              <button type="button" @click="addManualIfNotFound('${tab}', '${type}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
-            </td>
+            <td class="border px-3 py-2"><input x-model="${tabPath}.klinis" placeholder="Klinis" readonly class="input"/></td>
+            <td class="border px-3 py-2"><input x-model="${tabPath}.icd10_code" placeholder="ICD-10" readonly class="input"/></td>
+            <td class="border px-3 py-2"><input x-model="${tabPath}.procedure_text" placeholder="Tindakan" readonly class="input"/></td>
+            <td class="border px-3 py-2"><input x-model="${tabPath}.score" placeholder="Score" readonly class="input"/></td>
+            <td class="border px-3 py-2 text-center"><button type="button" @click="addManualIfNotFound('${tab}', '${type}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button></td>
           </tr>
         `);
-
         target.appendChild(manualTbody);
         Alpine.initTree(manualTbody);
       }
     }
   }
 
-  // export
+  // ========================== 🔹 Exports ==========================
   window.diagnosisAutocomplete = diagnosisAutocomplete;
+  window.addManualIfNotFound = addManualIfNotFound;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
-  window.addManualIfNotFound = addManualIfNotFound;
   window.renderValue = renderValue;
   window.renderMappingSelect = renderMappingSelect;
 })();

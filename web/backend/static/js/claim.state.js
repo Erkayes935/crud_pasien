@@ -218,14 +218,50 @@
 
   // onMappingChange handler
   function onMappingChange(event, tab, type, itemId) {
-    const state = Alpine.$data(document.getElementById('claimRoot'));
-    const arr = state.simulasi?.[tab]?.[type] || [];
-    const item = arr.find(it => it.id == itemId);
-    if (!item) return console.warn("❌ onMappingChange: item not found", { tab, type, itemId });
+    try {
+      console.log("🔍 onMappingChange called:", { tab, type, itemId, value: event.target.value });
+      
+      // Ensure Alpine state is available
+      const claimRoot = document.getElementById('claimRoot');
+      if (!claimRoot) {
+        console.error("❌ claimRoot element not found");
+        return;
+      }
+      
+      const state = Alpine.$data(claimRoot);
+      if (!state) {
+        console.error("❌ Alpine state not available");
+        return;
+      }
+      
+      const arr = state.simulasi?.[tab]?.[type] || [];
+      
+      console.log("🔍 Available items in simulasi[" + tab + "][" + type + "]:", arr);
+      console.log("🔍 Looking for itemId:", itemId, "type:", typeof itemId);
+      
+      const item = arr.find(it => {
+        console.log("🔍 Comparing item.id:", it.id, "type:", typeof it.id, "with itemId:", itemId);
+        return it.id == itemId;
+      });
+      
+      if (!item) {
+        console.error("❌ onMappingChange: item not found", { tab, type, itemId, availableItems: arr });
+        return;
+      }
 
-    const opt = event.target.value;
-    item.mapping = opt;
-    updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab);
+      const opt = event.target.value;
+      console.log("✅ Found item, mapping to:", opt);
+      item.mapping = opt;
+      
+      // Call updateSimulasi with error handling
+      if (typeof updateSimulasi === 'function') {
+        updateSimulasi(type, opt, normalizeItem(item), item.source || (item.isManual ? "Manual" : "AI"), tab);
+      } else {
+        console.error("❌ updateSimulasi function not available");
+      }
+    } catch (error) {
+      console.error("❌ onMappingChange error:", error);
+    }
   }
 
   // Expose
