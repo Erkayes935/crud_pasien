@@ -91,20 +91,20 @@
     if (type && tab) {
       // Map AI result to expected table row format
       const mappedRows = rows.map(item => ({
-        kategori: item.parent || "-",
-        klinis: "-", // parent klinis always strip  
-        icd10_code: item.icd10_code || item.icd || "-",
-        icd9_code: item.icd9_code || "-",
-        procedure_text: item.tindakan || item.procedure_text || "-",
-        score: item.confidence || "-",
+        kategori: item.parent || "",
+        klinis: "", // parent klinis always strip  
+        icd10_code: item.icd10_code || item.icd || "",
+        icd9_code: item.icd9_code || "",
+        procedure_text: item.tindakan || item.procedure_text || "",
+        score: item.confidence || "",
         mapping: "", // Fill if needed
         children: (item.children && Array.isArray(item.children)) ? item.children.map(child => ({
-          kategori: `→ ${child.name || '-'}`,
-          klinis: '-', // always strip for child
-          icd10_code: child.icd10_code || child.icd || '-',
-          icd9_code: child.icd9_code || '-',
-          procedure_text: child.tindakan || child.procedure_text || '-',
-          score: child.confidence || '-',
+          kategori: `→ ${child.name || ''}`,
+          klinis: '', // always strip for child
+          icd10_code: child.icd10_code || child.icd || '',
+          icd9_code: child.icd9_code || '',
+          procedure_text: child.tindakan || child.procedure_text || '',
+          score: child.confidence || '',
           mapping: ""
         })) : []
       }));
@@ -279,11 +279,11 @@
     grouped.forEach((parent, idx) => {
       const counter = 1 + (parent.children ? parent.children.length : 0);
       const tbody = document.createElement("tbody");
-      tbody.setAttribute("x-data", "{ open:false }");
+      tbody.setAttribute("x-data", "{ open:true }");
 
-      const tindakanText = parent.tindakan || parent.procedure_text || "-";
+      const tindakanText = parent.tindakan || parent.procedure_text || "";
       const klinisText = parent.klinis || "";
-      const icdText = parent.icd10_code || parent.icd9_code || "-";
+      const icdText = parent.icd10_code || parent.icd9_code || "";
       const titleTindakan = tindakanText;
       const titleKlinis = klinisText;
 
@@ -297,7 +297,7 @@
                 <span x-show="!open" x-cloak>▶</span>
                 <span x-show="open" x-cloak>▼</span>
               </span>
-              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || "-"}</span>
+              <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori || ""}</span>
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
             <td class="col-klinis border px-3 py-2 w-[25%]">
@@ -318,9 +318,9 @@
       `);
 
       parent.children.forEach((child, cIdx) => {
-        const tText = child.tindakan || child.procedure_text || "-";
+        const tText = child.tindakan || child.procedure_text || "";
         const kText = child.klinis || "";
-        const iText = child.icd10_code || child.icd9_code || "-";
+        const iText = child.icd10_code || child.icd9_code || "";
 
         tbody.insertAdjacentHTML("beforeend", `
           <tr x-show="open" x-cloak

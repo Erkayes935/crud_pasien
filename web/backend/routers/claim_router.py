@@ -25,9 +25,8 @@ from ..utils.dummy_data import make_dummy, dummy_diagnosis_list, dummy_diagnosis
 from ..crud import claim as claim_crud
 from ..crud import claim_note as note_crud
 from ..services.claim import core, simulation, ai
-from ..services import claim_ai
+from ..services import claim_ai, claim_helper
 from backend.services.claim.simulation import load_sim_and_summary, load_existing_mappings, apply_mappings_to_simulasi
-from backend.services import claim_helper
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
