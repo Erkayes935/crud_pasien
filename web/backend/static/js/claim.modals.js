@@ -64,14 +64,28 @@
     return REGULATION_FIELDS[fieldName] === true;
   }
 
-  function openModal(title, content, { hideDefaultClose = false } = {}) {
-    const root = document.getElementById('claimRoot');
-    const state = Alpine.$data(root);
-    state.modalOpen = true;
-    state.modalTitle = title;
-    state.modalContent = content;
-    state.hideDefaultClose = hideDefaultClose;
+  function openModal(title, content, options = {}) {
+    const modalContainer = document.getElementById("modalContainer");
+    const modalContent = document.querySelector(".modal-content");
+
+    // backup isi lama ke stack sebelum ditimpa
+    window.claimState.modalStack = window.claimState.modalStack || [];
+    if (modalContent && modalContent.innerHTML.trim()) {
+      window.claimState.modalStack.push({
+        title: document.querySelector(".modal-title")?.innerHTML || "",
+        content: modalContent.innerHTML,
+      });
+    }
+
+    // update isi baru
+    modalContainer.classList.remove("hidden");
+    modalContent.innerHTML = content;
+    const modalTitle = document.querySelector(".modal-title");
+    if (modalTitle) modalTitle.innerHTML = title;
+
+    window.claimState.modalOpen = true;
   }
+
 
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
@@ -935,18 +949,31 @@
   }
 
   function closeNestedModal() {
-    const dx = window.claimState.currentDiagnosis;
-    if (dx) {
-      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "";
-      openModal(`<div class="flex flex-col items-start items-center">
-        <span class="text-lg font-bold">Detail Diagnosis</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
-        </div>`, buildModalContent(dx), { hideDefaultClose: false });
-      } else {
-        const state = Alpine.$data(document.getElementById('claimRoot'));
-        state.modalOpen = false;
-      }
+    const modalContent = document.querySelector(".modal-content");
+    const modalTitle = document.querySelector(".modal-title");
+    const stack = window.claimState.modalStack || [];
+
+    if (stack.length > 0) {
+      const prev = stack.pop();
+      if (modalTitle) modalTitle.innerHTML = prev.title;
+      modalContent.innerHTML = prev.content;
+
+      // re-init Alpine lagi biar interaktif
+      Alpine.initTree(modalContent);
+
+      // render ulang list tindakan manual (aman)
+      setTimeout(() => {
+        if (typeof window.renderManualTindakanList === "function") {
+          const tab = window.claimState?.tab || "admission";
+          window.renderManualTindakanList(tab);
+        }
+      }, 50);
+    } else {
+      document.getElementById("modalContainer").classList.add("hidden");
+      window.claimState.modalOpen = false;
     }
+  }
+
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;

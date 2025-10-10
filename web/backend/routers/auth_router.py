@@ -81,11 +81,14 @@ async def callback(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/dashboard", status_code=303)
 
 @router.get("/logout")
-def logout():
+def logout(request: Request):
+    base_url = str(request.base_url).rstrip("/")
     params = {
         "client_id": config.CLIENT_ID,
-        "returnTo": "http://localhost:8000/welcome"
+        # arahkan balik ke halaman login lokal kamu
+        "returnTo": f"{base_url}/login"
     }
+
     url = f"https://{config.AUTH0_DOMAIN}/v2/logout?" + urlencode(params)
     response = RedirectResponse(url)
     response.delete_cookie("id_token")
