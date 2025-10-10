@@ -813,3 +813,8 @@ def get_notes(claim_id: int, db: Session = Depends(get_db)):
             "timestamp": n.timestamp.isoformat()
         } for n in notes
     ]}
+
+@router.get("/csrf/refresh")
+def refresh_csrf_token(request: Request):
+    from ..auth import issue_csrf_token
+    return {"csrf_token": issue_csrf_token(request)}
