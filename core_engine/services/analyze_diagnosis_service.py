@@ -59,13 +59,24 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
       "rujukan": {{
         "syarat": "Kapan perlu rujukan ke level lebih tinggi",
         "kelayakan": "Ke mana rujukan sebaiknya"
-      }}
+      }},
+      "notifications": {{
+        "klinis": "Apakah justifikasi & bukti sudah lengkap? Jelaskan singkat.",
+        "icd": "Apakah kode ICD sesuai kondisi dan CP? Jelaskan singkat.",
+        "tindakan": "Apakah ada tindakan yang wajib/opsional/tidak sesuai? Jelaskan singkat.",
+        "rawat": "Apakah lama rawat sudah sesuai CP? Jelaskan singkat.",
+        "faskes": "Apakah level faskes sesuai standar? Jelaskan singkat.",
+        "rujukan": "Apakah rujukan perlu? Jelaskan singkat.",
+        "inacbg": "Apakah tarif INA-CBG sesuai kompleksitas kasus?"
+  }}
     }}
 
     PENTING: 
     - Berikan analisis berdasarkan standar medis Indonesia
     - Sesuaikan dengan panduan CP/PNPK BPJS
+    - Gunakan istilah medis Indonesia
     - Semua field harus diisi, jangan ada yang kosong
+    - "notifications" harus berisi kalimat evaluatif singkat (maks 2 kalimat).
     """
 
     try:
@@ -100,6 +111,15 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
             "rujukan": {
                 "syarat": "Jika diperlukan",
                 "kelayakan": "Ke faskes dengan kapasitas sesuai"
+            },
+            "notifications": {
+                "klinis": "Belum ada analisis AI",
+                "icd": "Belum ada analisis AI",
+                "tindakan": "Belum ada analisis AI",
+                "rawat": "Belum ada analisis AI",
+                "faskes": "Belum ada analisis AI",
+                "rujukan": "Belum ada analisis AI",
+                "inacbg": "Belum ada analisis AI"
             }
         }
 
@@ -313,10 +333,58 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
         "data_completeness": "100%" if has_complete_rules else "75%" if gpt_result else "25%",
         "engine_version": "hybrid_analyze_diagnosis@2025-10-03"
     }
-    
     print(f"[ANALYZE_DIAGNOSIS] Response structure complete, source: {result['source']}")
     print(f"[ANALYZE_DIAGNOSIS] Klinis data: {result['klinis']}")
     print(f"[ANALYZE_DIAGNOSIS] ICD10 data: {result['icd10']}")
     print(f"[ANALYZE_DIAGNOSIS] Tindakan count: {len(result['tindakan'])}")
     print(f"[ANALYZE_DIAGNOSIS] First tindakan: {result['tindakan'][0] if result['tindakan'] else 'None'}")
+    
+
+    # ======================================================
+    # NEW SECTION: AI Notifications (merged + tindakan)
+    # ======================================================
+    notifications = {}
+
+    if gpt_result and gpt_result.get("notifications"):
+        gpt_notif = gpt_result.get("notifications", {})
+        for key, text in gpt_notif.items():
+            status = "success"
+            txt_lower = text.lower()
+            if any(w in txt_lower for w in ["tidak sesuai", "kurang", "perlu", "belum", "review"]): status = "warning"
+            if any(w in txt_lower for w in ["salah", "tidak valid", "keliru"]): status = "error"
+            notifications[key] = {"status": status, "message": text.strip()}
+
+    # Import tindakan summary dari procedure service
+    from services.analyze_procedure_service import process_analyze_procedure, summarize_procedure_notif
+    notifications_summary = []
+    for t in result.get("tindakan", []):
+        try:
+            proc_payload = {
+                "claim_id": claim_id,
+                "procedure_name": t.get("nama") or t.get("tindakan"),
+                "context": {
+                    "primary_claim": disease_name,
+                    "hospital_level": faskes.get("tingkat", "-"),
+                    "rekam_medis": rekam_medis,
+                    "lama_rawat": rawat_inap.get("lama_rawat", "1 hari"),
+                    "hasil_lab": "HbA1c belum tersedia",
+                    "hasil_radiologi": "Tidak ditemukan hasil radiologi"
+                    }
+                }
+            proc_result = process_analyze_procedure(proc_payload)
+            notif = summarize_procedure_notif(proc_result)
+            notifications_summary.append(notif)
+        except Exception as e:
+            print(f"[ANALYZE_DIAGNOSIS] ⚠️ Failed to summarize notif: {e}")
+
+    if notifications_summary:
+        notifications["tindakan"] = {
+            "status": "info",
+            "message": "; ".join([f"{n['name']}: {n['notif_text']}" for n in notifications_summary])
+        }
+
+    if notifications:
+        result["notifications"] = notifications
+        print(f"[ANALYZE_DIAGNOSIS] Added {len(notifications)} notifications")
+
     return result

@@ -58,12 +58,20 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Enhanced prompt untuk hasil yang sesuai dengan modal structure
     prompt = f"""
     Anda adalah spesialis coding medis dan konsultan BPJS Indonesia.
+
+    Tugas Anda: Berikan analisis tindakan medis {procedure} berdasarkan konteks klaim berikut:
     
     ANALISIS TINDAKAN: {procedure}
     DIAGNOSIS PRIMER: {dx_pri}
     KONTEKS: Claim {claim_id}, Stage: {stage}, RS: {hospital_level}
+    INFORMASI KLAIM: {json.dumps(ctx, ensure_ascii=False)}
     
-    Berikan analisis komprehensif dalam format JSON:
+    Tentukan apakah tindakan ini:
+    - Sesuai dengan Clinical Pathway (CP) dan Panduan Nasional (PNPK)
+    - Sudah didukung oleh data rekam medis (hasil lab, radiologi, durasi rawat, indikasi klinis)
+    - Memerlukan tambahan pemeriksaan atau lama rawat tertentu
+    - Perlu penyesuaian tarif atau kelayakan level RS
+    
     {{
       "procedure": "{procedure}",
       "icd9_code": "Kode ICD-9-CM yang akurat sesuai WHO/BPJS",
@@ -76,7 +84,15 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
       "ina_cbg": "Impact grouping ringkas",
       "faskes": "Level RS yang sesuai (A/B/C/Puskesmas) + alasan kapasitas",
       "rawat_inap": "Indikasi rawat inap: WAJIB/TIDAK/CONDITIONAL + syarat",
-      "syarat_klinis": "Persyaratan medis/lab/imaging yang diperlukan sebelum tindakan"
+      "syarat_klinis": "Persyaratan medis/lab/imaging yang diperlukan sebelum tindakan",
+      "notification": {{
+          "status": "success/warning/error/info",
+          "message": "Kalimat singkat yang berupa rekomendasi AI untuk dokter, contoh:
+          - 'Belum ditemukan hasil radiologi — mohon lengkapi sebelum klaim.'
+          - 'Durasi rawat 1 hari — CP mensyaratkan minimal 3 hari.'
+          - 'Kode ICD sudah sesuai hasil Lab dan CP.'
+          - 'Perlu pemeriksaan kultur darah untuk melengkapi klaim.'
+      }}
     }}
 
     PEDOMAN ANALISIS:
@@ -87,6 +103,17 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     - Level faskes sesuai Permenkes tentang klasifikasi dan kapasitas RS
     - Syarat klinis harus spesifik dan dapat diverifikasi
     - Semua field wajib diisi dengan informasi yang berguna, hindari "-" atau kosong
+
+    Pedoman untuk 'notification.message':
+    - Gunakan gaya *rekomendatif*, bukan deskriptif.
+    - Sebutkan tindakan apa yang harus dilakukan dokter (lengkapi lab, tambah durasi rawat, dsb).
+    - Status:
+      - 'error' → dokumentasi penting hilang.
+      - 'warning' → data ada tapi belum lengkap / durasi rawat kurang.
+      - 'success' → semua sudah sesuai CP/PNPK dan kelayakan RS.
+      - 'info' → tindakan tidak memengaruhi tarif klaim.
+
+    Output harus valid JSON tanpa penjelasan tambahan.
     """
 
     try:
@@ -148,7 +175,35 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
         "data_completeness": "100%" if ai_data else "0%",
         "engine_version": f"hybrid_analyze_procedure@{date.today().isoformat()}",
     }
-    
+
+    # Tambahan: simpan notifikasi jika ada
+    if ai_data.get("notification"):
+        result["notification"] = ai_data["notification"]
+
+    print(f"[ANALYZE_PROCEDURE] Done for {procedure}")
     print(f"[ANALYZE_PROCEDURE] Response built successfully for: {procedure}")
     print(f"[DEBUG] Final result ina_cbg_tarif: '{result.get('ina_cbg_tarif')}' | ina_cbg: '{result.get('ina_cbg')}'")
     return result
+
+# ==========================================
+# NEW: Summarize AI Notif for Procedure
+# ==========================================
+def summarize_procedure_notif(procedure_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ambil notifikasi AI ringkas dari hasil analisis tindakan.
+    Digunakan oleh analyze_diagnosis_service.
+    """
+    notif = procedure_data.get("notification", {})
+    if notif:
+        return {
+            "name": procedure_data.get("procedure", "-"),
+            "notif_text": notif.get("message", "-"),
+            "severity": notif.get("status", "info")
+        }
+
+    # fallback jika tidak ada notifikasi dari AI
+    rawat_inap = (procedure_data.get("rawat_inap") or "").lower()
+    if "3" in rawat_inap or "≥" in rawat_inap:
+        return {"name": procedure_data.get("procedure", "-"), "notif_text": "Butuh rawat inap ≥3 hari.", "severity": "warning"}
+
+    return {"name": procedure_data.get("procedure", "-"), "notif_text": "Perlu konfirmasi kelengkapan data klinis.", "severity": "info"}

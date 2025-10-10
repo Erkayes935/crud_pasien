@@ -29,7 +29,7 @@ def build_prompt_single(payload: dict) -> str:
     tindakan_names = [t.get("nama", "") for t in tindakan if isinstance(t, dict)]
     
     return f"""
-Anda adalah sistem prediksi i-DRG Indonesia.
+Anda adalah sistem prediksi i-DRG Indonesia yang juga memberikan *notifikasi AI* kepada dokter/verifikator.
 
 Data klaim:
 - Claim ID: {claim_id}
@@ -38,8 +38,14 @@ Data klaim:
 - Bukti klinis: {bukti_klinis}
 - Tindakan terkait: {', '.join(tindakan_names)}
 
-Tugas Anda: hanya jawab JSON valid sesuai struktur.
-Setiap field punya peran khusus, ikuti aturan berikut:
+Tugas Anda:
+1. Prediksi i-DRG sesuai aturan resmi (kode, severity, estimasi tarif, dsb)
+2. Tambahkan notifikasi AI klinis yang bersifat rekomendatif seperti contoh berikut:
+   - "Severity konsisten, gap tarif wajar" (🟢 success)
+   - "HbA1c tidak tercatat — dokumentasi perlu dilengkapi" (🟡 warning)
+   - "Durasi rawat < 3 hari — risiko ungroupable" (🔴 error)
+
+Jawab hanya JSON valid dengan struktur berikut:
 
 {{
   "group_idrg": "Kode resmi i-DRG untuk diagnosis ini. Contoh: I-SEP-2",
@@ -53,12 +59,21 @@ Setiap field punya peran khusus, ikuti aturan berikut:
   "ungroupable_alert": "Alasan klaim bisa gagal grouping. Jika tidak ada, isi '-'",
   "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
   "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)"
+  "notification": {{
+    "status": "success/warning/error/info",
+    "message": "Pesan singkat rekomendasi seperti contoh di atas"
+  }}
 }}
 
 Aturan tambahan:
 - Semua angka harus integer murni.
 - Jangan naratif panjang.
 - Jika tidak ada data → isi dengan "-".
+- Status notifikasi berdasarkan kondisi:
+  - success → gap wajar dan severity sesuai
+  - warning → data sebagian belum lengkap
+  - error → risiko ungroupable atau gap terlalu tinggi
+  - info → rekomendasi tambahan umum
 """
 
 def build_prompt_combo(payload: dict) -> str:
@@ -79,7 +94,14 @@ Data kombinasi klaim:
 - Secondary Diagnoses: {', '.join(secondary_diagnosis)}
 - Procedures: {', '.join(procedures)}
 
-Jawab hanya JSON valid dengan struktur.
+Tugas Anda:
+1. Berikan prediksi i-DRG kombinasi sesuai struktur resmi.
+2. Tambahkan notifikasi AI klinis yang kontekstual seperti:
+   - "Severity konsisten, gap tarif wajar" (success)
+   - "HbA1c tidak tercatat di rekam medis" (warning)
+   - "Gap INA-CBG terlalu tinggi, verifikasi kelengkapan data" (error)
+
+Jawab hanya JSON valid.
 Setiap field punya peran khusus, ikuti aturan berikut:
 
 {{
@@ -95,12 +117,21 @@ Setiap field punya peran khusus, ikuti aturan berikut:
   "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
   "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)",
   "rekomendasi_ai": "Saran singkat dokumentasi tambahan. Contoh: Tambahkan HbA1c di rekam medis"
+  "notification": {{
+    "status": "success/warning/error/info",
+    "message": "Pesan singkat rekomendasi seperti contoh di atas"
+  }}
 }}
 
 Aturan tambahan:
 - Semua angka harus integer murni.
 - Jangan naratif panjang.
 - Jika tidak ada data → isi dengan "-".
+- Status notifikasi:
+  - success → gap wajar dan severity sesuai kombinasi
+  - warning → data sebagian belum lengkap
+  - error → risiko ungroupable atau selisih besar
+  - info → rekomendasi umum tambahan
 """
 
 # ============================
@@ -221,19 +252,27 @@ def predict_combo_idrg(payload: dict):
         })
         
         result = ask_openai(prompt)
+
+        # Normalisasi numerik
+        for key in ["gap_analysis", "estimasi_tarif_idrg"]:
+            val = result.get(key)
+            if isinstance(val, str):
+                match = re.search(r'\d+', val)
+                result[key] = int(match.group()) if match else 0
         
         # Format hasil sesuai ekspektasi frontend
         formatted_result = {
-            "group_idrg_kombinasi": result.get("prediksi_group_idrg_kombinasi", ""),
-            "severity_kombinasi": result.get("severity_kombinasi", ""),
+            "group_idrg_kombinasi": result.get("prediksi_group_idrg_kombinasi", "-"),
+            "severity_kombinasi": result.get("severity_kombinasi", "-"),
             "checklist_dokumentasi": result.get("checklist_idrg_kombinasi", []),
             "faktor_penentu_severity": result.get("faktor_penentu_severity", []),
             "risiko_ungroupable": result.get("risiko_ungroupable", "-"),
             "estimasi_tarif": result.get("estimasi_tarif_idrg", 0),
             "gap_inacbg_vs_idrg": result.get("gap_analysis", 0),
-            "rekomendasi_ai": result.get("rekomendasi_ai", "-")
+            "rekomendasi_ai": result.get("rekomendasi_ai", "-"),
+            "notification": result.get("notification", {"status": "info", "message": "Belum ada notifikasi AI"})
         }
-        
+
         return {
             "mode": "combo",
             "claim_id": claim_id,
@@ -248,15 +287,6 @@ def predict_combo_idrg(payload: dict):
             "mode": "combo",
             "claim_id": claim_id,
             "primary_diagnosis": primary_diagnosis,
-            "idrg_prediction": {
-                "group_idrg_kombinasi": "I-SEP-DM-3",
-                "severity_kombinasi": "Sedang",
-                "checklist_dokumentasi": ["HbA1c + kultur darah wajib", "Dokumentasi operasi Apendektomi wajib"],
-                "faktor_penentu_severity": ["Komorbid 1", "Usia pasien", "Durasi rawat inap"],
-                "risiko_ungroupable": "-",
-                "estimasi_tarif": 15000000,
-                "gap_inacbg_vs_idrg": 2000000,
-                "rekomendasi_ai": "Tambahkan hasil CT Scan dan rekam medis"
-            },
+            "error": str(e),
             "engine_version": f"idrg_service@{date.today().isoformat()}"
         }
