@@ -64,14 +64,28 @@
     return REGULATION_FIELDS[fieldName] === true;
   }
 
-  function openModal(title, content, { hideDefaultClose = false } = {}) {
-    const root = document.getElementById('claimRoot');
-    const state = Alpine.$data(root);
-    state.modalOpen = true;
-    state.modalTitle = title;
-    state.modalContent = content;
-    state.hideDefaultClose = hideDefaultClose;
+  function openModal(title, content, options = {}) {
+    const modalContainer = document.getElementById("modalContainer");
+    const modalContent = document.querySelector(".modal-content");
+
+    // backup isi lama ke stack sebelum ditimpa
+    window.claimState.modalStack = window.claimState.modalStack || [];
+    if (modalContent && modalContent.innerHTML.trim()) {
+      window.claimState.modalStack.push({
+        title: document.querySelector(".modal-title")?.innerHTML || "",
+        content: modalContent.innerHTML,
+      });
+    }
+
+    // update isi baru
+    modalContainer.classList.remove("hidden");
+    modalContent.innerHTML = content;
+    const modalTitle = document.querySelector(".modal-title");
+    if (modalTitle) modalTitle.innerHTML = title;
+
+    window.claimState.modalOpen = true;
   }
+
 
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
@@ -717,7 +731,7 @@
           <input type="text"
                 x-model="query"
                 @input.debounce.300ms="search"
-                @keydown.enter.prevent="results.length && select(results[0])"
+                @keydown.enter.prevent="results.length ? select(results[0]) : addManualTindakanIfNotFound()"
                 placeholder="Nama Tindakan"
                 class="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900
                         text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
@@ -935,18 +949,31 @@
   }
 
   function closeNestedModal() {
-    const dx = window.claimState.currentDiagnosis;
-    if (dx) {
-      const nama = window.claimState.currentDiagnosisTitle || dx?.kategori || "";
-      openModal(`<div class="flex flex-col items-start items-center">
-        <span class="text-lg font-bold">Detail Diagnosis</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${nama}</span>
-        </div>`, buildModalContent(dx), { hideDefaultClose: false });
-      } else {
-        const state = Alpine.$data(document.getElementById('claimRoot'));
-        state.modalOpen = false;
-      }
+    const modalContent = document.querySelector(".modal-content");
+    const modalTitle = document.querySelector(".modal-title");
+    const stack = window.claimState.modalStack || [];
+
+    if (stack.length > 0) {
+      const prev = stack.pop();
+      if (modalTitle) modalTitle.innerHTML = prev.title;
+      modalContent.innerHTML = prev.content;
+
+      // re-init Alpine lagi biar interaktif
+      Alpine.initTree(modalContent);
+
+      // render ulang list tindakan manual (aman)
+      setTimeout(() => {
+        if (typeof window.renderManualTindakanList === "function") {
+          const tab = window.claimState?.tab || "admission";
+          window.renderManualTindakanList(tab);
+        }
+      }, 50);
+    } else {
+      document.getElementById("modalContainer").classList.add("hidden");
+      window.claimState.modalOpen = false;
     }
+  }
+
 
   async function openRegulationModal(id, type = "diagnosis") {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
@@ -1249,6 +1276,8 @@ window.saveNote = async function(fieldKey, stage, itemId) {
   window.closeNestedModal = closeNestedModal;
   window.openRegulationModal = openRegulationModal;
   window.closeRegulationModal = closeRegulationModal;
+  window.tindakanAutocomplete = tindakanAutocomplete;
+  window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
 
   // ================= Note Modal (Diagnosis / Tindakan) =================
 // ======================== SISTEM NOTES FINAL STABIL (MERGED FOR VERSION B) ========================
@@ -1556,8 +1585,51 @@ function tindakanAutocomplete() {
   }
 }
 
-// Expose the function
-window.tindakanAutocomplete = tindakanAutocomplete;
+function isTindakanFound(ctx, text) {
+  return (ctx.results || []).some(
+    t =>
+      t.procedure_text?.toLowerCase() === text.toLowerCase() ||
+      t.nama?.toLowerCase() === text.toLowerCase()
+  );
+}
+
+// 🔹 fungsi utama — dipanggil dari tombol + atau Enter
+async function addManualTindakanIfNotFound() {
+  try {
+    // cari context Alpine (komponen tindakanAutocomplete aktif)
+    const root = document.querySelector('[x-data*="tindakanAutocomplete()"]');
+    const ctx = root ? Alpine.$data(root) : null;
+    if (!ctx) {
+      console.warn("⚠️ addManualTindakanIfNotFound: konteks Alpine tidak ditemukan");
+      return;
+    }
+
+    const text = ctx.query?.trim?.();
+    if (!text) return;
+
+    // panggil fungsi helper di atas
+    const found = isTindakanFound(ctx, text);
+
+    if (!found) {
+      const confirmAdd = confirm(
+        `Tindakan "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`
+      );
+      if (!confirmAdd) return;
+
+      if (typeof addManualTindakanFromAutocomplete === "function") {
+        await addManualTindakanFromAutocomplete(
+          window.claimState?.tab || "admission",
+          { procedure_text: text, isManual: true }
+        );
+      }
+
+      ctx.query = "";
+      ctx.results = [];
+    }
+  } catch (err) {
+    console.error("❌ Gagal addManualTindakanIfNotFound:", err);
+  }
+}
 
 // Add statusIcon function if not exists
 if (!window.statusIcon) {
