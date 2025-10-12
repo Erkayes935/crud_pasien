@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}Rules Management - Admin RS{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto mt-6" x-data="rulesManagement()">
+
+  <!-- Header & Navigation -->
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Rules Management</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-1">Kelola Aturan PPK RS & RS Lokal</p>
+    </div>
+    <div class="flex space-x-3">
+      <a href="/users" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded">
+        ← User Management
+      </a>
+      <button @click="showAddForm = true" 
+              class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
+        + Tambah Aturan
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border">
+      <div class="text-2xl font-bold text-blue-600">{{ total_rules }}</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">Total Aturan</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border">
+      <div class="text-2xl font-bold text-yellow-600">{{ rules_by_status.unverified|length }}</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">Menunggu Review</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border">
+      <div class="text-2xl font-bold text-green-600">{{ rules_by_status.active|length + rules_by_status.official|length }}</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">Aktif</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border">
+      <div class="text-2xl font-bold text-red-600">{{ rules_by_status.rejected|length }}</div>
+      <div class="text-sm text-gray-600 dark:text-gray-400">Ditolak</div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="flex space-x-1 mb-4">
+    <button @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+            class="px-4 py-2 rounded font-medium">
+      Semua ({{ total_rules }})
+    </button>
+    <button @click="activeTab = 'unverified'" :class="activeTab === 'unverified' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'"
+            class="px-4 py-2 rounded font-medium">
+      Menunggu ({{ rules_by_status.unverified|length }})
+    </button>
+    <button @click="activeTab = 'active'" :class="activeTab === 'active' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'"
+            class="px-4 py-2 rounded font-medium">
+      Aktif ({{ rules_by_status.active|length + rules_by_status.official|length }})
+    </button>
+    <button @click="activeTab = 'rejected'" :class="activeTab === 'rejected' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'"
+            class="px-4 py-2 rounded font-medium">
+      Ditolak ({{ rules_by_status.rejected|length }})
+    </button>
+  </div>
+
+  <!-- Rules Table -->
+  <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg border border-gray-200 dark:border-gray-700">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-100 dark:bg-gray-700">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Diagnosis</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Field</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Layer</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aturan</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dibuat</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          {% for rule in my_rules %}
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700" 
+              x-show="activeTab === 'all' || activeTab === '{{ rule.status }}' || (activeTab === 'active' && ['active', 'official'].includes('{{ rule.status }}'))">
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+              {{ rule.diagnosis }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+              {{ rule.field }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded-full
+                {% if rule.layer == 'ppk' %}bg-purple-100 text-purple-800{% elif rule.layer == 'rs' %}bg-blue-100 text-blue-800{% endif %}">
+                {% if rule.layer == 'ppk' %}PPK RS{% elif rule.layer == 'rs' %}RS Lokal{% endif %}
+              </span>
+            </td>
+            <td class="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+              {{ rule.isi }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-medium rounded-full
+                {% if rule.status == 'unverified' %}bg-yellow-100 text-yellow-800
+                {% elif rule.status == 'active' %}bg-green-100 text-green-800
+                {% elif rule.status == 'official' %}bg-blue-100 text-blue-800
+                {% elif rule.status == 'rejected' %}bg-red-100 text-red-800
+                {% endif %}">
+                {% if rule.status == 'unverified' %}Menunggu Review
+                {% elif rule.status == 'active' %}Aktif
+                {% elif rule.status == 'official' %}Resmi
+                {% elif rule.status == 'rejected' %}Ditolak
+                {% endif %}
+              </span>
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+              {{ rule.created_at.strftime('%d/%m/%Y') }}
+            </td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm space-x-2">
+              <button @click="viewRule({{ rule.id }})" 
+                      class="text-blue-600 hover:text-blue-900">Detail</button>
+              {% if rule.status == 'unverified' %}
+              <button @click="editRule({{ rule.id }})" 
+                      class="text-yellow-600 hover:text-yellow-900">Edit</button>
+              <button @click="deleteRule({{ rule.id }})" 
+                      class="text-red-600 hover:text-red-900">Hapus</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+              Belum ada aturan yang dibuat. <button @click="showAddForm = true" class="text-blue-600 hover:text-blue-800">Tambah aturan pertama</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Rule Modal -->
+  <div x-show="showAddForm" x-cloak class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+      <div class="mt-3">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Tambah Aturan Baru</h3>
+        <form @submit.prevent="submitNewRule()">
+          <!-- Layer Selection -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jenis Aturan</label>
+            <div class="flex space-x-4">
+              <label class="flex items-center">
+                <input type="radio" x-model="newRule.layer" value="ppk" name="layer" class="mr-2">
+                <span class="text-sm">PPK RS (Override Priority)</span>
+              </label>
+              <label class="flex items-center">
+                <input type="radio" x-model="newRule.layer" value="rs" name="layer" class="mr-2">
+                <span class="text-sm">RS Lokal (BA/SOP)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Diagnosis -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Diagnosis</label>
+            <input type="text" x-model="newRule.diagnosis" 
+                   placeholder="e.g., Pneumonia, DM Tipe 2, Stroke" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <!-- Field -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Field Aturan</label>
+            <select x-model="newRule.field" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Pilih field...</option>
+              <option value="rawat_inap.lama_rawat">Lama Rawat Inap</option>
+              <option value="diagnosis.primer">Diagnosis Primer</option>
+              <option value="diagnosis.sekunder">Diagnosis Sekunder</option>
+              <option value="tindakan.bedah">Tindakan Bedah</option>
+              <option value="tindakan.non_bedah">Tindakan Non Bedah</option>
+              <option value="lab.hematologi">Lab Hematologi</option>
+              <option value="lab.kimia_darah">Lab Kimia Darah</option>
+              <option value="radiologi.foto_thorax">Radiologi Foto Thorax</option>
+              <option value="obat.antibiotik">Obat Antibiotik</option>
+              <option value="obat.analgesik">Obat Analgesik</option>
+            </select>
+          </div>
+
+          <!-- Isi Aturan -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Isi Aturan</label>
+            <textarea x-model="newRule.isi" rows="3" 
+                      placeholder="e.g., LOS ≥ 2 hari untuk kasus Pneumonia tanpa komplikasi"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+          </div>
+
+          <!-- Sumber -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sumber Referensi</label>
+            <input type="text" x-model="newRule.sumber" 
+                   placeholder="e.g., PPK RS Notopuro 2024, SOP RS Internal"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end space-x-3">
+            <button type="button" @click="showAddForm = false" 
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+              Batal
+            </button>
+            <button type="submit" 
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              Simpan Aturan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function rulesManagement() {
+  return {
+    activeTab: 'all',
+    showAddForm: false,
+    newRule: {
+      layer: 'ppk',
+      diagnosis: '',
+      field: '',
+      isi: '',
+      sumber: ''
+    },
+
+    async submitNewRule() {
+      if (!this.newRule.diagnosis || !this.newRule.field || !this.newRule.isi) {
+        alert('Mohon lengkapi semua field yang wajib diisi');
+        return;
+      }
+
+      try {
+        // Create FormData (bukan JSON)
+        const formData = new FormData();
+        formData.append('diagnosis', this.newRule.diagnosis);
+        formData.append('field', this.newRule.field);
+        formData.append('layer', this.newRule.layer);
+        formData.append('isi', this.newRule.isi);
+        formData.append('sumber', this.newRule.sumber || '');
+        formData.append('csrf_token', '{{ csrf_token }}');
+
+        const response = await fetch('/claims/rules/add', {
+          method: 'POST',
+          body: formData  // Kirim sebagai FormData, bukan JSON
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Aturan berhasil ditambahkan!');
+          this.showAddForm = false;
+          location.reload();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    },
+
+    viewRule(id) {
+      // TODO: Implement view rule detail
+      alert('View rule detail: ' + id);
+    },
+
+    editRule(id) {
+      // TODO: Implement edit rule
+      alert('Edit rule: ' + id);
+    },
+
+    async deleteRule(id) {
+      if (!confirm('Yakin ingin menghapus aturan ini?')) return;
+
+      try {
+        const response = await fetch(`/claims/rules/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          alert('Aturan berhasil dihapus!');
+          location.reload();
+        } else {
+          alert('Error menghapus aturan');
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+  }
+}
+</script>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>
+{% endblock %}

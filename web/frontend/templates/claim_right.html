@@ -51,6 +51,13 @@
                     <div class="flex items-center gap-2 mt-2">
                     <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
                             x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
+                    <!-- Rules Button -->
+                    <button type="button" 
+                            @click="showRulesModal(simulasi[tab].utama.name)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-medium transition-colors"
+                            title="Lihat Aturan Multilayer">
+                      📘 Rules
+                    </button>
                     </div>
                 </template>
                 <template x-if="!simulasi[tab]?.utama || null">
@@ -190,6 +197,93 @@
                 <div class="p-6" x-html="modalContent"></div>
             </div>
         </div>
+
+        <!-- Multilayer Rules Modal -->
+        <div x-show="rulesModalOpen" x-cloak
+            x-data="{ rulesModalOpen: false, rulesData: null, loading: false, selectedDiagnosis: '' }"
+            class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="font-bold text-xl text-gray-900 dark:text-gray-100">
+                    📘 Aturan Multilayer: <span x-text="selectedDiagnosis"></span>
+                </h3>
+                <button type="button" @click="rulesModalOpen=false"
+                        class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+                    ✕
+                </button>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                <!-- Loading State -->
+                <div x-show="loading" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat aturan...</p>
+                </div>
+
+                <!-- Rules Content -->
+                <div x-show="!loading && rulesData" class="space-y-4">
+                    <!-- Summary -->
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">🎯 Ringkasan Aturan</h4>
+                    <p class="text-blue-800 dark:text-blue-400 text-sm" x-text="rulesData ? `Ditemukan ${Object.keys(rulesData.rules || {}).length} kategori field dengan aturan aktif` : ''"></p>
+                    </div>
+
+                    <!-- Rules by Field -->
+                    <template x-for="(fieldRules, fieldName) in rulesData?.rules || {}" :key="fieldName">
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <h5 class="font-semibold text-lg mb-3 text-gray-900 dark:text-gray-100" x-text="`📋 ${fieldName}`"></h5>
+                        
+                        <template x-for="(rule, index) in fieldRules" :key="index">
+                        <div class="mb-3 p-3 rounded-md" 
+                            :class="rule.layer === 'ppk' || rule.layer === 'rs' ? 'bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500' : 'bg-gray-50 dark:bg-gray-800/50'">
+                            
+                            <!-- Rule Header -->
+                            <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                                    :class="rule.layer === 'ppk' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 
+                                        rule.layer === 'rs' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200' :
+                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'"
+                                    x-text="rule.layer.toUpperCase()"></span>
+                            
+                            <span x-show="rule.layer === 'ppk' || rule.layer === 'rs'" 
+                                    class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 rounded-full">
+                                ⭐ OVERRIDE
+                            </span>
+                            
+                            <span class="text-xs text-gray-600 dark:text-gray-400" x-text="`Priority: ${rule.priority || 'N/A'}`"></span>
+                            </div>
+
+                            <!-- Rule Content -->
+                            <div class="text-sm text-gray-800 dark:text-gray-200 mb-2" x-text="rule.isi"></div>
+                            
+                            <!-- Rule Source -->
+                            <div class="text-xs text-gray-600 dark:text-gray-400">
+                            <span class="font-medium">Sumber:</span> <span x-text="rule.sumber"></span>
+                            </div>
+                        </div>
+                        </template>
+                    </div>
+                    </template>
+
+                    <!-- No Rules -->
+                    <div x-show="!rulesData || !rulesData.rules || Object.keys(rulesData.rules).length === 0" 
+                        class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p>📋 Belum ada aturan khusus untuk diagnosis ini</p>
+                    <p class="text-sm mt-2">Sistem akan menggunakan aturan nasional standar</p>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div x-show="!loading && !rulesData" class="text-center py-8 text-red-500">
+                    <p>❌ Gagal memuat aturan</p>
+                    <p class="text-sm mt-2">Silakan coba lagi atau hubungi administrator</p>
+                </div>
+                </div>
+            </div>
+        </div>
     </div>
 </form>
 
@@ -204,4 +298,61 @@
 <script src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
+
+<script>
+// Global function untuk multilayer rules modal
+window.showRulesModal = async function(diagnosis) {
+    if (!diagnosis || diagnosis === 'undefined') {
+        alert('Diagnosis tidak valid');
+        return;
+    }
+
+    // Get root Alpine component
+    const rootElement = document.getElementById('claimRoot');
+    if (!rootElement || !rootElement._x_dataStack) {
+        console.error('Alpine component not found');
+        return;
+    }
+
+    // Get Alpine data
+    const alpineData = rootElement._x_dataStack[0];
+    
+    // Set modal state
+    alpineData.rulesModalOpen = true;
+    alpineData.selectedDiagnosis = diagnosis;
+    alpineData.loading = true;
+    alpineData.rulesData = null;
+
+    try {
+        // Call rules loader API
+        const response = await fetch(`/claims/rules/load?diagnosis=${encodeURIComponent(diagnosis)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        // Update Alpine data
+        alpineData.loading = false;
+        alpineData.rulesData = data;
+
+        console.log('Rules loaded:', data);
+        
+    } catch (error) {
+        console.error('Error loading rules:', error);
+        alpineData.loading = false;
+        alpineData.rulesData = null;
+        
+        // Show error in modal
+        alert(`Gagal memuat aturan: ${error.message}`);
+    }
+};
+</script>
 {% endblock %}

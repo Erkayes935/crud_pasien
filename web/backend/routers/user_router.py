@@ -228,3 +228,60 @@ def delete_user(
 
     flash(request, "User berhasil dihapus!", "success")
     return RedirectResponse(url="/users", status_code=303)
+
+# ==================================================
+# ADMIN RS - RULES MANAGEMENT
+# ==================================================
+
+@router.get("/admin-rs/rules")
+def admin_rs_rules_management(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("admin_rs")),
+):
+    """
+    Halaman Rules Management khusus untuk Admin RS.
+    
+    Admin RS bisa:
+    - Lihat semua rules PPK RS & RS Lokal yang sudah dibuat
+    - Tambah rule baru (PPK RS atau RS Lokal)
+    - Edit rule yang belum di-approve
+    - Hapus rule (soft delete)
+    """
+    # Get rules yang dibuat oleh RS ini (harus sama dengan logic di claim_router.py)
+    user_rs_id = None
+    if hasattr(current_user, 'hospital') and current_user.hospital:
+        user_rs_id = current_user.hospital.kode_hospital or f"rs_{current_user.hospital.id}"
+    else:
+        user_rs_id = "unknown"
+    
+    # Import RulesMaster model
+    from .. import models
+    
+    my_rules = db.query(models.RulesMaster).filter(
+        models.RulesMaster.rs_id == user_rs_id,
+        models.RulesMaster.layer.in_(["ppk", "rs"])  # PPK RS dan RS Lokal
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+    
+    # Group rules by status for better display
+    rules_by_status = {
+        "unverified": [r for r in my_rules if r.status == "unverified"],
+        "active": [r for r in my_rules if r.status == "active"], 
+        "official": [r for r in my_rules if r.status == "official"],
+        "rejected": [r for r in my_rules if r.status == "rejected"]
+    }
+    
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse(
+        "admin_rs_rules.html",
+        {
+            "request": request,
+            "user": current_user,
+            "current_user": current_user,
+            "my_rules": my_rules,
+            "rules_by_status": rules_by_status,
+            "total_rules": len(my_rules),
+            "rs_id": user_rs_id,
+            "csrf_token": csrf_token
+        }
+    )
