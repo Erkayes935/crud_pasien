@@ -65,36 +65,27 @@
   }
 
   function openModal(title, content, options = {}) {
-    let modalContainer = document.getElementById("modalContainer");
-    let modalContent = document.querySelector(".modal-content") || document.querySelector(".modal-box");
-    const modalTitle = document.querySelector(".modal-title");
+    const modalContainer = document.getElementById("modalContainer");
+    const modalContent = document.querySelector(".modal-content");
 
-    // 🧩 Fallback: kalau belum ada, buat elemen modal baru di DOM
-    if (!modalContainer) {
-      console.warn("⚠️ modalContainer not found — creating dynamically");
-      modalContainer = document.createElement("div");
-      modalContainer.id = "modalContainer";
-      modalContainer.className = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
-      modalContainer.innerHTML = `
-        <div class="modal-content bg-gray-900 text-white p-4 rounded-lg max-h-[90vh] overflow-y-auto shadow-lg w-[90%] max-w-4xl">
-          <div class="modal-title font-bold text-lg mb-2">${title}</div>
-          <div class="modal-body">${content}</div>
-        </div>
-      `;
-      document.body.appendChild(modalContainer);
-      return;
+    // backup isi lama ke stack sebelum ditimpa
+    window.claimState.modalStack = window.claimState.modalStack || [];
+    if (modalContent && modalContent.innerHTML.trim()) {
+      window.claimState.modalStack.push({
+        title: document.querySelector(".modal-title")?.innerHTML || "",
+        content: modalContent.innerHTML,
+      });
     }
 
-    // kalau ada elemen tapi kosong → isi langsung
+    // update isi baru
     modalContainer.classList.remove("hidden");
-    if (modalContent) {
-      modalContent.innerHTML = content;
-    }
-    if (modalTitle) {
-      modalTitle.innerHTML = title;
-    }
+    modalContent.innerHTML = content;
+    const modalTitle = document.querySelector(".modal-title");
+    if (modalTitle) modalTitle.innerHTML = title;
+
     window.claimState.modalOpen = true;
   }
+
 
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
