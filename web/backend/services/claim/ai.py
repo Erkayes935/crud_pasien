@@ -42,7 +42,7 @@ def store_ai_recommendations(
             raise ValueError("claim_id is required")
         if not isinstance(ai_data, dict):
             raise ValueError("ai_data must be a dictionary")
-        if mode not in ["predict", "diagnosis", "procedure", "combos", "regulation"]:
+        if mode not in ["predict", "diagnosis", "procedure", "combos", "regulation", "resume"]:
             raise ValueError(f"Invalid mode: {mode}")
             
         # Validate claim exists
@@ -220,6 +220,30 @@ def store_ai_recommendations(
                 updated_at=datetime.utcnow(),
             )
             db.add(reg)
+
+        elif mode == "resume":
+            # Store resume medis as a note in ClaimNote
+            resume_text = ai_data.get("resume", "")
+            if isinstance(ai_data, dict) and "data" in ai_data:
+                resume_text = ai_data["data"].get("resume", "") if isinstance(ai_data["data"], dict) else str(ai_data["data"])
+            
+            # Clear existing resume notes
+            db.query(models.ClaimNote).filter_by(
+                claim_id=claim_id, 
+                field_name="ai_medical_resume"
+            ).delete()
+            
+            # Add new resume note
+            note = models.ClaimNote(
+                claim_id=claim_id,
+                field_name="ai_medical_resume",
+                note_text=resume_text,
+                stage=stage,
+                is_deleted=False,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(note)
 
         db.commit()
         print(f"[AI STORAGE] Successfully stored recommendations for {mode}")

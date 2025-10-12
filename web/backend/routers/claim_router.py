@@ -471,15 +471,9 @@ async def resume_medis(claim_id: int, payload: dict = Body(...), db: Session = D
     # Store resume medis results to database
     try:
         print(f"[RESUME_MEDIS] Storing resume results for claim {claim_id}")
-        # Create or update medical record with AI resume
-        if isinstance(result, dict) and result.get("resume"):
-            # Store as medical record or claim note
-            db.execute(
-                "UPDATE claims SET ai_medical_resume = :resume WHERE id = :claim_id",
-                {"resume": result["resume"], "claim_id": claim_id}
-            )
-            db.commit()
-            print(f"[RESUME_MEDIS] Successfully stored resume results")
+        ai.store_ai_recommendations(db, claim_id, result, "resume", payload.get("stage", "admission"))
+        db.commit()
+        print(f"[RESUME_MEDIS] Successfully stored resume results")
     except Exception as e:
         print(f"[RESUME_MEDIS] Error storing results: {str(e)}")
         db.rollback()
