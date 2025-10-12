@@ -512,26 +512,37 @@ async def predict_idrg_endpoint(
     payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Universal predict i-DRG endpoint (dispatch ke single atau combo)
-    """
     try:
-        # Pastikan claim_id ada di payload
         payload["claim_id"] = claim_id
-        
-        # Tentukan mode dari payload atau default ke single
         mode = payload.get("mode", "single")
-        
-        # Dispatch ke endpoint yang sesuai
-        if mode == "single":
-            return await predict_idrg_single_endpoint(payload)
-        elif mode == "combo":
-            return await predict_idrg_combo_endpoint(payload)
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}")
+
+        print(f"[PREDICT_IDRG] Mode: {mode}, Claim ID: {claim_id}")
+
+        # 🔥 Kirim langsung ke core_engine
+        result = await claim_ai.proxy_core_engine("/predict_idrg", payload)
+
+        # ✅ Kalau hasil dari core_engine mengandung error → raise
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=500, detail=result["error"])
             
+        # 🔄 Normalize field names untuk konsistensi di front-end
+        if "idrg_prediction" in result:
+            prediction = result["idrg_prediction"]
+            
+            # Normalize fields untuk mode combo
+            if mode == "combo" and "prediksi_group_idrg_kombinasi" in prediction:
+                prediction["group_idrg"] = prediction.get("prediksi_group_idrg_kombinasi")
+                
+            # Normalize fields untuk mode single
+            if mode == "single" and "kode_idrg" in prediction:
+                prediction["group_idrg"] = prediction.get("kode_idrg")
+                
+            result["idrg_prediction"] = prediction
+
+        return result
+
     except Exception as e:
-        print(f"❌ Error in predict_idrg: {str(e)}")
+        print(f"❌ Error in predict_idrg_endpoint: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 

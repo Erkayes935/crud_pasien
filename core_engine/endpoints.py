@@ -161,4 +161,3 @@ async def predict_idrg_endpoint(payload: dict):
     print(f"[CORE_ENGINE] Predicting i-DRG mode: {mode}")
     out = predict_idrg(mode, payload)
     return out
-
