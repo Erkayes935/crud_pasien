@@ -3,7 +3,7 @@
 (function () {
   // Badge status untuk panel evaluasi (HTML string)
   function statusIcon(val) {
-    if (!val) return `<span class="text-gray-400">-</span>`;
+    if (!val) return `<span class="text-gray-400"></span>`;
     const v = String(val).toLowerCase();
     if (v.includes("valid")) return `<span class="text-green-600 font-bold">✔️ ${val}</span>`;
     if (v.includes("invalid")) return `<span class="text-red-600 font-bold">❌ ${val}</span>`;
@@ -16,7 +16,7 @@
   }
 
   function formatRupiah(num) {
-    if (!num && num !== 0) return "-";
+    if (!num && num !== 0) return "";
     return "Rp " + Number(num).toLocaleString("id-ID");
   }
 

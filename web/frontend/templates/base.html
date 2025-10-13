@@ -31,6 +31,24 @@
       transform: translateY(0);
       transition: all 0.2s ease-out;
     }
+    .modal-fade-enter {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    .modal-fade-enter-active {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+    }
+    .modal-fade-exit {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .modal-fade-exit-active {
+      opacity: 0;
+      transform: scale(0.97);
+      transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+    }
   </style>
 </head>
 <body x-data="{ modalOpen: false, modalTitle: '', modalContent: '', modalType: '', profileDropdown: false }"

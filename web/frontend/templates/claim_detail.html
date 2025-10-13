@@ -44,12 +44,20 @@
         <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.diagnosis_awal or '-' }}</dd>
       </div>
       <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Kode ICD</dt>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">Diagnosis Akhir</dt>
+        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.diagnosis_akhir or '-' }}</dd>
+      </div>
+      <div class="py-3 grid grid-cols-3">
+        <dt class="font-medium text-gray-600 dark:text-gray-400">Kode Diagnosis ICD 10</dt>
         <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.kode_icd or '-' }}</dd>
       </div>
       <div class="py-3 grid grid-cols-3">
         <dt class="font-medium text-gray-600 dark:text-gray-400">Tindakan</dt>
         <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.tindakan or '-' }}</dd>
+      </div>
+      <div class="py-3 grid grid-cols-3">
+        <dt class="font-medium text-gray-600 dark:text-gray-400">Kode Tindakan ICD 9</dt>
+        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.icd9_tindakan or '-' }}</dd>
       </div>
       <div class="py-3 grid grid-cols-3">
         <dt class="font-medium text-gray-600 dark:text-gray-400">Obat</dt>
