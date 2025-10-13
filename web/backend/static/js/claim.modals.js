@@ -86,7 +86,6 @@
     window.claimState.modalOpen = true;
   }
 
-
   function updateRingkasanFromRow(itemId, dx) {
     if (!dx || !itemId) return;
     if (dx.isManual) {
