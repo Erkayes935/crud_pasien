@@ -80,10 +80,12 @@
         dx.code?.toLowerCase() === text.toLowerCase()
     );
     if (!found) {
-      const confirmAdd = confirm(
-        `${type.charAt(0).toUpperCase() + type.slice(1)} "${text}" tidak ditemukan di database.\nTambahkan sebagai input manual baru?`
+      const confirmAdd = await showConfirmModal(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} tidak ditemukan`,
+        `${type.charAt(0).toUpperCase() + type.slice(1)} "${text}" tidak ditemukan di database.<br>Tambahkan sebagai input manual baru?`
       );
       if (!confirmAdd) return;
+
       await window.addManualFromAutocomplete(tab, { name: text, code: null }, type);
       ctx.query = "";
       ctx.results = [];
@@ -174,12 +176,15 @@
       });
   }
 
-  function renderMappingSelect(item, tab, type) {
+  function renderMappingSelect(item, tab, type, index = null) {
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
+
+    // ✅ fallback pakai index kalau item.id tidak ada
+    // ✅ Kirim key unik berdasarkan kategori + tab
+    const key = encodeURIComponent(`${tab}-${type}-${item.kategori}`);
     return `
-      <select onchange="onMappingChange(event, '${tab}', '${type}', '${item.id}')"
-              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate"
-              ${disabled}>
+      <select onchange="onMappingChange(event, '${tab}', '${type}', '${key}')"
+              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate">
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
         <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
         <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
@@ -189,17 +194,17 @@
     `;
   }
 
+
   // Nilai kosong => kosong, "-" juga dihapus
   function renderValue(val) {
+    if (val === undefined || val === null) return `<span class="block w-full text-center text-gray-400"></span>`;
     const clean = cleanValue(val);
     if (clean && String(clean).trim()) {
       return `<span class="block w-full truncate overflow-hidden">${clean}</span>`;
     }
     return `<span class="block w-full text-center text-gray-400"></span>`;
   }
-
-
-
+  // ================= Render Tabel =================
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     const state = Alpine.$data(document.getElementById("claimRoot"));
 
@@ -254,7 +259,20 @@
         });
       }
     });
-    state.simulasi[tab][type] = flatItems;
+    // 🧩 versi aman — bisa dipakai walau simulasi/tab/type belum ada
+    if (!state.simulasi[tab]) state.simulasi[tab] = {};
+    if (!Array.isArray(state.simulasi[tab][type])) {
+      // belum ada data manual sama sekali → langsung assign
+      state.simulasi[tab][type] = flatItems;
+    } else {
+      // sudah ada data manual → merge agar tidak hilang
+      const existingManuals = state.simulasi[tab][type].filter(it => it.isManual);
+      const mergedFlat = [
+        ...existingManuals,
+        ...flatItems.filter(it => !it.isManual)
+      ];
+      state.simulasi[tab][type] = mergedFlat;
+    }
 
     const target = document.getElementById(targetId);
     if (!target) return;
@@ -325,6 +343,21 @@
       table.insertBefore(thead, table.firstChild);
     }
 
+    grouped = grouped.map(it => {
+      for (const key of ["kategori", "nama_kategori", "klinis", "icd10_code", "icd9_code", "tindakan", "procedure_text", "score"]) {
+        if (it[key] === undefined || it[key] === null || it[key] === "-") it[key] = "";
+      }
+      if (Array.isArray(it.children)) {
+        it.children = it.children.map(ch => {
+          for (const key of ["kategori", "nama_kategori", "klinis", "icd10_code", "icd9_code", "tindakan", "procedure_text", "score"]) {
+            if (ch[key] === undefined || ch[key] === null || ch[key] === "-") ch[key] = "";
+          }
+          return ch;
+        });
+      }
+      return it;
+    });  
+
     // Render rows
     grouped.forEach((parent, idx) => {
       const counter = 1 + (parent.children ? parent.children.length : 0);
@@ -335,6 +368,7 @@
       const klinisText = parent.klinis;
       const icdText = parent.icd10_code || parent.icd9_code;
       const titleTindakan = tindakanText;
+      const titleICD = icdText;
       const titleKlinis = klinisText;
 
       tbody.insertAdjacentHTML("beforeend", `
@@ -350,13 +384,13 @@
               <span onclick="window.openModalFromAttr && window.openModalFromAttr(this, '${type}')" class="text-blue-600 underline">${parent.kategori || parent.nama_kategori}</span>
               <span class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">${counter}</span>
             </td>
-            <td class="col-klinis border px-3 py-2 w-[25%]">
+            <td class="col-klinis border px-3 py-2 w-[25%]" title="${titleKlinis}">
               <span class="block w-full truncate">${renderValue(klinisText)}</span>
             </td>
-            <td class="col-icd border px-3 py-2 w-[10%] text-center">
+            <td class="col-icd border px-3 py-2 w-[10%] text-center" title="${titleICD}">
               <span class="block w-full truncate">${renderValue(icdText)}</span>
             </td>
-            <td class="col-tindakan border px-3 py-2 w-[25%]">
+            <td class="col-tindakan border px-3 py-2 w-[25%]" title="${titleTindakan}">
               <span class="block w-full truncate">${renderValue(tindakanText)}</span>
             </td>
             <td class="border px-3 py-2 w-[10%] text-center">
@@ -364,7 +398,7 @@
             </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
-              ${renderMappingSelect(parent, tab, type)}
+              ${renderMappingSelect(parent, tab, type, idx)}
             </td>` : ``}
           </tr>
       `);
@@ -398,7 +432,7 @@
             </td>
             ${state.role === "doctor" ? `
             <td class="border px-3 py-2 text-center">
-              ${renderMappingSelect(child, tab, type)}
+              ${renderMappingSelect(child, tab, type, `${idx}-child-${cIdx}`)}
             </td>` : ``}
           </tr>
         `);
