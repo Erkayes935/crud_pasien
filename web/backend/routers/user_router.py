@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, File, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -7,6 +7,7 @@ from backend import models
 from backend.database import get_db
 from backend.utils.templates import templates
 from backend.utils.flash import flash
+from backend import auth
 from backend.auth import require_roles_session, require_csrf_dep, issue_csrf_token
 import backend.crud.user as user_crud
 from backend.form_configs import form_configs
@@ -399,12 +400,11 @@ async def ai_meta_review_report(
     report_id: str = Form(...),
     decision: str = Form(...),
     notes: str = Form(""),
-    csrf_token: str = Form(...),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.get_current_user_secure),
     db: Session = Depends(get_db),
+    _=Depends(require_csrf_dep),
 ):
     """AI META review regional reports dari RS"""
-    validate_csrf_token(request, csrf_token)
     
     if current_user.role != "superadmin":
         raise HTTPException(status_code=403, detail="Only AI META (superadmin) can review reports")
@@ -443,12 +443,11 @@ async def ai_meta_convert_to_rules(
     request: Request,
     report_id: str = Form(...),
     target_layer: str = Form("regional"),
-    csrf_token: str = Form(...),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.get_current_user_secure),
     db: Session = Depends(get_db),
+    _=Depends(require_csrf_dep),
 ):
     """Convert approved regional report ke multilayer rules"""
-    validate_csrf_token(request, csrf_token)
     
     if current_user.role != "superadmin":
         raise HTTPException(status_code=403, detail="Only AI META can convert reports")
@@ -497,12 +496,11 @@ async def ai_meta_bulk_import(
     request: Request,
     rules_file: UploadFile = File(...),
     target_layer: str = Form("nasional"),
-    csrf_token: str = Form(...),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.get_current_user_secure),
     db: Session = Depends(get_db),
+    _=Depends(require_csrf_dep),
 ):
     """Bulk import rules dari CSV/Excel file"""
-    validate_csrf_token(request, csrf_token)
     
     if current_user.role != "superadmin":
         raise HTTPException(status_code=403, detail="Only AI META can bulk import")
