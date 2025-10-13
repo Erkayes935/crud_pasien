@@ -1,10 +1,39 @@
 // =============== Semua modal (diagnosis/procedure/regulasi) ===============
 
 (function () {
+  // Pastikan fungsi feedback modal tersedia di global scope
+  window.showFeedbackModalForRegulasi = function(ruleId, layer) {
+    if (window.showFeedbackModal) window.showFeedbackModal({id: ruleId, layer_name: layer});
+  };
   // Helper function untuk truncate text
   function truncateText(text, maxLength) {
     if (!text || text.length <= maxLength) return text;
     return text.substring(0, maxLength) + "...";
+  }
+
+  // Fungsi label dan warna layer regulasi (global scope agar bisa dipanggil di template literal)
+  function getLayerLabel(layer) {
+    const labels = {
+      'permenkes': '🏛️ Permenkes',
+      'nasional': '🇮🇩 Nasional',
+      'ppk': '🏥 PPK RS',
+      'regional': '🗺️ Regional',
+      'rs': '🏨 RS Lokal',
+      'bridging': '🔗 Bridging',
+      'fraud': '⚠️ Fraud',
+      'temporary': '⏰ Temporary'
+    };
+    return labels[layer] || layer.toUpperCase();
+  }
+  function getLayerColorClass(layer) {
+    const colors = {
+      'ppk': 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200',
+      'rs': 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200',
+      'nasional': 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200',
+      'regional': 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200',
+      'permenkes': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-200'
+    };
+    return colors[layer] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   }
   // Field regulation mapping based on requirements
   const REGULATION_FIELDS = {
@@ -181,9 +210,9 @@
 
       if (data.error) throw new Error(data.error);
 
-      // 🔹 Render modal regulasi
-      const regulationContent = renderRegulationDetail(data, fieldName);
-      openModal(`Regulasi: ${fieldName}`, regulationContent, { hideDefaultClose: true, disableAutoTitle: true });
+  // 🔹 Render modal regulasi multilayer tab
+  const regulationContent = renderMultilayerRegulationModal(data, fieldName);
+  openModal(`Regulasi: ${fieldName}`, regulationContent, { hideDefaultClose: true, disableAutoTitle: true });
     } catch (error) {
       console.error('Error fetching regulation detail:', error);
       openModal(
@@ -195,63 +224,80 @@
   }
 
 
-  function renderRegulationDetail(response, fieldName) {
+  // Multilayer tab modal renderer for regulasi detail
+  function renderMultilayerRegulationModal(response, fieldName) {
     if (!response || response.status !== 'success' || !response.data || response.data.length === 0) {
       return `<div class="text-center py-8">
         <p class="text-gray-500">Tidak ada regulasi tersedia untuk field: ${fieldName}</p>
         <p class="text-xs text-gray-400 mt-2">Field ini tidak memerlukan regulasi atau belum dikonfigurasi</p>
       </div>`;
     }
-      
-    const regulationData = response.data[0]; // Get first regulation
-    const { dasar_hukum, judul_regulasi, bab_pasal, isi } = regulationData;
-      
-    return `
-      <div class="space-y-4 text-sm">
-        <div class="relative mb-4 text-center">
-          <h3 class="text-2xl font-bold text-yellow-500">Detail Regulasi: ${fieldName}</h3>
-          <button type="button"
-                  onclick="closeRegulationModal()"
-                  class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">
-            ✕
-          </button>
+
+    // Group regulations by layer
+    const layers = {};
+    response.data.forEach(reg => {
+      if (!layers[reg.layer]) layers[reg.layer] = [];
+      layers[reg.layer].push(reg);
+    });
+    const layerOrder = ['permenkes','nasional','ppk','regional','rs','bridging','fraud','temporary'];
+    const sortedLayers = Object.keys(layers).sort((a,b) => layerOrder.indexOf(a) - layerOrder.indexOf(b));
+
+    // Modal header & close button
+    let html = `<div class="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-auto">
+      <div class="flex items-center justify-between px-6 pt-6 pb-2 border-b">
+        <h2 class="text-xl font-bold text-gray-900">Aturan Multilayer:</h2>
+        <button type="button" class="text-gray-400 hover:text-gray-700 text-2xl font-bold" onclick="closeNestedModal()">✕</button>
+      </div>
+      <div class="px-6 pt-4 pb-2">
+        <div class="bg-blue-50 rounded-lg p-3 mb-4">
+          <span class="font-semibold text-blue-700">🎯 Ringkasan Aturan</span>
+          <div class="text-sm text-blue-700 mt-1">Ditemukan ${Object.keys(layers).length} kategori field dengan ${sortedLayers.length} layer aturan aktif</div>
         </div>
-
-        <div class="grid grid-cols-2 gap-4 p-4 bg-gray-100 dark:bg-gray-700 rounded border">
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-200">Judul Regulasi:</h4>
-          </div>
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${judul_regulasi || 'Detail regulasi sedang dimuat...'}</div>
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-200">Dasar Hukum:</h4>
-          </div>
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${dasar_hukum || 'Detail regulasi sedang dimuat...'}</div>
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-200">Bab / Pasal:</h4>
-          </div>
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${bab_pasal || 'Detail regulasi sedang dimuat...'}</div>
-          </div>
-
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-200">Isi Regulasi:</h4>
-          </div>
-          <div class="bg-white dark:bg-gray-800 p-4 rounded border">
-            <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${isi || 'Detail regulasi sedang dimuat...'}</div>
-          </div>
-        </div>
-        
-        <div class="text-xs text-gray-500 text-center">
-          Field: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">${fieldName}</code>
+        <nav class="flex space-x-4 border-b mb-4">
+          ${sortedLayers.map(layer => `
+            <button type="button" class="py-2 px-4 text-sm font-medium border-b-2 ${layer === sortedLayers[0] ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" onclick="showRegulasiTab('${layer}')">
+              ${getLayerLabel(layer)} (${layers[layer].length})
+            </button>
+          `).join('')}
+        </nav>
+        <div id="regulasi-tab-contents">
+          ${sortedLayers.map((layer, idx) => `
+            <div class="regulasi-tab-content" style="display:${idx===0?'block':'none'}" data-layer="${layer}">
+              ${layers[layer].map(reg => `
+                <div class="p-4 border border-gray-200 rounded-lg mb-4">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${getLayerColorClass(layer)}">${getLayerLabel(layer)}</span>
+                    <span class="text-sm font-medium text-gray-900">${reg.judul_regulasi || 'General'}</span>
+                    ${layer === 'ppk' || layer === 'rs' ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>' : ''}
+                  </div>
+                  <div class="mb-2 text-xs text-gray-500"><strong>Dasar Hukum:</strong> ${reg.dasar_hukum || '-'}</div>
+                  <div class="mb-2 text-xs text-gray-500"><strong>Bab/Pasal:</strong> ${reg.bab_pasal || '-'}</div>
+                  <div class="mb-2 text-sm text-gray-800 leading-relaxed">${Array.isArray(reg.isi) ? reg.isi.join('<br>') : (reg.isi || '-')}</div>
+                  <div class="flex items-center justify-between text-xs text-gray-500 mt-2">
+                    <span><strong>Sumber:</strong> ${reg.sumber || '-'}</span>
+                    ${reg.status ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${reg.status}</span>` : ''}
+                  </div>
+                  ${reg.pdf_file ? `<div class="mt-3 pt-3 border-t border-gray-200">
+                    <a href="/claims/rules/${reg.id}/pdf" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">📎 Lihat Dokumen PDF</a>
+                  </div>` : ''}
+                  <div class="mt-3 pt-3 border-t border-gray-200">
+                    <button type="button" onclick="showFeedbackModalForRegulasi(${reg.id}, '${layer}')" class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">💬 Masukan untuk Regulasi Ini</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
         </div>
       </div>
-    `
+    </div>
+    <script>
+      function showRegulasiTab(layer) {
+        document.querySelectorAll('.regulasi-tab-content').forEach(function(tab){
+          tab.style.display = tab.getAttribute('data-layer') === layer ? 'block' : 'none';
+        });
+      }
+    <\/script>";
+    return html;
   }
 
   function updateRingkasanFromRow(itemId, dx) {
