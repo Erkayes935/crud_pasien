@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}AI META - Regional Reports Review{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="text-sm breadcrumbs mb-2">
+                <ul class="flex space-x-2 text-gray-500">
+                    <li><a href="/ai-meta/dashboard" class="hover:text-blue-600">AI META Dashboard</a></li>
+                    <li>/</li>
+                    <li class="text-gray-900">Regional Reports</li>
+                </ul>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-900">Regional Reports Review</h1>
+            <p class="text-gray-600 mt-2">Review laporan regional dari RS dan PPK</p>
+        </div>
+        <a href="/ai-meta/dashboard" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex">
+                <a href="/ai-meta/regional-reports" class="border-b-2 {{ 'border-blue-500 text-blue-600' if not current_status else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    All Reports
+                </a>
+                <a href="/ai-meta/regional-reports?status=pending" class="border-b-2 {{ 'border-yellow-500 text-yellow-600' if current_status == 'pending' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Pending Review
+                </a>
+                <a href="/ai-meta/regional-reports?status=reviewed" class="border-b-2 {{ 'border-green-500 text-green-600' if current_status == 'reviewed' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Reviewed
+                </a>
+                <a href="/ai-meta/regional-reports?status=rejected" class="border-b-2 {{ 'border-red-500 text-red-600' if current_status == 'rejected' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Rejected
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Reports List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        {% if reports %}
+        <div class="divide-y divide-gray-200">
+            {% for report in reports %}
+            <div class="p-6 hover:bg-gray-50">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0">
+                        <!-- Report Header -->
+                        <div class="flex items-center mb-3">
+                            <h3 class="text-lg font-medium text-gray-900 mr-3">
+                                {{ report.report_type | title }} Report
+                            </h3>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if report.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif report.status == 'reviewed' %}bg-green-100 text-green-800
+                                {% elif report.status == 'rejected' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ report.status | title }}
+                            </span>
+                        </div>
+
+                        <!-- Report Details -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-700">Region ID:</span>
+                                <span class="text-gray-900">{{ report.region_id or 'N/A' }}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">RS ID:</span>
+                                <span class="text-gray-900">{{ report.rs_id or 'N/A' }}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">Period:</span>
+                                <span class="text-gray-900">{{ report.period_start.strftime('%m/%Y') if report.period_start }} - {{ report.period_end.strftime('%m/%Y') if report.period_end }}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">Created:</span>
+                                <span class="text-gray-900">{{ report.created_at.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Report Content Summary -->
+                        <div class="mb-4">
+                            <div class="bg-gray-50 rounded p-4">
+                                <h4 class="font-medium text-gray-900 mb-2">Report Summary</h4>
+                                <div class="text-sm text-gray-700">
+                                    {% if report.content %}
+                                        {% set content = report.content | from_json %}
+                                        {% if content and content.summary %}
+                                            <p>{{ content.summary[:200] }}{% if content.summary|length > 200 %}...{% endif %}</p>
+                                        {% else %}
+                                            <p class="text-gray-500">No summary available</p>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-gray-500">No content available</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Review Information -->
+                        {% if report.reviewed_by %}
+                        <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-3">
+                            <div class="flex">
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-blue-800">Review Information</h4>
+                                    {% if report.review_notes %}
+                                    <div class="mt-1 text-sm text-blue-700">
+                                        <p>{{ report.review_notes }}</p>
+                                    </div>
+                                    {% endif %}
+                                    <div class="mt-1 text-xs text-blue-600">
+                                        Reviewed by {{ report.reviewed_by }}
+                                        {% if report.reviewed_date %} on {{ report.reviewed_date.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex-shrink-0 ml-6">
+                        <div class="flex flex-col space-y-2">
+                            <button onclick="viewFullReport({{ report.id }})" class="text-blue-600 hover:text-blue-800 text-sm">
+                                View Full Report
+                            </button>
+                            
+                            {% if report.status == 'pending' %}
+                            <button onclick="showReviewModal({{ report.id }}, 'approve')" class="text-green-600 hover:text-green-800 text-sm">
+                                Approve
+                            </button>
+                            <button onclick="showReviewModal({{ report.id }}, 'reject')" class="text-red-600 hover:text-red-800 text-sm">
+                                Reject
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No reports found</h3>
+            <p class="mt-1 text-sm text-gray-500">No regional reports match the current filter.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Full Report Modal -->
+<div id="fullReportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Full Regional Report</h3>
+                <button onclick="closeFullReportModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="fullReportContent"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="reviewModalTitle" class="text-lg font-medium text-gray-900">Review Report</h3>
+                <button onclick="closeReviewModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="reviewForm" onsubmit="submitReview(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Review Notes</label>
+                    <textarea name="review_notes" required class="w-full border border-gray-300 rounded-md px-3 py-2" rows="4" placeholder="Add your review notes..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeReviewModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button type="submit" id="reviewSubmitBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Approve
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentReportId = null;
+let currentReviewAction = null;
+
+function viewFullReport(reportId) {
+    fetch(`/claims/api/regional-reports/${reportId}`)
+        .then(response => response.json())
+        .then(report => {
+            let content = '';
+            try {
+                const reportContent = JSON.parse(report.content || '{}');
+                content = `
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded">
+                            <div><strong>Report Type:</strong> ${report.report_type}</div>
+                            <div><strong>Status:</strong> ${report.status}</div>
+                            <div><strong>Region ID:</strong> ${report.region_id || 'N/A'}</div>
+                            <div><strong>RS ID:</strong> ${report.rs_id || 'N/A'}</div>
+                        </div>
+                        
+                        ${reportContent.summary ? `
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Executive Summary</h4>
+                            <p class="text-gray-700 p-3 bg-blue-50 rounded">${reportContent.summary}</p>
+                        </div>
+                        ` : ''}
+                        
+                        ${report.review_notes ? `
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Review Notes</h4>
+                            <p class="text-gray-700 p-3 bg-blue-50 rounded border-l-4 border-blue-400">${report.review_notes}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (e) {
+                content = `<div class="text-center p-8"><p class="text-red-600">Error parsing report content</p></div>`;
+            }
+            
+            document.getElementById('fullReportContent').innerHTML = content;
+            document.getElementById('fullReportModal').classList.remove('hidden');
+        });
+}
+
+function closeFullReportModal() {
+    document.getElementById('fullReportModal').classList.add('hidden');
+}
+
+function showReviewModal(reportId, action) {
+    currentReportId = reportId;
+    currentReviewAction = action;
+    
+    const title = action === 'approve' ? 'Approve Report' : 'Reject Report';
+    const btnClass = action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+    const btnText = action === 'approve' ? 'Approve' : 'Reject';
+    
+    document.getElementById('reviewModalTitle').textContent = title;
+    document.getElementById('reviewSubmitBtn').textContent = btnText;
+    document.getElementById('reviewSubmitBtn').className = `text-white px-4 py-2 rounded ${btnClass}`;
+    
+    document.getElementById('reviewModal').classList.remove('hidden');
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.add('hidden');
+    currentReportId = null;
+    currentReviewAction = null;
+}
+
+function submitReview(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    formData.append('action', currentReviewAction);
+    
+    fetch(`/ai-meta/regional-reports/${currentReportId}/review`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert(result.message);
+            closeReviewModal();
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    });
+}
+</script>
+{% endblock %}

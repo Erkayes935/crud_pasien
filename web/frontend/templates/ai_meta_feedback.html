@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}AI META - Feedback Review{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="text-sm breadcrumbs mb-2">
+                <ul class="flex space-x-2 text-gray-500">
+                    <li><a href="/ai-meta/dashboard" class="hover:text-blue-600">AI META Dashboard</a></li>
+                    <li>/</li>
+                    <li class="text-gray-900">Feedback Review</li>
+                </ul>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-900">Feedback Review</h1>
+            <p class="text-gray-600 mt-2">Review feedback dari RS untuk rules multilayer</p>
+        </div>
+        <a href="/ai-meta/dashboard" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Feedback List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        {% if rules_with_feedback %}
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Rules with Feedback ({{ rules_with_feedback|length }})</h2>
+        </div>
+        
+        <div class="divide-y divide-gray-200">
+            {% for rule in rules_with_feedback %}
+            <div class="p-6 hover:bg-gray-50">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0">
+                        <!-- Rule Info -->
+                        <div class="flex items-center mb-2">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-3
+                                {% if rule.layer == 'permenkes' %}bg-red-100 text-red-800
+                                {% elif rule.layer == 'nasional' %}bg-orange-100 text-orange-800
+                                {% elif rule.layer == 'ppk' %}bg-yellow-100 text-yellow-800
+                                {% elif rule.layer == 'regional' %}bg-green-100 text-green-800
+                                {% elif rule.layer == 'rs' %}bg-blue-100 text-blue-800
+                                {% elif rule.layer == 'bridging' %}bg-indigo-100 text-indigo-800
+                                {% elif rule.layer == 'fraud' %}bg-purple-100 text-purple-800
+                                {% elif rule.layer == 'temporary' %}bg-pink-100 text-pink-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ rule.layer | title }}
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if rule.status == 'unverified' %}bg-yellow-100 text-yellow-800
+                                {% elif rule.status == 'official' %}bg-green-100 text-green-800
+                                {% elif rule.status == 'active' %}bg-blue-100 text-blue-800
+                                {% elif rule.status == 'rejected' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ rule.status | title }}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h3 class="text-lg font-medium text-gray-900">{{ rule.diagnosis }} - {{ rule.field }}</h3>
+                            <p class="text-sm text-gray-600 mt-1">{{ rule.isi[:200] }}{% if rule.isi|length > 200 %}...{% endif %}</p>
+                        </div>
+
+                        <!-- Feedback Section -->
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-3">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-medium text-yellow-800">Feedback dari RS</h4>
+                                    <div class="mt-2 text-sm text-yellow-700">
+                                        <p>{{ rule.feedback }}</p>
+                                    </div>
+                                    <div class="mt-2 text-xs text-yellow-600">
+                                        Submitted: {{ rule.feedback_date.strftime('%d/%m/%Y %H:%M') if rule.feedback_date }}
+                                        {% if rule.feedback_by %}by {{ rule.feedback_by }}{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Review Notes (if any) -->
+                        {% if rule.review_notes %}
+                        <div class="mt-3 bg-blue-50 border-l-4 border-blue-400 p-3">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h4 class="text-sm font-medium text-blue-800">Review Notes</h4>
+                                    <div class="mt-1 text-sm text-blue-700">
+                                        <p>{{ rule.review_notes }}</p>
+                                    </div>
+                                    <div class="mt-1 text-xs text-blue-600">
+                                        {% if rule.approved_by %}Reviewed by {{ rule.approved_by }}{% endif %}
+                                        {% if rule.approved_date %} on {{ rule.approved_date.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex-shrink-0 ml-6">
+                        <div class="flex flex-col space-y-2">
+                            <button onclick="viewFullRule({{ rule.id }})" class="text-blue-600 hover:text-blue-800 text-sm">
+                                View Full Rule
+                            </button>
+                            
+                            {% if rule.status == 'unverified' %}
+                            <button onclick="showFeedbackResponseModal({{ rule.id }})" class="text-green-600 hover:text-green-800 text-sm">
+                                Respond to Feedback
+                            </button>
+                            {% endif %}
+                            
+                            <button onclick="showFeedbackDetailsModal({{ rule.id }})" class="text-purple-600 hover:text-purple-800 text-sm">
+                                View Feedback Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No feedback found</h3>
+            <p class="mt-1 text-sm text-gray-500">No rules with feedback are available at the moment.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modals and Scripts remain the same -->
+<div id="fullRuleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Full Rule Details</h3>
+                <button onclick="closeFullRuleModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="fullRuleContent"></div>
+        </div>
+    </div>
+</div>
+
+<div id="feedbackResponseModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Respond to Feedback</h3>
+                <button onclick="closeFeedbackResponseModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="feedbackResponseForm" onsubmit="submitFeedbackResponse(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+                    <select name="action" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Choose action...</option>
+                        <option value="approve">Approve Rule (acknowledge feedback)</option>
+                        <option value="reject">Reject Rule (based on feedback)</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Response Notes</label>
+                    <textarea name="review_notes" required class="w-full border border-gray-300 rounded-md px-3 py-2" rows="4" placeholder="Respond to the feedback..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeFeedbackResponseModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Submit Response
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFeedbackRuleId = null;
+
+function viewFullRule(ruleId) {
+    fetch(`/claims/api/rules/${ruleId}`)
+        .then(response => response.json())
+        .then(rule => {
+            document.getElementById('fullRuleContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700">Diagnosis</label><p class="mt-1 text-sm text-gray-900">${rule.diagnosis}</p></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Field</label><p class="mt-1 text-sm text-gray-900">${rule.field}</p></div>
+                    </div>
+                    <div><label class="block text-sm font-medium text-gray-700">Content</label><p class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded whitespace-pre-wrap">${rule.isi}</p></div>
+                    ${rule.feedback ? `<div><label class="block text-sm font-medium text-gray-700">Feedback</label><p class="mt-1 text-sm text-gray-900 bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">${rule.feedback}</p></div>` : ''}
+                </div>
+            `;
+            document.getElementById('fullRuleModal').classList.remove('hidden');
+        });
+}
+
+function closeFullRuleModal() {
+    document.getElementById('fullRuleModal').classList.add('hidden');
+}
+
+function showFeedbackResponseModal(ruleId) {
+    currentFeedbackRuleId = ruleId;
+    document.getElementById('feedbackResponseModal').classList.remove('hidden');
+}
+
+function closeFeedbackResponseModal() {
+    document.getElementById('feedbackResponseModal').classList.add('hidden');
+    currentFeedbackRuleId = null;
+}
+
+function submitFeedbackResponse(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const action = formData.get('action');
+    
+    fetch(`/ai-meta/rules/${currentFeedbackRuleId}/${action}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert(result.message);
+            closeFeedbackResponseModal();
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    });
+}
+
+function showFeedbackDetailsModal(ruleId) {
+    // Implementation for feedback details modal
+    alert('Feedback details for rule ' + ruleId);
+}
+</script>
+{% endblock %}

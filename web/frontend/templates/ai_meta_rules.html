@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}AI META - Rules Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="text-sm breadcrumbs mb-2">
+                <ul class="flex space-x-2 text-gray-500">
+                    <li><a href="/ai-meta/dashboard" class="hover:text-blue-600">AI META Dashboard</a></li>
+                    <li>/</li>
+                    <li class="text-gray-900">Rules Management</li>
+                </ul>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-900">Rules Management</h1>
+            <p class="text-gray-600 mt-2">Kelola dan review rules multilayer dari RS</p>
+        </div>
+        <a href="/ai-meta/dashboard" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex">
+                <a href="/ai-meta/rules" class="border-b-2 {{ 'border-blue-500 text-blue-600' if not current_status else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    All Rules ({{ status_counts.unverified + status_counts.official + status_counts.active + status_counts.rejected }})
+                </a>
+                <a href="/ai-meta/rules?status=unverified" class="border-b-2 {{ 'border-yellow-500 text-yellow-600' if current_status == 'unverified' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Pending ({{ status_counts.unverified }})
+                </a>
+                <a href="/ai-meta/rules?status=official" class="border-b-2 {{ 'border-green-500 text-green-600' if current_status == 'official' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Official ({{ status_counts.official }})
+                </a>
+                <a href="/ai-meta/rules?status=active" class="border-b-2 {{ 'border-blue-500 text-blue-600' if current_status == 'active' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Active ({{ status_counts.active }})
+                </a>
+                <a href="/ai-meta/rules?status=rejected" class="border-b-2 {{ 'border-red-500 text-red-600' if current_status == 'rejected' else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} py-4 px-6 text-sm font-medium">
+                    Rejected ({{ status_counts.rejected }})
+                </a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Rules Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        {% if rules %}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule Info</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Layer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for rule in rules %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">{{ rule.diagnosis }}</div>
+                            <div class="text-sm text-gray-500">{{ rule.field }}</div>
+                            <div class="text-xs text-gray-400 mt-1">{{ rule.isi[:100] }}{% if rule.isi|length > 100 %}...{% endif %}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                            {% if rule.layer == 'permenkes' %}bg-red-100 text-red-800
+                            {% elif rule.layer == 'nasional' %}bg-orange-100 text-orange-800
+                            {% elif rule.layer == 'ppk' %}bg-yellow-100 text-yellow-800
+                            {% elif rule.layer == 'regional' %}bg-green-100 text-green-800
+                            {% elif rule.layer == 'rs' %}bg-blue-100 text-blue-800
+                            {% elif rule.layer == 'bridging' %}bg-indigo-100 text-indigo-800
+                            {% elif rule.layer == 'fraud' %}bg-purple-100 text-purple-800
+                            {% elif rule.layer == 'temporary' %}bg-pink-100 text-pink-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ rule.layer | title }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                            {% if rule.status == 'unverified' %}bg-yellow-100 text-yellow-800
+                            {% elif rule.status == 'official' %}bg-green-100 text-green-800
+                            {% elif rule.status == 'active' %}bg-blue-100 text-blue-800
+                            {% elif rule.status == 'rejected' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ rule.status | title }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        <div>{{ rule.created_at.strftime('%d/%m/%Y') }}</div>
+                        <div class="text-xs">{{ rule.created_at.strftime('%H:%M') }}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="viewRuleDetails({{ rule.id }})" class="text-blue-600 hover:text-blue-800 text-sm">
+                                View
+                            </button>
+                            
+                            {% if rule.status == 'unverified' %}
+                            <button onclick="showApprovalModal({{ rule.id }}, 'approve')" class="text-green-600 hover:text-green-800 text-sm">
+                                Approve
+                            </button>
+                            <button onclick="showApprovalModal({{ rule.id }}, 'reject')" class="text-red-600 hover:text-red-800 text-sm">
+                                Reject
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-12">
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No rules found</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="ruleDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Rule Details</h3>
+                <button onclick="closeRuleDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="ruleDetailsContent"></div>
+        </div>
+    </div>
+</div>
+
+<div id="approvalModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="approvalModalTitle" class="text-lg font-medium text-gray-900">Approve Rule</h3>
+                <button onclick="closeApprovalModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="approvalForm" onsubmit="submitApproval(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Review Notes</label>
+                    <textarea name="review_notes" required class="w-full border border-gray-300 rounded-md px-3 py-2" rows="4" placeholder="Add your review notes..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeApprovalModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button type="submit" id="approvalSubmitBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Approve
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRuleId = null;
+let currentAction = null;
+
+function viewRuleDetails(ruleId) {
+    fetch(`/claims/api/rules/${ruleId}`)
+        .then(response => response.json())
+        .then(rule => {
+            document.getElementById('ruleDetailsContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700">Diagnosis</label><p class="mt-1 text-sm text-gray-900">${rule.diagnosis}</p></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Field</label><p class="mt-1 text-sm text-gray-900">${rule.field}</p></div>
+                    </div>
+                    <div><label class="block text-sm font-medium text-gray-700">Content</label><p class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">${rule.isi}</p></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Source</label><p class="mt-1 text-sm text-gray-900">${rule.sumber}</p></div>
+                </div>
+            `;
+            document.getElementById('ruleDetailsModal').classList.remove('hidden');
+        });
+}
+
+function closeRuleDetailsModal() {
+    document.getElementById('ruleDetailsModal').classList.add('hidden');
+}
+
+function showApprovalModal(ruleId, action) {
+    currentRuleId = ruleId;
+    currentAction = action;
+    
+    const title = action === 'approve' ? 'Approve Rule' : 'Reject Rule';
+    const btnClass = action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+    const btnText = action === 'approve' ? 'Approve' : 'Reject';
+    
+    document.getElementById('approvalModalTitle').textContent = title;
+    document.getElementById('approvalSubmitBtn').textContent = btnText;
+    document.getElementById('approvalSubmitBtn').className = `text-white px-4 py-2 rounded ${btnClass}`;
+    
+    document.getElementById('approvalModal').classList.remove('hidden');
+}
+
+function closeApprovalModal() {
+    document.getElementById('approvalModal').classList.add('hidden');
+    currentRuleId = null;
+    currentAction = null;
+}
+
+function submitApproval(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    
+    fetch(`/ai-meta/rules/${currentRuleId}/${currentAction}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert(result.message);
+            closeApprovalModal();
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@ simulasi, evaluasi, AI proxy (core_engine), export, notes, coder.
 """
 
 from fastapi import (
-    APIRouter, Depends, Request, Form, Body, Query, HTTPException
+    APIRouter, Depends, Request, Form, Body, Query, HTTPException, File, UploadFile
 )
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -14,6 +14,8 @@ from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 import io
 import json
+import os
+import uuid
 from openpyxl import Workbook
 
 from .. import models, form_configs
@@ -1039,6 +1041,7 @@ async def add_rs_rule(
     layer: str = Form(...),  # "ppk" atau "rs"
     isi: str = Form(...),
     sumber: str = Form(...),
+    pdf_file: UploadFile = File(None),  # Optional PDF file
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("admin_rs")),
     _=Depends(require_csrf_dep)
@@ -1064,6 +1067,30 @@ async def add_rs_rule(
             # Assume region mapping - bisa diperbaiki nanti
             user_region_id = "jatim"  # default, nanti ambil dari hospital data
         
+        # Handle PDF file upload
+        pdf_filename = None
+        if pdf_file and pdf_file.filename:
+            # Create uploads directory if not exists
+            upload_dir = "web/uploads/rules_pdf"
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Validate file type
+            if pdf_file.content_type != 'application/pdf':
+                raise HTTPException(status_code=400, detail="Hanya file PDF yang diperbolehkan")
+            
+            # Generate unique filename
+            file_extension = pdf_file.filename.split('.')[-1]
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            # Save file
+            with open(file_path, "wb") as buffer:
+                content = await pdf_file.read()
+                buffer.write(content)
+            
+            pdf_filename = unique_filename
+            print(f"[UPLOAD] Saved PDF: {pdf_filename}")
+        
         # Create new rule
         new_rule = models.RulesMaster(
             diagnosis=diagnosis.strip(),
@@ -1071,6 +1098,7 @@ async def add_rs_rule(
             layer=layer,
             isi=isi.strip(),
             sumber=sumber.strip(),
+            pdf_file=pdf_filename,  # Include PDF filename
             rs_id=user_rs_id,
             region_id=user_region_id,
             status="unverified",  # Default status untuk approval workflow
@@ -1098,6 +1126,46 @@ async def add_rs_rule(
         db.rollback()
         print(f"[ADD_RULE] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to add rule: {str(e)}")
+
+@router.get("/rules/{rule_id}/pdf")
+async def download_rule_pdf(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs"))
+):
+    """Download PDF dokumen rule"""
+    try:
+        # Get rule
+        rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan")
+        
+        if not rule.pdf_file:
+            raise HTTPException(status_code=404, detail="Rule tidak memiliki file PDF")
+        
+        # Check file exists
+        file_path = os.path.join("web/uploads/rules_pdf", rule.pdf_file)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File PDF tidak ditemukan di server")
+        
+        # Return file
+        def iterfile():
+            with open(file_path, "rb") as file_like:
+                yield from file_like
+                
+        headers = {
+            "Content-Disposition": f"attachment; filename={rule.diagnosis}_{rule.layer}.pdf"
+        }
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/pdf",
+            headers=headers
+        )
+        
+    except Exception as e:
+        print(f"[DOWNLOAD_PDF] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {str(e)}")
 
 @router.put("/rules/{rule_id}/update")
 async def update_rs_rule(
@@ -1222,3 +1290,388 @@ async def delete_rs_rule(
         db.rollback()
         print(f"[DELETE_RULE] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete rule: {str(e)}")
+
+
+# ==============================================
+# REGIONAL REPORTS ENDPOINTS (FASE 6C)
+# ==============================================
+
+@router.post("/regional-reports/add")
+async def add_regional_report(
+    title: str = Form(...),
+    description: str = Form(""),
+    se_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Admin RS melaporkan edaran regional (SE) ke AI META untuk review.
+    """
+    try:
+        # Validate file
+        if not se_file.filename or not se_file.filename.endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="Hanya file PDF yang diperbolehkan")
+        
+        if se_file.size > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="Ukuran file maksimal 10MB")
+        
+        # Get user info
+        user_rs_id = None
+        user_region_id = "jatim"  # Default region
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+        
+        # Save SE file
+        upload_dir = "web/uploads/regional_se"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_extension = se_file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            content = await se_file.read()
+            buffer.write(content)
+        
+        # Save to database
+        new_report = models.RegionalReports(
+            title=title.strip(),
+            description=description.strip() if description else None,
+            se_file=unique_filename,
+            region_id=user_region_id,
+            rs_id=user_rs_id,
+            status="pending",
+            reported_by=f"admin_rs_{user_rs_id}",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+        
+        print(f"[REGIONAL_REPORT] Created report ID {new_report.id} - {title} by {user_rs_id}")
+        
+        return {
+            "status": "success",
+            "message": "Laporan SE berhasil dikirim ke AI META untuk review",
+            "report_id": new_report.id,
+            "title": title
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"[REGIONAL_REPORT] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit report: {str(e)}")
+
+
+@router.get("/regional-reports/{report_id}/pdf")
+async def download_regional_report_pdf(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs"))
+):
+    """Download SE PDF file"""
+    try:
+        # Get report
+        report = db.query(models.RegionalReports).filter(models.RegionalReports.id == report_id).first()
+        if not report:
+            raise HTTPException(status_code=404, detail="Report tidak ditemukan")
+        
+        # Check file exists
+        file_path = os.path.join("web/uploads/regional_se", report.se_file)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File SE tidak ditemukan di server")
+        
+        # Return file
+        def iterfile():
+            with open(file_path, "rb") as file_like:
+                yield from file_like
+                
+        headers = {
+            "Content-Disposition": f"attachment; filename=SE_{report.title.replace(' ', '_')}.pdf"
+        }
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/pdf",
+            headers=headers
+        )
+        
+    except Exception as e:
+        print(f"[DOWNLOAD_SE] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download SE: {str(e)}")
+
+
+# ==============================================
+# FEEDBACK SYSTEM ENDPOINTS (POINT H)
+# ==============================================
+
+@router.post("/rules/{rule_id}/feedback")
+async def submit_rule_feedback(
+    rule_id: int,
+    feedback: str = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs", "doctor", "verifikator")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Submit feedback untuk rule tertentu.
+    RS dapat memberikan masukan tentang aturan yang berlaku.
+    """
+    try:
+        # Get rule
+        rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan")
+        
+        # Get user info
+        user_identifier = f"{user.role}"
+        if hasattr(user, 'hospital') and user.hospital:
+            user_identifier += f"_{user.hospital.kode_hospital or f'rs_{user.hospital.id}'}"
+        
+        # Update feedback
+        rule.feedback = feedback.strip()
+        rule.feedback_by = user_identifier
+        rule.feedback_date = datetime.now()
+        rule.updated_at = datetime.now()
+        
+        db.commit()
+        
+        print(f"[FEEDBACK] Rule {rule_id} feedback from {user_identifier}: {feedback[:50]}...")
+        
+        return {
+            "status": "success",
+            "message": "Feedback berhasil dikirim ke AI META",
+            "rule_id": rule_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"[FEEDBACK] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit feedback: {str(e)}")
+
+
+@router.get("/rules/feedback/list")
+async def get_rules_with_feedback(
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "ai_meta"))
+):
+    """
+    AI META endpoint untuk melihat semua rules yang ada feedback.
+    """
+    try:
+        rules_with_feedback = db.query(models.RulesMaster).filter(
+            models.RulesMaster.feedback.isnot(None)
+        ).order_by(models.RulesMaster.feedback_date.desc()).all()
+        
+        result = []
+        for rule in rules_with_feedback:
+            result.append({
+                "id": rule.id,
+                "diagnosis": rule.diagnosis,
+                "field": rule.field,
+                "layer": rule.layer,
+                "isi": rule.isi,
+                "sumber": rule.sumber,
+                "rs_id": rule.rs_id,
+                "feedback": rule.feedback,
+                "feedback_by": rule.feedback_by,
+                "feedback_date": rule.feedback_date.isoformat() if rule.feedback_date else None,
+                "status": rule.status
+            })
+        
+        return {
+            "status": "success",
+            "total_feedback": len(result),
+            "rules_with_feedback": result
+        }
+        
+    except Exception as e:
+        print(f"[GET_FEEDBACK] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get feedback: {str(e)}")
+
+
+# ==================================================
+# TOOLTIP SYSTEM - Point G from Specification
+# ==================================================
+
+@router.get("/tooltip/rules/{field_path}")
+async def get_field_tooltip(
+    field_path: str,
+    diagnosis: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin"))
+):
+    """
+    API endpoint untuk tooltip hover system.
+    Mengembalikan ringkasan rules yang relevan untuk field tertentu.
+    
+    Args:
+        field_path: Path field seperti "diagnosis.justifikasi", "rawat_inap.lama_rawat", dll
+        diagnosis: Diagnosis code opsional untuk filter rules spesifik
+    
+    Returns:
+        JSON dengan ringkasan rules yang relevan untuk ditampilkan di tooltip
+    """
+    try:
+        # Build query untuk rules yang relevan
+        query = db.query(models.RulesMaster).filter(
+            models.RulesMaster.field == field_path,
+            models.RulesMaster.status.in_(["official", "active"])
+        )
+        
+        # Filter berdasarkan diagnosis jika diberikan
+        if diagnosis:
+            query = query.filter(
+                models.RulesMaster.diagnosis.like(f"%{diagnosis}%")
+            )
+        
+        # Order by priority (layer hierarchy)
+        layer_priority = {
+            "permenkes": 1,
+            "nasional": 2, 
+            "ppk": 3,
+            "regional": 4,
+            "rs": 5,
+            "bridging": 6,
+            "fraud": 7,
+            "temporary": 8
+        }
+        
+        rules = query.all()
+        
+        # Sort rules by layer priority
+        sorted_rules = sorted(rules, key=lambda x: layer_priority.get(x.layer, 99))
+        
+        # Build tooltip content
+        tooltip_sections = []
+        
+        for rule in sorted_rules[:3]:  # Limit to top 3 most important rules
+            # Truncate rule text for tooltip
+            rule_text = rule.isi
+            if len(rule_text) > 120:
+                rule_text = rule_text[:120] + "..."
+                
+            section = {
+                "layer": rule.layer.upper(),
+                "text": rule_text,
+                "source": rule.sumber,
+                "color_class": get_layer_color_class(rule.layer)
+            }
+            tooltip_sections.append(section)
+        
+        # Build summary text
+        if tooltip_sections:
+            summary = f"Ditemukan {len(rules)} aturan untuk field ini"
+            if diagnosis:
+                summary += f" (diagnosis: {diagnosis})"
+        else:
+            summary = "Tidak ada aturan khusus untuk field ini"
+            
+        return {
+            "status": "success",
+            "field": field_path,
+            "diagnosis": diagnosis,
+            "summary": summary,
+            "total_rules": len(rules),
+            "tooltip_sections": tooltip_sections,
+            "has_rules": len(rules) > 0
+        }
+        
+    except Exception as e:
+        print(f"[TOOLTIP] Error for field {field_path}: {str(e)}")
+        return {
+            "status": "error",
+            "field": field_path,
+            "summary": "Error loading tooltip",
+            "tooltip_sections": [],
+            "has_rules": False
+        }
+
+
+# ==================================================
+# API ENDPOINTS FOR AI META DASHBOARD
+# ==================================================
+
+@router.get("/api/rules/{rule_id}")
+async def get_rule_detail(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "admin_rs", "doctor", "coder"))
+):
+    """
+    Get detailed information about a specific rule.
+    Used by AI META dashboard and other components.
+    """
+    rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    return {
+        "id": rule.id,
+        "layer": rule.layer,
+        "diagnosis": rule.diagnosis,
+        "field": rule.field,
+        "isi": rule.isi,
+        "sumber": rule.sumber,
+        "rs_id": rule.rs_id,
+        "region_id": rule.region_id,
+        "status": rule.status,
+        "created_at": rule.created_at.isoformat() if rule.created_at else None,
+        "created_by": rule.created_by,
+        "approved_by": rule.approved_by,
+        "approved_date": rule.approved_date.isoformat() if rule.approved_date else None,
+        "review_notes": rule.review_notes,
+        "feedback": rule.feedback,
+        "feedback_by": rule.feedback_by,
+        "feedback_date": rule.feedback_date.isoformat() if rule.feedback_date else None
+    }
+
+@router.get("/api/regional-reports/{report_id}")
+async def get_regional_report_detail(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "admin_rs"))
+):
+    """
+    Get detailed information about a specific regional report.
+    Used by AI META dashboard.
+    """
+    report = db.query(models.RegionalReports).filter(models.RegionalReports.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Regional report not found")
+    
+    return {
+        "id": report.id,
+        "report_type": report.report_type,
+        "region_id": report.region_id,
+        "rs_id": report.rs_id,
+        "period_start": report.period_start.isoformat() if report.period_start else None,
+        "period_end": report.period_end.isoformat() if report.period_end else None,
+        "content": report.content,
+        "status": report.status,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "created_by": report.created_by,
+        "reviewed_by": report.reviewed_by,
+        "reviewed_date": report.reviewed_date.isoformat() if report.reviewed_date else None,
+        "review_notes": report.review_notes
+    }
+
+
+def get_layer_color_class(layer: str) -> str:
+    """
+    Return CSS color class for different rule layers
+    """
+    layer_colors = {
+        "permenkes": "text-red-600",      # Highest priority - red
+        "nasional": "text-orange-600",    # National - orange  
+        "ppk": "text-yellow-600",         # PPK - yellow
+        "regional": "text-green-600",     # Regional - green
+        "rs": "text-blue-600",            # Hospital - blue
+        "bridging": "text-indigo-600",    # Bridging - indigo
+        "fraud": "text-purple-600",       # Fraud detection - purple
+        "temporary": "text-gray-600"      # Temporary - gray
+    }
+    return layer_colors.get(layer, "text-gray-500")
