@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}AI META - Bulk Import Rules{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="text-sm breadcrumbs mb-2">
+                <ul class="flex space-x-2 text-gray-500">
+                    <li><a href="/ai-meta/dashboard" class="hover:text-blue-600">AI META Dashboard</a></li>
+                    <li>/</li>
+                    <li class="text-gray-900">Bulk Import</li>
+                </ul>
+            </nav>
+            <h1 class="text-3xl font-bold text-gray-900">Bulk Import Rules</h1>
+            <p class="text-gray-600 mt-2">Import rules untuk layer nasional, bridging, fraud, dan temporary</p>
+        </div>
+        <a href="/ai-meta/dashboard" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Import Form -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Form Section -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Import Form</h2>
+            
+            <form id="bulkImportForm" onsubmit="submitBulkImport(event)">
+                <!-- Layer Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Layer</label>
+                    <select name="layer" required class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Choose a layer...</option>
+                        <option value="nasional">Nasional</option>
+                        <option value="bridging">Bridging</option>
+                        <option value="fraud">Fraud</option>
+                        <option value="temporary">Temporary</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Hanya layer nasional, bridging, fraud, dan temporary yang diizinkan untuk bulk import</p>
+                </div>
+
+                <!-- JSON Input -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Rules JSON Data</label>
+                    <textarea 
+                        name="rules_json" 
+                        id="rulesJson"
+                        required 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 font-mono text-sm" 
+                        rows="15" 
+                        placeholder='[
+  {
+    "diagnosis": "A00.0",
+    "field": "keluhan",
+    "isi": "Rule content here...",
+    "sumber": "Permenkes 123/2024",
+    "rs_id": null,
+    "region_id": null
+  }
+]'></textarea>
+                    <p class="mt-1 text-xs text-gray-500">Format JSON array dengan fields: diagnosis, field, isi, sumber (required), rs_id, region_id (optional)</p>
+                </div>
+
+                <!-- Validation -->
+                <div class="mb-6">
+                    <button type="button" onclick="validateJson()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors mr-3">
+                        🔍 Validate JSON
+                    </button>
+                    <span id="validationResult" class="text-sm"></span>
+                </div>
+
+                <!-- Submit -->
+                <div class="flex justify-end">
+                    <button type="submit" id="submitBtn" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        📤 Import Rules
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Instructions Section -->
+        <div class="space-y-6">
+            <!-- JSON Format Guide -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">JSON Format Guide</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900">Required Fields:</h4>
+                        <ul class="mt-2 text-sm text-gray-600 list-disc list-inside">
+                            <li><code class="bg-gray-100 px-1 rounded">diagnosis</code> - ICD code (e.g., "A00.0")</li>
+                            <li><code class="bg-gray-100 px-1 rounded">field</code> - Field name (e.g., "keluhan", "diagnosis_awal")</li>
+                            <li><code class="bg-gray-100 px-1 rounded">isi</code> - Rule content/description</li>
+                            <li><code class="bg-gray-100 px-1 rounded">sumber</code> - Source reference</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium text-gray-900">Optional Fields:</h4>
+                        <ul class="mt-2 text-sm text-gray-600 list-disc list-inside">
+                            <li><code class="bg-gray-100 px-1 rounded">rs_id</code> - Hospital ID (integer or null)</li>
+                            <li><code class="bg-gray-100 px-1 rounded">region_id</code> - Region ID (integer or null)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Example -->
+                <div class="mt-4">
+                    <h4 class="font-medium text-gray-900 mb-2">Example:</h4>
+                    <pre class="bg-gray-100 p-3 rounded text-xs overflow-x-auto"><code>[
+  {
+    "diagnosis": "A00.0",
+    "field": "keluhan",
+    "isi": "Pasien dengan kolera harus menunjukkan gejala diare berair yang hebat",
+    "sumber": "Permenkes No. 5 Tahun 2024",
+    "rs_id": null,
+    "region_id": null
+  },
+  {
+    "diagnosis": "A00.1", 
+    "field": "diagnosis_awal",
+    "isi": "Diagnosis kolera harus dikonfirmasi dengan pemeriksaan laboratorium",
+    "sumber": "Permenkes No. 5 Tahun 2024",
+    "rs_id": null,
+    "region_id": null
+  }
+]</code></pre>
+                </div>
+            </div>
+
+            <!-- Import Guidelines -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-yellow-800 mb-4">⚠️ Import Guidelines</h3>
+                <ul class="text-sm text-yellow-700 space-y-2">
+                    <li>• Hanya layer <strong>nasional</strong>, <strong>bridging</strong>, <strong>fraud</strong>, dan <strong>temporary</strong> yang diizinkan</li>
+                    <li>• Rules yang diimport akan langsung mendapat status <strong>"official"</strong></li>
+                    <li>• Pastikan JSON format valid sebelum submit</li>
+                    <li>• Semua field required harus diisi</li>
+                    <li>• Import tidak bisa di-undo, pastikan data sudah benar</li>
+                </ul>
+            </div>
+
+            <!-- Import History -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Imports</h3>
+                <div id="importHistory" class="space-y-2 text-sm text-gray-600">
+                    <p class="text-gray-500">No recent imports</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Import Successful!</h3>
+            <p id="successMessage" class="text-sm text-gray-500 mb-4"></p>
+            <div class="flex justify-center space-x-3">
+                <button onclick="closeSuccessModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                    Close
+                </button>
+                <a href="/ai-meta/rules" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    View Rules
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let validationPassed = false;
+
+function validateJson() {
+    const jsonText = document.getElementById('rulesJson').value.trim();
+    const resultSpan = document.getElementById('validationResult');
+    
+    if (!jsonText) {
+        showValidationResult('Please enter JSON data', 'error');
+        return;
+    }
+    
+    try {
+        const data = JSON.parse(jsonText);
+        
+        if (!Array.isArray(data)) {
+            showValidationResult('JSON must be an array', 'error');
+            return;
+        }
+        
+        if (data.length === 0) {
+            showValidationResult('Array cannot be empty', 'error');
+            return;
+        }
+        
+        // Validate each rule
+        const requiredFields = ['diagnosis', 'field', 'isi', 'sumber'];
+        const errors = [];
+        
+        data.forEach((rule, index) => {
+            requiredFields.forEach(field => {
+                if (!rule.hasOwnProperty(field) || !rule[field]) {
+                    errors.push(`Rule ${index + 1}: Missing or empty field '${field}'`);
+                }
+            });
+        });
+        
+        if (errors.length > 0) {
+            showValidationResult(`Validation errors:\n${errors.join('\n')}`, 'error');
+            return;
+        }
+        
+        showValidationResult(`✅ Valid JSON with ${data.length} rules`, 'success');
+        validationPassed = true;
+        
+    } catch (e) {
+        showValidationResult(`Invalid JSON: ${e.message}`, 'error');
+        validationPassed = false;
+    }
+}
+
+function showValidationResult(message, type) {
+    const resultSpan = document.getElementById('validationResult');
+    resultSpan.textContent = message;
+    
+    if (type === 'success') {
+        resultSpan.className = 'text-sm text-green-600';
+    } else {
+        resultSpan.className = 'text-sm text-red-600';
+        validationPassed = false;
+    }
+}
+
+function submitBulkImport(event) {
+    event.preventDefault();
+    
+    if (!validationPassed) {
+        alert('Please validate JSON first');
+        return;
+    }
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Importing...';
+    
+    const formData = new FormData(event.target);
+    
+    fetch('/ai-meta/bulk-import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            document.getElementById('successMessage').textContent = result.message;
+            document.getElementById('successModal').classList.remove('hidden');
+            
+            // Reset form
+            event.target.reset();
+            document.getElementById('validationResult').textContent = '';
+            validationPassed = false;
+            
+            // Add to history
+            addToImportHistory(formData.get('layer'), result.imported_count);
+            
+        } else {
+            alert('Error: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '📤 Import Rules';
+    });
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').classList.add('hidden');
+}
+
+function addToImportHistory(layer, count) {
+    const historyDiv = document.getElementById('importHistory');
+    const now = new Date().toLocaleString();
+    
+    const historyItem = document.createElement('div');
+    historyItem.className = 'p-2 bg-green-50 border border-green-200 rounded text-sm';
+    historyItem.innerHTML = `
+        <div class="font-medium text-green-800">${layer} layer - ${count} rules imported</div>
+        <div class="text-green-600 text-xs">${now}</div>
+    `;
+    
+    if (historyDiv.querySelector('.text-gray-500')) {
+        historyDiv.innerHTML = '';
+    }
+    
+    historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+    
+    // Keep only last 5 items
+    while (historyDiv.children.length > 5) {
+        historyDiv.removeChild(historyDiv.lastChild);
+    }
+}
+
+// Auto-validate on JSON change (debounced)
+let validateTimeout;
+document.getElementById('rulesJson').addEventListener('input', function() {
+    clearTimeout(validateTimeout);
+    validationPassed = false;
+    document.getElementById('validationResult').textContent = '';
+    
+    validateTimeout = setTimeout(() => {
+        if (this.value.trim()) {
+            validateJson();
+        }
+    }, 1000);
+});
+</script>
+{% endblock %}

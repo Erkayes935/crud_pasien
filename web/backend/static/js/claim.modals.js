@@ -609,7 +609,6 @@
         </section>
 
         <!-- 📊 i-DRG -->
-        ${renderNotificationBox("idrg", notifications)}
         ${renderIdrgSection(it.idrg_diagnosis)}
 
         <!-- ⚙️ TINDAKAN -->
@@ -661,7 +660,7 @@
             ${renderNotificationBox("inacbg", notifications)}
             ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
             ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
-            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${parseInt(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
+            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${Number(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
           </div>
         </section>
 
@@ -669,42 +668,102 @@
     `;
   }
 
+// Helper functions for i-DRG 
+window.getPrediction = function(field) {
+  try {
+    // For Alpine.js context within renderIdrgSection
+    if (this && this.data && this.data.data && this.data.data.idrg_prediction) {
+      return this.data.data.idrg_prediction[field] || '-';
+    }
+    
+    // For global context or when called directly
+    const data = window.claimState?.currentDiagnosis?.idrg_prediction || {};
+    return data[field] || '-';
+  } catch (err) {
+    console.error('Error in getPrediction:', err);
+    return '-';
+  }
+};
+window.getSeverityLabel = function(index) {
+  const labels = {
+    "1": "Minor (Level 1)",
+    "2": "Moderate (Level 2)", 
+    "3": "Major (Level 3)",
+    "4": "Extreme (Level 4)"
+  };
+  return labels[index] || index || "-";
+};
 
-  // Fungsi renderIdrgSection yang dioptimalkan (single dropdown)
+window.renderChecklistHtml = function(checklist) {
+  if (!checklist) return '-';
+  
+  // Check if array
+  if (Array.isArray(checklist)) {
+    // Look for existing bullet points in each item
+    return checklist.map(item => {
+      // Remove any existing bullet points (• or - or *)
+      const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
+      return `<li>• ${cleanItem}</li>`;
+    }).join('');
+  }
+  
+  // If string - don't add bullet points, just return as-is
+  return checklist;
+};
+
+  // Define helper functions at the module level
+  function getPrediction(field) {
+    try {
+      const data = this?.data?.idrg_prediction;
+      return data?.[field] || '-';
+    } catch (err) {
+      console.error('Error in getPrediction:', err);
+      return '-';
+    }
+  }
+
+  window.getPrediction = getPrediction;  // Make it globally available
 
   function renderIdrgSection(idrg, claimId, diagnosisName = null) {
     // Get claim ID dan diagnosis name dari context jika tidak ada parameter
     if (!claimId) {
-        claimId = document.getElementById("claimRoot")?.dataset.claimId || 
-                 window.claimState?.currentClaimId || 
-                 document.querySelector('[data-claim-id]')?.dataset.claimId;
+        const claimRoot = document.getElementById("claimRoot");
+        claimId = claimRoot?.dataset.claimId || "";
     }
     
     if (!diagnosisName) {
-        diagnosisName = window.claimState?.currentDiagnosisTitle || 
-                       document.querySelector('.modal-title')?.textContent?.trim();
+        diagnosisName = window.claimState?.currentDiagnosis?.diagnosis_text || "";
     }
 
-    // Helper function untuk render rows
-    const renderPredictionRow = (label, value) => `
-      <div class="grid grid-cols-2">
-        <div class="bg-blue-600 text-white px-3 py-2 font-medium">${label}</div>
-        <div class="bg-blue-100 dark:bg-blue-800 px-3 py-2 text-gray-900 dark:text-gray-100">${value || ""}</div>
-      </div>
-    `;
-
-    const renderExistingRow = (label, value, field) => {
-      const isClickable = field && value !== "";
+    // Helper function for rendering prediction rows in i-DRG section
+    function renderPredictionRow(label, valueHtml) {
       return `
         <div class="grid grid-cols-2">
           <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-          <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 ${isClickable ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors' : ''}"
-               ${isClickable ? `@click="openRegulationDetailModal('${claimId}', '${field}')"` : ''}>
-            ${value || ""}
-          </div>
+          <div class="bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${valueHtml}</div>
         </div>
       `;
-    };
+    }
+
+    // Helper function for rendering existing rows in i-DRG section
+    function renderExistingRow(label, value, fieldName = null) {
+      let content = value || "-";
+  
+    // Add link to regulation if this field has one and value exists
+    if (fieldName && value && checkFieldHasRegulation(fieldName)) {
+      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
+                    title="📋 Klik untuk melihat regulasi ${fieldName}" 
+                    data-field="${fieldName}"
+                    onclick="openRegulationDetailModal('${fieldName}', null, 'idrg')">${value}</span>`;
+    }
+  
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${content}</div>
+      </div>
+    `;
+  }
 
     // TEMPLATE BARU - LANGSUNG TANPA NESTED
     return `
@@ -723,6 +782,7 @@
               console.log('🤖 Auto-predicting i-DRG on section open');
               const result = await predictIdrgForDiagnosis('${claimId}', '${diagnosisName}');
               this.data = result;
+              console.log('🔍 i-DRG prediction result:', result);
             } catch (err) {
               this.error = err.message;
               console.error('Prediction error:', err);
@@ -754,17 +814,49 @@
             </div>
           </div>
           
+          <!-- AI Notification (Added here) -->
+          <div x-show="!loading && data && data.status === 'success'" class="p-3 bg-gray-100 dark:bg-gray-700">
+            <template x-if="data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
+              <div 
+                :class="{
+                  'bg-green-100 border-green-500 text-green-800': data.data.idrg_prediction.notifications.idrg.status === 'success',
+                  'bg-yellow-100 border-yellow-500 text-yellow-800': data.data.idrg_prediction.notifications.idrg.status === 'warning',
+                  'bg-red-100 border-red-500 text-red-800': data.data.idrg_prediction.notifications.idrg.status === 'error',
+                  'bg-blue-100 border-blue-500 text-blue-800': data.data.idrg_prediction.notifications.idrg.status === 'info'
+                }"
+                class="notification-box border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+                <span class="text-lg" x-text="{
+                  'success': '✅',
+                  'warning': '⚠️',
+                  'error': '❌',
+                  'info': 'ℹ️'
+                }[data.data.idrg_prediction.notifications.idrg.status] || '🔔'"></span>
+                <div>
+                  <strong>Notifikasi AI (IDRG)</strong>
+                  <div class="text-xs leading-snug mt-0.5" x-text="data.data.idrg_prediction.notifications.idrg.message"></div>
+                </div>
+              </div>
+            </template>
+            <div x-show="!(data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-gray-100 border-gray-400 text-gray-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+              <span class="text-lg">🔔</span>
+              <div>
+                <strong>Notifikasi AI (IDRG)</strong>
+                <div class="text-xs leading-snug mt-0.5">Belum ada notifikasi untuk bagian IDRG.</div>
+              </div>
+            </div>
+          </div>
+          
           <!-- Prediction Results -->
           <div x-show="!loading && data && data.status === 'success'">
             <template x-if="data.data && data.data.idrg_prediction">
               <div class="space-y-2 p-4">
-                ${renderPredictionRow("Kode i-DRG", "<span x-text='getPrediction(\"group_idrg\")'></span>")}
-                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(getPrediction(\"severity_index\")) || \"-\"'></span>")}
-                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(getPrediction(\"checklist_dokumentasi\"))'></span>")}
-                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(getPrediction(\"faktor_penentu_severity\"))'></span>")}
-                ${renderPredictionRow("Ungroupable Alert", "<span x-text='getPrediction(\"ungroupable_alert\")'></span>")}
-                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"getPrediction('estimasi_tarif_idrg') !== '' ? 'Rp ' + parseInt(getPrediction('estimasi_tarif_idrg')).toLocaleString('id-ID') : '-'\"></span>")}
-                ${renderPredictionRow("Gap Analysis", "<span x-text='(data.data && data.data.idrg_prediction && data.data.idrg_prediction.gap_analysis) || \"-\"'></span>")}
+                ${renderPredictionRow("Kode i-DRG", "<span x-text='data.data.idrg_prediction.group_idrg || \"-\"'></span>")}
+                ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(data.data.idrg_prediction.severity_index) || \"-\"'></span>")}
+                ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(data.data.idrg_prediction.checklist_dokumentasi)'></span>")}
+                ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(data.data.idrg_prediction.faktor_penentu_severity)'></span>")}
+                ${renderPredictionRow("Ungroupable Alert", "<span x-text='data.data.idrg_prediction.ungroupable_alert || \"-\"'></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"data.data.idrg_prediction.estimasi_tarif_idrg !== '' ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Gap Analysis", "<span x-text=\"data.data.idrg_prediction.gap_analysis ? 'Rp ' + parseInt(data.data.idrg_prediction.gap_analysis).toLocaleString('id-ID') : '-'\"></span>")}
               </div>
             </template>
           </div>
@@ -799,7 +891,7 @@
         </div>
       </div>
     `;
-  }
+}
 
   // Update renderIdrgPredictionResult untuk tampil lebih simple
 
@@ -860,7 +952,7 @@
         ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
         ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "")}
         ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "")}
-        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "")}
+        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis ? `Rp ${parseInt(prediction.gap_analysis).toLocaleString('id-ID')}` : "")}
       </div>
     `;
   }
@@ -1011,7 +1103,7 @@
         console.log("💰 Formatting tarif:", value, typeof value);
         const numericValue = parseInt(value);
         if (!isNaN(numericValue)) {
-          safeValue = `Rp ${numericValue.toLocaleString('id-ID')}`;
+          safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
         } else {
           safeValue = value; // keep original if not numeric
         }
@@ -1442,6 +1534,47 @@ window.saveNote = async function(fieldKey, stage, itemId) {
 // ======================== SISTEM NOTES FINAL STABIL (MERGED FOR VERSION B) ========================
 
 // ==================================================
+// i-DRG PREDICTION HELPER FUNCTIONS
+// ==================================================
+
+// Global helper functions for i-DRG predictions
+window.getPrediction = function(field) {
+  try {
+    if (!this || !this.data || !this.data.idrg_prediction) return '-';
+    return this.data.idrg_prediction[field] || '-';
+  } catch (err) {
+    console.error('Error in getPrediction:', err);
+    return '-';
+  }
+};
+
+window.getSeverityLabel = function(index) {
+  const severityLabel = {
+    "1": "Minor (Level 1)",
+    "2": "Moderate (Level 2)", 
+    "3": "Major (Level 3)",
+    "4": "Extreme (Level 4)"
+  };
+  return severityLabel[index] || index || "-";
+};
+
+window.renderChecklistHtml = function(checklist) {
+  if (!checklist) return '-';
+  if (Array.isArray(checklist)) {
+    return checklist.map(item => `<li>• ${item}</li>`).join('');
+  }
+  return checklist;
+};
+
+window.renderFaktorSeverityHtml = function(faktor) {
+  if (!faktor) return '-';
+  if (Array.isArray(faktor)) {
+    return faktor.map(item => `<li>• ${item}</li>`).join('');
+  }
+  return faktor;
+};
+
+// ==================================================
 // i-DRG PREDICTION
 // ==================================================
 
@@ -1473,7 +1606,7 @@ window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
     }
     
     const result = await response.json();
@@ -1761,7 +1894,53 @@ async function addManualTindakanIfNotFound() {
   }
 }
 
-// Add statusIcon function if not exists
+// Helper functions for iDRG prediction display
+window.getPrediction = function(field) {
+  try {
+    if (!this || !this.data || !this.data.idrg_prediction)
+      return '-';
+    return this.data.idrg_prediction[field] || '-';
+  } catch (err) {
+    console.error('Error in getPrediction:', err);
+    return '-';
+  }
+};
+
+window.getSeverityLabel = function(index) {
+  const severityLabel = {
+    "1": "Minor (1)",
+    "2": "Moderate (2)", 
+    "3": "Major (3)",
+    "4": "Extreme (4)"
+  };
+  return severityLabel[index] || index;
+};
+
+window.renderChecklistHtml = function(checklist) {
+  if (!checklist) return '-';
+  
+  if (Array.isArray(checklist) && checklist.length > 0) {
+    return `<ul class="list-none pl-0">${checklist.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof checklist === 'string') {
+    return checklist;
+  }
+  
+  return '-';
+};
+
+window.renderFaktorSeverityHtml = function(faktor) {
+  if (!faktor) return '-';
+  
+  if (Array.isArray(faktor) && faktor.length > 0) {
+    return `<ul class="list-none pl-0">${faktor.map(item => `<li>• ${item}</li>`).join('')}</ul>`;
+  } else if (typeof faktor === 'string') {
+    return faktor;
+  }
+  
+  return '-';
+};
+
+// Add statusIcon function if not exists  
 if (!window.statusIcon) {
   window.statusIcon = function(status) {
     if (!status) return '⚫';

@@ -6,14 +6,16 @@ simulasi, evaluasi, AI proxy (core_engine), export, notes, coder.
 """
 
 from fastapi import (
-    APIRouter, Depends, Request, Form, Body, Query, HTTPException
+    APIRouter, Depends, Request, Form, Body, Query, HTTPException, File, UploadFile
 )
-from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import io
 import json
+import os
+import uuid
 from openpyxl import Workbook
 
 from .. import models, form_configs
@@ -512,26 +514,37 @@ async def predict_idrg_endpoint(
     payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Universal predict i-DRG endpoint (dispatch ke single atau combo)
-    """
     try:
-        # Pastikan claim_id ada di payload
         payload["claim_id"] = claim_id
-        
-        # Tentukan mode dari payload atau default ke single
         mode = payload.get("mode", "single")
-        
-        # Dispatch ke endpoint yang sesuai
-        if mode == "single":
-            return await predict_idrg_single_endpoint(payload)
-        elif mode == "combo":
-            return await predict_idrg_combo_endpoint(payload)
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}")
+
+        print(f"[PREDICT_IDRG] Mode: {mode}, Claim ID: {claim_id}")
+
+        # 🔥 Kirim langsung ke core_engine
+        result = await claim_ai.proxy_core_engine("/predict_idrg", payload)
+
+        # ✅ Kalau hasil dari core_engine mengandung error → raise
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=500, detail=result["error"])
             
+        # 🔄 Normalize field names untuk konsistensi di front-end
+        if "idrg_prediction" in result:
+            prediction = result["idrg_prediction"]
+            
+            # Normalize fields untuk mode combo
+            if mode == "combo" and "prediksi_group_idrg_kombinasi" in prediction:
+                prediction["group_idrg"] = prediction.get("prediksi_group_idrg_kombinasi")
+                
+            # Normalize fields untuk mode single
+            if mode == "single" and "kode_idrg" in prediction:
+                prediction["group_idrg"] = prediction.get("kode_idrg")
+                
+            result["idrg_prediction"] = prediction
+
+        return result
+
     except Exception as e:
-        print(f"❌ Error in predict_idrg: {str(e)}")
+        print(f"❌ Error in predict_idrg_endpoint: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -817,3 +830,848 @@ def get_notes(claim_id: int, db: Session = Depends(get_db)):
 def refresh_csrf_token(request: Request):
     from ..auth import issue_csrf_token
     return {"csrf_token": issue_csrf_token(request)}
+
+
+# ==================================================  
+# MULTI-LAYER RULE ENDPOINTS
+# ==================================================
+
+@router.get("/rules/load")
+async def load_multilayer_rules(
+    diagnosis: str = Query(..., description="Nama diagnosis (e.g., 'Pneumonia')"),
+    rs_id: Optional[str] = Query(None, description="ID rumah sakit (e.g., 'rs_notopuro')"),
+    region_id: Optional[str] = Query(None, description="ID wilayah (e.g., 'jatim')"),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "verifikator", "coder", "admin_rs"))
+):
+    """
+    Load rules multilayer untuk diagnosis tertentu.
+    
+    Returns JSON dengan rules dari semua layer yang berlaku:
+    - Layer 1-2: Permenkes & Nasional (static/JSON)
+    - Layer 3-8: PPK, Regional, RS, Bridging, Fraud, Temporary (database)
+    
+    RS rules (layer 3 & 5) override semua layer di atasnya jika tersedia.
+    """
+    try:
+        # Call core_engine via HTTP
+        import requests
+        import os
+        
+        core_engine_url = os.getenv("CORE_ENGINE_URL", "http://core_engine:8002")
+        
+        # Build query parameters
+        params = {"diagnosis": diagnosis}
+        if rs_id:
+            params["rs_id"] = rs_id
+        if region_id:
+            params["region_id"] = region_id
+        
+        # Call core_engine endpoint (POST dengan JSON payload)
+        payload = {"diagnosis": diagnosis}
+        if rs_id:
+            payload["rs_id"] = rs_id
+        if region_id:
+            payload["region_id"] = region_id
+            
+        response = requests.post(
+            f"{core_engine_url}/rules/load",
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Core engine error: {response.text}"
+            )
+        
+        rules_data = response.json()
+        
+        print(f"[RULES/LOAD] Called core_engine, got {rules_data.get('total_rules', 0)} rules for {diagnosis} (RS: {rs_id})")
+        return rules_data
+        
+    except Exception as e:
+        print(f"[RULES/LOAD] Error calling core_engine: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load rules from core_engine: {str(e)}")
+
+@router.get("/rules/summary")
+async def get_rules_summary(
+    diagnosis: str = Query(..., description="Nama diagnosis"),
+    rs_id: Optional[str] = Query(None, description="ID rumah sakit"),
+    region_id: Optional[str] = Query(None, description="ID wilayah"),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "verifikator", "coder", "admin_rs"))
+):
+    """
+    Get summary rules by layer untuk diagnosis tertentu.
+    
+    Returns ringkasan rules per layer dengan jumlah dan source info.
+    """
+    try:
+        import sys
+        import os
+        current_dir = os.path.dirname(__file__)
+        core_engine_path = os.path.join(current_dir, "..", "..", "..", "core_engine", "services")
+        sys.path.insert(0, core_engine_path)
+        
+        from rules_loader import get_rules_summary_db
+        
+        summary = get_rules_summary_db(diagnosis, rs_id, region_id, db)
+        
+        return {
+            "status": "success",
+            "diagnosis": diagnosis,
+            "summary": summary,
+            "engine_version": f"multilayer_rules_summary@{datetime.now().strftime('%Y-%m-%d')}"
+        }
+        
+    except Exception as e:
+        print(f"[RULES/SUMMARY] Error getting summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get rules summary: {str(e)}")
+
+@router.get("/rules/layers")
+async def get_layer_info(
+    user=Depends(require_roles_session("doctor", "verifikator", "coder", "admin_rs"))
+):
+    """
+    Get informasi 8 layer system dan prioritas.
+    
+    Returns struktur 8 layer dengan penjelasan prioritas RS override.
+    """
+    return {
+        "status": "success",
+        "layers": [
+            {"id": "permenkes", "name": "Permenkes/BPJS Pusat", "priority": 1, "source": "Regulasi resmi", "override": False},
+            {"id": "nasional", "name": "Nasional (CP/PNPK/FORNAS/ICD/INA-CBG)", "priority": 2, "source": "Kemenkes/WHO", "override": False},
+            {"id": "ppk", "name": "PPK RS", "priority": 3, "source": "Dokumen PPK RS", "override": True},
+            {"id": "regional", "name": "Regional (Wilayah/SE BPJS Cabang)", "priority": 4, "source": "SE BPJS/Dinkes", "override": False},
+            {"id": "rs", "name": "RS Lokal (BA/SOP)", "priority": 5, "source": "BA/SOP RS", "override": True},
+            {"id": "bridging", "name": "Bridging (Teknis SIMRS/BPJS)", "priority": 6, "source": "Panduan BPJS", "override": False},
+            {"id": "fraud", "name": "Fraud Rules (AI Anti-Anomali)", "priority": 7, "source": "Model AI", "override": False},
+            {"id": "temporary", "name": "Temporary Policy", "priority": 8, "source": "Kebijakan Nasional", "override": False}
+        ],
+        "priority_rule": "RS rules (layer 3 & 5) override semua layer di atasnya jika tersedia",
+        "total_layers": 8,
+        "engine_version": f"multilayer_system@{datetime.now().strftime('%Y-%m-%d')}"
+    }
+
+# ==================================================
+# CRUD ENDPOINTS FOR ADMIN RS (PPK RS & RS LOKAL)
+# ==================================================
+
+@router.get("/rules/my_rules")
+async def get_my_rs_rules(
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs"))
+):
+    """
+    Get rules yang dibuat oleh Admin RS ini.
+    
+    Returns:
+    - PPK RS rules (layer ppk) 
+    - RS Lokal rules (layer rs)
+    - Grouped by status: unverified, official, active, rejected
+    """
+    try:
+        # Get user's hospital info untuk filter rs_id
+        user_rs_id = None
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+        
+        # Query rules milik RS ini (layer ppk dan rs saja)
+        rules_query = db.query(models.RulesMaster).filter(
+            and_(
+                models.RulesMaster.rs_id == user_rs_id,
+                models.RulesMaster.layer.in_(["ppk", "rs"])
+            )
+        ).order_by(models.RulesMaster.created_at.desc())
+        
+        rules = rules_query.all()
+        
+        # Group by status dan layer
+        grouped_rules = {
+            "ppk": {"unverified": [], "official": [], "active": [], "rejected": []},
+            "rs": {"unverified": [], "official": [], "active": [], "rejected": []}
+        }
+        
+        for rule in rules:
+            layer = rule.layer
+            status = rule.status
+            rule_data = {
+                "id": rule.id,
+                "diagnosis": rule.diagnosis,
+                "field": rule.field,
+                "isi": rule.isi,
+                "sumber": rule.sumber,
+                "created_at": rule.created_at.isoformat(),
+                "updated_at": rule.updated_at.isoformat(),
+                "approved_by": rule.approved_by,
+                "approved_date": rule.approved_date.isoformat() if rule.approved_date else None,
+                "review_notes": rule.review_notes
+            }
+            
+            if layer in grouped_rules and status in grouped_rules[layer]:
+                grouped_rules[layer][status].append(rule_data)
+        
+        # Summary counts
+        total_ppk = sum(len(grouped_rules["ppk"][status]) for status in grouped_rules["ppk"])
+        total_rs = sum(len(grouped_rules["rs"][status]) for status in grouped_rules["rs"])
+        
+        return {
+            "status": "success",
+            "hospital_id": user_rs_id,
+            "rules": grouped_rules,
+            "summary": {
+                "total_ppk_rules": total_ppk,
+                "total_rs_rules": total_rs,
+                "total_rules": total_ppk + total_rs,
+                "pending_approval": len(grouped_rules["ppk"]["unverified"]) + len(grouped_rules["rs"]["unverified"])
+            }
+        }
+        
+    except Exception as e:
+        print(f"[MY_RULES] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get rules: {str(e)}")
+
+@router.post("/rules/add")
+async def add_rs_rule(
+    diagnosis: str = Form(...),
+    field: str = Form(...),
+    layer: str = Form(...),  # "ppk" atau "rs"
+    isi: str = Form(...),
+    sumber: str = Form(...),
+    pdf_file: UploadFile = File(None),  # Optional PDF file
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Tambah rule baru untuk RS.
+    
+    Hanya Admin RS yang boleh tambah layer "ppk" dan "rs".
+    """
+    try:
+        # Validasi layer
+        if layer not in ["ppk", "rs"]:
+            raise HTTPException(
+                status_code=400, 
+                detail="Admin RS hanya boleh menambah layer 'ppk' atau 'rs'"
+            )
+        
+        # Get user's hospital info
+        user_rs_id = None
+        user_region_id = None
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+            # Assume region mapping - bisa diperbaiki nanti
+            user_region_id = "jatim"  # default, nanti ambil dari hospital data
+        
+        # Handle PDF file upload
+        pdf_filename = None
+        if pdf_file and pdf_file.filename:
+            # Create uploads directory if not exists
+            upload_dir = "web/uploads/rules_pdf"
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Validate file type
+            if pdf_file.content_type != 'application/pdf':
+                raise HTTPException(status_code=400, detail="Hanya file PDF yang diperbolehkan")
+            
+            # Generate unique filename
+            file_extension = pdf_file.filename.split('.')[-1]
+            unique_filename = f"{uuid.uuid4()}.{file_extension}"
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            # Save file
+            with open(file_path, "wb") as buffer:
+                content = await pdf_file.read()
+                buffer.write(content)
+            
+            pdf_filename = unique_filename
+            print(f"[UPLOAD] Saved PDF: {pdf_filename}")
+        
+        # Create new rule
+        new_rule = models.RulesMaster(
+            diagnosis=diagnosis.strip(),
+            field=field.strip(),
+            layer=layer,
+            isi=isi.strip(),
+            sumber=sumber.strip(),
+            pdf_file=pdf_filename,  # Include PDF filename
+            rs_id=user_rs_id,
+            region_id=user_region_id,
+            status="unverified",  # Default status untuk approval workflow
+            created_by=f"admin_rs_{user_rs_id}",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        db.add(new_rule)
+        db.commit()
+        db.refresh(new_rule)
+        
+        print(f"[ADD_RULE] Created rule ID {new_rule.id} for {diagnosis} by {user_rs_id}")
+        
+        return {
+            "status": "success",
+            "message": f"Rule {layer.upper()} berhasil ditambahkan dan menunggu verifikasi",
+            "rule_id": new_rule.id,
+            "diagnosis": diagnosis,
+            "layer": layer,
+            "approval_status": "unverified"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"[ADD_RULE] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add rule: {str(e)}")
+
+@router.get("/rules/{rule_id}/pdf")
+async def download_rule_pdf(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs"))
+):
+    """Download PDF dokumen rule"""
+    try:
+        # Get rule
+        rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan")
+        
+        if not rule.pdf_file:
+            raise HTTPException(status_code=404, detail="Rule tidak memiliki file PDF")
+        
+        # Check file exists
+        file_path = os.path.join("web/uploads/rules_pdf", rule.pdf_file)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File PDF tidak ditemukan di server")
+        
+        # Return file
+        def iterfile():
+            with open(file_path, "rb") as file_like:
+                yield from file_like
+                
+        headers = {
+            "Content-Disposition": f"attachment; filename={rule.diagnosis}_{rule.layer}.pdf"
+        }
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/pdf",
+            headers=headers
+        )
+        
+    except Exception as e:
+        print(f"[DOWNLOAD_PDF] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download PDF: {str(e)}")
+
+@router.put("/rules/{rule_id}/update")
+async def update_rs_rule(
+    rule_id: int,
+    diagnosis: str = Form(...),
+    field: str = Form(...),
+    isi: str = Form(...),
+    sumber: str = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Update rule yang masih berstatus 'unverified'.
+    
+    Admin RS hanya boleh edit rule milik sendiri yang belum di-approve.
+    """
+    try:
+        # Get user's hospital info
+        user_rs_id = None
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+        
+        # Find rule
+        rule = db.query(models.RulesMaster).filter(
+            and_(
+                models.RulesMaster.id == rule_id,
+                models.RulesMaster.rs_id == user_rs_id,  # Hanya rule milik sendiri
+                models.RulesMaster.layer.in_(["ppk", "rs"])  # Hanya layer yang diizinkan
+            )
+        ).first()
+        
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan atau bukan milik RS ini")
+        
+        # Cek status - hanya unverified yang boleh diedit
+        if rule.status != "unverified":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Rule dengan status '{rule.status}' tidak dapat diedit"
+            )
+        
+        # Update rule
+        rule.diagnosis = diagnosis.strip()
+        rule.field = field.strip()
+        rule.isi = isi.strip()
+        rule.sumber = sumber.strip()
+        rule.updated_at = datetime.now()
+        
+        db.commit()
+        
+        print(f"[UPDATE_RULE] Updated rule ID {rule_id} by {user_rs_id}")
+        
+        return {
+            "status": "success",
+            "message": "Rule berhasil diperbarui",
+            "rule_id": rule_id,
+            "updated_at": rule.updated_at.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[UPDATE_RULE] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update rule: {str(e)}")
+
+@router.delete("/rules/{rule_id}")
+async def delete_rs_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Soft delete rule (hanya yang berstatus unverified).
+    
+    Admin RS hanya boleh hapus rule milik sendiri yang belum di-approve.
+    """
+    try:
+        # Get user's hospital info
+        user_rs_id = None
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+        
+        # Find rule
+        rule = db.query(models.RulesMaster).filter(
+            and_(
+                models.RulesMaster.id == rule_id,
+                models.RulesMaster.rs_id == user_rs_id,
+                models.RulesMaster.layer.in_(["ppk", "rs"])
+            )
+        ).first()
+        
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan atau bukan milik RS ini")
+        
+        # Cek status - hanya unverified yang boleh dihapus
+        if rule.status != "unverified":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Rule dengan status '{rule.status}' tidak dapat dihapus"
+            )
+        
+        # Soft delete - ubah status jadi "deleted"
+        rule.status = "deleted"
+        rule.updated_at = datetime.now()
+        
+        db.commit()
+        
+        print(f"[DELETE_RULE] Soft deleted rule ID {rule_id} by {user_rs_id}")
+        
+        return {
+            "status": "success",
+            "message": "Rule berhasil dihapus",
+            "rule_id": rule_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[DELETE_RULE] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete rule: {str(e)}")
+
+
+# ==============================================
+# REGIONAL REPORTS ENDPOINTS (FASE 6C)
+# ==============================================
+
+@router.post("/regional-reports/add")
+async def add_regional_report(
+    title: str = Form(...),
+    description: str = Form(""),
+    se_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Admin RS melaporkan edaran regional (SE) ke AI META untuk review.
+    """
+    try:
+        # Validate file
+        if not se_file.filename or not se_file.filename.endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="Hanya file PDF yang diperbolehkan")
+        
+        if se_file.size > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="Ukuran file maksimal 10MB")
+        
+        # Get user info
+        user_rs_id = None
+        user_region_id = "jatim"  # Default region
+        if hasattr(user, 'hospital') and user.hospital:
+            user_rs_id = user.hospital.kode_hospital or f"rs_{user.hospital.id}"
+        
+        # Save SE file
+        upload_dir = "web/uploads/regional_se"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        file_extension = se_file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            content = await se_file.read()
+            buffer.write(content)
+        
+        # Save to database
+        new_report = models.RegionalReports(
+            title=title.strip(),
+            description=description.strip() if description else None,
+            se_file=unique_filename,
+            region_id=user_region_id,
+            rs_id=user_rs_id,
+            status="pending",
+            reported_by=f"admin_rs_{user_rs_id}",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+        
+        print(f"[REGIONAL_REPORT] Created report ID {new_report.id} - {title} by {user_rs_id}")
+        
+        return {
+            "status": "success",
+            "message": "Laporan SE berhasil dikirim ke AI META untuk review",
+            "report_id": new_report.id,
+            "title": title
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"[REGIONAL_REPORT] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit report: {str(e)}")
+
+
+@router.get("/regional-reports/{report_id}/pdf")
+async def download_regional_report_pdf(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs"))
+):
+    """Download SE PDF file"""
+    try:
+        # Get report
+        report = db.query(models.RegionalReports).filter(models.RegionalReports.id == report_id).first()
+        if not report:
+            raise HTTPException(status_code=404, detail="Report tidak ditemukan")
+        
+        # Check file exists
+        file_path = os.path.join("web/uploads/regional_se", report.se_file)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File SE tidak ditemukan di server")
+        
+        # Return file
+        def iterfile():
+            with open(file_path, "rb") as file_like:
+                yield from file_like
+                
+        headers = {
+            "Content-Disposition": f"attachment; filename=SE_{report.title.replace(' ', '_')}.pdf"
+        }
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="application/pdf",
+            headers=headers
+        )
+        
+    except Exception as e:
+        print(f"[DOWNLOAD_SE] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to download SE: {str(e)}")
+
+
+# ==============================================
+# FEEDBACK SYSTEM ENDPOINTS (POINT H)
+# ==============================================
+
+@router.post("/rules/{rule_id}/feedback")
+async def submit_rule_feedback(
+    rule_id: int,
+    feedback: str = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs", "doctor", "verifikator")),
+    _=Depends(require_csrf_dep)
+):
+    """
+    Submit feedback untuk rule tertentu.
+    RS dapat memberikan masukan tentang aturan yang berlaku.
+    """
+    try:
+        # Get rule
+        rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+        if not rule:
+            raise HTTPException(status_code=404, detail="Rule tidak ditemukan")
+        
+        # Get user info
+        user_identifier = f"{user.role}"
+        if hasattr(user, 'hospital') and user.hospital:
+            user_identifier += f"_{user.hospital.kode_hospital or f'rs_{user.hospital.id}'}"
+        
+        # Update feedback
+        rule.feedback = feedback.strip()
+        rule.feedback_by = user_identifier
+        rule.feedback_date = datetime.now()
+        rule.updated_at = datetime.now()
+        
+        db.commit()
+        
+        print(f"[FEEDBACK] Rule {rule_id} feedback from {user_identifier}: {feedback[:50]}...")
+        
+        return {
+            "status": "success",
+            "message": "Feedback berhasil dikirim ke AI META",
+            "rule_id": rule_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"[FEEDBACK] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit feedback: {str(e)}")
+
+
+@router.get("/rules/feedback/list")
+async def get_rules_with_feedback(
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "ai_meta"))
+):
+    """
+    AI META endpoint untuk melihat semua rules yang ada feedback.
+    """
+    try:
+        rules_with_feedback = db.query(models.RulesMaster).filter(
+            models.RulesMaster.feedback.isnot(None)
+        ).order_by(models.RulesMaster.feedback_date.desc()).all()
+        
+        result = []
+        for rule in rules_with_feedback:
+            result.append({
+                "id": rule.id,
+                "diagnosis": rule.diagnosis,
+                "field": rule.field,
+                "layer": rule.layer,
+                "isi": rule.isi,
+                "sumber": rule.sumber,
+                "rs_id": rule.rs_id,
+                "feedback": rule.feedback,
+                "feedback_by": rule.feedback_by,
+                "feedback_date": rule.feedback_date.isoformat() if rule.feedback_date else None,
+                "status": rule.status
+            })
+        
+        return {
+            "status": "success",
+            "total_feedback": len(result),
+            "rules_with_feedback": result
+        }
+        
+    except Exception as e:
+        print(f"[GET_FEEDBACK] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get feedback: {str(e)}")
+
+
+# ==================================================
+# TOOLTIP SYSTEM - Point G from Specification
+# ==================================================
+
+@router.get("/tooltip/rules/{field_path}")
+async def get_field_tooltip(
+    field_path: str,
+    diagnosis: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin"))
+):
+    """
+    API endpoint untuk tooltip hover system.
+    Mengembalikan ringkasan rules yang relevan untuk field tertentu.
+    
+    Args:
+        field_path: Path field seperti "diagnosis.justifikasi", "rawat_inap.lama_rawat", dll
+        diagnosis: Diagnosis code opsional untuk filter rules spesifik
+    
+    Returns:
+        JSON dengan ringkasan rules yang relevan untuk ditampilkan di tooltip
+    """
+    try:
+        # Build query untuk rules yang relevan
+        query = db.query(models.RulesMaster).filter(
+            models.RulesMaster.field == field_path,
+            models.RulesMaster.status.in_(["official", "active"])
+        )
+        
+        # Filter berdasarkan diagnosis jika diberikan
+        if diagnosis:
+            query = query.filter(
+                models.RulesMaster.diagnosis.like(f"%{diagnosis}%")
+            )
+        
+        # Order by priority (layer hierarchy)
+        layer_priority = {
+            "permenkes": 1,
+            "nasional": 2, 
+            "ppk": 3,
+            "regional": 4,
+            "rs": 5,
+            "bridging": 6,
+            "fraud": 7,
+            "temporary": 8
+        }
+        
+        rules = query.all()
+        
+        # Sort rules by layer priority
+        sorted_rules = sorted(rules, key=lambda x: layer_priority.get(x.layer, 99))
+        
+        # Build tooltip content
+        tooltip_sections = []
+        
+        for rule in sorted_rules[:3]:  # Limit to top 3 most important rules
+            # Truncate rule text for tooltip
+            rule_text = rule.isi
+            if len(rule_text) > 120:
+                rule_text = rule_text[:120] + "..."
+                
+            section = {
+                "layer": rule.layer.upper(),
+                "text": rule_text,
+                "source": rule.sumber,
+                "color_class": get_layer_color_class(rule.layer)
+            }
+            tooltip_sections.append(section)
+        
+        # Build summary text
+        if tooltip_sections:
+            summary = f"Ditemukan {len(rules)} aturan untuk field ini"
+            if diagnosis:
+                summary += f" (diagnosis: {diagnosis})"
+        else:
+            summary = "Tidak ada aturan khusus untuk field ini"
+            
+        return {
+            "status": "success",
+            "field": field_path,
+            "diagnosis": diagnosis,
+            "summary": summary,
+            "total_rules": len(rules),
+            "tooltip_sections": tooltip_sections,
+            "has_rules": len(rules) > 0
+        }
+        
+    except Exception as e:
+        print(f"[TOOLTIP] Error for field {field_path}: {str(e)}")
+        return {
+            "status": "error",
+            "field": field_path,
+            "summary": "Error loading tooltip",
+            "tooltip_sections": [],
+            "has_rules": False
+        }
+
+
+# ==================================================
+# API ENDPOINTS FOR AI META DASHBOARD
+# ==================================================
+
+@router.get("/api/rules/{rule_id}")
+async def get_rule_detail(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "admin_rs", "doctor", "coder"))
+):
+    """
+    Get detailed information about a specific rule.
+    Used by AI META dashboard and other components.
+    """
+    rule = db.query(models.RulesMaster).filter(models.RulesMaster.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    return {
+        "id": rule.id,
+        "layer": rule.layer,
+        "diagnosis": rule.diagnosis,
+        "field": rule.field,
+        "isi": rule.isi,
+        "sumber": rule.sumber,
+        "rs_id": rule.rs_id,
+        "region_id": rule.region_id,
+        "status": rule.status,
+        "created_at": rule.created_at.isoformat() if rule.created_at else None,
+        "created_by": rule.created_by,
+        "approved_by": rule.approved_by,
+        "approved_date": rule.approved_date.isoformat() if rule.approved_date else None,
+        "review_notes": rule.review_notes,
+        "feedback": rule.feedback,
+        "feedback_by": rule.feedback_by,
+        "feedback_date": rule.feedback_date.isoformat() if rule.feedback_date else None
+    }
+
+@router.get("/api/regional-reports/{report_id}")
+async def get_regional_report_detail(
+    report_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("superadmin", "admin_rs"))
+):
+    """
+    Get detailed information about a specific regional report.
+    Used by AI META dashboard.
+    """
+    report = db.query(models.RegionalReports).filter(models.RegionalReports.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Regional report not found")
+    
+    return {
+        "id": report.id,
+        "report_type": report.report_type,
+        "region_id": report.region_id,
+        "rs_id": report.rs_id,
+        "period_start": report.period_start.isoformat() if report.period_start else None,
+        "period_end": report.period_end.isoformat() if report.period_end else None,
+        "content": report.content,
+        "status": report.status,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "created_by": report.created_by,
+        "reviewed_by": report.reviewed_by,
+        "reviewed_date": report.reviewed_date.isoformat() if report.reviewed_date else None,
+        "review_notes": report.review_notes
+    }
+
+
+def get_layer_color_class(layer: str) -> str:
+    """
+    Return CSS color class for different rule layers
+    """
+    layer_colors = {
+        "permenkes": "text-red-600",      # Highest priority - red
+        "nasional": "text-orange-600",    # National - orange  
+        "ppk": "text-yellow-600",         # PPK - yellow
+        "regional": "text-green-600",     # Regional - green
+        "rs": "text-blue-600",            # Hospital - blue
+        "bridging": "text-indigo-600",    # Bridging - indigo
+        "fraud": "text-purple-600",       # Fraud detection - purple
+        "temporary": "text-gray-600"      # Temporary - gray
+    }
+    return layer_colors.get(layer, "text-gray-500")

@@ -1,5 +1,6 @@
 # services/idrg_service.py
 import os
+import re
 import json
 from datetime import date
 from dotenv import load_dotenv
@@ -58,7 +59,7 @@ Jawab hanya JSON valid dengan struktur berikut:
   ],
   "ungroupable_alert": "Alasan klaim bisa gagal grouping. Jika tidak ada, isi '-'",
   "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
-  "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)"
+  "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)",
   "notification": {{
     "status": "success/warning/error/info",
     "message": "Pesan singkat rekomendasi seperti contoh di atas"
@@ -116,7 +117,7 @@ Setiap field punya peran khusus, ikuti aturan berikut:
   "risiko_ungroupable": "Alasan klaim bisa gagal grouping. Jika tidak ada, isi '-'",
   "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
   "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)",
-  "rekomendasi_ai": "Saran singkat dokumentasi tambahan. Contoh: Tambahkan HbA1c di rekam medis"
+  "rekomendasi_ai": "Saran singkat dokumentasi tambahan. Contoh: Tambahkan HbA1c di rekam medis",
   "notification": {{
     "status": "success/warning/error/info",
     "message": "Pesan singkat rekomendasi seperti contoh di atas"
@@ -182,111 +183,113 @@ def predict_idrg(mode: str, payload: dict):
         }
 
 def predict_single_idrg(payload: dict):
-    """
-    Prediksi i-DRG untuk single diagnosis dari modal detail diagnosis
-    """
     claim_id = payload.get("claim_id")
     diagnosis_name = payload.get("diagnosis_name", "")
-    
+
     try:
-        # Bangun prompt dan panggil OpenAI
         prompt = build_prompt_single(payload)
         result = ask_openai(prompt)
-        
-        # Normalisasi gap_analysis jika ada
-        if "gap_analysis" in result and result["gap_analysis"] not in ["-", None]:
-            try:
-                # Coba ekstrak angka jika ada
-                import re
-                match = re.search(r'\d+', str(result["gap_analysis"]))
-                if match:
-                    result["gap_analysis"] = int(match.group())
-            except:
-                result["gap_analysis"] = 0
-                
-        # Pastikan tarif_estimate selalu integer
-        if "tarif_estimate" in result and result["tarif_estimate"] not in ["-", None]:
-            try:
-                result["tarif_estimate"] = int(str(result["tarif_estimate"]).replace(".", "").replace(",", ""))
-            except:
-                result["tarif_estimate"] = 0
-        
+
+        # Normalize field names for consistency
+        formatted_result = {
+            "group_idrg": result.get("group_idrg") or result.get("kode_idrg") or "-",
+            "severity_index": result.get("severity_index") or "-",
+            "checklist_dokumentasi": result.get("checklist_dokumentasi") or [],
+            "faktor_penentu_severity": result.get("faktor_penentu_severity") or [],
+            "ungroupable_alert": result.get("ungroupable_alert") or "-",
+            "estimasi_tarif_idrg": result.get("estimasi_tarif_idrg") or result.get("estimasi_tarif") or 0,
+            "gap_analysis": result.get("gap_analysis") or 0,
+            "notifications": {
+                "idrg": result.get("notification") or {
+                    "status": "info",
+                    "message": "Belum ada notifikasi untuk bagian IDRG."
+                }
+            },
+        }
+
         return {
+            "status": "success",
             "mode": "single",
             "claim_id": claim_id,
             "diagnosis": diagnosis_name,
-            "idrg_prediction": result,
-            "engine_version": f"idrg_service@{date.today().isoformat()}"
+            "idrg_prediction": formatted_result,
+            "engine_version": f"idrg_service@{date.today().isoformat()}",
         }
-        
     except Exception as e:
-        print(f"Error in predict_single_idrg: {str(e)}")
+        print(f"❌ Error in predict_single_idrg: {e}")
         return {
-            "mode": "single", 
+            "status": "error",
+            "message": str(e),
+            "mode": "single",
             "claim_id": claim_id,
             "diagnosis": diagnosis_name,
-            "error": str(e),
-            "engine_version": f"idrg_service@{date.today().isoformat()}"
         }
 
 def predict_combo_idrg(payload: dict):
     """
-    Prediksi i-DRG untuk kombinasi klaim (multiple diagnosis + procedures)
-    Untuk verifikator di claim_right.html
+    Prediksi i-DRG untuk kombinasi diagnosis & tindakan (mode combo).
+    Hasil diformat agar cocok dengan FE (claim.modals.js) + menambahkan field rekomendasi_ai.
     """
     claim_id = payload.get("claim_id")
-    
-    # Normalisasi nama field agar konsisten dengan frontend
-    primary_diagnosis = payload.get("primary_diagnosis") or payload.get("primary_claim", "")
-    secondary_diagnoses = payload.get("secondary_diagnosis") or payload.get("secondary_claims", [])
-    primary_procedure = payload.get("primary_procedure") or payload.get("primary_action", "")
-    secondary_procedures = payload.get("secondary_procedures") or payload.get("secondary_actions", [])
-    
+    primary_dx = payload.get("primary_diagnosis") or payload.get("primary_claim")
+    secondary_dx = payload.get("secondary_diagnosis") or payload.get("secondary_claims", [])
+    primary_tx = payload.get("primary_action")
+    secondary_tx = payload.get("secondary_actions", [])
+
     try:
-        # Bangun prompt dan panggil OpenAI
-        prompt = build_prompt_combo({
-            "claim_id": claim_id,
-            "primary_diagnosis": primary_diagnosis,
-            "secondary_diagnosis": secondary_diagnoses,
-            "procedures": [p for p in [primary_procedure] + secondary_procedures if p]
-        })
-        
+        # 🔹 Build prompt & panggil OpenAI (sesuai logikamu sebelumnya)
+        prompt = build_prompt_combo(payload)
         result = ask_openai(prompt)
 
-        # Normalisasi numerik
-        for key in ["gap_analysis", "estimasi_tarif_idrg"]:
-            val = result.get(key)
-            if isinstance(val, str):
-                match = re.search(r'\d+', val)
-                result[key] = int(match.group()) if match else 0
-        
-        # Format hasil sesuai ekspektasi frontend
+        # 🔹 Format hasil sesuai FE
         formatted_result = {
-            "group_idrg_kombinasi": result.get("prediksi_group_idrg_kombinasi", "-"),
-            "severity_kombinasi": result.get("severity_kombinasi", "-"),
-            "checklist_dokumentasi": result.get("checklist_idrg_kombinasi", []),
-            "faktor_penentu_severity": result.get("faktor_penentu_severity", []),
-            "risiko_ungroupable": result.get("risiko_ungroupable", "-"),
-            "estimasi_tarif": result.get("estimasi_tarif_idrg", 0),
-            "gap_inacbg_vs_idrg": result.get("gap_analysis", 0),
-            "rekomendasi_ai": result.get("rekomendasi_ai", "-"),
-            "notification": result.get("notification", {"status": "info", "message": "Belum ada notifikasi AI"})
+            "group_idrg": result.get("kode_idrg") or result.get("group_idrg") or "-",
+            "severity_index": result.get("severity_index") or "-",
+            "checklist_dokumentasi": result.get("checklist_dokumentasi") or [],
+            "faktor_penentu_severity": result.get("faktor_penentu_severity") or [],
+            "ungroupable_alert": result.get("ungroupable_alert") or "-",
+            "estimasi_tarif_idrg": (
+                result.get("estimasi_tarif_idrg")
+                or result.get("estimasi_tarif")
+                or 0
+            ),
+            "gap_analysis": result.get("gap_analysis") or 0,
+
+            # 🧠 Tambahan field rekomendasi AI
+            "rekomendasi_ai": result.get("rekomendasi_ai")
+                or result.get("ai_recommendation")
+                or result.get("ai_summary")
+                or "Tidak ada rekomendasi khusus dari AI untuk kombinasi ini.",
+
+            # 🔔 Notifikasi
+            "notifications": result.get("notifications") or {
+                "idrg": {
+                    "status": "info",
+                    "message": "Belum ada notifikasi untuk bagian IDRG kombinasi."
+                }
+            },
         }
 
+        # 🔹 Return response akhir
         return {
+            "status": "success",
             "mode": "combo",
             "claim_id": claim_id,
-            "primary_diagnosis": primary_diagnosis,
+            "primary_diagnosis": primary_dx,
+            "secondary_diagnoses": secondary_dx,
+            "primary_action": primary_tx,
+            "secondary_actions": secondary_tx,
             "idrg_prediction": formatted_result,
-            "engine_version": f"idrg_service@{date.today().isoformat()}"
+            "engine_version": f"idrg_service@{date.today().isoformat()}",
         }
-        
+
     except Exception as e:
-        print(f"Error in predict_combo_idrg: {str(e)}")
+        print(f"❌ Error in predict_combo_idrg: {e}")
         return {
+            "status": "error",
+            "message": str(e),
             "mode": "combo",
             "claim_id": claim_id,
-            "primary_diagnosis": primary_diagnosis,
-            "error": str(e),
-            "engine_version": f"idrg_service@{date.today().isoformat()}"
+            "primary_diagnosis": primary_dx,
+            "secondary_diagnoses": secondary_dx,
         }

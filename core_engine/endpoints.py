@@ -162,3 +162,67 @@ async def predict_idrg_endpoint(payload: dict):
     out = predict_idrg(mode, payload)
     return out
 
+# ---------------------------
+# Rules Endpoints
+# ---------------------------
+@router.post("/rules/load")
+async def load_multilayer_rules(payload: dict):
+    """
+    Load multilayer rules untuk diagnosis tertentu dari JSON + database.
+    
+    Expects:
+      - payload["diagnosis"] = nama diagnosis 
+      - payload["rs_id"] = optional ID rumah sakit
+      - payload["region_id"] = optional ID wilayah
+    
+    Returns:
+      - JSON dengan rules dari semua layer yang berlaku
+    """
+    from services.rules_loader import load_rules_for_diagnosis
+    
+    diagnosis = payload.get("diagnosis")
+    rs_id = payload.get("rs_id")
+    region_id = payload.get("region_id")
+    
+    if not diagnosis:
+        return {"error": "diagnosis is required"}
+    
+    try:
+        # Load rules (function sudah handle database internally)
+        rules_data = load_rules_for_diagnosis(diagnosis, rs_id, region_id)
+        
+        print(f"[CORE_ENGINE] Loaded {rules_data.get('total_rules', 0)} rules for {diagnosis}")
+        return rules_data
+        
+    except Exception as e:
+        print(f"[CORE_ENGINE] Error loading rules: {str(e)}")
+        return {"error": f"Failed to load rules: {str(e)}"}
+
+@router.post("/rules/summary")
+async def get_rules_summary(payload: dict):
+    """
+    Get summary rules by layer untuk diagnosis tertentu.
+    
+    Returns ringkasan rules per layer dengan jumlah dan source info.
+    """
+    from services.rules_loader import get_rules_summary
+    
+    diagnosis = payload.get("diagnosis")
+    rs_id = payload.get("rs_id")
+    region_id = payload.get("region_id")
+    
+    if not diagnosis:
+        return {"error": "diagnosis is required"}
+    
+    try:
+        summary = get_rules_summary(diagnosis, rs_id, region_id)
+        
+        return {
+            "status": "success",
+            "diagnosis": diagnosis,
+            "summary": summary
+        }
+        
+    except Exception as e:
+        print(f"[CORE_ENGINE] Error getting summary: {str(e)}")
+        return {"error": f"Failed to get rules summary: {str(e)}"}

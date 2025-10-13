@@ -322,7 +322,7 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
         "inaCbg": {
             "kode": ina_cbg_info.get("kode", "-"),
             "deskripsi": ina_cbg_info.get("deskripsi", "-"), 
-            "tarif": ina_cbg_info.get("tarif", "-"),
+            "tarif": int(''.join(c for c in str(ina_cbg_info.get("tarif", "0")) if c.isdigit()) or "0"),
             "status_kode": assess_status(ina_cbg_info.get("kode")),
             "status_deskripsi": assess_status(ina_cbg_info.get("deskripsi")),
             "status_tarif": assess_status(ina_cbg_info.get("tarif"))
