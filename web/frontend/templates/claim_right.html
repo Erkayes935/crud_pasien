@@ -53,7 +53,7 @@
                             x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
                     <!-- Rules Button -->
                     <button type="button" 
-                            @click="showRulesModal(simulasi[tab].utama.name)"
+                            @click="openRulesModal(simulasi[tab].utama.name)"
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-medium transition-colors"
                             title="Lihat Aturan Multilayer">
                       📘 Rules
@@ -198,9 +198,16 @@
             </div>
         </div>
 
-        <!-- Multilayer Rules Modal -->
+        <!-- Enhanced Multilayer Rules Modal dengan Tabs -->
         <div x-show="rulesModalOpen" x-cloak
-            x-data="{ rulesModalOpen: false, rulesData: null, loading: false, selectedDiagnosis: '' }"
+            x-data="{ 
+              rulesModalOpen: false, 
+              rulesData: null, 
+              loading: false, 
+              selectedDiagnosis: '',
+              activeTab: '',
+              rulesByLayer: {}
+            }"
             class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
                 
@@ -223,56 +230,99 @@
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat aturan...</p>
                 </div>
 
-                <!-- Rules Content -->
-                <div x-show="!loading && rulesData" class="space-y-4">
+                <!-- Enhanced Rules Content -->
+                <div x-show="!loading && rulesData">
                     <!-- Summary -->
-                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">🎯 Ringkasan Aturan</h4>
-                    <p class="text-blue-800 dark:text-blue-400 text-sm" x-text="rulesData ? `Ditemukan ${Object.keys(rulesData.rules || {}).length} kategori field dengan aturan aktif` : ''"></p>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                        <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">🎯 Ringkasan Aturan</h4>
+                        <p class="text-blue-800 dark:text-blue-400 text-sm" 
+                           x-text="`Ditemukan ${Object.keys(rulesData?.rules || {}).length} kategori field dengan ${Object.keys(rulesByLayer).length} layer aturan aktif`"></p>
                     </div>
 
-                    <!-- Rules by Field -->
-                    <template x-for="(fieldRules, fieldName) in rulesData?.rules || {}" :key="fieldName">
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <h5 class="font-semibold text-lg mb-3 text-gray-900 dark:text-gray-100" x-text="`📋 ${fieldName}`"></h5>
-                        
-                        <template x-for="(rule, index) in fieldRules" :key="index">
-                        <div class="mb-3 p-3 rounded-md" 
-                            :class="rule.layer === 'ppk' || rule.layer === 'rs' ? 'bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500' : 'bg-gray-50 dark:bg-gray-800/50'">
-                            
-                            <!-- Rule Header -->
-                            <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full"
-                                    :class="rule.layer === 'ppk' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 
-                                        rule.layer === 'rs' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200' :
-                                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'"
-                                    x-text="rule.layer.toUpperCase()"></span>
-                            
-                            <span x-show="rule.layer === 'ppk' || rule.layer === 'rs'" 
-                                    class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200 rounded-full">
-                                ⭐ OVERRIDE
-                            </span>
-                            
-                            <span class="text-xs text-gray-600 dark:text-gray-400" x-text="`Priority: ${rule.priority || 'N/A'}`"></span>
-                            </div>
+                    <!-- Tabs Navigation -->
+                    <div x-show="Object.keys(rulesByLayer).length > 0" class="border-b border-gray-200 dark:border-gray-700 mb-6">
+                        <nav class="flex space-x-8">
+                            <template x-for="(rules, layer) in rulesByLayer" :key="layer">
+                                <button type="button"
+                                        @click="activeTab = layer"
+                                        :class="activeTab === layer ? 
+                                            'py-2 px-4 text-sm font-medium border-b-2 border-blue-500 text-blue-600' : 
+                                            'py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                        x-text="getLayerLabel(layer) + ' (' + rules.length + ')'">
+                                </button>
+                            </template>
+                        </nav>
+                    </div>
 
-                            <!-- Rule Content -->
-                            <div class="text-sm text-gray-800 dark:text-gray-200 mb-2" x-text="rule.isi"></div>
-                            
-                            <!-- Rule Source -->
-                            <div class="text-xs text-gray-600 dark:text-gray-400">
-                            <span class="font-medium">Sumber:</span> <span x-text="rule.sumber"></span>
+                    <!-- Tab Content -->
+                    <div x-show="Object.keys(rulesByLayer).length > 0">
+                        <template x-for="(rules, layer) in rulesByLayer" :key="layer">
+                            <div x-show="activeTab === layer" class="space-y-4">
+                                <!-- Override Notice -->
+                                <div x-show="layer === 'ppk' || layer === 'rs'" 
+                                     class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border-l-4 border-yellow-500">
+                                    <p class="text-yellow-800 dark:text-yellow-300 text-sm font-medium">
+                                        ⭐ <strong>OVERRIDE PRIORITY:</strong> Aturan layer ini akan menimpa aturan layer di atasnya
+                                    </p>
+                                </div>
+
+                                <!-- Rules List -->
+                                <template x-for="(rule, index) in rules" :key="index">
+                                    <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                        <!-- Header -->
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                                                  :class="getLayerColorClass(layer)"
+                                                  x-text="layer.toUpperCase()"></span>
+                                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100" 
+                                                  x-text="'📋 ' + (rule.field || 'General')"></span>
+                                            <span x-show="layer === 'ppk' || layer === 'rs'" 
+                                                  class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">
+                                                ⭐ OVERRIDE
+                                            </span>
+                                        </div>
+                                        
+                                        <!-- Content -->
+                                        <div class="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed" x-text="rule.isi"></div>
+                                        
+                                        <!-- Meta -->
+                                        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                            <span><strong>Sumber:</strong> <span x-text="rule.sumber"></span></span>
+                                            <span x-show="rule.status" class="px-2 py-1 bg-green-100 text-green-800 rounded-full" x-text="rule.status"></span>
+                                        </div>
+                                        
+                                        <!-- PDF Link -->
+                                        <div x-show="rule.pdf_file" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                            <a :href="`/claims/rules/${rule.id}/pdf`" target="_blank" 
+                                               class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                                                📎 Lihat Dokumen PDF
+                                            </a>
+                                        </div>
+                                        
+                                        <!-- Feedback Button -->
+                                        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                            <div class="flex items-center justify-between">
+                                                <button @click="showFeedbackModal(rule)" 
+                                                        class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">
+                                                    💬 Masukan untuk Aturan Ini
+                                                </button>
+                                                <span x-show="rule.feedback" 
+                                                      class="text-xs text-green-600 font-medium">
+                                                    ✅ Sudah ada feedback
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
-                        </div>
                         </template>
                     </div>
-                    </template>
 
                     <!-- No Rules -->
                     <div x-show="!rulesData || !rulesData.rules || Object.keys(rulesData.rules).length === 0" 
                         class="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <p>📋 Belum ada aturan khusus untuk diagnosis ini</p>
-                    <p class="text-sm mt-2">Sistem akan menggunakan aturan nasional standar</p>
+                        <p>📋 Belum ada aturan khusus untuk diagnosis ini</p>
+                        <p class="text-sm mt-2">Sistem akan menggunakan aturan nasional standar</p>
                     </div>
                 </div>
 
@@ -281,6 +331,75 @@
                     <p>❌ Gagal memuat aturan</p>
                     <p class="text-sm mt-2">Silakan coba lagi atau hubungi administrator</p>
                 </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Feedback Modal -->
+        <div x-show="feedbackModalOpen" x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]"
+             @click.self="feedbackModalOpen = false">
+            
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            💬 Berikan Masukan untuk Aturan
+                        </h3>
+                        <button @click="feedbackModalOpen = false" 
+                                class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Rule Info -->
+                    <div x-show="selectedFeedbackRule" class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">Aturan yang akan diberi masukan:</h4>
+                        <p x-text="selectedFeedbackRule?.text" class="text-gray-700 dark:text-gray-300 text-sm"></p>
+                        <div class="mt-2 text-xs text-gray-500">
+                            <span>Layer: </span><span x-text="selectedFeedbackRule?.layer_name" class="font-medium"></span>
+                            <span class="ml-4">Prioritas: </span><span x-text="selectedFeedbackRule?.priority" class="font-medium"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Feedback Form -->
+                    <form @submit.prevent="submitFeedback">
+                        <div class="mb-4">
+                            <label for="feedback-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Masukan Anda <span class="text-red-500">*</span>
+                            </label>
+                            <textarea id="feedback-text" 
+                                      x-model="feedbackForm.feedback"
+                                      rows="6" 
+                                      required
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                      placeholder="Deskripsikan masukan, saran, atau koreksi untuk aturan ini..."></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" 
+                                    @click="feedbackModalOpen = false"
+                                    class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500">
+                                Batal
+                            </button>
+                            <button type="submit" 
+                                    :disabled="feedbackSubmitting"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span x-show="!feedbackSubmitting">Kirim Masukan</span>
+                                <span x-show="feedbackSubmitting">Mengirim...</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -302,6 +421,12 @@
 <script>
 // Global function untuk multilayer rules modal
 window.showRulesModal = async function(diagnosis) {
+    // Use the new openRulesModal function from claim.modals.js
+    if (window.openRulesModal) {
+        return window.openRulesModal(diagnosis);
+    }
+    
+    // Fallback if function not available
     if (!diagnosis || diagnosis === 'undefined') {
         alert('Diagnosis tidak valid');
         return;
@@ -325,7 +450,7 @@ window.showRulesModal = async function(diagnosis) {
 
     try {
         // Call rules loader API
-        const response = await fetch(`/claims/rules/load?diagnosis=${encodeURIComponent(diagnosis)}`, {
+        const response = await fetch(`/claims/rules/check/${encodeURIComponent(diagnosis)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -339,11 +464,18 @@ window.showRulesModal = async function(diagnosis) {
 
         const data = await response.json();
         
+        // Organize rules by layer
+        const rulesByLayer = organizeRulesByLayer(data);
+        const sortedLayers = Object.keys(rulesByLayer).sort((a, b) => getLayerPriority(a) - getLayerPriority(b));
+        
         // Update Alpine data
         alpineData.loading = false;
         alpineData.rulesData = data;
+        alpineData.rulesByLayer = rulesByLayer;
+        alpineData.activeTab = sortedLayers[0] || '';
 
         console.log('Rules loaded:', data);
+        console.log('Rules by layer:', rulesByLayer);
         
     } catch (error) {
         console.error('Error loading rules:', error);
@@ -354,5 +486,128 @@ window.showRulesModal = async function(diagnosis) {
         alert(`Gagal memuat aturan: ${error.message}`);
     }
 };
+
+// Global feedback functions
+window.showFeedbackModal = function(rule) {
+    const rootElement = document.getElementById('claimRoot');
+    if (!rootElement || !rootElement._x_dataStack) {
+        console.error('Alpine component not found');
+        return;
+    }
+    
+    const alpineData = rootElement._x_dataStack[0];
+    alpineData.selectedFeedbackRule = rule;
+    alpineData.feedbackModalOpen = true;
+    alpineData.feedbackForm = { feedback: '' };
+    alpineData.feedbackSubmitting = false;
+};
+
+window.submitFeedback = async function() {
+    const rootElement = document.getElementById('claimRoot');
+    if (!rootElement || !rootElement._x_dataStack) return;
+    
+    const alpineData = rootElement._x_dataStack[0];
+    if (!alpineData.selectedFeedbackRule || !alpineData.feedbackForm.feedback.trim()) {
+        return;
+    }
+
+    alpineData.feedbackSubmitting = true;
+
+    try {
+        if (window.submitRuleFeedback) {
+            await window.submitRuleFeedback(
+                alpineData.selectedFeedbackRule.id,
+                alpineData.feedbackForm.feedback.trim()
+            );
+        } else {
+            // Direct API call as fallback
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            const response = await fetch(`/claims/rules/${alpineData.selectedFeedbackRule.id}/feedback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ feedback: alpineData.feedbackForm.feedback.trim() })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP ${response.status}`);
+            }
+            
+            // Show success message
+            alert('Masukan berhasil dikirim! Terima kasih atas kontribusi Anda.');
+        }
+
+        // Close modal and reset form
+        alpineData.feedbackModalOpen = false;
+        alpineData.feedbackForm = { feedback: '' };
+        alpineData.selectedFeedbackRule = null;
+
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        alert(`Gagal mengirim masukan: ${error.message}`);
+    } finally {
+        alpineData.feedbackSubmitting = false;
+    }
+};
+
+// Utility functions for enhanced modal
+function organizeRulesByLayer(rulesData) {
+    const rulesByLayer = {};
+    
+    if (!rulesData || !rulesData.rules) return rulesByLayer;
+    
+    // Flatten all rules and group by layer
+    Object.values(rulesData.rules).flat().forEach(rule => {
+        if (!rulesByLayer[rule.layer]) {
+            rulesByLayer[rule.layer] = [];
+        }
+        rulesByLayer[rule.layer].push(rule);
+    });
+    
+    return rulesByLayer;
+}
+
+function getLayerPriority(layer) {
+    const priorities = {
+        'permenkes': 1,
+        'nasional': 2, 
+        'ppk': 3,
+        'regional': 4,
+        'rs': 5,
+        'bridging': 6,
+        'fraud': 7,
+        'temporary': 8
+    };
+    return priorities[layer] || 99;
+}
+
+function getLayerLabel(layer) {
+    const labels = {
+        'permenkes': '🏛️ Permenkes',
+        'nasional': '🇮🇩 Nasional', 
+        'ppk': '🏥 PPK RS',
+        'regional': '🗺️ Regional',
+        'rs': '🏨 RS Lokal',
+        'bridging': '🔗 Bridging',
+        'fraud': '⚠️ Fraud',
+        'temporary': '⏰ Temporary'
+    };
+    return labels[layer] || layer.toUpperCase();
+}
+
+function getLayerColorClass(layer) {
+    const colors = {
+        'ppk': 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200',
+        'rs': 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200',
+        'nasional': 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200',
+        'regional': 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200',
+        'permenkes': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-200'
+    };
+    return colors[layer] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+}
 </script>
 {% endblock %}

@@ -347,10 +347,65 @@
   window.generateAI = generateAI;
   window.generateSummary = generateSummary;
   window.loadSimulations = loadSimulations;
+  // ============================================================
+  // � Rules Functions
+  // ============================================================
+  
+  async function loadRules(diagnosisName) {
+    try {
+      const response = await fetch(`/claims/rules/check/${encodeURIComponent(diagnosisName)}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error loading rules:', error);
+      showToast(`Gagal memuat aturan: ${error.message}`, true);
+      throw error;
+    }
+  }
+
+  // ============================================================
+  // �🔄 Feedback Functions
+  // ============================================================
+  
+  async function submitRuleFeedback(ruleId, feedback) {
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      
+      const response = await fetch(`/claims/rules/${ruleId}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ feedback })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      showToast('Masukan berhasil dikirim! Terima kasih atas kontribusi Anda.', false);
+      return result;
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      showToast(`Gagal mengirim masukan: ${error.message}`, true);
+      throw error;
+    }
+  }
+
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
   window.searchTindakan = searchTindakan;
   window.getTindakanDetail = getTindakanDetail;
   window.saveDraft = saveDraft;
   window.get_form_as_dict = get_form_as_dict;
+  window.loadRules = loadRules;
+  window.submitRuleFeedback = submitRuleFeedback;
 })();

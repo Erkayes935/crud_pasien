@@ -855,6 +855,7 @@ class RulesMaster(Base):
     layer = Column(Text, nullable=False)           # Layer: "permenkes", "nasional", "ppk", "regional", "rs", "bridging", "fraud", "temporary"
     isi = Column(Text, nullable=False)             # Isi aturan: "LOS ≥ 2 hari", dll
     sumber = Column(Text, nullable=True)           # Sumber: "PNPK Pneumonia 2023", "PPK RS Notopuro 2024", dll
+    pdf_file = Column(Text, nullable=True)         # Nama file PDF: "ppk_hipertensi_2024.pdf", null jika tidak ada
     rs_id = Column(Text, nullable=True)            # ID RS: "rs_notopuro", null untuk rules global
     region_id = Column(Text, nullable=True)        # ID wilayah: "jatim", null untuk rules global
     status = Column(Text, nullable=False, default="unverified")  # Status: "unverified", "official", "active", "rejected"
@@ -862,8 +863,33 @@ class RulesMaster(Base):
     approved_by = Column(Text, nullable=True)      # Yang approve: "ai_meta_reviewer_1", dll
     approved_date = Column(DateTime, nullable=True) # Tanggal approval
     review_notes = Column(Text, nullable=True)     # Catatan reviewer AI META
+    feedback = Column(Text, nullable=True)         # Feedback dari RS tentang aturan ini
+    feedback_by = Column(Text, nullable=True)      # Yang beri feedback: "admin_rs_notopuro", dll
+    feedback_date = Column(DateTime, nullable=True) # Tanggal feedback
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
 
     def __repr__(self):
         return f"<RulesMaster(id={self.id}, diagnosis={self.diagnosis}, layer={self.layer}, status={self.status})>"
+
+
+class RegionalReports(Base):
+    __tablename__ = "regional_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(Text, nullable=False)           # Judul laporan: "SE BPJS Jatim No.01/2024"
+    description = Column(Text, nullable=True)      # Deskripsi edaran
+    se_file = Column(Text, nullable=False)         # Nama file SE PDF yang diupload
+    region_id = Column(Text, nullable=False)       # ID wilayah: "jatim", "jabar", dll
+    rs_id = Column(Text, nullable=False)           # ID RS pelapor: "rs_2", dll
+    status = Column(Text, nullable=False, default="pending")  # Status: "pending", "reviewed", "converted", "rejected"
+    reported_by = Column(Text, nullable=False)     # Pelapor: "admin_rs_notopuro"
+    reviewed_by = Column(Text, nullable=True)      # AI META reviewer
+    reviewed_date = Column(DateTime, nullable=True) # Tanggal review
+    review_notes = Column(Text, nullable=True)     # Catatan AI META
+    converted_rules_count = Column(Integer, nullable=True, default=0)  # Jumlah rules yang dihasilkan
+    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+
+    def __repr__(self):
+        return f"<RegionalReports(id={self.id}, title={self.title}, status={self.status})>"

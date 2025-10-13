@@ -1914,4 +1914,84 @@ if (!window.handleAddManualTindakan) {
     
     if (input) input.value = '';
   };
+
+  // ============================================================
+  // � Rules Modal Functions
+  // ============================================================
+  
+  window.openRulesModal = async function(diagnosisName) {
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    if (!state) return;
+
+    try {
+      state.rulesModalOpen = true;
+      state.selectedDiagnosis = diagnosisName;
+      state.loading = true;
+
+      const rulesData = await window.loadRules(diagnosisName);
+      
+      // Organize rules by layer for tabs
+      const rulesByLayer = {};
+      if (rulesData && rulesData.rules) {
+        for (const [layer, layerRules] of Object.entries(rulesData.rules)) {
+          rulesByLayer[layer] = layerRules;
+        }
+      }
+      
+      state.rulesData = rulesData;
+      state.rulesByLayer = rulesByLayer;
+      
+      // Set active tab to first layer with rules
+      const firstLayer = Object.keys(rulesByLayer)[0];
+      if (firstLayer) {
+        state.activeTab = firstLayer;
+      }
+
+    } catch (error) {
+      console.error('Error opening rules modal:', error);
+      state.rulesModalOpen = false;
+    } finally {
+      state.loading = false;
+    }
+  };
+
+  // ============================================================
+  // �💬 Feedback Modal Functions
+  // ============================================================
+  
+  window.showFeedbackModal = function(rule) {
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    if (state) {
+      state.selectedFeedbackRule = rule;
+      state.feedbackModalOpen = true;
+      state.feedbackForm = { feedback: '' };
+      state.feedbackSubmitting = false;
+    }
+  };
+
+  window.submitFeedback = async function() {
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    if (!state || !state.selectedFeedbackRule || !state.feedbackForm.feedback.trim()) {
+      return;
+    }
+
+    state.feedbackSubmitting = true;
+
+    try {
+      await window.submitRuleFeedback(
+        state.selectedFeedbackRule.id,
+        state.feedbackForm.feedback.trim()
+      );
+
+      // Close modal and reset form
+      state.feedbackModalOpen = false;
+      state.feedbackForm = { feedback: '' };
+      state.selectedFeedbackRule = null;
+
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    } finally {
+      state.feedbackSubmitting = false;
+    }
+  };
 }

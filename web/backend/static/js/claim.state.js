@@ -106,6 +106,15 @@
       currentDiagnosis: null,
       currentProcedure: null,
 
+      // rules modal
+      rulesModalOpen: false,
+
+      // feedback modal
+      feedbackModalOpen: false,
+      selectedFeedbackRule: null,
+      feedbackForm: { feedback: '' },
+      feedbackSubmitting: false,
+
       init() {
         const role = this.role;
         const claimId = document.getElementById("claimRoot")?.dataset.claimId;

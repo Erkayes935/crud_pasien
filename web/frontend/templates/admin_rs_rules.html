@@ -191,11 +191,27 @@
           </div>
 
           <!-- Sumber -->
-          <div class="mb-6">
+          <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sumber Referensi</label>
             <input type="text" x-model="newRule.sumber" 
                    placeholder="e.g., PPK RS Notopuro 2024, SOP RS Internal"
                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <!-- Upload PDF -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Upload Dokumen PDF <span class="text-xs text-gray-500">(Opsional)</span>
+            </label>
+            <input type="file" 
+                   x-ref="pdfFile"
+                   @change="handleFileSelect($event)"
+                   accept=".pdf"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            <p class="text-xs text-gray-500 mt-1">Upload file PDF maksimal 5MB untuk dokumentasi aturan</p>
+            <div x-show="selectedFileName" class="mt-2 text-sm text-green-600">
+              📎 File terpilih: <span x-text="selectedFileName"></span>
+            </div>
           </div>
 
           <!-- Actions -->
@@ -221,12 +237,40 @@ function rulesManagement() {
   return {
     activeTab: 'all',
     showAddForm: false,
+    selectedFileName: '',
+    selectedFile: null,
     newRule: {
       layer: 'ppk',
       diagnosis: '',
       field: '',
       isi: '',
       sumber: ''
+    },
+
+    // Handle file selection
+    handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        if (file.type !== 'application/pdf') {
+          alert('Hanya file PDF yang diperbolehkan');
+          event.target.value = '';
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          alert('Ukuran file maksimal 5MB');
+          event.target.value = '';
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          return;
+        }
+        this.selectedFile = file;
+        this.selectedFileName = file.name;
+      } else {
+        this.selectedFile = null;
+        this.selectedFileName = '';
+      }
     },
 
     async submitNewRule() {
@@ -244,6 +288,11 @@ function rulesManagement() {
         formData.append('isi', this.newRule.isi);
         formData.append('sumber', this.newRule.sumber || '');
         formData.append('csrf_token', '{{ csrf_token }}');
+        
+        // Append PDF file jika ada
+        if (this.selectedFile) {
+          formData.append('pdf_file', this.selectedFile);
+        }
 
         const response = await fetch('/claims/rules/add', {
           method: 'POST',
@@ -255,6 +304,11 @@ function rulesManagement() {
         if (response.ok) {
           alert('Aturan berhasil ditambahkan!');
           this.showAddForm = false;
+          // Reset form
+          this.newRule = { layer: 'ppk', diagnosis: '', field: '', isi: '', sumber: '' };
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          if (this.$refs.pdfFile) this.$refs.pdfFile.value = '';
           location.reload();
         } else {
           alert('Error: ' + (result.detail || 'Unknown error'));
