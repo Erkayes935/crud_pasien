@@ -1,18 +1,24 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, File, UploadFile
-from copy import deepcopy
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
+from copy import deepcopy
+import asyncio
+from datetime import datetime
 
-from backend import models
+from backend import models, auth  # ⬅️ tambahkan ini
 from backend.database import get_db
 from backend.utils.templates import templates
 from backend.utils.flash import flash
-from backend import auth
 from backend.auth import require_roles_session, require_csrf_dep, issue_csrf_token
 import backend.crud.user as user_crud
 from backend.form_configs import form_configs
+
+from backend.services.auth0_client import (
+    create_auth0_user,
+    send_password_invite,
+    assign_auth0_roles,
+)
 
 router = APIRouter()
 
@@ -26,9 +32,9 @@ def list_users(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
 ):
-    if current_user.has_role == "superadmin":
+    if current_user.has_role("superadmin"):
         users = user_crud.get_users_superadmin(db)
-    elif current_user.has_role == "admin_rs":
+    elif current_user.has_role("admin_rs"):
         users = user_crud.get_users_admin_rs(db, current_user.hospital_id)
     else:
         users = []
@@ -39,6 +45,7 @@ def list_users(
         {
             "request": request,
             "users": users,
+            "user": current_user,
             "current_user": current_user,
             "csrf_token": csrf_token,
         },
@@ -59,7 +66,6 @@ def add_user_form(
 
     for f in fields:
         if f["name"] == "role":
-            # Semua kemungkinan role
             all_roles = [
                 ("superadmin", "Super Admin"),
                 ("admin_rs", "Admin RS"),
@@ -70,23 +76,26 @@ def add_user_form(
                 ("validator", "Validator"),
                 ("manajemen", "Manajemen"),
             ]
-            # Filter role sesuai role login
-            if current_user.has_role == "superadmin":
-                allowed = all_roles
-            else:
-                allowed = [r for r in all_roles if r[0] not in ("superadmin", "admin_rs")]
-
+            allowed = (
+                all_roles
+                if current_user.has_role("superadmin")
+                else [r for r in all_roles if r[0] not in ("superadmin", "admin_rs")]
+            )
             f["type"] = "checkbox_group"
             f["options"] = allowed
 
         elif f["name"] == "hospital_id":
-            if current_user.has_role == "superadmin":
-                hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
+            if current_user.has_role("superadmin"):
+                hospitals = db.query(models.Hospital).filter(
+                    models.Hospital.is_deleted == False
+                ).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
             else:
                 f["type"] = "readonly"
-                f["value"] = current_user.hospital.nama if current_user.hospital else "-"
+                f["value"] = (
+                    current_user.hospital.nama if current_user.hospital else "-"
+                )
                 f["hidden_value"] = current_user.hospital_id
 
     return templates.TemplateResponse(
@@ -95,6 +104,7 @@ def add_user_form(
             "request": request,
             "mode": "add",
             "current_user": current_user,
+            "user": current_user,
             "csrf_token": csrf_token,
             "fields": fields,
             "existing_medical_data": {},
@@ -103,34 +113,103 @@ def add_user_form(
 
 
 @router.post("/users/add", name="add_user")
-def add_user(
+async def add_user(
     request: Request,
-    email: Optional[str] = Form(None),
-    name: Optional[str] = Form(None),
+    email: str = Form(...),
+    name: str = Form(...),
     role: list[str] = Form(...),
+    password: Optional[str] = Form(None),   # 🔹 password opsional
     hospital_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
     _=Depends(require_csrf_dep),
 ):
-    # Validasi role server-side
-    if current_user.has_role == "admin_rs":
+    # =============================
+    # Validasi awal
+    # =============================
+    if not email:
+        raise HTTPException(status_code=400, detail="Email wajib diisi")
+
+    if current_user.has_role("admin_rs"):
         for r in role:
             if r in ["superadmin", "admin_rs"]:
-                raise HTTPException(status_code=403, detail="Role tersebut tidak boleh dibuat oleh Admin RS")
-
-    role_str = ",".join(role)
-    if current_user.has_role == "admin_rs":
+                raise HTTPException(
+                    status_code=403,
+                    detail="Role tersebut tidak boleh dibuat oleh Admin RS",
+                )
         hospital_id = current_user.hospital_id
 
-    user_crud.create_user(db, {
-        "email": email,
-        "name": name,
-        "role": role_str,
-        "hospital_id": hospital_id,
-    })
+    # =============================
+    # 1️⃣ Buat user di Auth0
+    # =============================
+    try:
+        from backend.services.auth0_client import create_auth0_user
+        auth0_data = await create_auth0_user(email=email, name=name, password=password)
+        auth0_sub = auth0_data.get("user_id")
+        print(f"✅ Auth0 user dibuat: {auth0_sub}")
+    except Exception as e:
+        err_text = str(e)
+        if "PasswordStrengthError" in err_text or "password" in err_text.lower():
+            flash(request, "❌ Password terlalu lemah. Gunakan minimal 8 karakter dengan huruf besar, kecil, angka, dan simbol.", "error")
+            return RedirectResponse(url="/users/add", status_code=303)
+        raise HTTPException(status_code=500, detail=f"Gagal membuat user Auth0: {e}")
 
-    flash(request, "User berhasil ditambahkan!", "success")
+    # =============================
+    # 2️⃣ Simpan user ke DB lokal
+    # =============================
+    try:
+        user_crud.create_user(
+            db,
+            {
+                "email": email,
+                "name": name,
+                "role": ",".join(role),
+                "hospital_id": hospital_id,
+                "auth0_sub": auth0_sub,
+            },
+        )
+        print(f"💾 User lokal tersimpan: {email}")
+    except Exception as e:
+        print(f"❌ Gagal simpan user ke DB: {e}")
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan user ke DB: {e}")
+
+    # =============================
+    # 3️⃣ Jika password kosong → kirim link reset
+    # =============================
+    if not password:
+        try:
+            from backend.services.auth0_client import send_password_invite
+            ticket_url = await send_password_invite(email=email)
+            print(f"🔗 Link set password: {ticket_url}")
+            flash(
+                request,
+                f"✅ User {email} berhasil dibuat. Link set password dikirim via email.",
+                "success",
+            )
+        except Exception as e:
+            print(f"⚠️ Gagal kirim email invite: {e}")
+            flash(request, f"User dibuat tapi gagal kirim link set password.", "warning")
+    else:
+        flash(request, f"✅ User {email} berhasil dibuat dengan password langsung.", "success")
+
+    # =============================
+    # 4️⃣ Sinkronisasi role ke Auth0
+    # =============================
+    try:
+        from backend.services.auth0_client import assign_auth0_roles
+        await assign_auth0_roles(auth0_sub, role)
+        print(f"✅ Role {role} berhasil disinkronkan ke Auth0 untuk {email}")
+    except Exception as e:
+        print(f"⚠️ Gagal sinkronisasi role Auth0: {e}")
+        flash(
+            request,
+            f"User dibuat tapi gagal sinkronisasi role ke Auth0: {str(e)}",
+            "warning",
+        )
+
+    # =============================
+    # 5️⃣ Redirect
+    # =============================
     return RedirectResponse(url="/users", status_code=303)
 
 
@@ -166,7 +245,7 @@ def edit_user_form(
                 ("validator", "Validator"),
                 ("manajemen", "Manajemen"),
             ]
-            if current_user.has_role == "superadmin":
+            if current_user.has_role("superadmin"):
                 allowed = all_roles
             else:
                 allowed = [r for r in all_roles if r[0] not in ("superadmin", "admin_rs")]
@@ -175,7 +254,7 @@ def edit_user_form(
             f["options"] = allowed
 
         elif f["name"] == "hospital_id":
-            if current_user.has_role == "superadmin":
+            if current_user.has_role("superadmin"):
                 hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
@@ -190,6 +269,7 @@ def edit_user_form(
             "request": request,
             "mode": "edit",
             "record": target_user,
+            "user": current_user,
             "current_user": current_user,
             "csrf_token": csrf_token,
             "fields": fields,

@@ -8,162 +8,137 @@
   <script>
     tailwind.config = { darkMode: 'class' };
   </script>
-  
-  <!-- Tooltip System CSS (Point G) -->
+
+  <!-- Tooltip System CSS -->
   <link rel="stylesheet" href="{{ url_for('static', path='css/tooltip.rules.css') }}">
   <style>
-    .flash {
-      opacity: 1;
-      transition: opacity 0.5s ease-out;
-    }
-    .flash.hide {
-      opacity: 0;
-    }
-    [x-cloak] {
-      display: none !important;
-    }
-    .dropdown-enter {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    .dropdown-enter-active {
-      opacity: 1;
-      transform: translateY(0);
-      transition: all 0.2s ease-out;
-    }
-    .modal-fade-enter {
-      opacity: 0;
-      transform: scale(0.97);
-    }
-    .modal-fade-enter-active {
-      opacity: 1;
-      transform: scale(1);
-      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
-    }
-    .modal-fade-exit {
-      opacity: 1;
-      transform: scale(1);
-    }
-    .modal-fade-exit-active {
-      opacity: 0;
-      transform: scale(0.97);
-      transition: opacity 0.2s ease-in, transform 0.2s ease-in;
-    }
+    .flash { opacity: 1; transition: opacity 0.5s ease-out; }
+    .flash.hide { opacity: 0; }
+    [x-cloak] { display: none !important; }
   </style>
 </head>
-<body x-data="{ modalOpen: false, modalTitle: '', modalContent: '', modalType: '', profileDropdown: false }"
-      @click.away="profileDropdown = false"
+
+<body x-data="{ modalOpen: false }"
       class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
   <!-- Navbar -->
   <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-slate-200/60 dark:border-gray-700/60 sticky top-0 z-50 shadow-sm">
     <div class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
-        <!-- Logo & Title -->
-        <!-- ...existing code... -->
+
+        <!-- Left: Logo -->
         <div class="flex items-center space-x-4">
           <a href="/dashboard" class="group">
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
             </div>
           </a>
           <div>
             <h1 class="text-xl font-bold text-slate-800 dark:text-gray-100">
-              <a href="/dashboard" class="no-underline group-hover:underline focus:no-underline active:no-underline">Aplikasi Klaim Pasien</a>
+              <a href="/dashboard" class="no-underline hover:underline">Aplikasi Klaim Pasien</a>
             </h1>
             {% if user and user.hospital %}
               <p class="text-xs text-slate-500 dark:text-gray-400">{{ user.hospital.nama }}</p>
             {% endif %}
           </div>
         </div>
-        <!-- ...existing code... -->
-        <!-- Right Side Actions -->
+
+        <!-- Right: Theme Toggle & Profile -->
         <div class="flex items-center space-x-6">
+
           <!-- Theme Toggle -->
           <button id="themeToggle" class="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <svg id="themeIconMoon" class="w-5 h-5 text-slate-600 dark:text-gray-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
             </svg>
             <svg id="themeIconSun" class="w-5 h-5 text-slate-600 dark:text-gray-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
             </svg>
           </button>
 
-          <!-- User Profile Dropdown -->
+          <!-- User Dropdown -->
           {% if user %}
-            <div class="relative" x-data="{ open: false }">
-              <button @click="open = !open" 
-                      class="flex items-center space-x-3 pl-4 border-l border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-lg py-1 pr-2 transition-colors">
-                <div class="text-right hidden sm:block">
-                  <p class="text-sm font-medium text-slate-800 dark:text-gray-100">
-                    {{ (user.name or user.email)|truncate(25) }}
-                  </p>
-                  <div class="flex items-center justify-end gap-1.5 mt-0.5">
-                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full
-                      {% if current_user.role == 'superadmin' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300{% endif %}
-                      {% if current_user.role == 'admin_rs' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300{% endif %}
-                      {% if current_user.role == 'doctor' %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300{% endif %}
-                      {% if current_user.role == 'coder' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300{% endif %}
-                      {% if current_user.role == 'verifikator' %}bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300{% endif %}
-                      {% if current_user.role == 'costing' %}bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300{% endif %}
-                      {% if current_user.role == 'manajemen' %}bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300{% endif %}
-                      {% if current_user.role == 'validator' %}bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300{% endif %}">
-                      {{ current_user.role }}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
-                    {{ (user.name or user.email)[0].upper() }}
-                  </div>
-                  <svg class="w-4 h-4 text-slate-600 dark:text-gray-300 transition-transform" 
-                       :class="{ 'rotate-180': open }"
-                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </div>
-              </button>
+          <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open"
+                    class="flex items-center space-x-3 pl-4 border-l border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/50 rounded-lg py-1 pr-2 transition-colors">
+              <div class="text-right hidden sm:block">
+                <p class="text-sm font-medium text-slate-800 dark:text-gray-100">
+                  {{ (user.name or user.email)|truncate(25) }}
+                </p>
 
-              <!-- Dropdown Menu -->
-              <div x-show="open"
-                   x-transition:enter="transition ease-out duration-200"
-                   x-transition:enter-start="opacity-0 scale-95"
-                   x-transition:enter-end="opacity-100 scale-100"
-                   x-transition:leave="transition ease-in duration-150"
-                   x-transition:leave-start="opacity-100 scale-100"
-                   x-transition:leave-end="opacity-0 scale-95"
-                   @click.away="open = false"
-                   class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden z-50"
-                   x-cloak>
-                
-                <!-- User Info Section -->
-                <div class="px-4 py-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-b border-slate-200 dark:border-gray-700">
-                  <p class="text-sm font-semibold text-slate-800 dark:text-gray-100">
-                    {{ user.name or user.email }}
-                  </p>
-                  <p class="text-xs text-slate-600 dark:text-gray-400 mt-0.5">
-                    {{ user.email }}
-                  </p>
-                  {% if user.hospital %}
-                    <p class="text-xs text-slate-500 dark:text-gray-500 mt-1">
-                      🏥 {{ user.hospital.nama }}
-                    </p>
+                <!-- ✅ Multi-role badges -->
+                <div class="flex flex-wrap justify-end gap-1.5 mt-0.5">
+                  {% if user.role_names %}
+                    {% for role in user.role_names %}
+                      <span class="px-2 py-0.5 text-xs font-semibold rounded-full
+                        {% if role == 'superadmin' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300{% endif %}
+                        {% if role == 'admin_rs' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300{% endif %}
+                        {% if role == 'doctor' %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300{% endif %}
+                        {% if role == 'coder' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300{% endif %}
+                        {% if role == 'verifikator' %}bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300{% endif %}
+                        {% if role == 'costing' %}bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300{% endif %}
+                        {% if role == 'manajemen' %}bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300{% endif %}
+                        {% if role == 'validator' %}bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300{% endif %}
+                        {% if role not in ['superadmin','admin_rs','doctor','coder','verifikator','costing','manajemen','validator'] %}
+                          bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300
+                        {% endif %}
+                      ">
+                        {{ role|capitalize }}
+                      </span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300">
+                      No Role
+                    </span>
                   {% endif %}
                 </div>
-                <!-- Logout Section -->
-                <div class="border-t border-slate-200 dark:border-gray-700 py-2">
-                  <a href="/logout" 
-                     class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                    </svg>
-                    Logout
-                  </a>
+              </div>
+
+              <!-- Avatar -->
+              <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+                  {{ (user.name or user.email)[0].upper() }}
                 </div>
+                <svg class="w-4 h-4 text-slate-600 dark:text-gray-300 transition-transform"
+                     :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </button>
+
+            <!-- Dropdown -->
+            <div x-show="open" x-transition @click.away="open = false"
+                 class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden z-50"
+                 x-cloak>
+              <!-- User Info -->
+              <div class="px-4 py-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-b border-slate-200 dark:border-gray-700">
+                <p class="text-sm font-semibold text-slate-800 dark:text-gray-100">
+                  {{ user.name or user.email }}
+                </p>
+                <p class="text-xs text-slate-600 dark:text-gray-400 mt-0.5">
+                  {{ user.email }}
+                </p>
+                {% if user.hospital %}
+                  <p class="text-xs text-slate-500 dark:text-gray-500 mt-1">🏥 {{ user.hospital.nama }}</p>
+                {% endif %}
+              </div>
+              <!-- Logout -->
+              <div class="border-t border-slate-200 dark:border-gray-700 py-2">
+                <a href="/logout"
+                   class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                  Logout
+                </a>
               </div>
             </div>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -172,7 +147,6 @@
 
   <!-- Content -->
   <main class="container mx-auto px-4 pb-8 flex-grow">
-    <!-- Flash Messages -->
     {% set flashes = get_flashed_messages(request) %}
     {% if flashes %}
       {% for f in flashes %}
@@ -181,20 +155,16 @@
                        else 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/30' }}">
           <div class="flex items-center gap-3">
             {% if f.category == 'success' %}
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             {% else %}
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             {% endif %}
             <span class="font-medium">{{ f.message }}</span>
           </div>
           <button onclick="this.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.remove(), 500)"
                   class="hover:bg-black/5 dark:hover:bg-white/5 rounded p-1 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
@@ -206,24 +176,23 @@
 
   <!-- Footer -->
   {% if user %}
-    <footer class="mt-16 pb-8 text-center text-sm text-slate-500 dark:text-gray-400">
-      <p class="mb-2">© <span id="year"></span> Aplikasi Klaim Pasien</p>
-      <p>Dibuat dengan ❤️ untuk mendukung efisiensi klaim rumah sakit</p>
-    </footer>
+  <footer class="mt-16 pb-8 text-center text-sm text-slate-500 dark:text-gray-400">
+    <p class="mb-2">© <span id="year"></span> Aplikasi Klaim Pasien</p>
+    <p>Dibuat dengan ❤️ untuk mendukung efisiensi klaim rumah sakit</p>
+  </footer>
   {% endif %}
 
   <!-- Scripts -->
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
-  <script>
+
     const toggleBtn = document.getElementById('themeToggle');
     const htmlEl = document.documentElement;
     const moonIcon = document.getElementById('themeIconMoon');
     const sunIcon = document.getElementById('themeIconSun');
 
     function updateThemeIcon() {
-      if(htmlEl.classList.contains('dark')) {
+      if (htmlEl.classList.contains('dark')) {
         moonIcon.classList.add('hidden');
         sunIcon.classList.remove('hidden');
       } else {
@@ -232,40 +201,27 @@
       }
     }
 
-    // Initialize theme
-    if(localStorage.getItem('theme') === 'dark'){
+    // init theme
+    if (localStorage.getItem('theme') === 'dark') {
       htmlEl.classList.add('dark');
-      htmlEl.classList.remove('light');
     }
     updateThemeIcon();
 
     toggleBtn.addEventListener('click', () => {
-      if(htmlEl.classList.contains('dark')) {
-        htmlEl.classList.remove('dark');
-        htmlEl.classList.add('light');
-        localStorage.setItem('theme', 'light');
-      } else {
-        htmlEl.classList.add('dark');
-        htmlEl.classList.remove('light');
-        localStorage.setItem('theme', 'dark');
-      }
+      htmlEl.classList.toggle('dark');
+      localStorage.setItem('theme', htmlEl.classList.contains('dark') ? 'dark' : 'light');
       updateThemeIcon();
     });
 
-    // Auto-hide flash messages
+    // auto-hide flash
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".flash").forEach(el => {
-        setTimeout(() => {
-          el.classList.add("hide");
-          setTimeout(() => el.remove(), 500);
-        }, 3000);
+        setTimeout(() => { el.classList.add("hide"); setTimeout(() => el.remove(), 500); }, 3000);
       });
     });
   </script>
-  
-  <!-- Tooltip System JS (Point G) -->
+
   <script src="{{ url_for('static', path='js/tooltip.rules.js') }}"></script>
-  
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>

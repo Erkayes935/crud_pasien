@@ -114,6 +114,13 @@ user_fields = [
     {"name": "email", "label": "Email", "type": "email"},
     {"name": "name", "label": "Nama Lengkap", "type": "text"},
     {
+    "name": "password",
+    "label": "Password",
+    "type": "password",
+    "placeholder": "Opsional: isi jika ingin langsung aktif",
+    "required": False,
+    },
+    {
     "name": "role",
     "label": "Role",
     "type": "checkbox_group",   # 👈 tipe baru

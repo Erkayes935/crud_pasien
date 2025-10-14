@@ -1,6 +1,6 @@
 {# ============================
-  UNIVERSAL FORM FIELD RENDERER (final version)
-  Support: text, email, date, number, textarea, select, readonly, checkbox, checkbox_group
+  UNIVERSAL FORM FIELD RENDERER (FINAL)
+  Support: text, email, date, number, password, textarea, select, readonly, checkbox, checkbox_group
   ============================ #}
 
 {% if not field.roles or current_user.role in field.roles %}
@@ -30,6 +30,63 @@
               {% if current_user.role in field.get('readonly_roles', []) %}readonly{% endif %}>
     </div>
 
+  {% elif field.type == "password" %}
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
+      </label>
+      <input type="password"
+             name="{{ field.name }}"
+             placeholder="{{ field.placeholder or 'Minimal 8 karakter dengan kombinasi huruf & angka' }}"
+             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
+                    bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                    focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+             {% if field.required %}required{% endif %}
+             {% if current_user.role in field.get('readonly_roles', []) %}readonly{% endif %}>
+    </div>
+
+    {# ==== PASSWORD STRENGTH UI ==== #}
+    <div id="password-strength" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+      <ul class="list-disc ml-5 space-y-1">
+        <li id="rule-length" class="text-red-500">Minimal 8 karakter</li>
+        <li id="rule-lower" class="text-red-500">Huruf kecil (a-z)</li>
+        <li id="rule-upper" class="text-red-500">Huruf besar (A-Z)</li>
+        <li id="rule-number" class="text-red-500">Angka (0-9)</li>
+        <li id="rule-special" class="text-red-500">Simbol (!@#$%^&*)</li>
+      </ul>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        const pwdInput = document.querySelector('input[name="password"]');
+        if (!pwdInput) return;
+
+        const rules = {
+          length: document.getElementById('rule-length'),
+          lower: document.getElementById('rule-lower'),
+          upper: document.getElementById('rule-upper'),
+          number: document.getElementById('rule-number'),
+          special: document.getElementById('rule-special'),
+        };
+
+        pwdInput.addEventListener('input', () => {
+          const v = pwdInput.value;
+          const tests = {
+            length: v.length >= 8,
+            lower: /[a-z]/.test(v),
+            upper: /[A-Z]/.test(v),
+            number: /\d/.test(v),
+            special: /[!@#$%^&*]/.test(v),
+          };
+
+          Object.entries(tests).forEach(([key, ok]) => {
+            rules[key].classList.toggle('text-green-500', ok);
+            rules[key].classList.toggle('text-red-500', !ok);
+          });
+        });
+      });
+    </script>
+
   {% elif field.type == "textarea" %}
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
@@ -48,17 +105,13 @@
                     or (existing_medical_data.get(field.name) if existing_medical_data is defined else None)
                     or (record|attr(field.name) if record else '')
                 }}
-</textarea>
-
+      </textarea>
     </div>
 
   {% elif field.type == "select" %}
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
         {{ field.label }}
-        {% if field.get('tooltip_field') %}
-          <span class="text-xs text-blue-600 ml-1" title="Field ini memiliki aturan multilayer">ⓘ</span>
-        {% endif %}
       </label>
       <select name="{{ field.name }}"
               class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400
@@ -131,5 +184,4 @@
     </div>
 
   {% endif %}
-
 {% endif %}

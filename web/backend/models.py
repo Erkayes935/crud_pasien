@@ -772,19 +772,25 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    auth0_sub = Column(String, unique=True, index=True, nullable=True)
-    email = Column(String, unique=True, nullable=True)
+    auth0_sub = Column(String, unique=True, index=True, nullable=True)  # Auth0 user_id
+    email = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=True)
     jabatan = Column(String, nullable=True)
     sip_number = Column(String, nullable=True)
     hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)
+
+    # legacy single-role
     role = Column(String(50), nullable=True, default="doctor")
 
-    # 🔹 relasi baru
+    # new multi-role system
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
 
-    # relasi lama (biarkan)
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    is_deleted = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_dummy = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+
+    # relationships
     hospital = relationship("Hospital", back_populates="users", foreign_keys=[hospital_id])
     admin_of_hospital = relationship("Hospital", back_populates="admin", foreign_keys=[Hospital.admin_id])
     claims_as_doctor = relationship("Claim", back_populates="doctor", foreign_keys=[Claim.doctor_id])
@@ -792,13 +798,10 @@ class User(Base):
     medical_records = relationship("MedicalRecord", back_populates="doctor", foreign_keys=[MedicalRecord.doctor_id])
     medical_record_logs = relationship("MedicalRecordLog", back_populates="user", foreign_keys=[MedicalRecordLog.updated_by])
 
-    is_deleted = Column(Boolean, nullable=False, default=False, server_default=text("false"))
-    is_dummy = Column(Boolean, nullable=False, default=False, server_default=text("false"))
-
-    # 🧠 helper properties
+    # === Helper Methods ===
     @property
     def role_names(self):
-        """Kembalikan list nama role milik user, fallback ke kolom role lama"""
+        """Return list of role names (multi-role aware)."""
         if self.roles and len(self.roles) > 0:
             return [r.name for r in self.roles]
         elif self.role:
@@ -806,11 +809,11 @@ class User(Base):
         return []
 
     def has_role(self, role_name: str) -> bool:
-        """Cek apakah user punya role tertentu"""
+        """Check if user has specific role."""
         return role_name in self.role_names
-    
+
     def __repr__(self):
-            return f"<User(name={self.name}, roles={self.role_names})>"
+        return f"<User(name={self.name}, roles={self.role_names})>"
 
 from sqlalchemy import Table, Column, Integer, String, ForeignKey, DateTime, text
 from sqlalchemy.orm import relationship
