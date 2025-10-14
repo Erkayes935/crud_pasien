@@ -1,0 +1,8 @@
+{
+    "diagnosis": "Diabetes Mellitus",
+    "field": "syarat_klinis",
+    "isi": "Syarat klinis hipertensi: Pengukuran TD dengan teknik yang benar, minimal 2x pengukuran, interval 1-2 minggu, kondisi pasien tenang",
+    "sumber": "Konsensus Hipertensi PERHI 2019",
+    "rs_id": "rs_mampang",
+    "region_id": "jatim"
+}
