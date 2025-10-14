@@ -1763,7 +1763,7 @@ async def add_regional_report(
 async def download_regional_report_pdf(
     report_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("admin_rs"))
+    user=Depends(require_roles_session("admin_rs", "superadmin"))
 ):
     """Download SE PDF file"""
     try:

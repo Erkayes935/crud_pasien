@@ -60,18 +60,15 @@ def load_rules_for_diagnosis(diagnosis, rs_id=None, region_id=None):
     """
     db = SessionLocal()
     try:
-        # Query rules yang berlaku
-        query = db.query(RulesMaster).filter(
+        # Query rules yang berlaku - ambil SEMUA rules untuk diagnosis ini
+        rules = db.query(RulesMaster).filter(
             RulesMaster.diagnosis.ilike(f"%{diagnosis}%"),
-            RulesMaster.status == "official"
-        )
-        
-        # Filter berdasarkan rs_id dan region_id
-        rules = query.filter(
-            (RulesMaster.rs_id == rs_id) |
-            (RulesMaster.region_id == region_id) |
-            (RulesMaster.rs_id.is_(None) & RulesMaster.region_id.is_(None))
+            RulesMaster.status.in_(["official", "active"])  # Include both official and active
         ).all()
+        
+        print(f"🔍 Found {len(rules)} total rules for diagnosis: {diagnosis}")
+        for rule in rules:
+            print(f"  - Layer: {rule.layer}, Field: {rule.field}, RS: {rule.rs_id}, Region: {rule.region_id}")
                 
         # Group rules by field dan sort by priority
         merged_rules = {}

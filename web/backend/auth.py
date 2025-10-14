@@ -167,6 +167,25 @@ async def require_csrf_dep(request: Request):
     # Optional: one-time use, remove it
     request.session.pop("csrf_token", None)
     return True
+
+async def require_csrf_json(request: Request):
+    """Validate CSRF token sent from JSON headers (for AJAX requests)."""
+    # Try multiple header variations
+    token_from_header = (
+        request.headers.get("X-CSRF-Token") or 
+        request.headers.get("X-CSRFToken") or 
+        request.headers.get("csrf-token")
+    )
+    session_token = request.session.get("csrf_token")
+
+    # Debugging
+    print(f"🧩 CSRF JSON debug — header: {token_from_header} | session: {session_token}")
+
+    if not session_token or not token_from_header or token_from_header != session_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token invalid")
+
+    # Don't remove token for JSON requests (might be used multiple times)
+    return True
 def verify_jwt(token: str, expected_aud: str) -> dict:
     jwks = httpx.get(
         f"https://{config.AUTH0_DOMAIN}/.well-known/jwks.json", timeout=10.0
