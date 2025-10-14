@@ -224,199 +224,224 @@
   }
 
 
-  // Multilayer tab modal renderer for regulasi detail
-  function renderMultilayerRegulationModal(response, fieldName) {
-    if (!response || response.status !== 'success' || !response.data || response.data.length === 0) {
-      return `<div class="text-center py-8">
-        <p class="text-gray-500">Tidak ada regulasi tersedia untuk field: ${fieldName}</p>
-        <p class="text-xs text-gray-400 mt-2">Field ini tidak memerlukan regulasi atau belum dikonfigurasi</p>
-      </div>`;
-    }
+// Multilayer tab modal renderer for regulasi detail
+function renderMultilayerRegulationModal(response, fieldName) {
+  if (!response || response.status !== 'success' || !response.data || response.data.length === 0) {
+    return `<div class="text-center py-8">
+      <p class="text-gray-500">Tidak ada regulasi tersedia untuk field: ${fieldName}</p>
+      <p class="text-xs text-gray-400 mt-2">Field ini tidak memerlukan regulasi atau belum dikonfigurasi</p>
+    </div>`;
+  }
 
-    // Group regulations by layer
-    const layers = {};
-    response.data.forEach(reg => {
-      if (!layers[reg.layer]) layers[reg.layer] = [];
-      layers[reg.layer].push(reg);
-    });
-    const layerOrder = ['permenkes','nasional','ppk','regional','rs','bridging','fraud','temporary'];
-    const sortedLayers = Object.keys(layers).sort((a,b) => layerOrder.indexOf(a) - layerOrder.indexOf(b));
+  // Group regulations by layer
+  const layers = {};
+  response.data.forEach(reg => {
+    if (!layers[reg.layer]) layers[reg.layer] = [];
+    layers[reg.layer].push(reg);
+  });
 
-    // Modal header & close button
-    let html = `<div class="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-auto">
-      <div class="flex items-center justify-between px-6 pt-6 pb-2 border-b">
-        <h2 class="text-xl font-bold text-gray-900">Aturan Multilayer:</h2>
-        <button type="button" class="text-gray-400 hover:text-gray-700 text-2xl font-bold" onclick="closeNestedModal()">✕</button>
+  const layerOrder = ['permenkes','nasional','ppk','regional','rs','bridging','fraud','temporary'];
+  const sortedLayers = Object.keys(layers).sort((a,b) => layerOrder.indexOf(a) - layerOrder.indexOf(b));
+
+  // Modal header & close button
+  let html = `<div class="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-auto">
+    <div class="flex items-center justify-between px-6 pt-6 pb-2 border-b">
+      <h2 class="text-xl font-bold text-gray-900">Aturan Multilayer:</h2>
+      <button type="button" class="text-gray-400 hover:text-gray-700 text-2xl font-bold" onclick="closeNestedModal()">✕</button>
+    </div>
+    <div class="px-6 pt-4 pb-2">
+      <div class="bg-blue-50 rounded-lg p-3 mb-4">
+        <span class="font-semibold text-blue-700">🎯 Ringkasan Aturan</span>
+        <div class="text-sm text-blue-700 mt-1">
+          Ditemukan ${Object.keys(layers).length} kategori field dengan ${sortedLayers.length} layer aturan aktif
+        </div>
       </div>
-      <div class="px-6 pt-4 pb-2">
-        <div class="bg-blue-50 rounded-lg p-3 mb-4">
-          <span class="font-semibold text-blue-700">🎯 Ringkasan Aturan</span>
-          <div class="text-sm text-blue-700 mt-1">Ditemukan ${Object.keys(layers).length} kategori field dengan ${sortedLayers.length} layer aturan aktif</div>
-        </div>
-        <nav class="flex space-x-4 border-b mb-4">
-          ${sortedLayers.map(layer => `
-            <button type="button" class="py-2 px-4 text-sm font-medium border-b-2 ${layer === sortedLayers[0] ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" onclick="showRegulasiTab('${layer}')">
-              ${getLayerLabel(layer)} (${layers[layer].length})
-            </button>
-          `).join('')}
-        </nav>
-        <div id="regulasi-tab-contents">
-          ${sortedLayers.map((layer, idx) => `
-            <div class="regulasi-tab-content" style="display:${idx===0?'block':'none'}" data-layer="${layer}">
-              ${layers[layer].map(reg => `
-                <div class="p-4 border border-gray-200 rounded-lg mb-4">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${getLayerColorClass(layer)}">${getLayerLabel(layer)}</span>
-                    <span class="text-sm font-medium text-gray-900">${reg.judul_regulasi || 'General'}</span>
-                    ${layer === 'ppk' || layer === 'rs' ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>' : ''}
-                  </div>
-                  <div class="mb-2 text-xs text-gray-500"><strong>Dasar Hukum:</strong> ${reg.dasar_hukum || '-'}</div>
-                  <div class="mb-2 text-xs text-gray-500"><strong>Bab/Pasal:</strong> ${reg.bab_pasal || '-'}</div>
-                  <div class="mb-2 text-sm text-gray-800 leading-relaxed">${Array.isArray(reg.isi) ? reg.isi.join('<br>') : (reg.isi || '-')}</div>
-                  <div class="flex items-center justify-between text-xs text-gray-500 mt-2">
-                    <span><strong>Sumber:</strong> ${reg.sumber || '-'}</span>
-                    ${reg.status ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${reg.status}</span>` : ''}
-                  </div>
-                  ${reg.pdf_file ? `<div class="mt-3 pt-3 border-t border-gray-200">
-                    <a href="/claims/rules/${reg.id}/pdf" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">📎 Lihat Dokumen PDF</a>
-                  </div>` : ''}
-                  <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button type="button" onclick="showFeedbackModalForRegulasi(${reg.id}, '${layer}')" class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">💬 Masukan untuk Regulasi Ini</button>
-                  </div>
+      <nav class="flex space-x-4 border-b mb-4">
+        ${sortedLayers.map(layer => `
+          <button type="button"
+                  class="py-2 px-4 text-sm font-medium border-b-2 ${layer === sortedLayers[0] ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                  onclick="showRegulasiTab('${layer}')">
+            ${getLayerLabel(layer)} (${layers[layer].length})
+          </button>
+        `).join('')}
+      </nav>
+      <div id="regulasi-tab-contents">
+        ${sortedLayers.map((layer, idx) => `
+          <div class="regulasi-tab-content" style="display:${idx===0?'block':'none'}" data-layer="${layer}">
+            ${layers[layer].map(reg => `
+              <div class="p-4 border border-gray-200 rounded-lg mb-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="px-2 py-1 text-xs font-semibold rounded-full ${getLayerColorClass(layer)}">
+                    ${getLayerLabel(layer)}
+                  </span>
+                  <span class="text-sm font-medium text-gray-900">${reg.judul_regulasi || 'General'}</span>
+                  ${layer === 'ppk' || layer === 'rs'
+                    ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>'
+                    : ''}
                 </div>
-              `).join('')}
-            </div>
-          `).join('')}
-        </div>
+                <div class="mb-2 text-xs text-gray-500">
+                  <strong>Dasar Hukum:</strong> ${reg.dasar_hukum || '-'}
+                </div>
+                <div class="mb-2 text-xs text-gray-500">
+                  <strong>Bab/Pasal:</strong> ${reg.bab_pasal || '-'}
+                </div>
+                <div class="mb-2 text-sm text-gray-800 leading-relaxed">
+                  ${Array.isArray(reg.isi) ? reg.isi.join('<br>') : (reg.isi || '-')}
+                </div>
+                <div class="flex items-center justify-between text-xs text-gray-500 mt-2">
+                  <span><strong>Sumber:</strong> ${reg.sumber || '-'}</span>
+                  ${reg.status
+                    ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${reg.status}</span>`
+                    : ''}
+                </div>
+                ${reg.pdf_file
+                  ? `<div class="mt-3 pt-3 border-t border-gray-200">
+                      <a href="/claims/rules/${reg.id}/pdf"
+                         target="_blank"
+                         class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                        📎 Lihat Dokumen PDF
+                      </a>
+                     </div>`
+                  : ''}
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                  <button type="button"
+                          onclick="showFeedbackModalForRegulasi(${reg.id}, '${layer}')"
+                          class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">
+                    💬 Masukan untuk Regulasi Ini
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
       </div>
     </div>
-    <script>
-      function showRegulasiTab(layer) {
-        document.querySelectorAll('.regulasi-tab-content').forEach(function(tab){
-          tab.style.display = tab.getAttribute('data-layer') === layer ? 'block' : 'none';
-        });
-      }
-    <\/script>";
-    return html;
+  </div>
+  <script>
+    function showRegulasiTab(layer) {
+      document.querySelectorAll('.regulasi-tab-content').forEach(tab => {
+        tab.style.display = tab.getAttribute('data-layer') === layer ? 'block' : 'none';
+      });
+    }
+  <\/script>`;
+
+  return html;
+}
+
+// =====================================================
+// UPDATE RINGKASAN FROM ROW (asli kamu — tidak diubah isinya)
+// =====================================================
+function updateRingkasanFromRow(itemId, dx) {
+  if (!dx || !itemId) return;
+  if (dx.isManual) {
+    const stage = dx.stage || window.claimState?.tab || "admission";
+    window.renderManualTindakanList && window.renderManualTindakanList(stage);
+    return;
   }
 
-  function updateRingkasanFromRow(itemId, dx) {
-    if (!dx || !itemId) return;
-    if (dx.isManual) {
-      const stage = dx.stage || window.claimState?.tab || "admission";
-      window.renderManualTindakanList && window.renderManualTindakanList(stage);
-      return;
+  console.log("🔍 updateRingkasanFromRow called with:", { itemId, dx });
+
+  const row = document.querySelector(`[data-id="${itemId}"]`);
+  if (!row) return;
+  if (row.closest(".tindakan-list")) {
+    const descEl = row.querySelector("span[title], span.block");
+    if (descEl) {
+      const newText = dx.deskripsi || "&nbsp;";
+      descEl.textContent = newText;
+      descEl.setAttribute("title", newText);
     }
-
-    console.log("🔍 updateRingkasanFromRow called with:", { itemId, dx });
-
-    const row = document.querySelector(`[data-id="${itemId}"]`);
-    if (!row) return;
-    if (row.closest(".tindakan-list")) {
-      const descEl = row.querySelector("span[title], span.block");
-      if (descEl) {
-        const newText = dx.deskripsi || "&nbsp;";
-        descEl.textContent = newText;
-        descEl.setAttribute("title", newText);
-      }
-      return;
-    }
-
-    // kolom Klinis
-    const klinisCell = row.querySelector(".col-klinis");
-    if (klinisCell) {
-      let text = "";
-      // Handle different formats from core_engine response
-      if (dx.klinis) {
-        if (Array.isArray(dx.klinis)) {
-          text = dx.klinis.filter(Boolean).join(", ");
-        } else if (typeof dx.klinis === "string") {
-          text = dx.klinis;
-        } else if (typeof dx.klinis === "object") {
-          text = [dx.klinis.justifikasi, dx.klinis.bukti_klinis, dx.klinis.syarat_klinis].filter(Boolean).join(", ");
-        }
-      } else {
-        // Direct fields from core_engine
-        text = [dx.justifikasi, dx.bukti_klinis, dx.syarat_klinis].filter(Boolean).join(", ");
-      }
-      console.log("🔍 Setting klinis text:", text);
-      klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
-    }
-
-    // kolom ICD
-    const icdCell = row.querySelector(".col-icd");
-    if (icdCell) {
-      let icdCode = "";
-      
-      // Handle different ICD formats from core_engine
-      if (dx.icd10_code) {
-        icdCode = dx.icd10_code;
-      } else if (dx.icd10 && dx.icd10.kode_icd) {
-        icdCode = dx.icd10.kode_icd;
-      } else if (dx.icd9_code) {
-        icdCode = dx.icd9_code;
-      }
-      
-      console.log("🔍 Setting ICD code:", icdCode);
-      icdCell.innerText = icdCode;
-    }
-
-    // kolom Tindakan
-    const tindakanCell = row.querySelector(".col-tindakan");
-    if (tindakanCell) {
-      let text = "";
-
-      if (dx.tindakan && Array.isArray(dx.tindakan) && dx.tindakan.length > 0) {
-        text = dx.tindakan.map(t => 
-          t.procedure_text || t.tindakan || t.nama || t.name || t.description || t
-        ).join(", ");
-      }
-      console.log("🔍 Setting tindakan text:", text);
-      tindakanCell.innerHTML = text !== "" ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
-    }
-
-    // Persist semua perubahan hasil modal ke state simulasi
-    try {
-      const stage = dx.stage || window.claimState?.tab || "admission";
-      const sim = window.claimState?.simulasi?.[stage];
-      if (sim && Array.isArray(sim.diagnosis)) {
-        const item = sim.diagnosis.find(d =>
-          d.id === dx.id ||
-          d.kategori === dx.kategori ||
-          d.icd10_code === dx.icd10_code
-        );
-        if (item) {
-          if (dx.klinis) {
-            let klinisText = "";
-            if (typeof dx.klinis === "object" && dx.klinis !== null) {
-              const k = dx.klinis;
-              klinisText = [k.justifikasi, k.bukti_klinis, k.syarat_klinis]
-                .filter(Boolean)
-                .join(", ");
-            } else if (Array.isArray(dx.klinis)) {
-              klinisText = dx.klinis.filter(Boolean).join(", ");
-            } else {
-              klinisText = dx.klinis;
-            }
-            item.klinis = `<span title="${klinisText}">${truncateText(klinisText, 44)}</span>`;
-          }
-
-          if (dx.icd10_code || dx.icd10) {
-            item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "";
-            item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
-          }
-
-          if (Array.isArray(dx.tindakan)) {
-            const texts = dx.tindakan.map(t => t.procedure_text || t.tindakan).filter(Boolean);
-            const tindakanText = texts.join(", ");
-            item.tindakan = `<span title="${tindakanText}">${truncateText(tindakanText, 44)}</span>`;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("⚠️ gagal persist ringkasan ke state:", err);
-    }
+    return;
   }
+
+  // kolom Klinis
+  const klinisCell = row.querySelector(".col-klinis");
+  if (klinisCell) {
+    let text = "";
+    if (dx.klinis) {
+      if (Array.isArray(dx.klinis)) {
+        text = dx.klinis.filter(Boolean).join(", ");
+      } else if (typeof dx.klinis === "string") {
+        text = dx.klinis;
+      } else if (typeof dx.klinis === "object") {
+        text = [dx.klinis.justifikasi, dx.klinis.bukti_klinis, dx.klinis.syarat_klinis]
+          .filter(Boolean)
+          .join(", ");
+      }
+    } else {
+      text = [dx.justifikasi, dx.bukti_klinis, dx.syarat_klinis].filter(Boolean).join(", ");
+    }
+    console.log("🔍 Setting klinis text:", text);
+    klinisCell.innerHTML = text ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
+  }
+
+  // kolom ICD
+  const icdCell = row.querySelector(".col-icd");
+  if (icdCell) {
+    let icdCode = "";
+    if (dx.icd10_code) {
+      icdCode = dx.icd10_code;
+    } else if (dx.icd10 && dx.icd10.kode_icd) {
+      icdCode = dx.icd10.kode_icd;
+    } else if (dx.icd9_code) {
+      icdCode = dx.icd9_code;
+    }
+    console.log("🔍 Setting ICD code:", icdCode);
+    icdCell.innerText = icdCode;
+  }
+
+  // kolom Tindakan
+  const tindakanCell = row.querySelector(".col-tindakan");
+  if (tindakanCell) {
+    let text = "";
+    if (dx.tindakan && Array.isArray(dx.tindakan) && dx.tindakan.length > 0) {
+      text = dx.tindakan
+        .map(t => t.procedure_text || t.tindakan || t.nama || t.name || t.description || t)
+        .join(", ");
+    }
+    console.log("🔍 Setting tindakan text:", text);
+    tindakanCell.innerHTML = text !== "" ? `<span title="${text}">${truncateText(text, 44)}</span>` : "&nbsp;";
+  }
+
+  // Persist hasil ke state simulasi
+  try {
+    const stage = dx.stage || window.claimState?.tab || "admission";
+    const sim = window.claimState?.simulasi?.[stage];
+    if (sim && Array.isArray(sim.diagnosis)) {
+      const item = sim.diagnosis.find(d =>
+        d.id === dx.id || d.kategori === dx.kategori || d.icd10_code === dx.icd10_code
+      );
+      if (item) {
+        if (dx.klinis) {
+          let klinisText = "";
+          if (typeof dx.klinis === "object" && dx.klinis !== null) {
+            const k = dx.klinis;
+            klinisText = [k.justifikasi, k.bukti_klinis, k.syarat_klinis]
+              .filter(Boolean)
+              .join(", ");
+          } else if (Array.isArray(dx.klinis)) {
+            klinisText = dx.klinis.filter(Boolean).join(", ");
+          } else {
+            klinisText = dx.klinis;
+          }
+          item.klinis = `<span title="${klinisText}">${truncateText(klinisText, 44)}</span>`;
+        }
+
+        if (dx.icd10_code || dx.icd10) {
+          item.icd10_code = dx.icd10_code || dx.icd10?.kode_icd || "";
+          item.icd10 = dx.icd10 || { kode_icd: item.icd10_code };
+        }
+
+        if (Array.isArray(dx.tindakan)) {
+          const texts = dx.tindakan.map(t => t.procedure_text || t.tindakan).filter(Boolean);
+          const tindakanText = texts.join(", ");
+          item.tindakan = `<span title="${tindakanText}">${truncateText(tindakanText, 44)}</span>`;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ gagal persist ringkasan ke state:", err);
+  }
+}
 
   // Buka modal dari klik kategori
   async function openModalFromAttr(el, type) {
