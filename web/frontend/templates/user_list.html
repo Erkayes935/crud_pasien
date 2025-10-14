@@ -33,7 +33,14 @@
           <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.name or '-' }}</td>
           <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.email }}</td>
           <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">{{ u.hospital.nama if u.hospital else '-' }}</td>
-          <td class="px-4 py-2 border-b dark:border-gray-700 capitalize text-gray-800 dark:text-gray-100">{{ u.role }}</td>
+          <td class="px-4 py-2 border-b dark:border-gray-700 text-gray-800 dark:text-gray-100">
+            {% for r in (u.role or '').split(',') %}
+              <span class="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 
+                          px-2 py-1 rounded text-xs mr-1">
+                {{ r }}
+              </span>
+            {% endfor %}
+          </td>
           <td class="px-4 py-2 border-b dark:border-gray-700 space-x-2">
             <a href="/users/{{ u.id }}/edit" 
                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-sm">

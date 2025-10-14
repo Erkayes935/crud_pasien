@@ -1,12 +1,16 @@
-{# _form_renderer.html (final versi form POST murni) #}
+{# ============================
+  UNIVERSAL FORM FIELD RENDERER (final version)
+  Support: text, email, date, number, textarea, select, readonly, checkbox, checkbox_group
+  ============================ #}
+
 {% if not field.roles or current_user.role in field.roles %}
 
   {% if field.type == "hidden" %}
-    <input type="hidden" 
-           name="{{ field.name }}" 
+    <input type="hidden"
+           name="{{ field.name }}"
            value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
 
-  {% elif field.type in ["text","email","date","number"] %}
+  {% elif field.type in ["text", "email", "date", "number"] %}
     <div>
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
         {{ field.label }}
@@ -14,14 +18,16 @@
           <span class="text-xs text-blue-600 ml-1" title="Field ini memiliki aturan multilayer">ⓘ</span>
         {% endif %}
       </label>
-      <input type="{{ field.type }}" 
-             name="{{ field.name }}" 
-             value="{{ field.get('value') or existing_medical_data.get(field.name) or (record|attr(field.name) if record else '') }}"
+      <input type="{{ field.type }}"
+             name="{{ field.name }}"
+             value="{{ field.get('value')
+                        or (existing_medical_data.get(field.name) if existing_medical_data is defined else None)
+                        or (record|attr(field.name) if record else '') }}"
              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                     focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-             {% if field.get('tooltip_field') %}data-tooltip-field="{{ field.tooltip_field }}"{% endif %}
-             {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}>
+              {% if field.get('tooltip_field') %}data-tooltip-field="{{ field.tooltip_field }}"{% endif %}
+              {% if current_user.role in field.get('readonly_roles', []) %}readonly{% endif %}>
     </div>
 
   {% elif field.type == "textarea" %}
@@ -37,9 +43,13 @@
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                        focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
                 {% if field.get('tooltip_field') %}data-tooltip-field="{{ field.tooltip_field }}"{% endif %}
-                {% if current_user.role in field.get("readonly_roles", []) %}readonly{% endif %}>
-        {{ field.get('value') or existing_medical_data.get(field.name) or (record|attr(field.name) if record else '') }}
-      </textarea>
+                {% if current_user.role in field.get('readonly_roles', []) %}readonly{% endif %}>
+                {{ field.get('value')
+                    or (existing_medical_data.get(field.name) if existing_medical_data is defined else None)
+                    or (record|attr(field.name) if record else '')
+                }}
+</textarea>
+
     </div>
 
   {% elif field.type == "select" %}
@@ -51,21 +61,21 @@
         {% endif %}
       </label>
       <select name="{{ field.name }}"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 
+              class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              {% if field.get('tooltip_field') %}data-tooltip-field="{{ field.tooltip_field }}"{% endif %}
-              {% if current_user.role in field.get("readonly_roles", []) %}disabled{% endif %}>
+          {% if field.get('tooltip_field') %}data-tooltip-field="{{ field.tooltip_field }}"{% endif %}
+          {% if current_user.role in field.get('readonly_roles', []) %}disabled{% endif %}>
         <option value="">-- Pilih {{ field.label or field.name }} --</option>
         {% for val, label in field.options %}
           <option value="{{ val }}"
-                  {% if field.get('value') == val or existing_medical_data.get(field.name) == val or (record and record|attr(field.name) == val) %}selected{% endif %}>
+                  {% if field.get('value') == val or (record and record|attr(field.name) == val) %}selected{% endif %}>
             {{ label }}
           </option>
         {% endfor %}
       </select>
-      {% if current_user.role in field.get("readonly_roles", []) %}
-        <input type="hidden" 
-               name="{{ field.name }}" 
+      {% if current_user.role in field.get('readonly_roles', []) %}
+        <input type="hidden"
+               name="{{ field.name }}"
                value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
       {% endif %}
     </div>
@@ -75,35 +85,51 @@
       <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
         {{ field.label }}
       </label>
-      <input type="text" 
+      <input type="text"
              value="{{ field.value or (record|attr(field.name) if record else '') }}"
              readonly
              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2
                     bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
                     font-semibold cursor-not-allowed">
-      {% if field.hidden_name %}
-        <input type="hidden" 
-               name="{{ field.hidden_name }}" 
-               value="{{ field.hidden_value }}">
+      {% if field.hidden_value %}
+        <input type="hidden" name="{{ field.name }}" value="{{ field.hidden_value }}">
       {% endif %}
     </div>
 
   {% elif field.type == "checkbox" %}
     <div class="flex items-center space-x-2">
-      <input type="checkbox" 
-             name="{{ field.name }}" 
+      <input type="checkbox"
+             name="{{ field.name }}"
              value="true"
              class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-             {% if field.get("value") or (record and record|attr(field.name)) %}checked{% endif %}
-             {% if current_user.role in field.get("readonly_roles", []) %}disabled{% endif %}>
-      <label class="text-sm text-gray-700 dark:text-gray-200">
-        {{ field.label or field.name }}
+             {% if field.get('value') or (record and record|attr(field.name)) %}checked{% endif %}
+             {% if current_user.role in field.get('readonly_roles', []) %}disabled{% endif %}>
+      <label class="text-sm text-gray-700 dark:text-gray-200">{{ field.label or field.name }}</label>
+    </div>
+
+  {% elif field.type == "checkbox_group" %}
+    <div>
+      <label class="block mb-2 font-medium text-gray-700 dark:text-gray-200">
+        {{ field.label }}
       </label>
-      {% if current_user.role in field.get("readonly_roles", []) %}
-        <input type="hidden" name="{{ field.name }}" 
-               value="{{ field.get('value') or (record|attr(field.name) if record else '') }}">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {% for val, label in field.options %}
+          <label class="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2">
+            <input type="checkbox"
+                   name="{{ field.name }}"
+                   value="{{ val }}"
+                   class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                   {% if record and val in (record|attr(field.name) or '').split(',') %}checked{% endif %}
+                   {% if current_user.role in field.get('readonly_roles', []) %}disabled{% endif %}>
+            <span class="text-gray-800 dark:text-gray-100 text-sm">{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      {% if current_user.role in field.get('readonly_roles', []) %}
+        <input type="hidden" name="{{ field.name }}" value="{{ record|attr(field.name) if record else field.get('value') }}">
       {% endif %}
     </div>
+
   {% endif %}
 
 {% endif %}

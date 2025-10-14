@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Request, Depends, Form, HTTPException, File, UploadFile
+from copy import deepcopy
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -24,9 +26,9 @@ def list_users(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
 ):
-    if current_user.role == "superadmin":
+    if current_user.has_role == "superadmin":
         users = user_crud.get_users_superadmin(db)
-    elif current_user.role == "admin_rs":
+    elif current_user.has_role == "admin_rs":
         users = user_crud.get_users_admin_rs(db, current_user.hospital_id)
     else:
         users = []
@@ -37,7 +39,6 @@ def list_users(
         {
             "request": request,
             "users": users,
-            "user": current_user,
             "current_user": current_user,
             "csrf_token": csrf_token,
         },
@@ -54,47 +55,49 @@ def add_user_form(
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
 ):
     csrf_token = issue_csrf_token(request)
-    fields = form_configs["user"].copy()
+    fields = deepcopy(form_configs["user"])
 
     for f in fields:
-        # Role
         if f["name"] == "role":
-            if current_user.role == "superadmin":
-                f["type"] = "hidden"
-                f["value"] = "admin_rs"
-                f["display"] = "Admin RS"
-            elif current_user.role == "admin_rs":
-                f["type"] = "select"
-                f["options"] = [
-                    ("doctor", "Dokter"),
-                    ("coder", "Coder"),
-                    ("verifikator", "Verifikator"),
-                    ("costing", "Costing"),
-                    ("validator", "Validator"),
-                    ("manajemen", "Manajemen"),
-                ]
+            # Semua kemungkinan role
+            all_roles = [
+                ("superadmin", "Super Admin"),
+                ("admin_rs", "Admin RS"),
+                ("doctor", "Dokter"),
+                ("coder", "Coder"),
+                ("verifikator", "Verifikator"),
+                ("costing", "Costing"),
+                ("validator", "Validator"),
+                ("manajemen", "Manajemen"),
+            ]
+            # Filter role sesuai role login
+            if current_user.has_role == "superadmin":
+                allowed = all_roles
+            else:
+                allowed = [r for r in all_roles if r[0] not in ("superadmin", "admin_rs")]
 
-        # Hospital
-        if f["name"] == "hospital_id":
-            if current_user.role == "superadmin":
+            f["type"] = "checkbox_group"
+            f["options"] = allowed
+
+        elif f["name"] == "hospital_id":
+            if current_user.has_role == "superadmin":
                 hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
-
-            elif current_user.role == "admin_rs":
+            else:
                 f["type"] = "readonly"
                 f["value"] = current_user.hospital.nama if current_user.hospital else "-"
-                f["hidden_value"] = current_user.hospital_id if current_user.hospital_id else None
+                f["hidden_value"] = current_user.hospital_id
 
     return templates.TemplateResponse(
         "user_form.html",
         {
             "request": request,
             "mode": "add",
-            "user": current_user,
             "current_user": current_user,
             "csrf_token": csrf_token,
             "fields": fields,
+            "existing_medical_data": {},
         },
     )
 
@@ -104,22 +107,26 @@ def add_user(
     request: Request,
     email: Optional[str] = Form(None),
     name: Optional[str] = Form(None),
-    role: Optional[str] = Form(None),
+    role: list[str] = Form(...),
     hospital_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
     _=Depends(require_csrf_dep),
 ):
-    if role not in ["admin_rs", "doctor", "coder", "verifikator", "costing", "validator", "manajemen"]:
-        raise HTTPException(status_code=400, detail="Role tidak valid")
+    # Validasi role server-side
+    if current_user.has_role == "admin_rs":
+        for r in role:
+            if r in ["superadmin", "admin_rs"]:
+                raise HTTPException(status_code=403, detail="Role tersebut tidak boleh dibuat oleh Admin RS")
 
-    if current_user.role == "admin_rs":
+    role_str = ",".join(role)
+    if current_user.has_role == "admin_rs":
         hospital_id = current_user.hospital_id
 
-    user = user_crud.create_user(db, {
+    user_crud.create_user(db, {
         "email": email,
         "name": name,
-        "role": role,
+        "role": role_str,
         "hospital_id": hospital_id,
     })
 
@@ -139,36 +146,43 @@ def edit_user_form(
 ):
     target_user = user_crud.get_user_by_id(db, user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
     csrf_token = issue_csrf_token(request)
-    fields = form_configs["user"].copy()
+    fields = deepcopy(form_configs["user"])
 
     for f in fields:
         if f["name"] == "role":
-            if current_user.role == "superadmin":
-                f["options"] = [("admin_rs", "Admin RS")]
-                f["type"] = "select"
-            elif current_user.role == "admin_rs":
-                f["options"] = [
-                    ("doctor", "Dokter"),
-                    ("coder", "Coder"),
-                    ("verifikator", "Verifikator"),
-                    ("costing", "Costing"),
-                    ("validator", "Validator"),
-                    ("manajemen", "Manajemen"),
-                ]
-                f["type"] = "select"
+            if target_user.role:
+                f["value"] = target_user.role
 
-        if f["name"] == "hospital_id":
-            if current_user.role == "superadmin":
+            all_roles = [
+                ("superadmin", "Super Admin"),
+                ("admin_rs", "Admin RS"),
+                ("doctor", "Dokter"),
+                ("coder", "Coder"),
+                ("verifikator", "Verifikator"),
+                ("costing", "Costing"),
+                ("validator", "Validator"),
+                ("manajemen", "Manajemen"),
+            ]
+            if current_user.has_role == "superadmin":
+                allowed = all_roles
+            else:
+                allowed = [r for r in all_roles if r[0] not in ("superadmin", "admin_rs")]
+
+            f["type"] = "checkbox_group"
+            f["options"] = allowed
+
+        elif f["name"] == "hospital_id":
+            if current_user.has_role == "superadmin":
                 hospitals = db.query(models.Hospital).filter(models.Hospital.is_deleted == False).all()
                 f["type"] = "select"
                 f["options"] = [(h.id, h.nama) for h in hospitals]
-            elif current_user.role == "admin_rs":
+            else:
                 f["type"] = "readonly"
                 f["value"] = current_user.hospital.nama if current_user.hospital else "-"
-                f["hidden_value"] = current_user.hospital_id if current_user.hospital_id else None
+                f["hidden_value"] = current_user.hospital_id
 
     return templates.TemplateResponse(
         "user_form.html",
@@ -176,9 +190,10 @@ def edit_user_form(
             "request": request,
             "mode": "edit",
             "record": target_user,
-            "csrf_token": csrf_token,
             "current_user": current_user,
+            "csrf_token": csrf_token,
             "fields": fields,
+            "existing_medical_data": {},
         },
     )
 
@@ -189,24 +204,28 @@ def edit_user(
     user_id: int,
     email: Optional[str] = Form(None),
     name: Optional[str] = Form(None),
-    role: Optional[str] = Form(None),
+    role: list[str] = Form(...),
     hospital_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
     _=Depends(require_csrf_dep),
 ):
-    if role not in ["admin_rs", "doctor", "coder", "verifikator", "costing", "validator", "manajemen"]:
-        raise HTTPException(status_code=400, detail="Role tidak valid")
+    # Validasi role
+    if current_user.has_role == "admin_rs":
+        for r in role:
+            if r in ["superadmin", "admin_rs"]:
+                raise HTTPException(status_code=403, detail="Role tersebut tidak boleh dibuat oleh Admin RS")
 
+    role_str = ",".join(role)
     updated = user_crud.update_user(db, user_id, {
         "name": name,
         "email": email,
-        "role": role,
-        "hospital_id": hospital_id if current_user.role == "superadmin" else current_user.hospital_id,
+        "role": role_str,
+        "hospital_id": hospital_id if current_user.has_role == "superadmin" else current_user.hospital_id,
     })
 
     if not updated:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
     flash(request, "User berhasil diperbarui!", "success")
     return RedirectResponse(url="/users", status_code=303)
@@ -223,9 +242,18 @@ def delete_user(
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
     _=Depends(require_csrf_dep),
 ):
+    target = user_crud.get_user_by_id(db, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+    # 🚫 Self-delete protection
+    if current_user.id == target.id:
+        flash(request, "Anda tidak dapat menghapus akun Anda sendiri.", "error")
+        return RedirectResponse(url="/users", status_code=303)
+
     ok = user_crud.delete_user(db, user_id)
     if not ok:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Gagal menghapus user")
 
     flash(request, "User berhasil dihapus!", "success")
     return RedirectResponse(url="/users", status_code=303)
@@ -546,3 +574,5 @@ async def ai_meta_bulk_import(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+    flash(request, f"User {target.name or target.email} berhasil dihapus.", "success")
+    return RedirectResponse(url="/users", status_code=303)

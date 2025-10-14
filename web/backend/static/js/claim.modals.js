@@ -1374,30 +1374,72 @@ window.renderChecklistHtml = function(checklist) {
 
     window.claimState.regulationSource = null; // reset context
   }
-  
-// ======================== SISTEM NOTES FINAL STABIL ========================
 
-// ✅ ID stabil tanpa hash (supaya sama setiap reload)
-function getStableItemId(claimId, stage, fieldKey, itemName = "") {
-  const key = fieldKey.toLowerCase();
-  if (key === "primary_diagnosis" || key === "primary_action") return 1;
-  if (key === "secondary_diagnosis" || key === "secondary_action") return 2;
-  return 9999; // fallback umum
+  // ==========================================================
+// 🧩 SISTEM NOTES FINAL (DOKTER / CODER / VERIFIKATOR)
+// ==========================================================
+
+// ✅ 1. Normalisasi field agar seragam antar role
+function normalizeFieldKey(key) {
+  if (!key) return key;
+  key = key.toLowerCase();
+
+  const mapping = {
+    "diagnosis": "primary_diagnosis",
+    "utama_diagnosis": "primary_diagnosis",
+    "komorbid": "secondary_diagnosis",
+    "komplikasi": "secondary_diagnosis",
+
+    "tindakan": "primary_action",
+    "utama_tindakan": "primary_action",
+    "prosedur": "primary_action",
+    "prosedur_sekunder": "secondary_action",
+  };
+
+  return mapping[key] || key;
 }
 
-// ✅ Buka modal catatan (dengan context lengkap)
+// ✅ 2. ID stabil tanpa hash (supaya sama setiap reload)
+function getStableItemId(claimId, stage, fieldKey, itemName = "") {
+  const key = (fieldKey || "").toLowerCase();
+
+  // Diagnosis
+  if (["primary_diagnosis", "diagnosis", "utama_diagnosis"].includes(key)) return 1;
+  if (["secondary_diagnosis", "komorbid", "komplikasi"].includes(key)) return 2;
+
+  // Tindakan
+  if (["primary_action", "tindakan", "utama_tindakan", "prosedur"].includes(key)) return 3;
+  if (["secondary_action", "prosedur_sekunder"].includes(key)) return 4;
+
+  // fallback umum
+  return 9999;
+}
+
+// ✅ 3. helper untuk dapatkan id diagnosis/procedure asli (origin)
+function getOriginItemId(item) {
+  // kasus: data hasil evaluasi coder (ClaimDiagnosisEvaluation / ClaimProcedureEvaluation)
+  if (item && item.diagnosis_id) return item.diagnosis_id;
+  if (item && item.procedure_id) return item.procedure_id;
+  // fallback ke id biasa
+  return item?.id || null;
+}
+
+// ✅ 4. Buka modal catatan (dengan context lengkap)
 window.openNoteModal = async function(title, fieldKey, item = null) {
   const root = document.getElementById("claimRoot");
   let state = null;
   try {
     state = Alpine.$data(root);
-  } catch (e) {
+  } catch {
     console.warn("⚠️ fallback ke window.claimState karena Alpine belum aktif");
     state = window.claimState || {};
   }
 
   const claimId = root.dataset.claimId;
   const currentStage = state.tab || window.claimState?.tab || "admission";
+
+  // 🔄 Normalisasi field agar seragam
+  fieldKey = normalizeFieldKey(fieldKey);
 
   // Simpan context
   state.currentNoteItem = item;
@@ -1406,7 +1448,24 @@ window.openNoteModal = async function(title, fieldKey, item = null) {
 
   // Tentukan itemId (stabil)
   const itemName = item?.name || "primary";
-  const itemId = item?.id || getStableItemId(claimId, currentStage, fieldKey, itemName);
+  let itemId = item?.id || null;
+
+  // Jika role coder → arahkan ke id asal dokter
+  if (state.role === "coder") {
+    const originId = getOriginItemId(item);
+    if (originId && originId !== itemId) {
+      console.log("🧩 Mapping coder evaluation id → origin_id:", itemId, "→", originId);
+      itemId = originId;
+    } else {
+      // fallback: gunakan ID stabil (1=utama, 2=sekunder, dst.)
+      const stableId = getStableItemId(claimId, currentStage, fieldKey, itemName);
+      console.log("🧭 Fallback ke stable ID untuk coder:", itemId, "→", stableId);
+      itemId = stableId;
+    }
+  } else if (!itemId) {
+    // fallback untuk dokter/verifikator
+    itemId = getStableItemId(claimId, currentStage, fieldKey, itemName);
+  }
 
   console.log("📝 openNoteModal context:", { stage: currentStage, fieldKey, itemId, itemName });
 
@@ -1456,6 +1515,7 @@ window.openNoteModal = async function(title, fieldKey, item = null) {
 
   const currentText = existingLogs.join("\n");
 
+  // tampilkan modal
   state.modalTitle = `${title} - ${currentStage.toUpperCase()}`;
   state.modalContent = `
     <div class="space-y-4">
@@ -1488,26 +1548,25 @@ window.openNoteModal = async function(title, fieldKey, item = null) {
     </div>
   `;
 
-
   state.modalOpen = true;
   console.log("✅ openNoteModal - loaded notes:", notes.length);
 };
 
-
-// ✅ Simpan note baru (frontend + backend sync)
+// ✅ 5. Simpan note baru (frontend + backend sync)
 window.saveNote = async function(fieldKey, stage, itemId) {
   const root = document.getElementById("claimRoot");
   const state = Alpine.$data(root);
   const textarea = document.getElementById("noteField");
   const val = textarea.value.trim();
-
   if (!val) {
     state.modalOpen = false;
     return;
   }
 
-  const claimId = root.dataset.claimId;
+  // 🔄 Normalisasi field sebelum dikirim ke backend
+  fieldKey = normalizeFieldKey(fieldKey);
 
+  const claimId = root.dataset.claimId;
   console.log("💾 saveNote FINAL:", { fieldKey, itemId, stage, valueToSend: val });
 
   try {
@@ -1532,11 +1591,11 @@ window.saveNote = async function(fieldKey, stage, itemId) {
       throw new Error(err.detail || `HTTP ${resp.status}`);
     }
 
-    // Tambahkan ke local state (agar langsung muncul tanpa reload)
+    // Tambahkan ke local state agar langsung tampil tanpa reload
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
-    const role = state.role ? state.role : "User";
+    const role = state.role || "User";
     const log = `[${role} ${hh}:${mm}] ${val}`;
 
     if (!state.notes) state.notes = {};
@@ -1545,12 +1604,7 @@ window.saveNote = async function(fieldKey, stage, itemId) {
     if (!state.notes[stage][fieldKey][itemId]) state.notes[stage][fieldKey][itemId] = [];
     state.notes[stage][fieldKey][itemId].push(log);
 
-    console.log("✅ Note saved successfully", {
-      stage,
-      fieldKey,
-      itemId,
-      totalNotes: state.notes[stage][fieldKey][itemId].length
-    });
+    console.log("✅ Note saved successfully", { stage, fieldKey, itemId });
   } catch (e) {
     console.error("❌ saveNote error:", e);
     alert("Gagal menyimpan catatan: " + e.message);
@@ -1558,6 +1612,7 @@ window.saveNote = async function(fieldKey, stage, itemId) {
 
   state.modalOpen = false;
 };
+
 
 
   // Export

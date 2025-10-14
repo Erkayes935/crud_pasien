@@ -122,17 +122,23 @@ def current_user_session(request: Request):
         "roles": request.session.get("roles", []),
     }
 
-def require_roles_session(*roles: str):
+def require_roles_session(*allowed_roles: str):
     def _dep(request: Request, db: Session = Depends(get_db)):
         uid = request.session.get("user_id")
         if not uid:
             raise HTTPException(status_code=401, detail="Not authenticated")
+
         user = db.query(models.User).get(uid)
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        if roles and user.role not in roles:
+
+        # ✅ multi-role aware
+        user_roles = user.role_names  # gabungan role lama dan baru (dari models.py)
+        if allowed_roles and not any(r in user_roles for r in allowed_roles):
             raise HTTPException(status_code=403, detail="Forbidden")
+
         return user
+
     return _dep
 
 
@@ -140,17 +146,27 @@ def require_roles_session(*roles: str):
 # CSRF helpers
 # ---------------------------
 def issue_csrf_token(request: Request) -> str:
+    """Generate a CSRF token and store it in session."""
     token = secrets.token_urlsafe(32)
     request.session["csrf_token"] = token
     return token
 
-def require_csrf_dep(request: Request, csrf_token: str = Form(...)):
-    token_session = request.session.get("csrf_token")
-    if not token_session or token_session != csrf_token:
+
+async def require_csrf_dep(request: Request):
+    """Validate CSRF token sent from HTML form."""
+    form = await request.form()
+    form_token = form.get("csrf_token")
+    session_token = request.session.get("csrf_token")
+
+    # Debugging (optional)
+    # print("🧩 CSRF debug — form:", form_token, "| session:", session_token)
+
+    if not session_token or not form_token or form_token != session_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token invalid")
+
+    # Optional: one-time use, remove it
     request.session.pop("csrf_token", None)
     return True
-
 def verify_jwt(token: str, expected_aud: str) -> dict:
     jwks = httpx.get(
         f"https://{config.AUTH0_DOMAIN}/.well-known/jwks.json", timeout=10.0

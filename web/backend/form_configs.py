@@ -114,19 +114,21 @@ user_fields = [
     {"name": "email", "label": "Email", "type": "email"},
     {"name": "name", "label": "Nama Lengkap", "type": "text"},
     {
-        "name": "role", "label": "Role", "type": "select",
-        "options": [
-            ("superadmin", "Super Admin"),
-            ("admin_rs", "Admin RS"),
-            ("doctor", "Dokter"),
-            ("coder", "Coder"),
-            ("verifikator", "Verifikator"),
-            ("costing", "Costing"),
-            ("manajemen", "Manajemen"),
-            ("validator", "Validator"),
-        ],
-        "roles": ["superadmin","admin_rs"], 
-        "readonly_roles": ["superadmin"]
+    "name": "role",
+    "label": "Role",
+    "type": "checkbox_group",   # 👈 tipe baru
+    "options": [
+        ("superadmin", "Super Admin"),
+        ("admin_rs", "Admin RS"),
+        ("doctor", "Dokter"),
+        ("coder", "Coder"),
+        ("verifikator", "Verifikator"),
+        ("costing", "Costing"),
+        ("validator", "Validator"),
+        ("manajemen", "Manajemen"),
+    ],
+    "roles": ["superadmin", "admin_rs"],
+    "readonly_roles": ["superadmin"]
     },
     {
         "name": "hospital_id", "label": "Rumah Sakit", "type": "select",

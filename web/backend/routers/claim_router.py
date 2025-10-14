@@ -1,8 +1,8 @@
 """
 Module: backend.routers.claim_router
 
-Manajemen klaim: list, detail, add/edit, draft/finalize, delete,
-simulasi, evaluasi, AI proxy (core_engine), export, notes, coder.
+Manajemen klaim dengan workflow: Doctor -> Coder -> Verifikator
+Fixed: Alur data dari coder ke verifikator
 """
 
 from fastapi import (
@@ -33,7 +33,6 @@ from backend.services.claim.simulation import load_sim_and_summary, load_existin
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
 
-
 # ==================================================
 # EXPORT
 # ==================================================
@@ -55,14 +54,14 @@ def export_claims(
 
     headers = [
         "ID Klaim", "Tanggal Klaim", "Nama Pasien", "No. RM", "Rumah Sakit",
-        "Dokter", "Status", "Final", "Total Diagnosis", "Total Tindakan",
-        "ICD10 Utama", "ICD9 Utama", "Status Verifikasi", "Dibuat"
+        "Dokter", "Status", "Workflow Status", "Final", "Total Diagnosis", "Total Tindakan",
+        "ICD10 Utama", "ICD9 Utama", "Status Verifikasi", "Verified By Coder", "Dibuat"
     ]
     ws.append(headers)
 
     for c in claims:
         data = c.to_export_dict()
-        ws.append([data[h] for h in headers])
+        ws.append([data.get(h, "") for h in headers])
 
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -75,41 +74,182 @@ def export_claims(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+
+
 # ==================================================
-# LIST & DETAIL
+# LIST & DETAIL (WITH ROLE-BASED FILTERING)
 # ==================================================
+
+from typing import Optional
 
 @router.get("")
 def list_claims(
     request: Request,
-    status: str | None = Query(None),
-    tanggal_kunjungan: str | None = Query(None),
-    patient_name: str | None = Query(None),
-    claim_id: int | None = Query(None),
-    visit_id: int | None = Query(None),
+    status: Optional[str] = Query(None),
+    tanggal_kunjungan: Optional[str] = Query(None),
+    patient_name: Optional[str] = Query(None),
+    claim_id: Optional[str] = Query(None),   # ubah ke str agar aman parse manual
+    visit_id: Optional[str] = Query(None),   # ubah ke str juga
+    workflow_status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
-    claims = claim_crud.get_claims(
-        db,
-        status=status,
-        tanggal_kunjungan=tanggal_kunjungan,
-        patient_name=patient_name,
-        claim_id=claim_id,
-        visit_id=visit_id,
+    """List klaim dengan filter berdasarkan role"""
+
+    query = db.query(models.Claim)
+
+    # ✅ ROLE-BASED FILTERING
+    roles = user.role_names or []
+
+    if "verifikator" in roles and "coder" not in roles and "doctor" not in roles:
+        query = query.filter(
+            models.Claim.workflow_status.in_(["coder_verified", "verifikator_review", "finalized"])
+        )
+    elif "coder" in roles and "verifikator" not in roles and "doctor" not in roles:
+        query = query.filter(
+            models.Claim.workflow_status.in_(["doctor_submitted", "coder_review", "coder_verified"])
+        )
+    elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
+        query = query.filter(models.Claim.doctor_id == user.id)
+
+    # ✅ NORMALIZE EMPTY STRINGS TO NONE
+    if claim_id == "":
+        claim_id = None
+    if visit_id == "":
+        visit_id = None
+    if tanggal_kunjungan == "":
+        tanggal_kunjungan = None
+    if patient_name == "":
+        patient_name = None
+    if workflow_status == "":
+        workflow_status = None
+    if status == "":
+        status = None
+
+    # ✅ Apply additional filters
+    if status:
+        query = query.filter(models.Claim.status == status)
+    if workflow_status:
+        query = query.filter(models.Claim.workflow_status == workflow_status)
+    if tanggal_kunjungan:
+        query = query.filter(models.Claim.tanggal_kunjungan == tanggal_kunjungan)
+    if patient_name:
+        query = query.filter(models.Claim.patient_name.ilike(f"%{patient_name}%"))
+    if claim_id and str(claim_id).isdigit():
+        query = query.filter(models.Claim.id == int(claim_id))
+    if visit_id and str(visit_id).isdigit():
+        query = query.filter(models.Claim.visit_id == int(visit_id))
+
+    claims = query.order_by(models.Claim.created_at.desc()).all()
+
+    return templates.TemplateResponse(
+        "claim_list.html",
+        {
+            "request": request,
+            "claims": claims,
+            "user": user,
+            "current_user": user,
+            "csrf_token": issue_csrf_token(request),
+            "status": status,
+            "workflow_status": workflow_status,
+            "tanggal_kunjungan": tanggal_kunjungan,
+            "patient_name": patient_name,
+            "claim_id": claim_id,
+            "visit_id": visit_id,
+        },
     )
-    return templates.TemplateResponse("claim_list.html", {
+
+
+# ==================================================
+# GROUP (EPISODE KLAIM)
+# ==================================================
+@router.get("/select-group")
+def select_group_page(
+    request: Request,
+    patient_id: int = Query(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+):
+    """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
+    groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse("claim_group_select.html", {
         "request": request,
-        "claims": claims,
-        "user": user,
-        "current_user": user,
-        "csrf_token": issue_csrf_token(request),
-        "status": status,
-        "tanggal_kunjungan": tanggal_kunjungan,
-        "patient_name": patient_name,
-        "claim_id": claim_id,
-        "visit_id": visit_id,
+        "groups": groups,
+        "patient_id": patient_id,
+        "csrf_token": csrf_token
     })
+
+@router.get("/select-visit")
+def select_visit_page(
+    request: Request,
+    group_id: int = Query(...),
+    patient_id: int = Query(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+):
+    """Halaman memilih kunjungan (visit) untuk klaim baru di episode tertentu"""
+    visits = (
+        db.query(models.Visit)
+        .filter(models.Visit.patient_id == patient_id)
+        .order_by(models.Visit.tanggal_kunjungan.desc())
+        .all()
+    )
+    group = db.query(models.ClaimGroup).get(group_id)
+    csrf_token = issue_csrf_token(request)
+
+    return templates.TemplateResponse("claim_visit_select.html", {
+        "request": request,
+        "group": group,
+        "visits": visits,
+        "csrf_token": csrf_token,
+        "patient_id": patient_id,
+        "flow": "claim",            # 🧩 inilah kunci yang hilang
+        "current_user": user,       # opsional tapi aman untuk template
+        "user": user,
+    })
+
+@router.get("/group/{group_id}", name="group_detail")
+def group_detail_page(
+    request: Request,
+    group_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
+):
+    """Halaman detail 1 Group (Episode Klaim)"""
+    group = db.query(models.ClaimGroup).get(group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group tidak ditemukan")
+
+    # Ambil semua klaim dalam group ini
+    claims = (
+        db.query(models.Claim)
+        .filter(models.Claim.group_id == group_id)
+        .order_by(models.Claim.created_at.desc())
+        .all()
+    )
+
+    # Hitung ringkasan status
+    total_klaim = len(claims)
+    selesai = len([c for c in claims if c.workflow_status == "finalized"])
+    belum = total_klaim - selesai
+
+    csrf_token = issue_csrf_token(request)
+
+    return templates.TemplateResponse(
+        "claim_group_detail.html",
+        {
+            "request": request,
+            "group": group,
+            "claims": claims,
+            "user": user,
+            "current_user": user,
+            "csrf_token": csrf_token,
+            "total_klaim": total_klaim,
+            "selesai": selesai,
+            "belum": belum,
+        },
+    )
 
 
 @router.get("/{claim_id}")
@@ -122,32 +262,122 @@ def claim_detail(
     claim = claim_crud.get_claim(db, claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    
+    # Load coder verification results if available
+    coder_results = db.query(models.ClaimSimulation).filter(
+        models.ClaimSimulation.claim_id == claim_id,
+        models.ClaimSimulation.coder_verified == True
+    ).all()
+    
     return templates.TemplateResponse("claim_detail.html", {
         "request": request,
         "claim": claim,
         "user": user,
         "csrf_token": issue_csrf_token(request),
         "current_user": user,
+        "coder_results": coder_results,
     })
+
 
 # ==================================================
 # ADD / EDIT / UPDATE / FINALIZE
 # ==================================================
 
+@router.get("/select-group")
+def select_group_page(
+    request: Request,
+    patient_id: int = Query(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+):
+    """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
+    groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse("claim_group_select.html", {
+        "request": request,
+        "groups": groups,
+        "patient_id": patient_id,
+        "csrf_token": csrf_token
+    })
+
+
+@router.post("/create-group")
+def create_group(
+    request: Request,
+    patient_id: int = Form(...),
+    nama_group_baru: str = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+    _=Depends(require_csrf_dep),
+):
+    """Buat group (episode) baru"""
+    hospital_id = getattr(user.hospital, "id", None)
+    kode_group = f"E{int(datetime.now().timestamp())}"  # contoh kode: E1739412934
+    group = models.ClaimGroup(
+        kode_group=kode_group,
+        nama_group=nama_group_baru or f"Episode {kode_group}",
+        patient_id=patient_id,
+        hospital_id=hospital_id,
+        created_by=user.name
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    flash(request, f"✅ Group baru '{group.nama_group}' berhasil dibuat", "success")
+    return RedirectResponse(
+        url=f"/claims/select-group?patient_id={patient_id}", status_code=303
+    )
+
+
 @router.post("/add", name="add_claim")
 def add_claim(
     request: Request,
     visit_id: int = Form(...),
+    group_id: Optional[int] = Form(None),
+    nama_group_baru: Optional[str] = Form(None),
+    patient_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
 ):
-    claim = core.add_claim_service(
-        db,
-        user=current_user,
-        form_data={"visit_id": visit_id, "hospital_id": current_user.hospital.id if current_user.hospital else None},
-    )
-    flash(request, "Claim berhasil ditambahkan!", "success")
+    """
+    Tambah klaim baru:
+    - Jika group_id dikirim → klaim masuk ke group tersebut
+    - Jika tidak ada → buat group baru
+    """
+    hospital_id = getattr(current_user.hospital, "id", None)
+
+    # 🔹 Pastikan group tersedia
+    group = None
+    if group_id:
+        group = db.query(models.ClaimGroup).get(group_id)
+    elif nama_group_baru and patient_id:
+        kode_group = f"E{int(datetime.now().timestamp())}"
+        group = models.ClaimGroup(
+            kode_group=kode_group,
+            nama_group=nama_group_baru,
+            patient_id=patient_id,
+            hospital_id=hospital_id,
+            created_by=current_user.name,
+        )
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+    if not group:
+        flash(request, "⚠️ Harus memilih atau membuat Group terlebih dahulu", "error")
+        return RedirectResponse(url="/claims/select-group", status_code=303)
+
+    # 🔹 Buat klaim baru
+    claim = core.add_claim_service(db, visit_id, current_user, hospital_id)
+    if not claim:
+        raise HTTPException(status_code=400, detail="Visit ID tidak valid atau tidak ditemukan.")
+
+    claim.group_id = group.id
+    claim.workflow_status = "draft"
+    db.commit()
+
+    flash(request, f"✅ Klaim berhasil ditambahkan ke Group {group.kode_group}", "success")
     return RedirectResponse(url=f"/claims/{claim.id}", status_code=303)
 
 
@@ -158,53 +388,109 @@ def edit_claim_form(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator", "coder", "doctor")),
 ):
+    """Form edit klaim dinamis berdasarkan role dengan workflow tracking"""
+    
+    # 🔍 Ambil klaim dari database
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
     csrf_token = issue_csrf_token(request)
-    is_doctor = (isinstance(user.role, str) and user.role == "doctor") or (
-        isinstance(user.role, (list, tuple)) and "doctor" in user.role
-    )
 
-    sim, summ = load_sim_and_summary(db, claim_id, include_summary=not is_doctor)
-    template_name = "claim_left.html" if is_doctor else "claim_right.html"
+    # ✅ Ambil role dari sistem baru (bisa multiple)
+    roles = user.role_names or []
+    has_doctor = "doctor" in roles
+    has_coder = "coder" in roles
+    has_verifikator = "verifikator" in roles
 
-    # Load existing medical record data for form pre-population
+    # ✅ WORKFLOW VALIDATION
+    current_workflow = claim.workflow_status or "draft"
+    
+    # Doctor can only edit if in draft or doctor_submitted
+    if has_doctor and not has_coder and not has_verifikator:
+        if current_workflow not in ["draft", "doctor_submitted"]:
+            flash(request, "⚠️ Klaim sudah masuk ke tahap coder/verifikator", "warning")
+            return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+    
+    # Coder can only edit if doctor_submitted or coder_review
+    if has_coder and not has_verifikator and not has_doctor:
+        if current_workflow not in ["doctor_submitted", "coder_review", "coder_verified"]:
+            flash(request, "⚠️ Klaim belum siap untuk review coder atau sudah selesai", "warning")
+            return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+    
+    # Verifikator can only edit if coder_verified
+    if has_verifikator and not has_coder and not has_doctor:
+        if current_workflow not in ["coder_verified", "verifikator_review"]:
+            flash(request, "⚠️ Klaim belum diverifikasi coder", "warning")
+            return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+
+    # ✅ Tentukan template dinamis
+    if sum([has_doctor, has_coder, has_verifikator]) > 1:
+        template_name = "claim_combine.html"
+    elif has_verifikator:
+        template_name = "claim_right.html"
+    elif has_coder:
+        template_name = "edit_coder.html"
+    elif has_doctor:
+        template_name = "claim_left.html"
+    else:
+        template_name = "claim_right.html"
+
+    # 🔄 Ambil simulasi & summary
+    sim, summ = load_sim_and_summary(db, claim_id, include_summary=not has_doctor)
+
+    # 🩺 Ambil data rekam medis (jika ada)
     existing_medical_data = {}
     if claim.medical_record_id:
         medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
         if medical_record:
-            # Convert medical record object to dict for form population
             for field in form_configs.form_configs["claim_medical_record"]:
-                field_name = field.get("name")
-                if field_name and hasattr(medical_record, field_name):
-                    existing_medical_data[field_name] = getattr(medical_record, field_name)
+                fname = field.get("name")
+                if fname and hasattr(medical_record, fname):
+                    existing_medical_data[fname] = getattr(medical_record, fname)
 
-    # Load existing AI mappings for form persistence
+    # 🔗 Apply mapping hasil AI ke simulasi
     existing_mappings = load_existing_mappings(db, claim_id)
-    if existing_mappings:
-        print(f"[EDIT_CLAIM] Loaded {len(existing_mappings)} existing mappings for claim {claim_id}")
-        # Reconstruct simulasi structure with mappings
-        if sim and "simulasi" in sim:
-            sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
+    if existing_mappings and sim and "simulasi" in sim:
+        sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
 
-    return templates.TemplateResponse(template_name, {
+    # ✅ Load hasil verifikasi coder untuk verifikator
+    coder_results = None
+    if has_verifikator:
+        coder_results = db.query(models.ClaimSimulation).filter(
+            models.ClaimSimulation.claim_id == claim_id,
+            models.ClaimSimulation.coder_verified == True
+        ).all()
+
+    # 🧩 Siapkan context dasar
+    context = {
         "request": request,
         "mode": "edit",
         "record": claim,
         "csrf_token": csrf_token,
         "current_user": user,
         "user": user,
-        "isDoctor": is_doctor,
-        "isVerifikator": ("verifikator" in user.role)
-        if isinstance(user.role, (list, tuple))
-        else (user.role == "verifikator"),
+        "roles": roles,
+        "isDoctor": has_doctor,
+        "isVerifikator": has_verifikator,
+        "isCoder": has_coder,
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
         "existing_medical_data": existing_medical_data,
-    })
+        "coder_results": coder_results,  # ✅ Tambahan untuk verifikator
+        "workflow_status": current_workflow,
+    }
+
+    # 🩹 FIX untuk template coder: tambahkan claim & stages
+    if template_name == "edit_coder.html":
+        from ..services.claim import simulation as sim_service
+        stages = sim_service.get_simulations_for_coder(db, claim_id)
+        context["claim"] = claim
+        context["stages"] = stages
+
+    # 🚀 Render template sesuai role
+    return templates.TemplateResponse(template_name, context)
 
 
 @router.post("/{claim_id}/update-draft", name="save_draft")
@@ -216,29 +502,11 @@ async def update_claim_draft(
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
 ):
+    """Update draft klaim oleh dokter"""
     try:
-        # Debug: Check what form data we actually receive
-        form_data = await request.form()
-        print(f"🔍 RAW FORM DATA - Keys: {list(form_data.keys())}")
-        print(f"🔍 RAW FORM DATA - Items:")
-        for key, value in form_data.items():
-            if key == 'payload':
-                print(f"  {key} (len={len(str(value))}): {str(value)[:100]}...")
-            else:
-                print(f"  {key}: {value}")
-        
-        print(f"🔍 PARSED PAYLOAD - Type: {type(payload)}")
-        print(f"🔍 PARSED PAYLOAD - Length: {len(payload) if payload else 0}")
-        print(f"🔍 PARSED PAYLOAD - Content: {payload[:200] if payload else 'None'}...")
-
-        if not payload or payload.strip() == "":
-            print("❌ EMPTY PAYLOAD ERROR")
-            raise HTTPException(status_code=422, detail="Payload is empty or missing")
-        
-        # Parse JSON payload from form field
-        import json
+        # Parse JSON payload
         payload_dict = json.loads(payload)
-        
+
         ai_recommendations = payload_dict.get("ai_recommendations")
         stage = payload_dict.get("stage", "admission")
 
@@ -248,13 +516,57 @@ async def update_claim_draft(
                 db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
             )
 
+        # simpan draft isi form & simulasi
         core.update_claim_draft_service(db, claim_id, user, payload_dict)
+
+        # ✅ otomatis ubah workflow ke doctor_submitted agar coder bisa review
+        claim = db.query(models.Claim).filter_by(id=claim_id).first()
+        if claim:
+            if claim.workflow_status in [None, "", "draft"]:
+                claim.workflow_status = "doctor_submitted"
+                claim.doctor_submitted_by = user.name
+                claim.doctor_submitted_at = datetime.now()
+                db.commit()
+
         return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
-           
+
+
+@router.post("/{claim_id}/submit-to-coder", name="submit_to_coder")
+async def submit_to_coder(
+    request: Request,
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor")),
+    _=Depends(require_csrf_dep),
+):
+    """Submit klaim ke coder setelah dokter selesai"""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    # Validasi: pastikan ada diagnosis
+    simulations = db.query(models.ClaimSimulation).filter(
+        models.ClaimSimulation.claim_id == claim_id
+    ).count()
+    
+    if simulations == 0:
+        flash(request, "⚠️ Minimal harus ada 1 diagnosis sebelum submit ke coder", "error")
+        return RedirectResponse(url=f"/claims/{claim_id}/edit", status_code=303)
+    
+    # Update workflow status
+    claim.workflow_status = "doctor_submitted"
+    claim.doctor_submitted_at = datetime.now()
+    claim.doctor_submitted_by = user.name
+    db.commit()
+    
+    flash(request, "✅ Klaim berhasil disubmit ke Coder untuk verifikasi ICD", "success")
+    return RedirectResponse(url="/claims", status_code=303)
+
 
 @router.post("/{claim_id}/finalize", name="finalize_claim")
 async def finalize_claim(
@@ -263,10 +575,31 @@ async def finalize_claim(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
-    **form_data,
 ):
-    core.finalize_claim_service(db, claim_id, user, form_data)
-    flash(request, "Klaim difinalisasi", "success")
+    """Finalize klaim oleh verifikator"""
+    # ✅ Ambil semua form field dari POST body
+    form_data = await request.form()
+    form_dict = dict(form_data)
+
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    # Validasi workflow
+    if claim.workflow_status != "coder_verified":
+        flash(request, "⚠️ Klaim harus diverifikasi coder terlebih dahulu", "error")
+        return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+
+    # Jalankan finalize service
+    core.finalize_claim_service(db, claim_id, user, form_dict)
+
+    # Update status klaim
+    claim.workflow_status = "finalized"
+    claim.finalized_at = datetime.now()
+    claim.finalized_by = user.name
+    db.commit()
+
+    flash(request, "✅ Klaim berhasil difinalisasi", "success")
     return RedirectResponse("/dashboard", status_code=303)
 
 
@@ -279,12 +612,59 @@ def delete_claim(
     claim_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor", "verifikator")),
+    user=Depends(require_roles_session("doctor", "verifikator", "admin_rs", "superadmin")),
     _=Depends(require_csrf_dep),
 ):
+    claim = db.query(models.Claim).get(claim_id)
+    if claim:
+        # Hanya doctor yang buat atau admin yang bisa delete
+        if "doctor" in user.role_names:
+            if claim.created_by != user.name:
+                flash(request, "⚠️ Anda hanya bisa menghapus klaim yang Anda buat", "error")
+                return RedirectResponse("/claims", status_code=303)
+    
     claim_crud.delete_claim(db, claim_id)
     flash(request, "Klaim berhasil dihapus!", "success")
     return RedirectResponse("/claims", status_code=303)
+
+
+@router.post("/add-multi", name="add_claim_multi")
+def add_claim_multi(
+    request: Request,
+    patient_id: int = Form(...),
+    visit_ids: list[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("doctor")),
+    _=Depends(require_csrf_dep),
+):
+    """Buat klaim baru dengan beberapa kunjungan (multi-visit grouping)"""
+    print("🩺 ADD_CLAIM_MULTI: visits =", visit_ids)
+    hospital_id = getattr(current_user.hospital, "id", None)
+
+    if not visit_ids:
+        raise HTTPException(status_code=400, detail="Minimal 1 kunjungan harus dipilih")
+
+    # Visit pertama sebagai visit utama
+    main_visit_id = int(visit_ids[0])
+    claim = core.add_claim_service(db, main_visit_id, current_user, hospital_id)
+    if not claim:
+        raise HTTPException(status_code=400, detail="Visit utama tidak valid.")
+
+    # Set workflow status
+    claim.workflow_status = "draft"
+
+    # Tambahkan kunjungan tambahan
+    for vid in visit_ids[1:]:
+        link = models.ClaimVisitLink(
+            claim_id=claim.id,
+            external_visit_id=str(vid),
+            hospital_id=hospital_id,
+        )
+        db.add(link)
+
+    db.commit()
+    flash(request, f"✅ Klaim berhasil dibuat dengan {len(visit_ids)} kunjungan", "success")
+    return RedirectResponse(url=f"/claims/{claim.id}", status_code=303)
 
 
 # ==================================================
@@ -297,7 +677,7 @@ def get_simulations(claim_id: int, db: Session = Depends(get_db)):
 
 
 # ==================================================
-# CODER (VERSI BARU)
+# CODER (VERSI FIXED)
 # ==================================================
 
 from ..services.claim import simulation as sim_service
@@ -313,6 +693,11 @@ def coder_review_page(
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
+    
+    # Validasi workflow
+    if claim.workflow_status not in ["doctor_submitted", "coder_review", "coder_verified"]:
+        flash(request, "⚠️ Klaim belum siap untuk review coder", "warning")
+        return RedirectResponse(url="/claims", status_code=303)
 
     stages = sim_service.get_simulations_for_coder(db, claim_id)
     csrf_token = issue_csrf_token(request)
@@ -336,12 +721,24 @@ async def coder_submit_verification(
     claim_id: int,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("coder")),
+    _=Depends(require_csrf_dep),
 ):
-    """Simpan hasil verifikasi ICD coder"""
+    """Simpan hasil verifikasi ICD coder dan update workflow"""
     form_data = await request.form()
+    
+    # Simpan verifikasi
     updated = sim_service.save_coder_verification(db, claim_id, form_data, user.name)
-    flash(request, f"✅ {updated} entri berhasil diverifikasi oleh coder.", "success")
-    return RedirectResponse(url=f"/claims/{claim_id}/coder", status_code=303)
+    
+    # ✅ UPDATE WORKFLOW STATUS
+    claim = db.query(models.Claim).get(claim_id)
+    if claim:
+        claim.workflow_status = "coder_verified"
+        claim.coder_verified_at = datetime.now()
+        claim.coder_verified_by = user.name
+        db.commit()
+    
+    flash(request, f"✅ {updated} entri berhasil diverifikasi oleh coder. Klaim siap untuk verifikator.", "success")
+    return RedirectResponse(url="/claims", status_code=303)
 
 
 # ==================================================
@@ -356,11 +753,10 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
     stage = (payload.get("stage") or "admission").strip()
     global_record = claim_helper.build_global_record(db, cid)
     forward = {"claim_id": cid, "stage": stage, "global_record": global_record}
-    # Get response from core_engine
+    
     raw_resp = await claim_ai.proxy_core_engine("/predict_ddx", forward)
     normalized = claim_helper.normalize_predict_ddx(raw_resp)
 
-    # Store AI results to database
     try:
         print(f"[PREDICT_DDX] Storing AI results for claim {cid}, stage {stage}")
         ai.clear_ai_results(db, cid)
@@ -377,7 +773,6 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
 async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
     result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
     
-    # Store diagnosis analysis results to database
     try:
         print(f"[ANALYZE_DIAGNOSIS] Storing analysis results for claim {claim_id}")
         ai.store_ai_recommendations(db, claim_id, result, "diagnosis", payload.get("stage", "admission"))
@@ -404,7 +799,6 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
 
     result = await claim_ai.proxy_core_engine("/analyze_procedure", core_payload)
 
-    # Store procedure analysis results to database
     try:
         print(f"[ANALYZE_PROCEDURE] Storing analysis results for claim {cid}")
         ai.store_ai_recommendations(db, cid, result, "procedure", stage)
@@ -423,11 +817,9 @@ async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Se
     if not cid:
         raise HTTPException(status_code=422, detail="claim_id required")
     
-    # Log payload untuk debugging
     print(f"[GENERATE_CLAIM_COMBOS] Received payload: {payload}")
     
     try:
-        # Forward exact fields expected by core_engine!
         core_payload = {
             "claim_id": cid,
             "primary_claim": payload.get("primary_claim", ""),
@@ -438,20 +830,16 @@ async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Se
             
         print(f"[GENERATE_CLAIM_COMBOS] Forwarding to core_engine: {core_payload}")
         
-        # Forward request ke core_engine
         result = await claim_ai.proxy_core_engine("/generate_claim_combos", core_payload)
         
-        # Cek jika hasil dari core_engine adalah error
         if isinstance(result, dict) and result.get("error"):
             print(f"[GENERATE_CLAIM_COMBOS] Error from core_engine: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
             
-        # Store hasil ke database
         print(f"[GENERATE_CLAIM_COMBOS] Success, storing results to DB")
         ai.clear_ai_results(db, cid)
         ai.bulk_store_ai_results_from_core(db, cid, result)
         
-        # Normalize result format for frontend compatibility
         if "evaluasi_diagnosis" in result:
             result["diagnosis"] = result["evaluasi_diagnosis"]
         if "evaluasi_tindakan" in result:
@@ -468,18 +856,14 @@ async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Se
 async def resume_medis(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
     result = await claim_ai.proxy_core_engine("/resume_medis", payload)
     
-    # Store resume medis results to database
     try:
         print(f"[RESUME_MEDIS] Storing resume results for claim {claim_id}")
-        # Create or update medical record with AI resume
         if isinstance(result, dict) and result.get("resume"):
-            # Store as medical record or claim note
-            db.execute(
-                "UPDATE claims SET ai_medical_resume = :resume WHERE id = :claim_id",
-                {"resume": result["resume"], "claim_id": claim_id}
-            )
-            db.commit()
-            print(f"[RESUME_MEDIS] Successfully stored resume results")
+            claim = db.query(models.Claim).get(claim_id)
+            if claim:
+                claim.ai_medical_resume = result["resume"]
+                db.commit()
+                print(f"[RESUME_MEDIS] Successfully stored resume results")
     except Exception as e:
         print(f"[RESUME_MEDIS] Error storing results: {str(e)}")
         db.rollback()
@@ -491,7 +875,6 @@ async def resume_medis(claim_id: int, payload: dict = Body(...), db: Session = D
 async def regulation_detail(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
     result = await claim_ai.proxy_core_engine("/regulation_detail", payload)
     
-    # Store regulation details to database
     try:
         print(f"[REGULATION_DETAIL] Storing regulation results for claim {claim_id}")
         ai.store_ai_recommendations(db, claim_id, result, "regulation", payload.get("stage", "admission"))
@@ -505,7 +888,7 @@ async def regulation_detail(claim_id: int, payload: dict = Body(...), db: Sessio
 
 
 # ==================================================
-# i-DRG PREDICTION ENDPOINTS (CORRECTED)
+# i-DRG PREDICTION ENDPOINTS
 # ==================================================
 
 @router.post("/{claim_id}/predict_idrg")
@@ -514,34 +897,28 @@ async def predict_idrg_endpoint(
     payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
+    """Universal predict i-DRG endpoint (dispatch ke single atau combo/core_engine)"""
     try:
         payload["claim_id"] = claim_id
         mode = payload.get("mode", "single")
 
         print(f"[PREDICT_IDRG] Mode: {mode}, Claim ID: {claim_id}")
 
-        # 🔥 Kirim langsung ke core_engine
-        result = await claim_ai.proxy_core_engine("/predict_idrg", payload)
+        # 🔀 Kalau sudah ada endpoint modular, gunakan itu
+        if mode == "single":
+            return await predict_idrg_single_endpoint(payload, db)
+        elif mode == "combo":
+            return await predict_idrg_combo_endpoint(claim_id, payload, db)
+        else:
+            # 🔥 fallback ke core_engine langsung
+            result = await claim_ai.proxy_core_engine("/predict_idrg", payload)
+            if isinstance(result, dict) and result.get("error"):
+                raise HTTPException(status_code=500, detail=result["error"])
+            return result
 
-        # ✅ Kalau hasil dari core_engine mengandung error → raise
-        if isinstance(result, dict) and result.get("error"):
-            raise HTTPException(status_code=500, detail=result["error"])
-            
-        # 🔄 Normalize field names untuk konsistensi di front-end
-        if "idrg_prediction" in result:
-            prediction = result["idrg_prediction"]
-            
-            # Normalize fields untuk mode combo
-            if mode == "combo" and "prediksi_group_idrg_kombinasi" in prediction:
-                prediction["group_idrg"] = prediction.get("prediksi_group_idrg_kombinasi")
-                
-            # Normalize fields untuk mode single
-            if mode == "single" and "kode_idrg" in prediction:
-                prediction["group_idrg"] = prediction.get("kode_idrg")
-                
-            result["idrg_prediction"] = prediction
-
-        return result
+    except Exception as e:
+        print(f"[ERROR PREDICT_IDRG] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     except Exception as e:
         print(f"❌ Error in predict_idrg_endpoint: {str(e)}")
@@ -550,28 +927,22 @@ async def predict_idrg_endpoint(
 
 @router.post("/predict_idrg/single")
 async def predict_idrg_single_endpoint(payload: dict = Body(...), db: Session = Depends(get_db)):
-    """
-    Predict i-DRG untuk diagnosis single
-    """
+    """Predict i-DRG untuk diagnosis single"""
     try:
         claim_id = payload.get("claim_id")
-
-        # Forward ke core_engine
         result = await claim_ai.proxy_core_engine("/predict_idrg", {
             "mode": "single", 
             **payload
         })
-        # Store i-DRG results to database
+        
         if claim_id and isinstance(result, dict) and result.get("idrg_prediction"):
             try:
                 print(f"[PREDICT_IDRG_SINGLE] Storing i-DRG results for claim {claim_id}")
                 
-                # Clear existing i-DRG diagnosis data
                 db.query(models.ClaimIDRGDiagnosis).filter_by(
                     claim_id=claim_id, is_deleted=False
                 ).update({"is_deleted": True})
                 
-                # Store new i-DRG diagnosis data
                 idrg_data = result["idrg_prediction"]
                 idrg_diag = models.ClaimIDRGDiagnosis(
                     claim_id=claim_id,
@@ -604,18 +975,13 @@ async def predict_idrg_combo_endpoint(
     payload: dict = Body(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint khusus untuk prediksi i-DRG kombinasi.
-    """
+    """Endpoint khusus untuk prediksi i-DRG kombinasi"""
     try:
-        # Pastikan claim_id dan mode ada di payload
         payload["claim_id"] = claim_id
         payload["mode"] = "combo"
         
-        # Log payload untuk debugging
         print(f"[PREDICT_IDRG_COMBO] Payload: {payload}")
         
-        # Tambahkan field yang dibutuhkan core_engine jika belum ada
         if "primary_diagnosis" not in payload and "primary_claim" in payload:
             payload["primary_diagnosis"] = payload["primary_claim"]
         
@@ -630,25 +996,20 @@ async def predict_idrg_combo_endpoint(
                 procedures.extend([p for p in payload["secondary_actions"] if p])
             payload["procedures"] = procedures
             
-        # Forward ke core_engine
         result = await claim_ai.proxy_core_engine("/predict_idrg", payload)
         
-        # Cek jika hasil dari core_engine adalah error
         if isinstance(result, dict) and result.get("error"):
             print(f"[PREDICT_IDRG_COMBO] Error from core_engine: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
 
-        # Store i-DRG combo results to database
         if isinstance(result, dict) and result.get("idrg_prediction"):
             try:
                 print(f"[PREDICT_IDRG_COMBO] Storing i-DRG combo results for claim {claim_id}")
                 
-                # Clear existing i-DRG summary data
                 db.query(models.ClaimIDRGSummary).filter_by(
                     claim_id=claim_id, is_deleted=False
                 ).update({"is_deleted": True})
                 
-                # Store new i-DRG summary data
                 idrg_data = result["idrg_prediction"]
                 idrg_summary = models.ClaimIDRGSummary(
                     claim_id=claim_id,
@@ -673,7 +1034,6 @@ async def predict_idrg_combo_endpoint(
         
     except Exception as e:
         print(f"[PREDICT_IDRG_COMBO] Unhandled error: {str(e)}")
-        # Fallback data untuk mencegah UI crash
         return {
             "mode": "combo",
             "claim_id": claim_id,
@@ -697,29 +1057,23 @@ async def generate_alternatives_endpoint(
     payload: dict = Body(...), 
     db: Session = Depends(get_db)
 ):
-    """Generate hanya alternatif kombinasi."""
+    """Generate hanya alternatif kombinasi"""
     try:
-        # Tambahkan claim_id ke payload
         cid = payload.get("claim_id") or claim_id
         payload["claim_id"] = cid
         
-        # Log payload untuk debugging
         print(f"[GENERATE_ALTERNATIVES] Received payload: {payload}")
         
         try:
-            # Forward ke core_engine via proxy function
             result = await claim_ai.generate_alternatives(payload)
             
-            # Cek jika hasil dari core_engine adalah error
             if isinstance(result, dict) and result.get("error"):
                 print(f"[GENERATE_ALTERNATIVES] Error from core_engine: {result['error']}")
                 raise HTTPException(status_code=500, detail=result["error"])
                 
-            # Return hasil
             return {"result": result}
         except Exception as inner_e:
             print(f"[GENERATE_ALTERNATIVES] Error calling service: {str(inner_e)}")
-            # Fallback data untuk mencegah UI crash
             fallback_data = {
                 "alternatif": [
                     {
@@ -751,7 +1105,6 @@ async def generate_alternatives_endpoint(
             
     except Exception as e:
         print(f"[GENERATE_ALTERNATIVES] Unhandled error: {str(e)}")
-        # Fallback data untuk mencegah UI crash
         fallback_data = {
             "alternatif": [
                 {
@@ -792,11 +1145,12 @@ def search_diagnosis(query: str):
     results = [d for d in dummy if query.lower() in d["name"].lower()]
     return {"status": "ok", "data": results}
 
+
 @router.get("/search/diagnosis/detail/{code}")
 def search_diagnosis_detail(code: str):
     return {"status": "ok", "data": dummy_diagnosis_detail(code)}
 
-# Autocomplete list tindakan (opsional, kalau nanti mau dipakai dropdown)
+
 @router.get("/search/tindakan")
 def search_tindakan(query: str = ""):
     dummy = dummy_tindakan_list()
@@ -807,10 +1161,14 @@ def search_tindakan(query: str = ""):
     return {"status": "ok", "data": results}
 
 
-# Detail tindakan (nested modal)
 @router.get("/search/tindakan/detail/{procedure_text}")
 def search_tindakan_detail(procedure_text: str):
     return {"status": "ok", "data": dummy_tindakan_detail(procedure_text)}
+
+
+# ==================================================
+# NOTES
+# ==================================================
 
 @router.get("/{claim_id}/notes")
 def get_notes(claim_id: int, db: Session = Depends(get_db)):
@@ -825,6 +1183,41 @@ def get_notes(claim_id: int, db: Session = Depends(get_db)):
             "timestamp": n.timestamp.isoformat()
         } for n in notes
     ]}
+
+
+@router.post("/{claim_id}/notes")
+async def add_note(
+    claim_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator")),
+    _=Depends(require_csrf_dep),
+):
+    """Add note to claim item"""
+    form_data = await request.form()
+    item_id = form_data.get("item_id")
+    note_text = form_data.get("note_text")
+    
+    if not item_id or not note_text:
+        raise HTTPException(status_code=400, detail="item_id and note_text required")
+    
+    note = models.ClaimNote(
+        claim_id=claim_id,
+        item_id=item_id,
+        role=user.role_names[0] if user.role_names else "unknown",
+        user_id=user.id,
+        note_text=note_text,
+        timestamp=datetime.now()
+    )
+    db.add(note)
+    db.commit()
+    
+    return {"status": "success", "message": "Note added"}
+
+
+# ==================================================
+# CSRF TOKEN REFRESH
+# ==================================================
 
 @router.get("/csrf/refresh")
 def refresh_csrf_token(request: Request):
@@ -1675,3 +2068,65 @@ def get_layer_color_class(layer: str) -> str:
         "temporary": "text-gray-600"      # Temporary - gray
     }
     return layer_colors.get(layer, "text-gray-500")
+
+# ==================================================
+# WORKFLOW STATUS ENDPOINTS
+# ==================================================
+
+@router.get("/{claim_id}/workflow-status")
+def get_workflow_status(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin"))
+):
+    """Get current workflow status of a claim"""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    return {
+        "claim_id": claim_id,
+        "workflow_status": claim.workflow_status or "draft",
+        "created_by": claim.created_by,
+        "created_at": claim.created_at.isoformat() if claim.created_at else None,
+        "doctor_submitted_by": claim.doctor_submitted_by,
+        "doctor_submitted_at": claim.doctor_submitted_at.isoformat() if hasattr(claim, 'doctor_submitted_at') and claim.doctor_submitted_at else None,
+        "coder_verified_by": claim.coder_verified_by,
+        "coder_verified_at": claim.coder_verified_at.isoformat() if hasattr(claim, 'coder_verified_at') and claim.coder_verified_at else None,
+        "finalized_by": claim.finalized_by if hasattr(claim, 'finalized_by') else None,
+        "finalized_at": claim.finalized_at.isoformat() if hasattr(claim, 'finalized_at') and claim.finalized_at else None,
+    }
+
+
+@router.post("/{claim_id}/return-to-doctor")
+async def return_to_doctor(
+    claim_id: int,
+    request: Request,
+    reason: str = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("coder", "verifikator")),
+    _=Depends(require_csrf_dep),
+):
+    """Return claim to doctor for revision"""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    # Add note about return reason
+    note = models.ClaimNote(
+        claim_id=claim_id,
+        item_id="0",
+        role=user.role_names[0] if user.role_names else "unknown",
+        user_id=user.id,
+        note_text=f"RETURNED TO DOCTOR: {reason}",
+        timestamp=datetime.now()
+    )
+    db.add(note)
+    
+    # Reset workflow status
+    claim.workflow_status = "draft"
+    db.commit()
+    
+    flash(request, f"✅ Klaim dikembalikan ke dokter dengan alasan: {reason}", "success")
+    return RedirectResponse(url="/claims", status_code=303)
+
