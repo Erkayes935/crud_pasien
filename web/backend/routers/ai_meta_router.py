@@ -31,6 +31,7 @@ router = APIRouter(prefix="/ai-meta", tags=["AI META"])
 @router.get("/dashboard", response_class=HTMLResponse)
 async def ai_meta_dashboard(
     request: Request,
+    rules_page: int = 1,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("superadmin"))
 ):
@@ -91,9 +92,11 @@ async def ai_meta_dashboard(
     }
     
     # Get AI META rules untuk Rules Management tab (dengan pagination)
+    items_per_page = 10
+    offset = (rules_page - 1) * items_per_page
     ai_meta_rules = db.query(models.RulesMaster).filter(
         models.RulesMaster.layer.in_(["permenkes", "nasional", "ppk", "regional", "rs", "bridging", "fraud", "temporary"])
-    ).order_by(desc(models.RulesMaster.created_at)).limit(10).all()  # 10 rules per halaman
+    ).order_by(desc(models.RulesMaster.created_at)).offset(offset).limit(items_per_page).all()
     
     # Get total rules count untuk pagination
     total_ai_meta_rules = db.query(models.RulesMaster).filter(
@@ -110,10 +113,6 @@ async def ai_meta_dashboard(
     # CRITICAL: Issue CSRF token for POST requests
     csrf_token = issue_csrf_token(request)
     
-    # Calculate pagination for AI META rules
-    rules_per_page = 10
-    total_pages = (total_ai_meta_rules + rules_per_page - 1) // rules_per_page  # Ceiling division
-    
     return templates.TemplateResponse("ai_meta_dashboard.html", {
         "request": request,
         "user": user,
@@ -127,11 +126,14 @@ async def ai_meta_dashboard(
         "recent_reports": recent_reports,
         "ai_meta_rules": ai_meta_rules,
         "total_ai_meta_rules": total_ai_meta_rules,
-        "total_pages": total_pages,
         "all_reports": all_reports,
         "total_reports": total_reports,
+        # Tambahan untuk cards
         "pending_count": reports_by_status["pending"],
-        "converted_count": reports_by_status["converted"]
+        "converted_count": reports_by_status["converted"],
+        # Pagination data
+        "current_rules_page": rules_page,
+        "items_per_page": items_per_page
     })
 
 # ==================================================

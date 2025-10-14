@@ -36,61 +36,49 @@
       </div>
     </div>
 
-      <!-- Enhanced Overview Cards with Gradient & Animations -->
+      <!-- Overview Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <!-- Total Reports Card -->
-        <div class="group relative bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-          <div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8"></div>
-          <div class="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full -ml-4 -mb-4"></div>
-          <div class="relative z-10 flex items-center justify-between">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-blue-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
             <div>
-              <p class="text-blue-100 font-medium text-sm">Total SE Reports</p>
-              <p class="text-4xl font-bold text-white mt-2">{{ total_reports or 0 }}</p>
-              <p class="text-blue-200 text-xs mt-1">📊 Report Management</p>
+              <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total SE Reports</p>
+              <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">{{ total_reports }}</p>
+              <p class="text-xs text-blue-500 mt-1">📈 Regional reports collected</p>
             </div>
-            <div class="text-white/80 text-4xl group-hover:scale-110 transition-transform duration-300">📊</div>
+            <div class="text-blue-500 text-3xl animate-pulse">📊</div>
           </div>
         </div>
 
-        <!-- Pending Review Card -->
-        <div class="group relative bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-          <div class="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-6 -mt-6"></div>
-          <div class="absolute bottom-0 left-0 w-12 h-12 bg-white/5 rounded-full -ml-3 -mb-3"></div>
-          <div class="relative z-10 flex items-center justify-between">
+        <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-orange-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
             <div>
-              <p class="text-orange-100 font-medium text-sm">Menunggu Review</p>
-              <p class="text-4xl font-bold text-white mt-2">{{ pending_count or 0 }}</p>
-              <p class="text-orange-200 text-xs mt-1">⏳ Needs Attention</p>
+              <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Menunggu Review</p>
+              <p class="text-3xl font-bold text-orange-700 dark:text-orange-200">{{ pending_count }}</p>
+              <p class="text-xs text-orange-500 mt-1">⚡ Needs attention</p>
             </div>
-            <div class="text-white/80 text-4xl group-hover:rotate-12 transition-transform duration-300">⏳</div>
+            <div class="text-orange-500 text-3xl animate-bounce">⏳</div>
           </div>
         </div>
 
-        <!-- Converted Rules Card -->
-        <div class="group relative bg-gradient-to-br from-green-500 via-green-600 to-emerald-700 rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-          <div class="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -mr-10 -mt-10"></div>
-          <div class="absolute bottom-0 left-0 w-14 h-14 bg-white/5 rounded-full -ml-2 -mb-2"></div>
-          <div class="relative z-10 flex items-center justify-between">
+        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-green-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
             <div>
-              <p class="text-green-100 font-medium text-sm">Dikonversi Jadi Rules</p>
-              <p class="text-4xl font-bold text-white mt-2">{{ converted_count or 0 }}</p>
-              <p class="text-green-200 text-xs mt-1">✅ Successfully Processed</p>
+              <p class="text-sm font-medium text-green-600 dark:text-green-400">Dikonversi Jadi Rules</p>
+              <p class="text-3xl font-bold text-green-700 dark:text-green-200">{{ converted_count }}</p>
+              <p class="text-xs text-green-500 mt-1">🚀 Successfully processed</p>
             </div>
-            <div class="text-white/80 text-4xl group-hover:bounce transition-transform duration-300">✅</div>
+            <div class="text-green-500 text-3xl">✅</div>
           </div>
         </div>
 
-        <!-- AI META Rules Card -->
-        <div class="group relative bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 hover:scale-105 overflow-hidden">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12"></div>
-          <div class="absolute bottom-0 left-0 w-18 h-18 bg-white/5 rounded-full -ml-6 -mb-6"></div>
-          <div class="relative z-10 flex items-center justify-between">
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-purple-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
             <div>
-              <p class="text-purple-100 font-medium text-sm">AI META Rules</p>
-              <p class="text-4xl font-bold text-white mt-2">{{ ai_meta_rules|length or 0 }}</p>
-              <p class="text-purple-200 text-xs mt-1">🤖 AI Generated</p>
+              <p class="text-sm font-medium text-purple-600 dark:text-purple-400">AI META Rules</p>
+              <p class="text-3xl font-bold text-purple-700 dark:text-purple-200">{{ total_ai_meta_rules }}</p>
+              <p class="text-xs text-purple-500 mt-1">🤖 Smart regulations</p>
             </div>
-            <div class="text-white/80 text-4xl group-hover:pulse transition-transform duration-300">🤖</div>
+            <div class="text-purple-500 text-3xl animate-pulse">🤖</div>
           </div>
         </div>
       </div>
@@ -135,7 +123,7 @@
 
           <!-- Reports Table -->
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table id="reports-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SE Report</th>
@@ -160,13 +148,13 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     {% if report.status == 'pending' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Pending</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Pending</span>
                     {% elif report.status == 'reviewed' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Reviewed</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Reviewed</span>
                     {% elif report.status == 'converted' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Converted</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Converted</span>
                     {% elif report.status == 'rejected' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Rejected</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Rejected</span>
                     {% endif %}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -262,44 +250,40 @@
           </div>
           
           <!-- Pagination untuk Rules Management -->
-          {% if total_ai_meta_rules > 10 %}
-          <div class="flex items-center justify-between mt-6 px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-xl shadow-sm border border-blue-100 dark:border-gray-600">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Menampilkan <span class="font-bold text-blue-600 dark:text-blue-400">1-{{ ai_meta_rules|length }}</span> dari <span class="font-bold text-purple-600 dark:text-purple-400">{{ total_ai_meta_rules }}</span> rules
-            </div>
-            <div class="flex space-x-3">
-              <button @click="loadRulesPage(currentPage - 1)" 
-                      :disabled="currentPage <= 1"
-                      :class="currentPage <= 1 ? 'px-4 py-2 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed' : 'px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm border border-gray-200 hover:border-blue-300 transition-all duration-200'"
-                      class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-                Previous
-              </button>
-              
-              <div class="flex items-center space-x-1">
-                <template x-for="page in getPageNumbers()" :key="page">
-                  <button @click="loadRulesPage(page)" 
-                          :class="page === currentPage ? 'px-3 py-2 bg-blue-600 text-white rounded-lg font-medium' : 'px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-blue-50 border border-gray-200'"
-                          class="transition-all duration-200"
-                          x-text="page">
-                  </button>
-                </template>
+          <template x-if="Math.ceil({{ total_ai_meta_rules }} / itemsPerPage) > 1">
+            <div class="flex items-center justify-between mt-6 px-6 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
+                <span>Menampilkan </span>
+                <span class="font-medium" x-text="`${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, {{ total_ai_meta_rules }})}`"></span>
+                <span> dari </span>
+                <span class="font-medium">{{ total_ai_meta_rules }}</span>
+                <span> rules</span>
               </div>
-              
-              <button @click="loadRulesPage(currentPage + 1)" 
-                      :disabled="currentPage >= totalPages"
-                      :class="currentPage >= totalPages ? 'px-4 py-2 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed' : 'px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm border border-gray-200 hover:border-blue-300 transition-all duration-200'"
-                      class="flex items-center gap-2">
-                Next
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              </button>
+              <div class="flex space-x-2">
+                <button 
+                  @click="prevPage()"
+                  :disabled="currentPage === 1"
+                  :class="currentPage === 1 ? 'px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed opacity-50' : 'px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer'"
+                >
+                  ← Previous
+                </button>
+                
+                <div class="flex items-center space-x-1">
+                  <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium" x-text="currentPage"></span>
+                  <span class="text-gray-500">of</span>
+                  <span class="text-gray-700 font-medium" x-text="Math.ceil({{ total_ai_meta_rules }} / itemsPerPage)"></span>
+                </div>
+                
+                <button 
+                  @click="nextPage()"
+                  :disabled="currentPage >= Math.ceil({{ total_ai_meta_rules }} / itemsPerPage)"
+                  :class="currentPage >= Math.ceil({{ total_ai_meta_rules }} / itemsPerPage) ? 'px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed opacity-50' : 'px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer'"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
-          </div>
-          {% endif %}
+          </template>
         </div>
 
         <!-- Analytics Tab -->
@@ -580,15 +564,15 @@
 
 <script>
 // Set global CSRF token for debugging
-window.csrfToken = '{{ csrf_token }}';
+window.csrfToken = {{ csrf_token | tojson }};
 
 function aiMetaDashboard() {
   return {
     activeTab: 'reports',
     reportFilter: 'all',
-    currentPage: 1,
-    totalPages: {{ total_pages or 1 }},
-    filteredReports: {{ all_reports|tojson|safe }},
+    // Pagination data
+    currentPage: {{ current_rules_page | tojson }},
+    itemsPerPage: {{ items_per_page | tojson }},
     showReviewModal: false,
     showAddRuleForm: false,
     showBulkImportForm: false,
@@ -632,7 +616,7 @@ function aiMetaDashboard() {
         formData.append('report_id', this.selectedReport.id);
         formData.append('decision', this.reviewDecision);
         formData.append('notes', this.reviewNotes);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch('/ai-meta/review-report', {
           method: 'POST',
@@ -682,7 +666,7 @@ Ketik nama layer:`;
           const formData = new FormData();
           formData.append('report_id', reportId);
           formData.append('target_layer', targetLayer);
-          formData.append('csrf_token', '{{ csrf_token }}');
+          formData.append('csrf_token', {{ csrf_token | tojson }});
 
           const response = await fetch('/ai-meta/convert-to-rules', {
             method: 'POST',
@@ -759,7 +743,7 @@ Ketik nama layer:`;
         formData.append('field', this.editingRule.field);
         formData.append('isi', this.editingRule.isi);
         formData.append('sumber', this.editingRule.sumber);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch(`/ai-meta/edit-rule/${this.editingRule.id}`, {
           method: 'PUT',
@@ -791,7 +775,7 @@ Ketik nama layer:`;
         const formData = new FormData();
         formData.append('rules_file', this.importFile);
         formData.append('target_layer', this.importTargetLayer);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch('/ai-meta/bulk-import', {
           method: 'POST',
@@ -827,7 +811,7 @@ Ketik nama layer:`;
         formData.append('isi', this.newRule.isi);
         formData.append('sumber', this.newRule.sumber);
         formData.append('layer', this.newRule.layer);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch('/ai-meta/add-rule', {
           method: 'POST',
@@ -870,63 +854,56 @@ Ketik nama layer:`;
       };
     },
 
-    // Function untuk filter reports by status (AJAX, no reload)
-    async filterReports() {
+    // Function untuk filter reports by status (client-side filtering)
+    filterReports() {
       console.log('Filtering reports by status:', this.reportFilter);
+      // Client-side filtering tanpa reload
+      const table = document.querySelector('#reports-table tbody');
+      const rows = table.querySelectorAll('tr');
       
-      try {
-        const response = await fetch(`/ai-meta/reports-data?status=${this.reportFilter}`, {
-          method: 'GET',
-          credentials: 'same-origin'
-        });
+      rows.forEach(row => {
+        const statusCell = row.querySelector('.status-badge');
+        if (!statusCell) return;
         
-        if (response.ok) {
-          const data = await response.json();
-          // Update data tanpa reload
-          this.filteredReports = data.reports;
-          console.log('Reports filtered successfully:', data.reports.length);
+        const status = statusCell.textContent.trim().toLowerCase();
+        
+        if (this.reportFilter === 'all') {
+          row.style.display = '';
+        } else if (
+          (this.reportFilter === 'pending' && status.includes('pending')) ||
+          (this.reportFilter === 'reviewed' && status.includes('reviewed')) ||
+          (this.reportFilter === 'converted' && status.includes('converted')) ||
+          (this.reportFilter === 'rejected' && status.includes('rejected'))
+        ) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
         }
-      } catch (error) {
-        console.error('Filter error:', error);
-        // Fallback: show loading message
-        alert('Error filtering reports. Please try again.');
-      }
+      });
     },
 
     // Pagination functions
-    async loadRulesPage(page) {
-      if (page < 1 || page > this.totalPages) return;
-      
-      this.currentPage = page;
-      console.log('Loading rules page:', page);
-      
-      try {
-        const response = await fetch(`/ai-meta/rules-data?page=${page}&limit=10`, {
-          method: 'GET',
-          credentials: 'same-origin'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          // Update rules data without reload
-          console.log('Rules loaded for page:', page);
-          // Refresh page for now (can be improved with dynamic updates)
-          location.reload();
-        }
-      } catch (error) {
-        console.error('Pagination error:', error);
+    nextPage() {
+      const totalRules = parseInt({{ total_ai_meta_rules | tojson }});
+      const totalPages = Math.ceil(totalRules / this.itemsPerPage);
+      if (this.currentPage < totalPages) {
+        this.currentPage++;
+        this.loadRulesPage();
       }
     },
 
-    getPageNumbers() {
-      const pages = [];
-      const start = Math.max(1, this.currentPage - 2);
-      const end = Math.min(this.totalPages, this.currentPage + 2);
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.loadRulesPage();
       }
-      return pages;
+    },
+
+    loadRulesPage() {
+      // Simple page reload with pagination parameter
+      const url = new URL(window.location);
+      url.searchParams.set('rules_page', this.currentPage);
+      window.location.href = url.toString();
     }
   }
 }
