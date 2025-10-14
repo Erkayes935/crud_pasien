@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 
 from backend import models
 from backend.database import get_db
@@ -259,6 +260,89 @@ def delete_user(
     return RedirectResponse(url="/users", status_code=303)
 
 # ==================================================
+# ADMIN RS - DASHBOARD & MANAGEMENT
+# ==================================================
+
+@router.get("/admin-rs/dashboard")
+def admin_rs_dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("admin_rs")),
+):
+    """
+    Dashboard utama untuk Admin RS dengan tabs yang berfungsi.
+    
+    Menampilkan:
+    - Overview statistik rules & reports  
+    - Rules Management (PPK RS & RS Lokal)
+    - Regional Reports Management
+    - Analytics & Statistics
+    """
+    # Get user hospital info
+    user_rs_id = None
+    user_region_id = "jatim"  # Default region
+    if hasattr(current_user, 'hospital') and current_user.hospital:
+        user_rs_id = current_user.hospital.kode_hospital or f"rs_{current_user.hospital.id}"
+    else:
+        user_rs_id = "unknown"
+    
+    # Get rules yang dibuat oleh RS ini
+    my_rules = db.query(models.RulesMaster).filter(
+        models.RulesMaster.rs_id == user_rs_id,
+        models.RulesMaster.layer.in_(["ppk", "rs"])  # PPK RS dan RS Lokal
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+    
+    # Group rules by status
+    rules_by_status = {
+        "unverified": [r for r in my_rules if r.status == "unverified"],
+        "active": [r for r in my_rules if r.status == "active"], 
+        "official": [r for r in my_rules if r.status == "official"],
+        "rejected": [r for r in my_rules if r.status == "rejected"]
+    }
+    
+    # Get regional reports yang dibuat oleh RS ini
+    my_reports = db.query(models.RegionalReports).filter(
+        models.RegionalReports.rs_id == user_rs_id
+    ).order_by(models.RegionalReports.created_at.desc()).all()
+    
+    # Group reports by status
+    reports_by_status = {
+        "pending": [r for r in my_reports if r.status == "pending"],
+        "reviewed": [r for r in my_reports if r.status == "reviewed"], 
+        "converted": [r for r in my_reports if r.status == "converted"],
+        "rejected": [r for r in my_reports if r.status == "rejected"]
+    }
+    
+    # Statistics
+    stats = {
+        "total_rules": len(my_rules),
+        "pending_rules": len(rules_by_status["unverified"]),
+        "active_rules": len(rules_by_status["active"]) + len(rules_by_status["official"]),
+        "rejected_rules": len(rules_by_status["rejected"]),
+        "total_reports": len(my_reports),
+        "pending_reports": len(reports_by_status["pending"]),
+        "converted_reports": len(reports_by_status["converted"]),
+        "rejected_reports": len(reports_by_status["rejected"])
+    }
+    
+    csrf_token = issue_csrf_token(request)
+    return templates.TemplateResponse(
+        "admin_rs_dashboard.html",
+        {
+            "request": request,
+            "user": current_user,
+            "current_user": current_user,
+            "my_rules": my_rules,
+            "rules_by_status": rules_by_status,
+            "my_reports": my_reports,
+            "reports_by_status": reports_by_status,
+            "stats": stats,
+            "rs_id": user_rs_id,
+            "csrf_token": csrf_token
+        }
+    )
+
+# ==================================================
 # ADMIN RS - RULES MANAGEMENT
 # ==================================================
 
@@ -364,6 +448,156 @@ def admin_rs_regional_reports(
             "csrf_token": csrf_token
         }
     )
+
+# ==================================================
+# ADMIN RS - CRUD ENDPOINTS
+# ==================================================
+
+@router.post("/admin-rs/add-rule")
+def admin_rs_add_rule(
+    request: Request,
+    layer: str = Form(...),
+    diagnosis: str = Form(...),
+    field: str = Form(...),
+    isi: str = Form(...),
+    sumber: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep),
+):
+    """
+    Tambah rule baru dari Admin RS.
+    """
+    # Get user hospital info
+    user_rs_id = None
+    if hasattr(current_user, 'hospital') and current_user.hospital:
+        user_rs_id = current_user.hospital.kode_hospital or f"rs_{current_user.hospital.id}"
+    else:
+        user_rs_id = "unknown"
+    
+    # Validate layer (hanya boleh ppk dan rs untuk admin RS)
+    if layer not in ['ppk', 'rs']:
+        raise HTTPException(status_code=400, detail="Layer tidak valid untuk Admin RS")
+    
+    try:
+        new_rule = models.RulesMaster(
+            diagnosis=diagnosis,
+            field=field,
+            isi=isi,
+            sumber=sumber,
+            layer=layer,
+            status="unverified",  # Perlu review dari superadmin
+            rs_id=user_rs_id,
+            created_by=current_user.email or "admin_rs"
+        )
+        
+        db.add(new_rule)
+        db.commit()
+        db.refresh(new_rule)
+        
+        return {"status": "success", "message": "Rule berhasil ditambahkan", "rule_id": new_rule.id}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error menambahkan rule: {str(e)}")
+
+@router.post("/admin-rs/add-report")
+def admin_rs_add_report(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),
+    pdf_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("admin_rs")),
+    _=Depends(require_csrf_dep),
+):
+    """
+    Tambah regional report baru dari Admin RS.
+    """
+    # Get user hospital info
+    user_rs_id = None
+    user_region_id = "jatim"  # Default region
+    if hasattr(current_user, 'hospital') and current_user.hospital:
+        user_rs_id = current_user.hospital.kode_hospital or f"rs_{current_user.hospital.id}"
+    else:
+        user_rs_id = "unknown"
+    
+    # Validate PDF file
+    if pdf_file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="File harus berformat PDF")
+    
+    # Save uploaded file
+    try:
+        from pathlib import Path
+        upload_dir = Path("web/uploads/regional_reports")
+        upload_dir.mkdir(exist_ok=True, parents=True)
+        
+        file_path = upload_dir / f"{user_rs_id}_{int(datetime.now().timestamp())}_{pdf_file.filename}"
+        
+        with open(file_path, "wb") as f:
+            content = pdf_file.file.read()
+            f.write(content)
+        
+        new_report = models.RegionalReports(
+            title=title,
+            description=description,
+            pdf_path=str(file_path),
+            status="pending",  # Menunggu review dari AI META
+            rs_id=user_rs_id,
+            region_id=user_region_id,
+            created_by=current_user.email or "admin_rs"
+        )
+        
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+        
+        return {"status": "success", "message": "Regional report berhasil dilaporkan", "report_id": new_report.id}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error menambahkan report: {str(e)}")
+
+@router.delete("/admin-rs/rules/{rule_id}/delete")
+def admin_rs_delete_rule(
+    rule_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles_session("admin_rs")),
+):
+    """
+    Hapus rule (soft delete) dari Admin RS.
+    """
+    # Get user hospital info
+    user_rs_id = None
+    if hasattr(current_user, 'hospital') and current_user.hospital:
+        user_rs_id = current_user.hospital.kode_hospital or f"rs_{current_user.hospital.id}"
+    else:
+        user_rs_id = "unknown"
+    
+    # Find rule dan pastikan milik RS ini
+    rule = db.query(models.RulesMaster).filter(
+        models.RulesMaster.id == rule_id,
+        models.RulesMaster.rs_id == user_rs_id
+    ).first()
+    
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule tidak ditemukan")
+    
+    # Hanya bisa hapus rule yang belum di-approve
+    if rule.status != "unverified":
+        raise HTTPException(status_code=400, detail="Hanya bisa hapus rule yang belum di-approve")
+    
+    try:
+        # Soft delete
+        db.delete(rule)
+        db.commit()
+        
+        return {"status": "success", "message": "Rule berhasil dihapus"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error menghapus rule: {str(e)}")
 
 
 # AI META Dashboard endpoint moved to ai_meta_router.py for better organization and consistent authentication
