@@ -16,6 +16,6 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
-# tambahkan prefix /ai biar sesuai dengan URL
+# tambahkan prefix /ai biar sesuai dengan URL  
 app.include_router(ai_router, prefix="")
 

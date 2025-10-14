@@ -8,6 +8,9 @@
   <script>
     tailwind.config = { darkMode: 'class' };
   </script>
+  
+  <!-- Tooltip System CSS (Point G) -->
+  <link rel="stylesheet" href="{{ url_for('static', path='css/tooltip.rules.css') }}">
   <style>
     .flash {
       opacity: 1;
@@ -27,6 +30,24 @@
       opacity: 1;
       transform: translateY(0);
       transition: all 0.2s ease-out;
+    }
+    .modal-fade-enter {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    .modal-fade-enter-active {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+    }
+    .modal-fade-exit {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .modal-fade-exit-active {
+      opacity: 0;
+      transform: scale(0.97);
+      transition: opacity 0.2s ease-in, transform 0.2s ease-in;
     }
   </style>
 </head>
@@ -241,6 +262,10 @@
       });
     });
   </script>
+  
+  <!-- Tooltip System JS (Point G) -->
+  <script src="{{ url_for('static', path='js/tooltip.rules.js') }}"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   {% block scripts %}{% endblock %}
 </body>

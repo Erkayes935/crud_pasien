@@ -82,6 +82,7 @@ def add_visit_form(
         "csrf_token": csrf_token,
         "current_user": user,
         "fields": fields,
+        "existing_medical_data": {},
     })
 
 
@@ -156,6 +157,7 @@ def edit_visit_form(
         "hospitals": hospitals,
         "patients": patients,
         "fields": fields,
+        "existing_medical_data": {},
     })
 
 

@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Regional Reports - Admin RS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- Alpine.js Data -->
+    <div x-data="regionalReportsManagement()">
+      <!-- Header (tombol dipindahkan ke dalam scope Alpine) -->
+      <div class="mb-8 flex justify-between items-center">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">📎 Regional Reports</h1>
+          <p class="mt-2 text-gray-600 dark:text-gray-400">Laporkan edaran regional (SE) dari BPJS/Dinkes untuk review AI META</p>
+        </div>
+        <div class="flex space-x-3">
+          <a href="/dashboard" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">← Dashboard</a>
+          <button type="button" @click="showAddForm = true" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">📎 Laporkan SE Baru</button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Laporan</p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ total_reports }}</p>
+            </div>
+            <div class="text-orange-500 text-2xl">📎</div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Menunggu Review</p>
+              <p class="text-3xl font-bold text-yellow-600">{{ reports_by_status.pending|length }}</p>
+            </div>
+            <div class="text-yellow-500 text-2xl">⏳</div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Dikonversi Jadi Rules</p>
+              <p class="text-3xl font-bold text-green-600">{{ reports_by_status.converted|length }}</p>
+            </div>
+            <div class="text-green-500 text-2xl">✅</div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Ditolak</p>
+              <p class="text-3xl font-bold text-red-600">{{ reports_by_status.rejected|length }}</p>
+            </div>
+            <div class="text-red-500 text-2xl">❌</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Report Modal -->
+      <div x-show="showAddForm" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          
+          <!-- Header -->
+          <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">📎 Laporkan Edaran Regional</h3>
+            <button type="button" @click="showAddForm = false" 
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Form -->
+          <form @submit.prevent="submitReport()" class="p-6 space-y-4">
+
+            <!-- Title -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Judul SE <span class="text-red-500">*</span>
+              </label>
+              <input type="text" x-model="newReport.title" required
+                     placeholder="e.g., SE BPJS Jatim No.01/2024 - Perubahan Tarif INA-CBG"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Deskripsi Edaran <span class="text-gray-500">(Opsional)</span>
+              </label>
+              <textarea x-model="newReport.description" rows="3"
+                        placeholder="Jelaskan isi edaran dan implikasinya untuk RS"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"></textarea>
+            </div>
+
+            <!-- File Upload -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Upload File SE PDF <span class="text-red-500">*</span>
+              </label>
+              <input type="file" 
+                     x-ref="seFile"
+                     @change="handleFileSelect($event)"
+                     accept=".pdf"
+                     required
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+              <p class="text-xs text-gray-500 mt-1">Upload file PDF SE dari BPJS/Dinkes maksimal 10MB</p>
+              <div x-show="selectedFileName" class="mt-2 text-sm text-green-600">
+                📎 File terpilih: <span x-text="selectedFileName"></span>
+              </div>
+            </div>
+
+            <!-- Region Info -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">ℹ️ Info Laporan</h4>
+              <ul class="text-blue-800 dark:text-blue-400 text-sm space-y-1">
+                <li>• Laporan akan dikirim ke AI META untuk review</li>
+                <li>• SE yang sesuai akan dikonversi menjadi rules regional</li>
+                <li>• Rules regional berlaku untuk wilayah {{ region_id|upper }}</li>
+                <li>• Status laporan bisa ditrack di tabel di bawah</li>
+              </ul>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end space-x-3 pt-4">
+              <button type="button" @click="showAddForm = false" 
+                      class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                Batal
+              </button>
+              <button type="submit" 
+                      class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">
+                📎 Kirim Laporan
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <!-- Reports Table -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Riwayat Laporan SE Regional</h3>
+        </div>
+        
+        <!-- Filter Tabs -->
+        <div class="border-b border-gray-200 dark:border-gray-700">
+          <nav class="-mb-px flex space-x-8 px-6">
+            <button @click="activeTab = 'all'" 
+                    :class="activeTab === 'all' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Semua ({{ total_reports }})
+            </button>
+            <button @click="activeTab = 'pending'" 
+                    :class="activeTab === 'pending' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Menunggu ({{ reports_by_status.pending|length }})
+            </button>
+            <button @click="activeTab = 'converted'" 
+                    :class="activeTab === 'converted' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Dikonversi ({{ reports_by_status.converted|length }})
+            </button>
+            <button @click="activeTab = 'rejected'" 
+                    :class="activeTab === 'rejected' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              Ditolak ({{ reports_by_status.rejected|length }})
+            </button>
+          </nav>
+        </div>
+
+        <!-- Table Content -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SE</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rules Generated</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {% for report in my_reports %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ report.title }}</div>
+                  {% if report.description %}
+                  <div class="text-sm text-gray-500 dark:text-gray-400">{{ report.description[:100] }}{% if report.description|length > 100 %}...{% endif %}</div>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  {% if report.status == 'pending' %}
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">⏳ Menunggu</span>
+                  {% elif report.status == 'reviewed' %}
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Direview</span>
+                  {% elif report.status == 'converted' %}
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Dikonversi</span>
+                  {% elif report.status == 'rejected' %}
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Ditolak</span>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {% if report.converted_rules_count and report.converted_rules_count > 0 %}
+                    {{ report.converted_rules_count }} rules
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {{ report.created_at.strftime('%d/%m/%Y %H:%M') }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <a href="/claims/regional-reports/{{ report.id }}/pdf" target="_blank"
+                     class="text-orange-600 hover:text-orange-900 dark:text-orange-400">📄 Lihat SE</a>
+                  {% if report.review_notes %}
+                  <button @click="viewReviewNotes('{{ report.review_notes|e }}')"
+                          class="text-blue-600 hover:text-blue-900 dark:text-blue-400">💬 Catatan</button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  📎 Belum ada laporan SE regional. Klik "Laporkan SE Baru" untuk mulai.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function regionalReportsManagement() {
+  return {
+    activeTab: 'all',
+    showAddForm: false,
+    selectedFileName: '',
+    selectedFile: null,
+    newReport: {
+      title: '',
+      description: ''
+    },
+
+    handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        if (file.type !== 'application/pdf') {
+          alert('Hanya file PDF yang diperbolehkan');
+          event.target.value = '';
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          alert('Ukuran file maksimal 10MB');
+          event.target.value = '';
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          return;
+        }
+        this.selectedFile = file;
+        this.selectedFileName = file.name;
+      } else {
+        this.selectedFile = null;
+        this.selectedFileName = '';
+      }
+    },
+
+    async submitReport() {
+      if (!this.newReport.title || !this.selectedFile) {
+        alert('Mohon lengkapi judul SE dan upload file PDF');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('title', this.newReport.title);
+        formData.append('description', this.newReport.description || '');
+        formData.append('se_file', this.selectedFile);
+        formData.append('csrf_token', '{{ csrf_token }}');
+
+        const response = await fetch('/claims/regional-reports/add', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Laporan SE berhasil dikirim ke AI META!');
+          this.showAddForm = false;
+          // Reset form
+          this.newReport = { title: '', description: '' };
+          this.selectedFile = null;
+          this.selectedFileName = '';
+          if (this.$refs.seFile) this.$refs.seFile.value = '';
+          location.reload();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    },
+
+    viewReviewNotes(notes) {
+      alert('Catatan AI META:\n\n' + notes);
+    }
+  }
+}
+</script>
+
+{% endblock %}

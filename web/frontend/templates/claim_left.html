@@ -183,6 +183,13 @@
               <div class="flex items-center gap-2 mt-2">
                 <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
                       x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
+                <!-- Rules Button -->
+                <button type="button" 
+                        @click="showRulesModal(simulasi[tab].utama.name)"
+                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                        title="Lihat Aturan Multilayer">
+                  📘 Rules
+                </button>
               </div>
             </template>
             <template x-if="!simulasi[tab]?.utama || null">
@@ -400,7 +407,289 @@ document.addEventListener('DOMContentLoaded', function() {
       alert('❌ Gagal menyimpan draft: ' + error.message);
     }
   });
+
+  // ================= MULTILAYER RULES MODAL =================
+  window.showRulesModal = async function(diagnosis) {
+    if (!diagnosis) {
+      alert('❌ Diagnosis tidak ditemukan');
+      return;
+    }
+
+    console.log('📋 Loading rules for diagnosis:', diagnosis);
+    
+    // Show modal dengan loading state
+    window.rulesModalData = {
+      open: true,
+      diagnosis: diagnosis,
+      loading: true,
+      rulesData: null
+    };
+    
+    document.getElementById('rulesModal').style.display = 'flex';
+    
+    try {
+      const response = await fetch(`/claims/rules/load?diagnosis=${encodeURIComponent(diagnosis)}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const rulesData = await response.json();
+      console.log('✅ Rules loaded:', rulesData);
+      
+      // Update modal dengan data rules
+      window.rulesModalData.loading = false;
+      window.rulesModalData.rulesData = rulesData;
+      
+      // Render rules content
+      renderRulesContent(rulesData);
+      
+    } catch (error) {
+      console.error('❌ Failed to load rules:', error);
+      window.rulesModalData.loading = false;
+      window.rulesModalData.rulesData = null;
+      
+      document.getElementById('rulesContent').innerHTML = `
+        <div class="text-center py-8 text-red-500">
+          <p>❌ Gagal memuat aturan</p>
+          <p class="text-sm mt-2">${error.message}</p>
+        </div>
+      `;
+    }
+  };
+
+  function renderRulesContent(rulesData) {
+    const loadingEl = document.getElementById('rulesLoading');
+    const contentEl = document.getElementById('rulesContent');
+    const errorEl = document.getElementById('rulesError');
+    const noRulesEl = document.getElementById('noRulesState');
+    
+    // Hide loading
+    loadingEl.style.display = 'none';
+    
+    if (!rulesData || !rulesData.rules || Object.keys(rulesData.rules).length === 0) {
+      noRulesEl.style.display = 'block';
+      return;
+    }
+
+    // Show content
+    contentEl.style.display = 'block';
+    
+    // Organize rules by layer
+    const rulesByLayer = {};
+    const layerPriority = {
+      'permenkes': 1,
+      'nasional': 2, 
+      'ppk': 3,
+      'regional': 4,
+      'rs': 5,
+      'bridging': 6,
+      'fraud': 7,
+      'temporary': 8
+    };
+
+    // Group rules by layer
+    Object.values(rulesData.rules).flat().forEach(rule => {
+      if (!rulesByLayer[rule.layer]) {
+        rulesByLayer[rule.layer] = [];
+      }
+      rulesByLayer[rule.layer].push(rule);
+    });
+
+    const fieldsCount = Object.keys(rulesData.rules).length;
+    const layersCount = Object.keys(rulesByLayer).length;
+    
+    // Update summary
+    document.getElementById('rulesSummary').textContent = 
+      `Ditemukan ${fieldsCount} kategori field dengan ${layersCount} layer aturan aktif`;
+
+    // Generate tabs
+    const sortedLayers = Object.keys(rulesByLayer).sort((a, b) => 
+      (layerPriority[a] || 99) - (layerPriority[b] || 99)
+    );
+    
+    const tabsNav = document.getElementById('rulesTabsNav');
+    const tabContent = document.getElementById('rulesTabContent');
+    
+    // Clear existing content
+    tabsNav.innerHTML = '';
+    tabContent.innerHTML = '';
+    
+    // Create tabs
+    sortedLayers.forEach((layer, index) => {
+      const isActive = index === 0;
+      const layerLabel = getLayerLabel(layer);
+      const rulesCount = rulesByLayer[layer].length;
+      
+      // Tab button
+      const tabBtn = document.createElement('button');
+      tabBtn.className = `py-2 px-4 text-sm font-medium border-b-2 ${isActive ? 
+        'border-blue-500 text-blue-600' : 
+        'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+      tabBtn.textContent = `${layerLabel} (${rulesCount})`;
+      tabBtn.onclick = () => switchTab(layer);
+      tabBtn.id = `tab-${layer}`;
+      tabsNav.appendChild(tabBtn);
+      
+      // Tab content
+      const tabPane = document.createElement('div');
+      tabPane.id = `content-${layer}`;
+      tabPane.style.display = isActive ? 'block' : 'none';
+      tabPane.innerHTML = generateLayerContent(layer, rulesByLayer[layer]);
+      tabContent.appendChild(tabPane);
+    });
+  }
+
+  function getLayerLabel(layer) {
+    const labels = {
+      'permenkes': '🏛️ Permenkes',
+      'nasional': '🇮🇩 Nasional', 
+      'ppk': '🏥 PPK RS',
+      'regional': '🗺️ Regional',
+      'rs': '🏨 RS Lokal',
+      'bridging': '🔗 Bridging',
+      'fraud': '⚠️ Fraud',
+      'temporary': '⏰ Temporary'
+    };
+    return labels[layer] || layer.toUpperCase();
+  }
+
+  function generateLayerContent(layer, rules) {
+    const isOverride = layer === 'ppk' || layer === 'rs';
+    let html = '';
+    
+    if (isOverride) {
+      html += `
+        <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mb-4 border-l-4 border-yellow-500">
+          <p class="text-yellow-800 dark:text-yellow-300 text-sm font-medium">
+            ⭐ <strong>OVERRIDE PRIORITY:</strong> Aturan layer ini akan menimpa aturan layer di atasnya
+          </p>
+        </div>
+      `;
+    }
+    
+    rules.forEach(rule => {
+      const layerColor = layer === 'ppk' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 
+                        layer === 'rs' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200' :
+                        layer === 'nasional' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200' :
+                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      
+      html += `
+        <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-4">
+          <!-- Header -->
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-1 text-xs font-semibold rounded-full ${layerColor}">${layer.toUpperCase()}</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">📋 ${rule.field || 'General'}</span>
+            ${isOverride ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>' : ''}
+          </div>
+          
+          <!-- Content -->
+          <div class="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed">${rule.isi}</div>
+          
+          <!-- Meta -->
+          <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span><strong>Sumber:</strong> ${rule.sumber}</span>
+            ${rule.status ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${rule.status}</span>` : ''}
+          </div>
+          
+          ${rule.pdf_file ? `
+            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <a href="/claims/rules/${rule.id}/pdf" target="_blank" 
+                 class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                📎 Lihat Dokumen PDF
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+    
+    return html;
+  }
+
+  function switchTab(activeLayer) {
+    // Update tab buttons
+    document.querySelectorAll('#rulesTabsNav button').forEach(btn => {
+      btn.className = btn.id === `tab-${activeLayer}` ?
+        'py-2 px-4 text-sm font-medium border-b-2 border-blue-500 text-blue-600' :
+        'py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+    });
+    
+    // Update content
+    document.querySelectorAll('#rulesTabContent > div').forEach(content => {
+      content.style.display = content.id === `content-${activeLayer}` ? 'block' : 'none';
+    });
+  }
+
+  window.closeRulesModal = function() {
+    document.getElementById('rulesModal').style.display = 'none';
+    window.rulesModalData = { open: false, diagnosis: null, loading: false, rulesData: null };
+  };
 });
 </script>
+
+<!-- Enhanced Multilayer Rules Modal dengan Tabs -->
+<div id="rulesModal" style="display: none;" 
+     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+  <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="font-bold text-xl text-gray-900 dark:text-gray-100">
+        📘 Aturan Multilayer: <span id="selectedDiagnosis"></span>
+      </h3>
+      <button type="button" onclick="closeRulesModal()"
+              class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+        ✕
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="p-6">
+      <!-- Loading State -->
+      <div id="rulesLoading" class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat aturan...</p>
+      </div>
+
+      <!-- Enhanced Rules Content dengan Tabs -->
+      <div id="rulesContent" style="display: none;">
+        <!-- Summary -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+          <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">🎯 Ringkasan Aturan</h4>
+          <p id="rulesSummary" class="text-blue-800 dark:text-blue-400 text-sm"></p>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav class="flex space-x-8" id="rulesTabsNav">
+            <!-- Tabs akan di-generate dinamis -->
+          </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="rulesTabContent">
+          <!-- Content per tab akan di-generate dinamis -->
+        </div>
+
+        <!-- No Rules State -->
+        <div id="noRulesState" style="display: none;" class="text-center py-8 text-gray-500 dark:text-gray-400">
+          <p>📋 Belum ada aturan khusus untuk diagnosis ini</p>
+          <p class="text-sm mt-2">Sistem akan menggunakan aturan nasional standar</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="rulesError" style="display: none;" class="text-center py-8 text-red-500">
+        <p>❌ Gagal memuat aturan</p>
+        <p class="text-sm mt-2">Silakan coba lagi atau hubungi administrator</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 

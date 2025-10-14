@@ -58,12 +58,14 @@
       state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [] };
     }
 
+    // ✅ Tambahkan _index lokal agar bisa dikenali di onMappingChange
     const newItem = {
+      _index: (state.simulasi[tab][type]?.length || 0),
       kategori: selected.name,
       icd10_code: "",
       klinis: "",
       tindakan: "",
-      score: 80,
+      score: 0.8,
       mapping: "",
       isManual: true,
       source: "Manual",
@@ -74,14 +76,24 @@
       newItem.rowData = detailRes.data;
     }
 
-    // 🔥 arahkan ke array sesuai tipe
     state.simulasi[tab][type].push(newItem);
 
-    // render ulang tabel sesuai accordion aktif
-    window.renderTable &&
+    // 🔹 Tambahkan ke struktur simulasi AI biar tampil di sebelah kanan
+    if (!state.simulasi[tab].sekunder_diagnosis) state.simulasi[tab].sekunder_diagnosis = [];
+    state.simulasi[tab].sekunder_diagnosis.push(newItem);
+
+    // 🔁 Render ulang tabel
+    if (window.renderTable) {
       window.renderTable(`${type}-${tab}`, state.simulasi[tab][type], type, tab);
-    window.syncHiddenInputs && window.syncHiddenInputs();
+    }
+
+    if (window.syncHiddenInputs) {
+      window.syncHiddenInputs();
+    }
+
+    console.log("✅ Diagnosis manual ditambahkan:", newItem);
   }
+
 
 
   // ===== Manual tindakan (list & nested modal) =====

@@ -72,14 +72,14 @@
       },
       manualInput: {
         admission: {
-          diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-          komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-          komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+          diagnosis: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+          komorbid: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+          komplikasi: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
         },
         discharge: {
-          diagnosis: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-          komorbid: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" },
-          komplikasi: { kategori:"", klinis:"", icd:"", tindakan:"", score:"" }
+          diagnosis: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+          komorbid: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" },
+          komplikasi: { kategori:"", klinis:"", icd10_code:"", procedure_text:"", score:"" }
         },
         daily: {}
       },
@@ -105,6 +105,15 @@
       hideDefaultClose: false,
       currentDiagnosis: null,
       currentProcedure: null,
+
+      // rules modal
+      rulesModalOpen: false,
+
+      // feedback modal
+      feedbackModalOpen: false,
+      selectedFeedbackRule: null,
+      feedbackForm: { feedback: '' },
+      feedbackSubmitting: false,
 
       init() {
         const role = this.role;
@@ -239,11 +248,14 @@
       console.log("🔍 Available items in simulasi[" + tab + "][" + type + "]:", arr);
       console.log("🔍 Looking for itemId:", itemId, "type:", typeof itemId);
       
+      const keyDecoded = decodeURIComponent(itemId || "");
       const item = arr.find(it => {
-        console.log("🔍 Comparing item.id:", it.id, "type:", typeof it.id, "with itemId:", itemId);
-        return it.id == itemId;
+        const keyCandidate = `${tab}-${type}-${it.kategori}`;
+        return keyCandidate === keyDecoded;
       });
       
+      console.log("🔍 Found item:", item);
+
       if (!item) {
         console.error("❌ onMappingChange: item not found", { tab, type, itemId, availableItems: arr });
         return;
