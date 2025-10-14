@@ -177,24 +177,48 @@
 
 
 
-  // Fungsi openRegulationDetailModal (versi modular, non-global)
+  // 🔥 Enhanced openRegulationDetailModal untuk multilayer system
   // =========================
   async function openRegulationDetailModal(fieldName, diagnosisId, procedureId = null) {
-    console.log('Opening regulation modal for:', fieldName, 'diagnosisId:', diagnosisId, 'procedureId:', procedureId);
+    console.log('🏥 Opening multilayer regulation modal for:', fieldName, 'diagnosisId:', diagnosisId, 'procedureId:', procedureId);
 
     // Ambil claimId dari Alpine state
     const root = document.getElementById('claimRoot');
     const state = root ? Alpine.$data(root) : {};
-    const claimId = state?.selectedClaimId || state?.id || 1; // fallback 1 jika tidak ada
+    const claimId = state?.selectedClaimId || state?.id || 1;
+
+    // 🔥 Extract diagnosis name dari current context
+    const diagnosisName = window.claimState?.currentDiagnosisTitle || 
+                         window.claimState?.currentDiagnosis?.kategori || 
+                         window.claimState?.currentDiagnosis?.name || 
+                         'Unknown Diagnosis';
+
+    console.log('🔍 Context extracted:', { 
+      claimId, fieldName, diagnosisName, 
+      currentDiagnosis: window.claimState?.currentDiagnosis 
+    });
 
     try {
-      // 🔹 Buat payload untuk POST request
-      const payload = { claim_id: claimId, field: fieldName };
+      // 🔹 Enhanced payload dengan diagnosis_name dan context untuk multilayer
+      const payload = { 
+        claim_id: claimId, 
+        field: fieldName,
+        diagnosis_name: diagnosisName,
+        kategori: diagnosisName,
+        rs_id: 'rs_notopuro',  // Default atau ambil dari user context
+        region_id: 'jatim'     // Default atau ambil dari user context
+      };
+      
+      // Add item context jika ada
       if (diagnosisId) payload.item_id = diagnosisId;
       if (procedureId) payload.item_id = procedureId;
+      
+      // Add current value dari field jika ada di DOM
+      const currentValue = extractCurrentFieldValue(fieldName);
+      if (currentValue) payload.current_value = currentValue;
 
       const endpoint = `/claims/${claimId}/regulation_detail`;
-      console.log('Requesting regulation detail from:', endpoint, 'with payload:', payload);
+      console.log('📡 Requesting multilayer regulation from:', endpoint, 'with payload:', payload);
 
       // 🔹 Request ke backend (POST)
       const response = await fetch(endpoint, {
@@ -206,125 +230,229 @@
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      console.log('Regulation detail response:', data);
+      console.log('✅ Multilayer regulation response:', data);
 
       if (data.error) throw new Error(data.error);
 
-  // 🔹 Render modal regulasi multilayer tab
-  const regulationContent = renderMultilayerRegulationModal(data, fieldName);
-  openModal(`Regulasi: ${fieldName}`, regulationContent, { hideDefaultClose: true, disableAutoTitle: true });
+      // � Enhanced render dengan diagnosis context
+      const regulationContent = renderMultilayerRegulationModal(data, fieldName, diagnosisName);
+      
+      // 🎯 Modal title dengan diagnosis context
+      const modalTitle = `📘 Regulasi Multilayer: ${fieldName} (${diagnosisName})`;
+      openModal(modalTitle, regulationContent, { hideDefaultClose: true, disableAutoTitle: true });
     } catch (error) {
-      console.error('Error fetching regulation detail:', error);
+      console.error('❌ Error fetching multilayer regulation detail:', error);
       openModal(
-        'Error',
-        `<p class="text-red-500">Gagal memuat detail regulasi: ${error.message}</p>`,
+        'Error Regulasi Multilayer',
+        `<div class="text-center py-8">
+          <div class="bg-red-50 dark:bg-red-900/20 p-6 rounded-lg">
+            <p class="text-red-500 mb-2">❌ Gagal memuat detail regulasi multilayer</p>
+            <p class="text-xs text-red-400">${error.message}</p>
+          </div>
+        </div>`,
         { hideDefaultClose: true }
       );
     }
   }
 
+  // 🔧 Helper function untuk extract field value dari DOM
+  function extractCurrentFieldValue(fieldName) {
+    try {
+      // Cari field di modal yang sedang terbuka
+      const modalBody = document.querySelector('.modal-body');
+      if (!modalBody) return null;
 
-// Multilayer tab modal renderer for regulasi detail
-function renderMultilayerRegulationModal(response, fieldName) {
+      // Berbagai cara untuk extract value berdasarkan field type
+      const selectors = [
+        `[data-field="${fieldName}"] .col-value`,
+        `[data-field="${fieldName}"] span[title]`,
+        `.field-${fieldName} .value`,
+        `.${fieldName}-value`,
+        `#${fieldName}`
+      ];
+
+      for (const selector of selectors) {
+        const element = modalBody.querySelector(selector);
+        if (element) {
+          return element.textContent?.trim() || element.innerText?.trim() || null;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      console.warn('⚠️ Could not extract field value for:', fieldName, e);
+      return null;
+    }
+  }
+
+
+// 🔥 Enhanced Multilayer tab modal renderer (matching showRulesModal UI)
+function renderMultilayerRegulationModal(response, fieldName, diagnosisName = '') {
   if (!response || response.status !== 'success' || !response.data || response.data.length === 0) {
     return `<div class="text-center py-8">
-      <p class="text-gray-500">Tidak ada regulasi tersedia untuk field: ${fieldName}</p>
-      <p class="text-xs text-gray-400 mt-2">Field ini tidak memerlukan regulasi atau belum dikonfigurasi</p>
+      <div class="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400 mb-2">📋 Belum ada aturan khusus untuk field: <strong>${fieldName}</strong></p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">Sistem akan menggunakan aturan nasional standar</p>
+      </div>
     </div>`;
   }
 
-  // Group regulations by layer
-  const layers = {};
-  response.data.forEach(reg => {
-    if (!layers[reg.layer]) layers[reg.layer] = [];
-    layers[reg.layer].push(reg);
+  // Group regulations by layer (same as showRulesModal)
+  const rulesByLayer = {};
+  const layerPriority = {
+    'permenkes': 1,
+    'nasional': 2,
+    'ppk': 3,
+    'regional': 4,
+    'rs': 5,
+    'bridging': 6,
+    'fraud': 7,
+    'temporary': 8
+  };
+
+  // Group rules by layer
+  response.data.forEach(rule => {
+    if (!rulesByLayer[rule.layer]) {
+      rulesByLayer[rule.layer] = [];
+    }
+    rulesByLayer[rule.layer].push(rule);
   });
 
-  const layerOrder = ['permenkes','nasional','ppk','regional','rs','bridging','fraud','temporary'];
-  const sortedLayers = Object.keys(layers).sort((a,b) => layerOrder.indexOf(a) - layerOrder.indexOf(b));
+  const sortedLayers = Object.keys(rulesByLayer).sort((a, b) => 
+    (layerPriority[a] || 99) - (layerPriority[b] || 99)
+  );
 
-  // Modal header & close button
-  let html = `<div class="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-auto">
-    <div class="flex items-center justify-between px-6 pt-6 pb-2 border-b">
-      <h2 class="text-xl font-bold text-gray-900">Aturan Multilayer:</h2>
-      <button type="button" class="text-gray-400 hover:text-gray-700 text-2xl font-bold" onclick="closeNestedModal()">✕</button>
-    </div>
-    <div class="px-6 pt-4 pb-2">
-      <div class="bg-blue-50 rounded-lg p-3 mb-4">
-        <span class="font-semibold text-blue-700">🎯 Ringkasan Aturan</span>
-        <div class="text-sm text-blue-700 mt-1">
-          Ditemukan ${Object.keys(layers).length} kategori field dengan ${sortedLayers.length} layer aturan aktif
+  const fieldsCount = 1; // Single field
+  const layersCount = sortedLayers.length;
+
+  // 🎯 Build complete modal HTML (matching showRulesModal structure)
+  return `
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+      
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col">
+            <h3 class="font-bold text-xl text-gray-900 dark:text-gray-100">
+              📘 Aturan Multilayer: <span class="text-blue-600">${fieldName}</span>
+            </h3>
+            ${diagnosisName ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Diagnosis: <span class="text-yellow-600 font-medium">${diagnosisName}</span></p>` : ''}
+          </div>
+          <button type="button" onclick="closeNestedModal()"
+                  class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
+            ✕
+          </button>
+        </div>      <!-- Content -->
+      <div class="p-6">
+        <!-- Summary (matching showRulesModal) -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+          <h4 class="font-semibold text-blue-900 dark:text-blue-300 mb-2">🎯 Ringkasan Aturan</h4>
+          <p class="text-blue-800 dark:text-blue-400 text-sm">
+            Ditemukan ${fieldsCount} kategori field dengan ${layersCount} layer aturan aktif
+          </p>
+        </div>
+
+        <!-- Tabs Navigation (matching showRulesModal) -->
+        <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav class="flex space-x-8" id="regulasiTabsNav">
+            ${sortedLayers.map((layer, index) => `
+              <button type="button" 
+                      class="py-2 px-4 text-sm font-medium border-b-2 ${index === 0 ? 
+                        'border-blue-500 text-blue-600' : 
+                        'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                      onclick="switchRegulasiTab('${layer}')"
+                      id="regulasi-tab-${layer}">
+                ${getLayerLabel(layer)} (${rulesByLayer[layer].length})
+              </button>
+            `).join('')}
+          </nav>
+        </div>
+
+        <!-- Tab Content (matching showRulesModal style) -->
+        <div id="regulasiTabContent">
+          ${sortedLayers.map((layer, index) => `
+            <div id="regulasi-content-${layer}" style="display: ${index === 0 ? 'block' : 'none'}">
+              ${generateRegulasiLayerContent(layer, rulesByLayer[layer])}
+            </div>
+          `).join('')}
         </div>
       </div>
-      <nav class="flex space-x-4 border-b mb-4">
-        ${sortedLayers.map(layer => `
-          <button type="button"
-                  class="py-2 px-4 text-sm font-medium border-b-2 ${layer === sortedLayers[0] ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-                  onclick="showRegulasiTab('${layer}')">
-            ${getLayerLabel(layer)} (${layers[layer].length})
-          </button>
-        `).join('')}
-      </nav>
-      <div id="regulasi-tab-contents">
-        ${sortedLayers.map((layer, idx) => `
-          <div class="regulasi-tab-content" style="display:${idx===0?'block':'none'}" data-layer="${layer}">
-            ${layers[layer].map(reg => `
-              <div class="p-4 border border-gray-200 rounded-lg mb-4">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="px-2 py-1 text-xs font-semibold rounded-full ${getLayerColorClass(layer)}">
-                    ${getLayerLabel(layer)}
-                  </span>
-                  <span class="text-sm font-medium text-gray-900">${reg.judul_regulasi || 'General'}</span>
-                  ${layer === 'ppk' || layer === 'rs'
-                    ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>'
-                    : ''}
-                </div>
-                <div class="mb-2 text-xs text-gray-500">
-                  <strong>Dasar Hukum:</strong> ${reg.dasar_hukum || '-'}
-                </div>
-                <div class="mb-2 text-xs text-gray-500">
-                  <strong>Bab/Pasal:</strong> ${reg.bab_pasal || '-'}
-                </div>
-                <div class="mb-2 text-sm text-gray-800 leading-relaxed">
-                  ${Array.isArray(reg.isi) ? reg.isi.join('<br>') : (reg.isi || '-')}
-                </div>
-                <div class="flex items-center justify-between text-xs text-gray-500 mt-2">
-                  <span><strong>Sumber:</strong> ${reg.sumber || '-'}</span>
-                  ${reg.status
-                    ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${reg.status}</span>`
-                    : ''}
-                </div>
-                ${reg.pdf_file
-                  ? `<div class="mt-3 pt-3 border-t border-gray-200">
-                      <a href="/claims/rules/${reg.id}/pdf"
-                         target="_blank"
-                         class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
-                        📎 Lihat Dokumen PDF
-                      </a>
-                     </div>`
-                  : ''}
-                <div class="mt-3 pt-3 border-t border-gray-200">
-                  <button type="button"
-                          onclick="showFeedbackModalForRegulasi(${reg.id}, '${layer}')"
-                          class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">
-                    💬 Masukan untuk Regulasi Ini
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `).join('')}
-      </div>
     </div>
-  </div>
-  <script>
-    function showRegulasiTab(layer) {
-      document.querySelectorAll('.regulasi-tab-content').forEach(tab => {
-        tab.style.display = tab.getAttribute('data-layer') === layer ? 'block' : 'none';
-      });
-    }
-  <\/script>`;
+  `;
+}
 
+// Generate layer content (matching showRulesModal generateLayerContent)
+function generateRegulasiLayerContent(layer, rules) {
+  const isOverride = layer === 'ppk' || layer === 'rs';
+  let html = '';
+  
+  if (isOverride) {
+    html += `
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mb-4 border-l-4 border-yellow-500">
+        <p class="text-yellow-800 dark:text-yellow-300 text-sm font-medium">
+          ⭐ <strong>OVERRIDE PRIORITY:</strong> Aturan layer ini akan menimpa aturan layer di atasnya
+        </p>
+      </div>
+    `;
+  }
+  
+  rules.forEach(rule => {
+    const layerColor = getLayerColorClass(layer);
+    
+    html += `
+      <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-4">
+        <!-- Header -->
+        <div class="flex items-center gap-2 mb-3">
+          <span class="px-2 py-1 text-xs font-semibold rounded-full ${layerColor}">
+            ${getLayerLabel(layer)}
+          </span>
+          <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+            📋 ${rule.judul_regulasi || rule.field || 'General'}
+          </span>
+          ${isOverride ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>' : ''}
+        </div>
+        
+        <!-- Meta Information -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
+          <div><strong>Dasar Hukum:</strong> ${rule.dasar_hukum || '-'}</div>
+          <div><strong>Bab/Pasal:</strong> ${rule.bab_pasal || '-'}</div>
+          <div><strong>Status:</strong> 
+            <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+              ${rule.status || 'official'}
+            </span>
+          </div>
+          <div><strong>Update:</strong> ${rule.tanggal_update || new Date().toISOString().split('T')[0]}</div>
+        </div>
+        
+        <!-- Content -->
+        <div class="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed">
+          ${Array.isArray(rule.isi) ? rule.isi.map(item => `• ${item}`).join('<br>') : rule.isi}
+        </div>
+        
+        <!-- Footer -->
+        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border-t pt-2">
+          <span><strong>Sumber:</strong> ${rule.sumber || '-'}</span>
+        </div>
+        
+        ${rule.pdf_file ? `
+          <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <a href="/claims/rules/${rule.id}/pdf" target="_blank" 
+               class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+              📎 Lihat Dokumen PDF
+            </a>
+          </div>
+        ` : ''}
+        
+        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <button type="button" 
+                  onclick="showFeedbackModalForRegulasi(${rule.id || 0}, '${layer}')" 
+                  class="inline-flex items-center text-orange-600 hover:text-orange-800 text-sm font-medium">
+            💬 Masukan untuk Regulasi Ini
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
   return html;
 }
 
@@ -2087,5 +2215,20 @@ if (!window.statusIcon) {
     return '⚫';
   };
 }
+
+// 🔥 Global function untuk switch tab multilayer regulation modal
+window.switchRegulasiTab = function(activeLayer) {
+  // Update tab buttons
+  document.querySelectorAll('#regulasiTabsNav button').forEach(btn => {
+    btn.className = btn.id === `regulasi-tab-${activeLayer}` ?
+      'py-2 px-4 text-sm font-medium border-b-2 border-blue-500 text-blue-600' :
+      'py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+  });
+  
+  // Update content
+  document.querySelectorAll('#regulasiTabContent > div').forEach(content => {
+    content.style.display = content.id === `regulasi-content-${activeLayer}` ? 'block' : 'none';
+  });
+};
 
 })();
