@@ -1,36 +1,24 @@
-# services/analyze_procedure_service.py
 import os, json
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from openai import OpenAI
+from .rules_loader import load_rules_for_diagnosis
+from .field_rule_mapping import FIELD_RULE_MAP
+from .field_rule_mapping import match_field_alias
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def _sv(x: Any, default: str = "-") -> str:
     return x.strip() if isinstance(x, str) and x.strip() else default
 
+
 def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    HYBRID Procedure Analysis: Rules priority + OpenAI fallback
-    
-    Input:
-      { "claim_id": 56, "procedure_name": "Ventilasi Mekanik" }
-
-    Output untuk claim.modals.js renderProcBox():
-      {
-        "icd9_code": "...",        # renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")
-        "icd9_desc": "...",        # renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi") 
-        "deskripsi": "...",        # fallback untuk icd9_desc
-        "validitas": "...",        # renderProcBox("Validitas", d.validitas, "validitas")
-        "status": "...",           # renderProcBox("Status", d.status_tindakan || d.status, "status")
-        "status_tindakan": "...",  # primary status field
-        "ina_cbg": "...",          # renderProcBox("INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")
-        "ina_cbg_tarif": "...",    # primary ina_cbg field
-        "faskes": "...",           # renderProcBox("Faskes", d.faskes, "faskes")
-        "rawat_inap": "...",       # renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")
-        "syarat_klinis": "...",    # renderProcBox("Syarat Klinis", d.syarat_klinis, "syarat_klinis")
-        "engine_version": "hybrid_analyze_procedure@YYYY-MM-DD"
-      }
+    HYBRID Procedure Analysis:
+    1. Muat multilayer rules dari DB
+    2. Gabungkan semua aturan relevan per field (bisa list)
+    3. Jalankan OpenAI reasoning pakai prompt lengkap
+    4. Kembalikan JSON sesuai struktur UI
     """
     claim_id = payload.get("claim_id")
     procedure = payload.get("procedure_name") or payload.get("procedure") or ""
@@ -38,24 +26,87 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     print(f"[ANALYZE_PROCEDURE] Processing: {procedure}")
 
-    # --- 1. CHECK RULES: Load procedure rules jika ada
-    # TODO: Implementasi rules_loader untuk procedures
-    # rule_data = load_procedure_rule(procedure)
-    rule_data = {}  # Sementara kosong, bisa ditambah nanti
-
-    # --- 2. ALWAYS GET AI ANALYSIS (karena rules procedure belum ada)
-    print(f"[ANALYZE_PROCEDURE] Requesting OpenAI analysis for: {procedure}")
-    
-    # konteks opsional (boleh kosong)
+    # ================================================================
+    # 1️⃣ LOAD MULTILAYER RULES (DARI DB)
+    # ================================================================
     ctx = payload.get("context") or {}
     dx_pri = ctx.get("primary_claim", "")
+    rs_id = ctx.get("rs_id")
+    region_id = ctx.get("region_id")
+    hospital_level = ctx.get("hospital_level", "")
+
+    multilayer = load_rules_for_diagnosis(dx_pri, rs_id=rs_id, region_id=region_id)
+    all_rules = multilayer.get("rules", {})
+    tindakan_map = FIELD_RULE_MAP.get("tindakan", {})
+
+    LAYER_ORDER = {
+        "permenkes": 1, "nasional": 2, "ppk": 3, "regional": 4,
+        "rs": 5, "bridging": 6, "fraud": 7, "temporary": 8
+    }
+
+    multilayer_output = {}
+    for field_name, meta in tindakan_map.items():
+        layers = meta.get("layers", [])
+        field_rules = []
+
+        # Ambil semua rule yang sesuai dengan mapping layer
+        for db_field, db_rules in all_rules.items():
+            if match_field_alias(field_name, db_field):
+                for r in db_rules:
+                    layer_num = LAYER_ORDER.get(r["layer"])
+                    if layer_num in layers:
+                        field_rules.append(r)
+
+        if field_rules:
+            field_rules.sort(key=lambda x: x["priority"])
+            combined_layers = ", ".join(
+                sorted({r["layer"] for r in field_rules}, key=lambda x: LAYER_ORDER.get(x, 99))
+            )
+            multilayer_output[field_name] = {
+                "items": [
+                    {"isi": r["isi"], "sumber": r["sumber"], "layer": r["layer"]}
+                    for r in field_rules
+                ],
+                "combined_label": combined_layers,
+            }
+
+    def merge_ai_with_rules(ai_value: str, field_name: str, multilayer_output: dict) -> str:
+        """
+        Gabungkan hasil AI dengan multilayer rules dari DB.
+        - AI tetap ditampilkan
+        - Jika ada multilayer rule, tampilkan di bawahnya dalam bullet list
+        """
+        if not multilayer_output or not multilayer_output.get(field_name):
+            return ai_value or "-"
+
+        rules = multilayer_output[field_name].get("items", [])
+        if not rules:
+            return ai_value or "-"
+
+        rule_lines = [f"- {r['isi']} ({r['sumber']})" for r in rules]
+        rule_text = "\n".join(rule_lines)
+
+        combined_label = multilayer_output[field_name].get("combined_label")
+        combined_label_text = (
+            f"\nGabungan aturan: {combined_label}" if combined_label else ""
+        )
+
+        if ai_value:
+            return f"{ai_value}\n{rule_text}{combined_label_text}"
+        else:
+            return f"{rule_text}{combined_label_text}"
+
+
+    # ================================================================
+    # 2️⃣ REQUEST OPENAI (PROMPT LENGKAP)
+    # ================================================================
+    print(f"[ANALYZE_PROCEDURE] Requesting OpenAI analysis for: {procedure}")
+
     dx_sec = ctx.get("secondary_claims", [])
     act_pri = ctx.get("primary_action", "")
     act_sec = ctx.get("secondary_actions", [])
-    hospital_level = ctx.get("hospital_level", "")
     patient_context = ctx.get("patient_context", "")
 
-    # Enhanced prompt untuk hasil yang sesuai dengan modal structure
     prompt = f"""
     Anda adalah spesialis coding medis dan konsultan BPJS Indonesia.
 
@@ -124,86 +175,53 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            response_format={"type": "json_object"}  # Ensure JSON output
+            response_format={"type": "json_object"}
         )
 
         raw = (response.choices[0].message.content or "").strip()
-        print(f"[ANALYZE_PROCEDURE] OpenAI response received for: {procedure}")
-        print(f"[DEBUG] Raw OpenAI response: {raw[:500]}...")
-        
-        try:
-            ai_data = json.loads(raw)
-            print(f"[ANALYZE_PROCEDURE] JSON parsed successfully")
-            print(f"[DEBUG] ina_cbg_tarif from OpenAI: '{ai_data.get('ina_cbg_tarif')}' (type: {type(ai_data.get('ina_cbg_tarif'))})")
-            print(f"[DEBUG] ina_cbg from OpenAI: '{ai_data.get('ina_cbg')}' (type: {type(ai_data.get('ina_cbg'))})")
-        except Exception as parse_error:
-            print(f"[ANALYZE_PROCEDURE] JSON parse error: {parse_error}")
-            ai_data = {}
+        ai_data = json.loads(raw)
+        print(f"[ANALYZE_PROCEDURE] ✅ OpenAI JSON parsed successfully")
 
-    except Exception as api_error:
-        print(f"[ANALYZE_PROCEDURE] OpenAI API error: {api_error}")
+    except Exception as e:
+        print(f"[ANALYZE_PROCEDURE] ⚠️ OpenAI API error: {e}")
         ai_data = {}
 
-    # --- 3. BUILD RESPONSE sesuai claim.modals.js structure
-    # Ensure all fields that modal expects are present
+    # ================================================================
+    # 3️⃣ BUILD RESPONSE (tetap sama + tambahan multilayer)
+    # ================================================================
     result = {
-        # Core procedure info
         "procedure": _sv(ai_data.get("procedure", procedure), procedure or "-"),
-        
-        # ICD-9 fields (both primary and fallback)
         "icd9_code": _sv(ai_data.get("icd9_code", "")),
-        "icd9": _sv(ai_data.get("icd9_code", "")),  # fallback for d.icd9
+        "icd9": _sv(ai_data.get("icd9_code", "")),
         "icd9_desc": _sv(ai_data.get("icd9_desc", "")),
-        "deskripsi": _sv(ai_data.get("deskripsi", ai_data.get("icd9_desc", ""))),  # fallback
-        
-        # Status fields (both primary and fallback)
-        "validitas": _sv(ai_data.get("validitas", "")),
-        "status_tindakan": _sv(ai_data.get("status_tindakan", "")),
-        "status": _sv(ai_data.get("status", ai_data.get("status_tindakan", ""))),  # fallback
-        
-        # INA-CBG fields (both primary and fallback)
+        "deskripsi": _sv(ai_data.get("deskripsi", ai_data.get("icd9_desc", ""))),
+        "validitas": merge_ai_with_rules(_sv(ai_data.get("validitas", "")), "validitas", multilayer_output),
+        "status_tindakan": merge_ai_with_rules(_sv(ai_data.get("status_tindakan", "")), "status_tindakan", multilayer_output),
+        "status": _sv(ai_data.get("status", ai_data.get("status_tindakan", ""))),
         "ina_cbg_tarif": _sv(ai_data.get("ina_cbg_tarif", "")),
-        "ina_cbg": _sv(ai_data.get("ina_cbg", ai_data.get("ina_cbg_tarif", ""))),  # fallback
-        
-        # Other fields
-        "faskes": _sv(ai_data.get("faskes", "")),
-        "rawat_inap": _sv(ai_data.get("rawat_inap", "")),
-        "syarat_klinis": _sv(ai_data.get("syarat_klinis", "")),
-        
-        # Metadata
-        "source": "AI" if ai_data else "Fallback",
+        "ina_cbg": _sv(ai_data.get("ina_cbg", ai_data.get("ina_cbg_tarif", ""))),
+        "faskes": merge_ai_with_rules(_sv(ai_data.get("faskes", "")), "faskes", multilayer_output),
+        "rawat_inap": merge_ai_with_rules(_sv(ai_data.get("rawat_inap", "")), "rawat_inap", multilayer_output),
+        "syarat_klinis": merge_ai_with_rules(_sv(ai_data.get("syarat_klinis", "")), "syarat_klinis_tindakan", multilayer_output),
+        "source": "AI+Rules",
         "data_completeness": "100%" if ai_data else "0%",
         "engine_version": f"hybrid_analyze_procedure@{date.today().isoformat()}",
     }
 
-    # Tambahan: simpan notifikasi jika ada
+    # notification tetap dipertahankan
     if ai_data.get("notification"):
         result["notification"] = ai_data["notification"]
-
-    print(f"[ANALYZE_PROCEDURE] Done for {procedure}")
-    print(f"[ANALYZE_PROCEDURE] Response built successfully for: {procedure}")
-    print(f"[DEBUG] Final result ina_cbg_tarif: '{result.get('ina_cbg_tarif')}' | ina_cbg: '{result.get('ina_cbg')}'")
-    return result
-
-# ==========================================
-# NEW: Summarize AI Notif for Procedure
-# ==========================================
-def summarize_procedure_notif(procedure_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Ambil notifikasi AI ringkas dari hasil analisis tindakan.
-    Digunakan oleh analyze_diagnosis_service.
-    """
-    notif = procedure_data.get("notification", {})
-    if notif:
-        return {
-            "name": procedure_data.get("procedure", "-"),
-            "notif_text": notif.get("message", "-"),
-            "severity": notif.get("status", "info")
+    else:
+        result["notification"] = {
+            "status": "info",
+            "message": "Belum ada notifikasi untuk bagian TINDAKAN."
         }
 
-    # fallback jika tidak ada notifikasi dari AI
-    rawat_inap = (procedure_data.get("rawat_inap") or "").lower()
-    if "3" in rawat_inap or "≥" in rawat_inap:
-        return {"name": procedure_data.get("procedure", "-"), "notif_text": "Butuh rawat inap ≥3 hari.", "severity": "warning"}
+    # multilayer result tambahan
+    result["multilayer_rules"] = multilayer_output
 
-    return {"name": procedure_data.get("procedure", "-"), "notif_text": "Perlu konfirmasi kelengkapan data klinis.", "severity": "info"}
+    print(f"[ANALYZE_PROCEDURE] ✅ Response built successfully for: {procedure}")
+    print(f"[ANALYZE_PROCEDURE] Diagnosis: {dx_pri}")
+    print(f"[ANALYZE_PROCEDURE] All rule fields from DB: {list(all_rules.keys())}")
+    print(f"[ANALYZE_PROCEDURE] Matched multilayer fields: {list(multilayer_output.keys())}")
+    return result

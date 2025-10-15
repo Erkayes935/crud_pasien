@@ -488,20 +488,46 @@ async def resume_medis(claim_id: int, payload: dict = Body(...), db: Session = D
 
 
 @router.post("/{claim_id}/regulation_detail")
-async def regulation_detail(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
-    result = await claim_ai.proxy_core_engine("/regulation_detail", payload)
-    
-    # Store regulation details to database
+async def regulation_detail(claim_id: int, payload: dict = Body(...)):
+    """
+    Proxy dari frontend → core_engine untuk menampilkan regulasi multilayer
+    sesuai field yang diklik user di UI (diagnosis/tindakan).
+    """
+    # pastikan claim_id disertakan
+    payload["claim_id"] = claim_id
+
+    # fallback default kalau UI belum kirim
+    payload.setdefault("kategori", payload.get("kategori") or "Pneumonia")  # contoh default
+    payload.setdefault("rs_id", payload.get("rs_id") or "RS-NOTOPURO")
+    payload.setdefault("region_id", payload.get("region_id") or "JATIM")
+
+    print(f"[WEB] 🔁 Forwarding regulation detail request to core_engine: {payload}")
+
+    # kirim ke core_engine melalui claim_ai proxy
     try:
-        print(f"[REGULATION_DETAIL] Storing regulation results for claim {claim_id}")
-        ai.store_ai_recommendations(db, claim_id, result, "regulation", payload.get("stage", "admission"))
-        db.commit()
-        print(f"[REGULATION_DETAIL] Successfully stored regulation results")
+        result = await claim_ai.regulation_detail(payload)
+        return result
     except Exception as e:
-        print(f"[REGULATION_DETAIL] Error storing results: {str(e)}")
-        db.rollback()
-    
-    return result
+        print(f"[WEB] ❌ Error calling regulation_detail: {str(e)}")
+        # Return graceful error as regulation items
+        return {
+            "status": "error",
+            "message": str(e),
+            "data": [{
+                "layer": "error",
+                "sumber": "Error",
+                "judul_regulasi": "Error",
+                "isi": f"Terjadi kesalahan saat memuat regulasi: {str(e)}",
+                "update": None,
+                "status": "Error",
+                "color": "#ef4444",
+            }]
+        }
+
+    # # kirim ke core_engine melalui claim_ai proxy
+    # result = await claim_ai.regulation_detail(payload)
+
+    # return result
 
 
 # ==================================================
