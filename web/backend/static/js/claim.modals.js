@@ -1377,7 +1377,7 @@ window.renderChecklistHtml = function(checklist) {
         ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
         ${renderProcBox("Validitas", d.validitas, "validitas")}
         ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
-        ${renderProcBox("INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+        ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
         ${renderProcBox("Faskes", d.faskes, "faskes")}
         ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
         ${renderProcBox("Syarat Klinis", d.syarat_klinis, "syarat_klinis")}
@@ -1468,7 +1468,7 @@ window.renderChecklistHtml = function(checklist) {
         ${renderProcBox("Deskripsi", d.deskripsi || deskripsi)}
         ${renderProcBox("Validitas", d.validitas, true)}
         ${renderProcBox("Status", d.status)}
-        ${renderProcBox("INA-CBG", d.ina_cbg)}
+        ${renderProcBox("Tarif INA-CBG", d.ina_cbg)}
         ${renderProcBox("Faskes", d.faskes)}
         ${renderProcBox("Rawat Inap", d.rawat_inap)}
         ${renderProcBox("Syarat Klinis", d.syarat_klinis)}
