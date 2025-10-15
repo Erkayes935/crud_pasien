@@ -1,0 +1,729 @@
+{% extends "base.html" %}
+
+{% block title %}Admin RS Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- Alpine.js Data -->
+    <div x-data="adminRsDashboard()">
+
+      <!-- Header with Actions -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">🏥 Admin RS Dashboard</h1>
+              <p class="text-gray-600 dark:text-gray-400 mt-1">Kelola rules dan regional reports untuk {{ rs_id }}</p>
+            </div>
+            <div class="flex space-x-3">
+              <a href="/dashboard" 
+                 class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2">
+                ← Dashboard Utama
+              </a>
+              <button type="button" 
+                      @click="showAddRuleForm = true"
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                📝 Tambah Rule
+              </button>
+              <button type="button" 
+                      @click="showAddReportForm = true"
+                      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                📋 Laporkan SE
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-blue-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Rules</p>
+              <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">{{ stats.total_rules }}</p>
+              <p class="text-xs text-blue-500 mt-1">📋 PPK RS & RS Lokal</p>
+            </div>
+            <div class="text-blue-500 text-3xl animate-pulse">📋</div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-orange-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Menunggu Review</p>
+              <p class="text-3xl font-bold text-orange-700 dark:text-orange-200">{{ stats.pending_rules }}</p>
+              <p class="text-xs text-orange-500 mt-1">⏳ Waiting approval</p>
+            </div>
+            <div class="text-orange-500 text-3xl animate-bounce">⏳</div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-green-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-green-600 dark:text-green-400">Rules Aktif</p>
+              <p class="text-3xl font-bold text-green-700 dark:text-green-200">{{ stats.active_rules }}</p>
+              <p class="text-xs text-green-500 mt-1">✅ Active & Official</p>
+            </div>
+            <div class="text-green-500 text-3xl">✅</div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-purple-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Regional Reports</p>
+              <p class="text-3xl font-bold text-purple-700 dark:text-purple-200">{{ stats.total_reports }}</p>
+              <p class="text-xs text-purple-500 mt-1">📊 SE Reports sent</p>
+            </div>
+            <div class="text-purple-500 text-3xl animate-pulse">📊</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Tabs -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+        <div class="border-b border-gray-200 dark:border-gray-700">
+          <nav class="-mb-px flex space-x-8 px-6">
+            <button @click="activeTab = 'rules'" 
+                    :class="activeTab === 'rules' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              📋 Rules Management ({{ stats.total_rules }})
+            </button>
+            <button @click="activeTab = 'reports'" 
+                    :class="activeTab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              📊 Regional Reports ({{ stats.total_reports }})
+            </button>
+            <button @click="activeTab = 'analytics'" 
+                    :class="activeTab === 'analytics' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+              📈 Analytics
+            </button>
+          </nav>
+        </div>
+
+        <!-- Rules Management Tab -->
+        <div x-show="activeTab === 'rules'" class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Rules Management</h3>
+            <div class="flex space-x-2">
+              <select x-model="rulesFilter" @change="filterRules()" 
+                      class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option value="all">Semua Status</option>
+                <option value="unverified">Menunggu Review</option>
+                <option value="active">Aktif & Official</option>
+                <option value="rejected">Ditolak</option>
+              </select>
+              <select x-model="layerFilter" @change="filterRules()" 
+                      class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option value="all">Semua Layer</option>
+                <option value="ppk">PPK RS</option>
+                <option value="rs">RS Lokal</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Rules Table -->
+          <div class="overflow-x-auto">
+            <table id="rules-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rule</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Layer</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {% for rule in my_rules %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 rule-row" 
+                    data-rule-id="{{ rule.id }}"
+                    data-status="{{ rule.status }}" 
+                    data-layer="{{ rule.layer }}"
+                    data-diagnosis="{{ rule.diagnosis }}"
+                    data-field="{{ rule.field }}"
+                    data-isi="{{ rule.isi }}"
+                    data-sumber="{{ rule.sumber }}"
+                    data-created="{{ rule.created_at.strftime('%d/%m/%Y') }}">
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ rule.diagnosis }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ rule.field }} - {{ rule.isi[:50] }}...</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    {% if rule.layer == 'ppk' %}
+                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">🏥 PPK RS</span>
+                    {% elif rule.layer == 'rs' %}
+                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">🏨 RS Lokal</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    {% if rule.status == 'unverified' %}
+                      <span class="rule-status px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Menunggu</span>
+                    {% elif rule.status == 'active' %}
+                      <span class="rule-status px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Aktif</span>
+                    {% elif rule.status == 'official' %}
+                      <span class="rule-status px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">🏛️ Official</span>
+                    {% elif rule.status == 'rejected' %}
+                      <span class="rule-status px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Ditolak</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ rule.created_at.strftime('%d/%m/%Y') }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button @click="viewRule({{ rule.id }})" 
+                            class="text-blue-600 hover:text-blue-900">👁️ Detail</button>
+                    {% if rule.status == 'unverified' %}
+                    <button @click="editRule({{ rule.id }})" 
+                            class="text-indigo-600 hover:text-indigo-900">✏️ Edit</button>
+                    <button @click="deleteRule({{ rule.id }})" 
+                            class="text-red-600 hover:text-red-900">🗑️ Hapus</button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    📋 Belum ada rules yang dibuat. <button @click="showAddRuleForm = true" class="text-blue-600 hover:text-blue-800">Tambah rule pertama</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Regional Reports Tab -->
+        <div x-show="activeTab === 'reports'" class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Regional Reports Management</h3>
+            <div class="flex space-x-2">
+              <select x-model="reportsFilter" @change="filterReports()" 
+                      class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <option value="all">Semua Status</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="converted">Converted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Reports Table -->
+          <div class="overflow-x-auto">
+            <table id="reports-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SE Report</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tanggal</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {% for report in my_reports %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 report-row" data-status="{{ report.status }}">
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ report.title }}</div>
+                    {% if report.description %}
+                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ report.description[:100] }}...</div>
+                    {% endif %}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    {% if report.status == 'pending' %}
+                      <span class="report-status px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Pending</span>
+                    {% elif report.status == 'reviewed' %}
+                      <span class="report-status px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Reviewed</span>
+                    {% elif report.status == 'converted' %}
+                      <span class="report-status px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Converted</span>
+                    {% elif report.status == 'rejected' %}
+                      <span class="report-status px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Rejected</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ report.created_at.strftime('%d/%m/%Y %H:%M') }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <a href="/claims/regional-reports/{{ report.id }}/pdf" target="_blank"
+                       class="text-blue-600 hover:text-blue-900">📄 Lihat PDF</a>
+                    {% if report.status == 'pending' %}
+                    <button @click="editReport({{ report.id }})" 
+                            class="text-indigo-600 hover:text-indigo-900">✏️ Edit</button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    📊 Belum ada regional reports. <button @click="showAddReportForm = true" class="text-green-600 hover:text-green-800">Laporkan SE pertama</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div x-show="activeTab === 'analytics'" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Rules Analytics -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">📋 Rules Analytics</h4>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">⏳ Menunggu Review</span>
+                  <span class="font-medium">{{ stats.pending_rules }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">✅ Aktif & Official</span>
+                  <span class="font-medium">{{ stats.active_rules }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">❌ Ditolak</span>
+                  <span class="font-medium">{{ stats.rejected_rules }}</span>
+                </div>
+                <div class="flex items-center justify-between border-t pt-2">
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total Rules</span>
+                  <span class="font-bold text-lg">{{ stats.total_rules }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reports Analytics -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">📊 Reports Analytics</h4>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">⏳ Pending</span>
+                  <span class="font-medium">{{ stats.pending_reports }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">✅ Converted</span>
+                  <span class="font-medium">{{ stats.converted_reports }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">❌ Rejected</span>
+                  <span class="font-medium">{{ stats.rejected_reports }}</span>
+                </div>
+                <div class="flex items-center justify-between border-t pt-2">
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total Reports</span>
+                  <span class="font-bold text-lg">{{ stats.total_reports }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Layer Distribution -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">🏥 Rules by Layer</h4>
+              <div class="space-y-3">
+                {% set ppk_rules = my_rules | selectattr('layer', 'equalto', 'ppk') | list %}
+                {% set rs_rules = my_rules | selectattr('layer', 'equalto', 'rs') | list %}
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🏥 PPK RS</span>
+                  <span class="font-medium">{{ ppk_rules | length }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🏨 RS Lokal</span>
+                  <span class="font-medium">{{ rs_rules | length }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">⚡ Performance</h4>
+              <div class="space-y-3">
+                {% if stats.total_rules > 0 %}
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">📈 Approval Rate</span>
+                  <span class="font-medium">{{ "%.1f" | format((stats.active_rules / stats.total_rules * 100)) }}%</span>
+                </div>
+                {% endif %}
+                {% if stats.total_reports > 0 %}
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🔄 Conversion Rate</span>
+                  <span class="font-medium">{{ "%.1f" | format((stats.converted_reports / stats.total_reports * 100)) }}%</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Add Rule Modal -->
+      <div x-show="showAddRuleForm" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <form @submit.prevent="addNewRule()">
+            <div class="flex items-center justify-between p-6 border-b">
+              <h3 class="text-xl font-semibold">📝 Tambah Rule Baru</h3>
+              <button type="button" @click="showAddRuleForm = false" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Layer</label>
+                <select x-model="newRule.layer" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                  <option value="">-- Pilih Layer --</option>
+                  <option value="ppk">🏥 PPK RS (Override Priority)</option>
+                  <option value="rs">🏨 RS Lokal (Internal SOP)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Diagnosis</label>
+                <input type="text" x-model="newRule.diagnosis" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: Pneumonia" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Field</label>
+                <select x-model="newRule.field" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                  <option value="">-- Pilih Field --</option>
+                  <option value="justifikasi">Justifikasi</option>
+                  <option value="syarat_klinis">Syarat Klinis</option>
+                  <option value="bukti_klinis">Bukti Klinis</option>
+                  <option value="kode_icd">Kode ICD</option>
+                  <option value="lama_rawat">Lama Rawat</option>
+                  <option value="tarif">Tarif</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Aturan</label>
+                <textarea x-model="newRule.isi" 
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows="3" placeholder="Deskripsi aturan..." required></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sumber</label>
+                <input type="text" x-model="newRule.sumber" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: SOP Internal RS" required>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 px-6 pb-6">
+              <button type="button" @click="showAddRuleForm = false" 
+                      class="px-4 py-2 bg-gray-300 text-gray-700 rounded">Batal</button>
+              <button type="submit" 
+                      class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tambah Rule</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add Report Modal -->
+      <div x-show="showAddReportForm" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <form @submit.prevent="addNewReport()">
+            <div class="flex items-center justify-between p-6 border-b">
+              <h3 class="text-xl font-semibold">📋 Laporkan SE Regional</h3>
+              <button type="button" @click="showAddReportForm = false" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Judul SE</label>
+                <input type="text" x-model="newReport.title" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: SE BPJS No. 123/2024" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
+                <textarea x-model="newReport.description" 
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows="3" placeholder="Deskripsi isi SE..." required></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload PDF</label>
+                <input type="file" 
+                       @change="newReport.file = $event.target.files[0]"
+                       accept=".pdf" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                <p class="text-xs text-gray-500 mt-1">File PDF maksimal 10MB</p>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 px-6 pb-6">
+              <button type="button" @click="showAddReportForm = false" 
+                      class="px-4 py-2 bg-gray-300 text-gray-700 rounded">Batal</button>
+              <button type="submit" 
+                      class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Laporkan SE</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Rule Detail Modal -->
+      <div x-show="showRuleDetailModal" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h3 class="text-xl font-semibold">👁️ Rule Detail</h3>
+            <button type="button" @click="showRuleDetailModal = false" class="text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+          <div class="p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rule ID</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.id"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Layer</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.layer"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.diagnosis"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Field</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.field"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.status"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Created</label>
+                <p class="text-sm text-gray-900 bg-gray-50 p-2 rounded" x-text="selectedRuleDetail.created"></p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Isi Aturan</label>
+              <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded" x-text="selectedRuleDetail.isi"></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sumber</label>
+              <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded" x-text="selectedRuleDetail.sumber"></p>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-3 px-6 pb-6">
+            <button type="button" @click="showRuleDetailModal = false" 
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded">Tutup</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function adminRsDashboard() {
+  return {
+    activeTab: 'rules',
+    rulesFilter: 'all',
+    layerFilter: 'all',
+    reportsFilter: 'all',
+    showAddRuleForm: false,
+    showAddReportForm: false,
+    showRuleDetailModal: false,
+    selectedRuleDetail: {},
+    newRule: {
+      layer: '',
+      diagnosis: '',
+      field: '',
+      isi: '',
+      sumber: ''
+    },
+    newReport: {
+      title: '',
+      description: '',
+      file: null
+    },
+
+    // Filter functions
+    filterRules() {
+      const table = document.querySelector('#rules-table tbody');
+      const rows = table.querySelectorAll('.rule-row');
+      
+      rows.forEach(row => {
+        const status = row.dataset.status;
+        const layer = row.dataset.layer;
+        
+        let showStatus = this.rulesFilter === 'all' || 
+                        this.rulesFilter === status || 
+                        (this.rulesFilter === 'active' && ['active', 'official'].includes(status));
+        
+        let showLayer = this.layerFilter === 'all' || this.layerFilter === layer;
+        
+        if (showStatus && showLayer) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    },
+
+    filterReports() {
+      const table = document.querySelector('#reports-table tbody');
+      const rows = table.querySelectorAll('.report-row');
+      
+      rows.forEach(row => {
+        const status = row.dataset.status;
+        
+        if (this.reportsFilter === 'all' || this.reportsFilter === status) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    },
+
+    // CRUD Functions
+    async addNewRule() {
+      if (!this.newRule.layer || !this.newRule.diagnosis || !this.newRule.field || !this.newRule.isi) {
+        alert('Semua field wajib diisi');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('layer', this.newRule.layer);
+        formData.append('diagnosis', this.newRule.diagnosis);
+        formData.append('field', this.newRule.field);
+        formData.append('isi', this.newRule.isi);
+        formData.append('sumber', this.newRule.sumber);
+        formData.append('csrf_token', {{ csrf_token | tojson }});
+
+        const response = await fetch('/admin-rs/add-rule', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Rule berhasil ditambahkan!');
+          this.showAddRuleForm = false;
+          this.resetNewRuleForm();
+          location.reload();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    },
+
+    async addNewReport() {
+      if (!this.newReport.title || !this.newReport.description || !this.newReport.file) {
+        alert('Semua field wajib diisi');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('title', this.newReport.title);
+        formData.append('description', this.newReport.description);
+        formData.append('pdf_file', this.newReport.file);
+        formData.append('csrf_token', {{ csrf_token | tojson }});
+
+        const response = await fetch('/admin-rs/add-report', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Regional report berhasil dilaporkan!');
+          this.showAddReportForm = false;
+          this.resetNewReportForm();
+          location.reload();
+        } else {
+          alert('Error: ' + (result.detail || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    },
+
+    viewRule(ruleId) {
+      // Find rule dari data yang sudah ada
+      const ruleRow = document.querySelector(`[data-rule-id="${ruleId}"]`);
+      if (ruleRow) {
+        this.selectedRuleDetail = {
+          id: ruleId,
+          diagnosis: ruleRow.dataset.diagnosis || 'N/A',
+          field: ruleRow.dataset.field || 'N/A',
+          layer: ruleRow.dataset.layer || 'N/A',
+          status: ruleRow.dataset.status || 'N/A',
+          isi: ruleRow.dataset.isi || 'N/A',
+          sumber: ruleRow.dataset.sumber || 'N/A',
+          created: ruleRow.dataset.created || 'N/A'
+        };
+        this.showRuleDetailModal = true;
+      } else {
+        alert(`Viewing rule detail for Rule ID: ${ruleId}`);
+      }
+    },
+
+    editRule(ruleId) {
+      // Simple redirect to old edit page for now
+      window.location.href = `/admin-rs/rules`;
+    },
+
+    async deleteRule(ruleId) {
+      if (confirm('Hapus rule ini? Tindakan tidak dapat dibatalkan.')) {
+        try {
+          const response = await fetch(`/admin-rs/rules/${ruleId}/delete`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              csrf_token: {{ csrf_token | tojson }}
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            alert('Rule berhasil dihapus!');
+            location.reload();
+          } else {
+            alert('Error: ' + (result.detail || 'Unknown error'));
+          }
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+    },
+
+    editReport(reportId) {
+      // Simple redirect to reports page for now
+      window.location.href = `/admin-rs/regional-reports`;
+    },
+
+    resetNewRuleForm() {
+      this.newRule = {
+        layer: '',
+        diagnosis: '',
+        field: '',
+        isi: '',
+        sumber: ''
+      };
+    },
+
+    resetNewReportForm() {
+      this.newReport = {
+        title: '',
+        description: '',
+        file: null
+      };
+    }
+  }
+}
+</script>
+
+{% endblock %}

@@ -20,20 +20,33 @@
         <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.patient.id if claim.patient else '-' }}</dd>
       </div>
       <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">ID Visit</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.visit.id if claim.visit else '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">ID RS</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.hospital.id if claim.hospital else '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
         <dt class="font-medium text-gray-600 dark:text-gray-400">Nama Pasien</dt>
         <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.patient.nama if claim.patient else '-' }}</dd>
       </div>
+
+      <!-- 🩺 Kunjungan yang Terkait -->
       <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Tanggal Kunjungan</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.tanggal_kunjungan or '-' }}</dd>
+        <dt class="font-medium text-gray-600 dark:text-gray-400">Kunjungan Terkait</dt>
+        <dd class="col-span-2 text-gray-900 dark:text-gray-100">
+          {% if claim.visit %}
+            <div class="mb-1">Visit Utama: <span class="font-semibold">{{ claim.visit.id }}</span></div>
+          {% endif %}
+
+          {% if claim.visit_links and claim.visit_links|length > 0 %}
+            <ul class="list-disc list-inside text-sm text-gray-700 dark:text-gray-300">
+              {% for link in claim.visit_links %}
+              <li>Visit Tambahan: {{ link.external_visit_id }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <span class="text-gray-500 italic">Tidak ada visit tambahan</span>
+          {% endif %}
+        </dd>
+      </div>
+
+      <div class="py-3 grid grid-cols-3">
+        <dt class="font-medium text-gray-600 dark:text-gray-400">ID RS</dt>
+        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.hospital.id if claim.hospital else '-' }}</dd>
       </div>
       <div class="py-3 grid grid-cols-3">
         <dt class="font-medium text-gray-600 dark:text-gray-400">Dokter</dt>
@@ -93,20 +106,22 @@
        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow transition">
       ⬅ Kembali ke Daftar Klaim
     </a>
+
     {% if user and user.role == 'doctor' %}
     <div class="flex gap-2">
       <a href="/claims/{{ claim.id }}/edit"
          class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
         ✏️ Edit
       </a>
-      <div>
-        <form method="post" action="/claims/delete/{{ claim.id }}" onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
-            🗑 Hapus
-          </button>
-        </form>
-      </div>
+      <form method="post" action="/claims/delete/{{ claim.id }}"
+            onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit"
+                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
+          🗑 Hapus
+        </button>
+      </form>
+    </div>
     {% endif %}
   </div>
 </div>

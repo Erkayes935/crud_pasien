@@ -341,6 +341,46 @@
     return await res.json();
   }
 
+
+  // ============================================================
+// 🧾 Submit Verification (Coder)
+// ============================================================
+async function submitCoderVerification(claimId, payload) {
+  try {
+    const csrfToken =
+      document.querySelector('input[name="csrf_token"]')?.value ||
+      document.querySelector('meta[name="csrf-token"]')?.content;
+
+    const headers = { "Content-Type": "application/json" };
+    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+    const res = await fetch(`/claims/${claimId}/coder`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("❌ Verification failed:", errText);
+      showToast("Gagal verifikasi klaim", true);
+      return null;
+    }
+
+    const data = await res.json();
+    console.log("✅ Verification success:", data);
+    showToast("✅ Verifikasi berhasil dikirim");
+    return data;
+  } catch (err) {
+    console.error("❌ Error submit verification:", err);
+    showToast("❌ Gagal kirim verifikasi", true);
+  }
+}
+
+window.submitCoderVerification = submitCoderVerification;
+
+
   // ============================================================
   // Exports
   // ============================================================

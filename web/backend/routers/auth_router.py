@@ -14,6 +14,7 @@ router = APIRouter()
 def welcome(request: Request):
     return templates.TemplateResponse("welcome.html", {"request": request})
 
+
 @router.get("/login")
 def login():
     params = {
@@ -25,6 +26,7 @@ def login():
     }
     url = f"https://{config.AUTH0_DOMAIN}/authorize?{urlencode(params)}"
     return RedirectResponse(url)
+
 
 @router.get("/callback")
 async def callback(request: Request, db: Session = Depends(get_db)):
@@ -60,36 +62,47 @@ async def callback(request: Request, db: Session = Depends(get_db)):
             return JSONResponse(userinfo_res.json(), status_code=userinfo_res.status_code)
         userinfo = userinfo_res.json()
 
-    # cek user di DB
+    # ✅ Cek user di DB
     user = db.query(models.User).filter_by(auth0_sub=userinfo["sub"]).first()
     if not user:
+        # cari role default "doctor"
+        doctor_role = db.query(models.Role).filter(models.Role.name == "doctor").first()
         user = models.User(
             auth0_sub=userinfo["sub"],
             email=userinfo.get("email"),
             name=userinfo.get("name"),
-            role="doctor"
+            role="doctor"  # masih isi kolom lama agar backward compatible
         )
         db.add(user)
         db.commit()
         db.refresh(user)
 
+        # tambahkan ke relasi baru juga
+        if doctor_role:
+            user.roles.append(doctor_role)
+            db.commit()
+            db.refresh(user)
+
+    # ✅ Simpan ke session
     request.session["user_id"] = user.id
     request.session["email"] = user.email
     request.session["name"] = user.name
     request.session["role"] = user.role
+    request.session["roles"] = user.role_names  # multi-role list
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
 
 @router.get("/logout")
 def logout(request: Request):
     base_url = str(request.base_url).rstrip("/")
     params = {
         "client_id": config.CLIENT_ID,
-        # arahkan balik ke halaman login lokal kamu
-        "returnTo": f"{base_url}/login"
+        "returnTo": f"{base_url}/login",
     }
 
     url = f"https://{config.AUTH0_DOMAIN}/v2/logout?" + urlencode(params)
     response = RedirectResponse(url)
     response.delete_cookie("id_token")
+    request.session.clear()
     return response

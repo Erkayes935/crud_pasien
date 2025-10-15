@@ -6,69 +6,79 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- Header -->
-    <div class="mb-8">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">🤖 AI META Dashboard</h1>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">Central management untuk review regional reports dan multilayer rules system</p>
-        </div>
-        <div class="flex space-x-3">
-          <a href="/dashboard" 
-             class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2">
-            ← Dashboard Utama
-          </a>
-          <button type="button" 
-                  @click="showBulkImportForm = true"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-            📁 Bulk Import Rules
-          </button>
+
+
+  </div>
+
+  <!-- Alpine.js Data -->
+  <div x-data="aiMetaDashboard()">
+
+    <!-- Header with Actions (MOVED INSIDE ALPINE SCOPE) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">🤖 AI META Dashboard</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Central management untuk review regional reports dan multilayer rules system</p>
+          </div>
+          <div class="flex space-x-3">
+            <a href="/dashboard" 
+               class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2">
+              ← Dashboard Utama
+            </a>
+            <button type="button" 
+                    @click="showBulkImportForm = true"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+              📁 Bulk Import Rules
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Alpine.js Data -->
-    <div x-data="aiMetaDashboard()">
-
       <!-- Overview Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-blue-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total SE Reports</p>
-              <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ total_reports }}</p>
+              <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total SE Reports</p>
+              <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">{{ total_reports }}</p>
+              <p class="text-xs text-blue-500 mt-1">📈 Regional reports collected</p>
             </div>
-            <div class="text-red-500 text-2xl">📊</div>
+            <div class="text-blue-500 text-3xl animate-pulse">📊</div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-orange-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Menunggu Review</p>
-              <p class="text-3xl font-bold text-orange-600">{{ pending_count }}</p>
+              <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Menunggu Review</p>
+              <p class="text-3xl font-bold text-orange-700 dark:text-orange-200">{{ pending_count }}</p>
+              <p class="text-xs text-orange-500 mt-1">⚡ Needs attention</p>
             </div>
-            <div class="text-orange-500 text-2xl">⏳</div>
+            <div class="text-orange-500 text-3xl animate-bounce">⏳</div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-green-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Dikonversi Jadi Rules</p>
-              <p class="text-3xl font-bold text-green-600">{{ converted_count }}</p>
+              <p class="text-sm font-medium text-green-600 dark:text-green-400">Dikonversi Jadi Rules</p>
+              <p class="text-3xl font-bold text-green-700 dark:text-green-200">{{ converted_count }}</p>
+              <p class="text-xs text-green-500 mt-1">🚀 Successfully processed</p>
             </div>
-            <div class="text-green-500 text-2xl">✅</div>
+            <div class="text-green-500 text-3xl">✅</div>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg p-6 border border-purple-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">AI META Rules</p>
-              <p class="text-3xl font-bold text-blue-600">{{ ai_meta_rules|length }}</p>
+              <p class="text-sm font-medium text-purple-600 dark:text-purple-400">AI META Rules</p>
+              <p class="text-3xl font-bold text-purple-700 dark:text-purple-200">{{ total_ai_meta_rules }}</p>
+              <p class="text-xs text-purple-500 mt-1">🤖 Smart regulations</p>
             </div>
-            <div class="text-blue-500 text-2xl">🤖</div>
+            <div class="text-purple-500 text-3xl animate-pulse">🤖</div>
           </div>
         </div>
       </div>
@@ -113,7 +123,7 @@
 
           <!-- Reports Table -->
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <table id="reports-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SE Report</th>
@@ -138,13 +148,13 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     {% if report.status == 'pending' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Pending</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">⏳ Pending</span>
                     {% elif report.status == 'reviewed' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Reviewed</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">👀 Reviewed</span>
                     {% elif report.status == 'converted' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Converted</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ Converted</span>
                     {% elif report.status == 'rejected' %}
-                      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Rejected</span>
+                      <span class="status-badge px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">❌ Rejected</span>
                     {% endif %}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -163,7 +173,7 @@
                     {% endif %}
                   </td>
                 </tr>
-                {% empty %}
+                {% else %}
                 <tr>
                   <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     📎 Belum ada regional reports dari RS.
@@ -228,7 +238,7 @@
                             class="text-red-600 hover:text-red-900">🗑️ Delete</button>
                   </td>
                 </tr>
-                {% empty %}
+                {% else %}
                 <tr>
                   <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     🤖 Belum ada AI META rules. Tambah rule nasional/bridging/fraud.
@@ -238,6 +248,42 @@
               </tbody>
             </table>
           </div>
+          
+          <!-- Pagination untuk Rules Management -->
+          <template x-if="Math.ceil({{ total_ai_meta_rules }} / itemsPerPage) > 1">
+            <div class="flex items-center justify-between mt-6 px-6 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
+                <span>Menampilkan </span>
+                <span class="font-medium" x-text="`${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, {{ total_ai_meta_rules }})}`"></span>
+                <span> dari </span>
+                <span class="font-medium">{{ total_ai_meta_rules }}</span>
+                <span> rules</span>
+              </div>
+              <div class="flex space-x-2">
+                <button 
+                  @click="prevPage()"
+                  :disabled="currentPage === 1"
+                  :class="currentPage === 1 ? 'px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed opacity-50' : 'px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer'"
+                >
+                  ← Previous
+                </button>
+                
+                <div class="flex items-center space-x-1">
+                  <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium" x-text="currentPage"></span>
+                  <span class="text-gray-500">of</span>
+                  <span class="text-gray-700 font-medium" x-text="Math.ceil({{ total_ai_meta_rules }} / itemsPerPage)"></span>
+                </div>
+                
+                <button 
+                  @click="nextPage()"
+                  :disabled="currentPage >= Math.ceil({{ total_ai_meta_rules }} / itemsPerPage)"
+                  :class="currentPage >= Math.ceil({{ total_ai_meta_rules }} / itemsPerPage) ? 'px-3 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed opacity-50' : 'px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer'"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- Analytics Tab -->
@@ -249,35 +295,55 @@
               <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">📊 Reports by Status</h4>
               <div class="space-y-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Pending</span>
-                  <span class="font-medium">{{ reports_by_status.pending|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">⏳ Pending</span>
+                  <span class="font-medium">{{ reports_by_status.pending or 0 }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Converted</span>
-                  <span class="font-medium">{{ reports_by_status.converted|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">✅ Converted</span>
+                  <span class="font-medium">{{ reports_by_status.converted or 0 }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Rejected</span>
-                  <span class="font-medium">{{ reports_by_status.rejected|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">❌ Rejected</span>
+                  <span class="font-medium">{{ reports_by_status.rejected or 0 }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- Rules Distribution -->
+            <!-- Rules Distribution (8 Layers) -->
             <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">🔧 Rules by Layer</h4>
-              <div class="space-y-3">
+              <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">🔧 Rules by Layer (8 Layers)</h4>
+              <div class="space-y-2 max-h-60 overflow-y-auto">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">National</span>
-                  <span class="font-medium">{{ ai_meta_rules|selectattr('layer', 'equalto', 'nasional')|list|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🏛️ Permenkes</span>
+                  <span class="font-medium">{{ rules_by_layer.permenkes or 0 }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Regional</span>
-                  <span class="font-medium">{{ ai_meta_rules|selectattr('layer', 'equalto', 'regional')|list|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🇮🇩 Nasional</span>
+                  <span class="font-medium">{{ rules_by_layer.nasional or 0 }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Bridging</span>
-                  <span class="font-medium">{{ ai_meta_rules|selectattr('layer', 'equalto', 'bridging')|list|length }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🏥 PPK</span>
+                  <span class="font-medium">{{ rules_by_layer.ppk or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🗺️ Regional</span>
+                  <span class="font-medium">{{ rules_by_layer.regional or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🏨 RS</span>
+                  <span class="font-medium">{{ rules_by_layer.rs or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🔗 Bridging</span>
+                  <span class="font-medium">{{ rules_by_layer.bridging or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">🚨 Fraud</span>
+                  <span class="font-medium">{{ rules_by_layer.fraud or 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">⏱️ Temporary</span>
+                  <span class="font-medium">{{ rules_by_layer.temporary or 0 }}</span>
                 </div>
               </div>
             </div>
@@ -345,11 +411,14 @@
               <div class="mb-6">
                 <label class="block text-sm font-medium mb-2">Target Layer:</label>
                 <select x-model="importTargetLayer" class="w-full px-3 py-2 border rounded-md">
-                  <option value="nasional">Nasional</option>
-                  <option value="regional">Regional</option>
-                  <option value="bridging">Bridging</option>
-                  <option value="fraud">Fraud Detection</option>
-                  <option value="temporary">Temporary</option>
+                  <option value="permenkes">1️⃣ Permenkes / BPJS Pusat</option>
+                  <option value="nasional" selected>2️⃣ Nasional (CP/PNPK/FORNAS)</option>
+                  <option value="ppk">3️⃣ PPK RS (Pedoman Praktik Klinis)</option>
+                  <option value="regional">4️⃣ Regional (SE BPJS Cabang)</option>
+                  <option value="rs">5️⃣ RS Lokal (BA/SOP Internal)</option>
+                  <option value="bridging">6️⃣ Bridging (Teknis e-Claim)</option>
+                  <option value="fraud">7️⃣ Fraud Rules (AI Anti-Anomali)</option>
+                  <option value="temporary">8️⃣ Temporary Policy (Transisi/COVID)</option>
                 </select>
               </div>
             </div>
@@ -363,23 +432,171 @@
         </div>
       </div>
 
+      <!-- Add National Rule Modal -->
+      <div x-show="showAddRuleForm" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <form @submit.prevent="addNationalRule()">
+            <div class="flex items-center justify-between p-6 border-b">
+              <h3 class="text-xl font-semibold">➕ Add National Rule</h3>
+              <button @click="showAddRuleForm = false" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Diagnosis</label>
+                <input type="text" x-model="newRule.diagnosis" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: Pneumonia" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Field</label>
+                <select x-model="newRule.field" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                  <option value="">-- Pilih Field --</option>
+                  <option value="justifikasi">Justifikasi</option>
+                  <option value="syarat_klinis">Syarat Klinis</option>
+                  <option value="bukti_klinis">Bukti Klinis</option>
+                  <option value="kode_icd">Kode ICD</option>
+                  <option value="lama_rawat">Lama Rawat</option>
+                  <option value="tarif">Tarif</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Isi Aturan</label>
+                <textarea x-model="newRule.isi" 
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows="3" placeholder="Deskripsi aturan..." required></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sumber</label>
+                <input type="text" x-model="newRule.sumber" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: PNPK Pneumonia Kemenkes 2023" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Layer</label>
+                <select x-model="newRule.layer" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="permenkes">1️⃣ Permenkes / BPJS Pusat</option>
+                  <option value="nasional" selected>2️⃣ Nasional (CP/PNPK/FORNAS)</option>
+                  <option value="ppk">3️⃣ PPK RS (Pedoman Praktik Klinis)</option>
+                  <option value="regional">4️⃣ Regional (SE BPJS Cabang)</option>
+                  <option value="rs">5️⃣ RS Lokal (BA/SOP Internal)</option>
+                  <option value="bridging">6️⃣ Bridging (Teknis e-Claim)</option>
+                  <option value="fraud">7️⃣ Fraud Rules (AI Anti-Anomali)</option>
+                  <option value="temporary">8️⃣ Temporary Policy (Transisi/COVID)</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 px-6 pb-6">
+              <button type="button" @click="showAddRuleForm = false" 
+                      class="px-4 py-2 bg-gray-300 text-gray-700 rounded">Batal</button>
+              <button type="submit" 
+                      class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tambah Rule</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Edit Rule Modal -->
+      <div x-show="showEditRuleForm" x-cloak 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <form @submit.prevent="updateRule()">
+            <div class="flex items-center justify-between p-6 border-b">
+              <h3 class="text-xl font-semibold">✏️ Edit Rule</h3>
+              <button @click="showEditRuleForm = false; resetEditingRule()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="p-6 space-y-4" x-show="editingRule" x-data="{ safeEdit: editingRule || {} }">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Diagnosis</label>
+                <input type="text" :value="editingRule?.diagnosis || ''" 
+                       @input="editingRule.diagnosis = $event.target.value"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: Pneumonia" required>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Field</label>
+                <select :value="editingRule?.field || ''" 
+                        @change="editingRule.field = $event.target.value"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                  <option value="">-- Pilih Field --</option>
+                  <option value="justifikasi">Justifikasi</option>
+                  <option value="syarat_klinis">Syarat Klinis</option>
+                  <option value="bukti_klinis">Bukti Klinis</option>
+                  <option value="kode_icd">Kode ICD</option>
+                  <option value="lama_rawat">Lama Rawat</option>
+                  <option value="tarif">Tarif</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Isi Aturan</label>
+                <textarea :value="editingRule?.isi || ''" 
+                          @input="editingRule.isi = $event.target.value"
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows="3" placeholder="Deskripsi aturan..." required></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sumber</label>
+                <input type="text" :value="editingRule?.sumber || ''" 
+                       @input="editingRule.sumber = $event.target.value"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Contoh: PNPK Pneumonia Kemenkes 2023" required>
+              </div>
+              <div class="text-sm text-gray-500" x-show="editingRule">
+                <p><strong>Layer:</strong> <span x-text="editingRule?.layer || '-'"></span></p>
+                <p><strong>Created by:</strong> <span x-text="editingRule?.created_by || '-'"></span></p>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 px-6 pb-6">
+              <button type="button" @click="showEditRuleForm = false; resetEditingRule()" 
+                      class="px-4 py-2 bg-gray-300 text-gray-700 rounded">Batal</button>
+              <button type="submit" 
+                      class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Update Rule</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
 <script>
+// Set global CSRF token for debugging
+window.csrfToken = {{ csrf_token | tojson }};
+
 function aiMetaDashboard() {
   return {
     activeTab: 'reports',
     reportFilter: 'all',
+    // Pagination data
+    currentPage: {{ current_rules_page | tojson }},
+    itemsPerPage: {{ items_per_page | tojson }},
     showReviewModal: false,
     showAddRuleForm: false,
     showBulkImportForm: false,
+    showEditRuleForm: false,
     selectedReport: {},
     reviewDecision: '',
     reviewNotes: '',
     importFile: null,
     importTargetLayer: 'nasional',
+    newRule: {
+      diagnosis: '',
+      field: '',
+      isi: '',
+      sumber: '',
+      layer: 'nasional'
+    },
+    editingRule: {
+      diagnosis: '',
+      field: '',
+      isi: '',
+      sumber: '',
+      layer: '',
+      created_by: ''
+    },
 
     reviewReport(reportId, title) {
       this.selectedReport = { id: reportId, title: title };
@@ -399,7 +616,7 @@ function aiMetaDashboard() {
         formData.append('report_id', this.selectedReport.id);
         formData.append('decision', this.reviewDecision);
         formData.append('notes', this.reviewNotes);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch('/ai-meta/review-report', {
           method: 'POST',
@@ -421,16 +638,35 @@ function aiMetaDashboard() {
     },
 
     async convertToRules(reportId) {
-      const targetLayer = prompt('Convert ke layer apa? (regional/bridging/fraud)', 'regional');
+      const layerOptions = `
+1. permenkes - Permenkes/BPJS Pusat
+2. nasional - Nasional (CP/PNPK/FORNAS)  
+3. ppk - PPK RS (Pedoman Praktik Klinis)
+4. regional - Regional (SE BPJS Cabang)
+5. rs - RS Lokal (BA/SOP Internal)
+6. bridging - Bridging (Teknis e-Claim)
+7. fraud - Fraud Rules (AI Anti-Anomali)
+8. temporary - Temporary Policy (Transisi/COVID)
+
+Ketik nama layer:`;
+      
+      const targetLayer = prompt(layerOptions, 'regional');
       
       if (!targetLayer) return;
+      
+      // Validate layer
+      const validLayers = ['permenkes', 'nasional', 'ppk', 'regional', 'rs', 'bridging', 'fraud', 'temporary'];
+      if (!validLayers.includes(targetLayer)) {
+        alert('Layer tidak valid! Gunakan: ' + validLayers.join(', '));
+        return;
+      }
       
       if (confirm(`Convert SE ini menjadi ${targetLayer} rules?`)) {
         try {
           const formData = new FormData();
           formData.append('report_id', reportId);
           formData.append('target_layer', targetLayer);
-          formData.append('csrf_token', '{{ csrf_token }}');
+          formData.append('csrf_token', {{ csrf_token | tojson }});
 
           const response = await fetch('/ai-meta/convert-to-rules', {
             method: 'POST',
@@ -456,13 +692,76 @@ function aiMetaDashboard() {
       console.log('Filter by:', this.reportFilter);
     },
 
-    editRule(ruleId) {
-      alert('Edit rule functionality: ' + ruleId);
+    async editRule(ruleId) {
+      // Open edit modal with current rule data
+      try {
+        const response = await fetch(`/ai-meta/rules/${ruleId}`);
+        const result = await response.json();
+        
+        if (response.ok && result.status === 'success') {
+          // Fill form and show modal
+          this.editingRule = result.data;
+          this.showEditRuleForm = true;
+        } else {
+          alert('Error loading rule: ' + (result.detail || result.message || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
     },
 
-    deleteRule(ruleId) {
-      if (confirm('Hapus rule ini?')) {
-        alert('Delete rule functionality: ' + ruleId);
+    async deleteRule(ruleId) {
+      if (confirm('Hapus rule ini? Tindakan tidak dapat dibatalkan.')) {
+        try {
+          const response = await fetch(`/ai-meta/delete-rule/${ruleId}`, {
+            method: 'DELETE'
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            alert('Rule berhasil dihapus!');
+            location.reload();
+          } else {
+            alert('Error: ' + result.detail);
+          }
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+    },
+
+    async updateRule() {
+      if (!this.editingRule || !this.editingRule.diagnosis || !this.editingRule.field || !this.editingRule.isi) {
+        alert('Semua field wajib diisi');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('diagnosis', this.editingRule.diagnosis);
+        formData.append('field', this.editingRule.field);
+        formData.append('isi', this.editingRule.isi);
+        formData.append('sumber', this.editingRule.sumber);
+        formData.append('csrf_token', {{ csrf_token | tojson }});
+
+        const response = await fetch(`/ai-meta/edit-rule/${this.editingRule.id}`, {
+          method: 'PUT',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Rule berhasil diupdate!');
+          this.showEditRuleForm = false;
+          this.resetEditingRule();
+          location.reload();
+        } else {
+          alert('Error: ' + result.detail);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
       }
     },
 
@@ -476,7 +775,7 @@ function aiMetaDashboard() {
         const formData = new FormData();
         formData.append('rules_file', this.importFile);
         formData.append('target_layer', this.importTargetLayer);
-        formData.append('csrf_token', '{{ csrf_token }}');
+        formData.append('csrf_token', {{ csrf_token | tojson }});
 
         const response = await fetch('/ai-meta/bulk-import', {
           method: 'POST',
@@ -486,7 +785,7 @@ function aiMetaDashboard() {
         const result = await response.json();
         
         if (response.ok) {
-          alert(result.message);
+          alert(`Import berhasil! ${result.success_count} rules ditambahkan, ${result.error_count} gagal.`);
           this.showBulkImportForm = false;
           this.importFile = null;
           location.reload();
@@ -496,6 +795,115 @@ function aiMetaDashboard() {
       } catch (error) {
         alert('Error: ' + error.message);
       }
+    },
+
+    async addNationalRule() {
+      // Validate form
+      if (!this.newRule.diagnosis || !this.newRule.field || !this.newRule.isi) {
+        alert('Semua field wajib diisi');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('diagnosis', this.newRule.diagnosis);
+        formData.append('field', this.newRule.field);
+        formData.append('isi', this.newRule.isi);
+        formData.append('sumber', this.newRule.sumber);
+        formData.append('layer', this.newRule.layer);
+        formData.append('csrf_token', {{ csrf_token | tojson }});
+
+        const response = await fetch('/ai-meta/add-rule', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Rule nasional berhasil ditambahkan!');
+          this.showAddRuleForm = false;
+          this.resetNewRuleForm();
+          location.reload();
+        } else {
+          alert('Error: ' + result.detail);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    },
+
+    resetNewRuleForm() {
+      this.newRule = {
+        diagnosis: '',
+        field: '',
+        isi: '',
+        sumber: '',
+        layer: 'nasional'
+      };
+    },
+
+    resetEditingRule() {
+      this.editingRule = {
+        diagnosis: '',
+        field: '',
+        isi: '',
+        sumber: '',
+        layer: '',
+        created_by: ''
+      };
+    },
+
+    // Function untuk filter reports by status (client-side filtering)
+    filterReports() {
+      console.log('Filtering reports by status:', this.reportFilter);
+      // Client-side filtering tanpa reload
+      const table = document.querySelector('#reports-table tbody');
+      const rows = table.querySelectorAll('tr');
+      
+      rows.forEach(row => {
+        const statusCell = row.querySelector('.status-badge');
+        if (!statusCell) return;
+        
+        const status = statusCell.textContent.trim().toLowerCase();
+        
+        if (this.reportFilter === 'all') {
+          row.style.display = '';
+        } else if (
+          (this.reportFilter === 'pending' && status.includes('pending')) ||
+          (this.reportFilter === 'reviewed' && status.includes('reviewed')) ||
+          (this.reportFilter === 'converted' && status.includes('converted')) ||
+          (this.reportFilter === 'rejected' && status.includes('rejected'))
+        ) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    },
+
+    // Pagination functions
+    nextPage() {
+      const totalRules = parseInt({{ total_ai_meta_rules | tojson }});
+      const totalPages = Math.ceil(totalRules / this.itemsPerPage);
+      if (this.currentPage < totalPages) {
+        this.currentPage++;
+        this.loadRulesPage();
+      }
+    },
+
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.loadRulesPage();
+      }
+    },
+
+    loadRulesPage() {
+      // Simple page reload with pagination parameter
+      const url = new URL(window.location);
+      url.searchParams.set('rules_page', this.currentPage);
+      window.location.href = url.toString();
     }
   }
 }
