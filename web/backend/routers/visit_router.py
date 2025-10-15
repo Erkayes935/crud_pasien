@@ -16,16 +16,38 @@ router = APIRouter()
 
 
 # =========================
-# LIST VISITS
+# LIST VISITS (dengan filter)
 # =========================
 @router.get("/visits")
 def list_visits(
     request: Request,
-    search: str | None = Query(None),
+    tanggal_kunjungan: Optional[str] = Query(None),
+    poli: Optional[str] = Query(None),
+    dokter: Optional[str] = Query(None),
+    sumber: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs")),
 ):
-    visits = visit_crud.get_visits(db, search)
+    visits_query = db.query(models.Visit).filter(models.Visit.is_deleted == False)
+
+    # 🔹 Parsing manual tanggal (jika diisi)
+    from datetime import date as date_cls
+    if tanggal_kunjungan:
+        try:
+            tanggal_parsed = date_cls.fromisoformat(tanggal_kunjungan)
+            visits_query = visits_query.filter(models.Visit.tanggal_kunjungan == tanggal_parsed)
+        except ValueError:
+            pass  # abaikan kalau tidak valid
+
+    if poli:
+        visits_query = visits_query.filter(models.Visit.poli.ilike(f"%{poli}%"))
+    if dokter:
+        visits_query = visits_query.filter(models.Visit.doctor_name.ilike(f"%{dokter}%"))
+    if sumber:
+        visits_query = visits_query.filter(models.Visit.sumber == sumber)
+
+    visits = visits_query.order_by(models.Visit.id.desc()).all()
+
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("visit_list.html", {
         "request": request,
@@ -35,7 +57,13 @@ def list_visits(
         "current_user": user,
         "flow": None,
         "patient": None,
+        # agar form tetap “ingat” filter sebelumnya
+        "tanggal_kunjungan": tanggal_kunjungan,
+        "poli": poli,
+        "dokter": dokter,
+        "sumber": sumber,
     })
+
 
 # =========================
 # ADD VISIT

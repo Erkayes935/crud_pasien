@@ -1,9 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Sistem Klaim Pasien{% endblock %}</title>
+
+  <!-- ✅ Fix: jalankan script ini PALING AWAL sebelum Tailwind -->
+  <script>
+    // Setel tema berdasarkan localStorage SEBELUM Tailwind dijalankan
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { darkMode: 'class' };
@@ -15,7 +26,34 @@
     .flash { opacity: 1; transition: opacity 0.5s ease-out; }
     .flash.hide { opacity: 0; }
     [x-cloak] { display: none !important; }
+
+    /* 🔹 Tambahkan animasi modal fade */
+    .modal-fade-enter {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    .modal-fade-enter-active {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+    }
+
+    .modal-fade-exit {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .modal-fade-exit-active {
+      opacity: 0;
+      transform: scale(0.98);
+      transition: opacity 0.25s ease-in, transform 0.25s ease-in;
+    }
+
+    /* Tambahan opsional: efek background overlay */
+    #modalContainer {
+      transition: background-color 0.25s ease;
+    }
   </style>
+
 </head>
 
 <body x-data="{ modalOpen: false }"
@@ -31,7 +69,8 @@
           <a href="/dashboard" class="group">
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
             </div>
           </a>
@@ -114,7 +153,6 @@
             <div x-show="open" x-transition @click.away="open = false"
                  class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden z-50"
                  x-cloak>
-              <!-- User Info -->
               <div class="px-4 py-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-b border-slate-200 dark:border-gray-700">
                 <p class="text-sm font-semibold text-slate-800 dark:text-gray-100">
                   {{ user.name or user.email }}
@@ -126,7 +164,6 @@
                   <p class="text-xs text-slate-500 dark:text-gray-500 mt-1">🏥 {{ user.hospital.nama }}</p>
                 {% endif %}
               </div>
-              <!-- Logout -->
               <div class="border-t border-slate-200 dark:border-gray-700 py-2">
                 <a href="/logout"
                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -174,7 +211,6 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Footer -->
   {% if user %}
   <footer class="mt-16 pb-8 text-center text-sm text-slate-500 dark:text-gray-400">
     <p class="mb-2">© <span id="year"></span> Aplikasi Klaim Pasien</p>
@@ -182,7 +218,6 @@
   </footer>
   {% endif %}
 
-  <!-- Scripts -->
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -213,7 +248,6 @@
       updateThemeIcon();
     });
 
-    // auto-hide flash
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".flash").forEach(el => {
         setTimeout(() => { el.classList.add("hide"); setTimeout(() => el.remove(), 500); }, 3000);

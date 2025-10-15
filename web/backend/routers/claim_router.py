@@ -168,17 +168,24 @@ def select_group_page(
     request: Request,
     patient_id: int = Query(...),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor")),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
 ):
     """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
     groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("claim_group_select.html", {
-        "request": request,
-        "groups": groups,
-        "patient_id": patient_id,
-        "csrf_token": csrf_token
-    })
+
+    return templates.TemplateResponse(
+        "claim_group_select.html",
+        {
+            "request": request,
+            "groups": groups,
+            "patient_id": patient_id,
+            "csrf_token": csrf_token,
+            "user": user,              # ✅ penting untuk navbar
+            "current_user": user,      # ✅ konsisten dengan halaman lain
+        },
+    )
+
 
 @router.get("/select-visit")
 def select_visit_page(
@@ -282,24 +289,6 @@ def claim_detail(
 # ==================================================
 # ADD / EDIT / UPDATE / FINALIZE
 # ==================================================
-
-@router.get("/select-group")
-def select_group_page(
-    request: Request,
-    patient_id: int = Query(...),
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor")),
-):
-    """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
-    groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
-    csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("claim_group_select.html", {
-        "request": request,
-        "groups": groups,
-        "patient_id": patient_id,
-        "csrf_token": csrf_token
-    })
-
 
 @router.post("/create-group")
 def create_group(
@@ -573,11 +562,13 @@ async def finalize_claim(
     request: Request,
     claim_id: int,
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("verifikator")),
+    user=Depends(require_roles_session("verifikator")),  # tetap butuh verifikator role present
     _=Depends(require_csrf_dep),
 ):
-    """Finalize klaim oleh verifikator"""
-    # ✅ Ambil semua form field dari POST body
+    """Finalize klaim oleh verifikator.
+    Jika user memiliki multi-role (doctor + verifikator) -> boleh BYPASS coder dan finalize langsung.
+    """
+    # Ambil form data (jika diperlukan oleh service)
     form_data = await request.form()
     form_dict = dict(form_data)
 
@@ -585,15 +576,55 @@ async def finalize_claim(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Validasi workflow
-    if claim.workflow_status != "coder_verified":
-        flash(request, "⚠️ Klaim harus diverifikasi coder terlebih dahulu", "error")
+    # Roles user (bisa multiple)
+    roles = user.role_names or []
+    has_doctor = "doctor" in roles
+    has_verifikator = "verifikator" in roles
+
+    # apakah user boleh bypass coder? (hanya jika dia sekaligus doctor & verifikator)
+    bypass_coder = has_doctor and has_verifikator
+
+    # minimal ada 1 diagnosis / simulasi sebelum finalisasi
+    sim_count = db.query(models.ClaimSimulation).filter(
+        models.ClaimSimulation.claim_id == claim_id
+    ).count()
+    if sim_count == 0:
+        flash(request, "⚠️ Minimal harus ada 1 diagnosis/simulasi sebelum finalisasi", "error")
         return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
 
-    # Jalankan finalize service
-    core.finalize_claim_service(db, claim_id, user, form_dict)
+    # Validasi workflow: kalau bukan bypass, harus sudah coder_verified
+    if not bypass_coder:
+        if claim.workflow_status != "coder_verified":
+            flash(request, "⚠️ Klaim harus diverifikasi coder terlebih dahulu", "error")
+            return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+    else:
+        # Jika bypass: isi beberapa timestamp/field historis yang mungkin kosong agar audit trail rapi
+        now = datetime.now()
+        # Jika dokter belum submit, anggap user sebagai dokter yang submitnya sekarang (karena mereka punya kedua role)
+        if not getattr(claim, "doctor_submitted_at", None):
+            claim.doctor_submitted_at = claim.doctor_submitted_at or now
+        if not getattr(claim, "doctor_submitted_by", None):
+            claim.doctor_submitted_by = claim.doctor_submitted_by or user.name
 
-    # Update status klaim
+        # Tandai coder_verified juga (oleh self) jika belum ada — supaya riwayat jelas bahwa klaim melewati step coder (bypassed)
+        if not getattr(claim, "coder_verified_at", None):
+            claim.coder_verified_at = claim.coder_verified_at or now
+        if not getattr(claim, "coder_verified_by", None):
+            claim.coder_verified_by = claim.coder_verified_by or user.name
+
+        # set workflow to coder_verified before finalize to keep consistency
+        claim.workflow_status = "coder_verified"
+        db.commit()  # commit intermediate state so finalize service sees consistent state
+
+    # Jalankan finalize service (tetap sama)
+    try:
+        core.finalize_claim_service(db, claim_id, user, form_dict)
+    except Exception as e:
+        # jika service error, beri pesan dan jangan ubah workflow
+        flash(request, f"⚠️ Gagal finalize klaim: {str(e)}", "error")
+        return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+
+    # Update status klaim menjadi finalized
     claim.workflow_status = "finalized"
     claim.finalized_at = datetime.now()
     claim.finalized_by = user.name

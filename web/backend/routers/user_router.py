@@ -111,19 +111,26 @@ def add_user_form(
         },
     )
 
-
 @router.post("/users/add", name="add_user")
 async def add_user(
     request: Request,
     email: str = Form(...),
     name: str = Form(...),
     role: list[str] = Form(...),
-    password: Optional[str] = Form(None),   # 🔹 password opsional
+    password: Optional[str] = Form(None),
     hospital_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_roles_session("superadmin", "admin_rs")),
     _=Depends(require_csrf_dep),
 ):
+    """
+    Buat user baru:
+    - Register ke Auth0
+    - Simpan ke DB lokal (users + user_roles)
+    - Kirim link set password (jika kosong)
+    - Sinkronkan role ke Auth0
+    """
+
     # =============================
     # Validasi awal
     # =============================
@@ -146,7 +153,7 @@ async def add_user(
         from backend.services.auth0_client import create_auth0_user
         auth0_data = await create_auth0_user(email=email, name=name, password=password)
         auth0_sub = auth0_data.get("user_id")
-        print(f"✅ Auth0 user dibuat: {auth0_sub}")
+        print(f"✅ [AUTH0] User dibuat: {auth0_sub}")
     except Exception as e:
         err_text = str(e)
         if "PasswordStrengthError" in err_text or "password" in err_text.lower():
@@ -158,19 +165,23 @@ async def add_user(
     # 2️⃣ Simpan user ke DB lokal
     # =============================
     try:
-        user_crud.create_user(
-            db,
-            {
-                "email": email,
-                "name": name,
-                "role": ",".join(role),
-                "hospital_id": hospital_id,
-                "auth0_sub": auth0_sub,
-            },
-        )
-        print(f"💾 User lokal tersimpan: {email}")
+        # Siapkan data user
+        user_data = {
+            "email": email,
+            "name": name,
+            "role": ",".join(role),   # legacy string
+            "roles": role,            # untuk relasi user_roles
+            "hospital_id": hospital_id,
+            "auth0_sub": auth0_sub,
+        }
+
+        new_user = user_crud.create_user(db, user_data)
+        print(f"💾 [DB] User lokal tersimpan: {new_user.email}")
+        print(f"🧾 [DB] Roles disimpan ke user_roles: {[r for r in role]}")
+
     except Exception as e:
-        print(f"❌ Gagal simpan user ke DB: {e}")
+        db.rollback()
+        print(f"❌ [DB] Gagal simpan user ke DB: {e}")
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan user ke DB: {e}")
 
     # =============================
@@ -180,14 +191,14 @@ async def add_user(
         try:
             from backend.services.auth0_client import send_password_invite
             ticket_url = await send_password_invite(email=email)
-            print(f"🔗 Link set password: {ticket_url}")
+            print(f"🔗 [AUTH0] Link set password: {ticket_url}")
             flash(
                 request,
                 f"✅ User {email} berhasil dibuat. Link set password dikirim via email.",
                 "success",
             )
         except Exception as e:
-            print(f"⚠️ Gagal kirim email invite: {e}")
+            print(f"⚠️ [AUTH0] Gagal kirim email invite: {e}")
             flash(request, f"User dibuat tapi gagal kirim link set password.", "warning")
     else:
         flash(request, f"✅ User {email} berhasil dibuat dengan password langsung.", "success")
@@ -198,9 +209,9 @@ async def add_user(
     try:
         from backend.services.auth0_client import assign_auth0_roles
         await assign_auth0_roles(auth0_sub, role)
-        print(f"✅ Role {role} berhasil disinkronkan ke Auth0 untuk {email}")
+        print(f"✅ [AUTH0] Role {role} berhasil disinkronkan untuk {email}")
     except Exception as e:
-        print(f"⚠️ Gagal sinkronisasi role Auth0: {e}")
+        print(f"⚠️ [AUTH0] Gagal sinkronisasi role Auth0: {e}")
         flash(
             request,
             f"User dibuat tapi gagal sinkronisasi role ke Auth0: {str(e)}",
@@ -211,7 +222,6 @@ async def add_user(
     # 5️⃣ Redirect
     # =============================
     return RedirectResponse(url="/users", status_code=303)
-
 
 # =========================
 # EDIT USER
