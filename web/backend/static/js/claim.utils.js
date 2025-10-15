@@ -31,10 +31,34 @@
     const simInput = document.getElementById("simulasiField");
     const summInput = document.getElementById("summaryField");
     const state = window.claimState || {};
+    if (!state.simulasi) return;
 
-    if (simInput) simInput.value = JSON.stringify(state.simulasi || {});
+    // 🧩 buat salinan lengkap utk backend
+    const cloned = JSON.parse(JSON.stringify(state.simulasi));
+
+    // flatten semua children agar backend tetap dapat
+    for (const [tab, obj] of Object.entries(cloned)) {
+      for (const [type, arr] of Object.entries(obj)) {
+        if (Array.isArray(arr)) {
+          const children = arr
+            .filter(p => Array.isArray(p.children) && p.children.length > 0)
+            .flatMap(p =>
+              p.children.map(ch => ({
+                ...ch,
+                parentRef: p.id || p.kategori,
+              }))
+            );
+          if (children.length) {
+            arr.push(...children); // hanya utk payload yg disimpan
+          }
+        }
+      }
+    }
+
+    if (simInput) simInput.value = JSON.stringify(cloned);
     if (summInput) summInput.value = JSON.stringify(state.summary || {});
   }
+
 
   // Tambahan utility functions untuk normalisasi data
 

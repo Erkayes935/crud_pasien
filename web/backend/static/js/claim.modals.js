@@ -143,6 +143,15 @@
 
     window.claimState.modalOpen = true;
     setTimeout(() => Alpine.initTree(modalContent), 10);
+    // Re-render tindakan manual setelah modal benar-benar tampil
+    setTimeout(() => {
+      if (typeof window.renderManualTindakanList === "function") {
+        const tab = window.claimState?.tab || "admission";
+        console.log("🧩 Auto renderManualTindakanList saat modal open:", tab);
+        window.renderManualTindakanList(tab);
+      }
+    }, 200);
+
   }
 
 
@@ -545,6 +554,9 @@
     console.log("📋 Parsed klinis:", klinis);
     console.log("📋 Parsed icd10:", icd10);
     console.log("📋 Parsed tindakan count:", tindakan.length);
+    console.log("🧩 [DEBUG] Simulasi tindakan saat render ulang:", 
+    window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan);
+
     
     // 🔥 Debug specific field values
     console.log("📋 klinis.justifikasi:", klinis.justifikasi);
@@ -994,6 +1006,7 @@ window.renderChecklistHtml = function(checklist) {
           <input type="text"
                 x-model="query"
                 x-ref="acInput"
+                @focus="rehydrateManualTindakan(tab)"
                 @input.debounce.300ms="search"
                 @keydown.enter.prevent="results.length ? select(results[0]) : addManualTindakanIfNotFound()"
                 placeholder="Nama Tindakan"
@@ -1006,20 +1019,36 @@ window.renderChecklistHtml = function(checklist) {
           <template x-if="results.length > 0">
             <template x-teleport="body">
               <ul
-                x-init="requestAnimationFrame(() => {
-                  const i=$refs.acInput;if(!i)return;
-                  const r=i.getBoundingClientRect();
-                  Object.assign($el.style,{
-                    position:'fixed',
-                    top:r.bottom+'px',
-                    left:r.left+'px',
-                    width:r.width+'px',
-                    zIndex:99999
+                x-init="
+                  const i = $refs.acInput;
+                  if (!i) return;
+                  const r = i.getBoundingClientRect();
+                  Object.assign($el.style, {
+                    position: 'fixed',
+                    top: r.bottom + 'px',
+                    left: r.left + 'px',
+                    width: r.width + 'px',
+                    zIndex: 99999
                   });
-                });
-                window.addEventListener('scroll',()=>{$el.style.top=$refs.acInput.getBoundingClientRect().bottom+'px'},true);
-                window.addEventListener('resize',()=>{$el.style.top=$refs.acInput.getBoundingClientRect().bottom+'px'});
+
+                  const updatePos = () => {
+                    try {
+                      const ri = $refs.acInput;
+                      if (!ri) return;
+                      const rr = ri.getBoundingClientRect();
+                      $el.style.top = rr.bottom + 'px';
+                      $el.style.left = rr.left + 'px';
+                    } catch(e){}
+                  };
+
+                  window.addEventListener('scroll', updatePos, true);
+                  window.addEventListener('resize', updatePos);
+                  $el._cleanup = () => {
+                    window.removeEventListener('scroll', updatePos, true);
+                    window.removeEventListener('resize', updatePos);
+                  };
                 "
+                x-effect="if (!results.length && $el._cleanup) { $el._cleanup() }"
                 class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600
                       rounded shadow-lg max-h-56 overflow-y-auto text-sm"
               >
@@ -1250,6 +1279,18 @@ window.renderChecklistHtml = function(checklist) {
 
   // ===================== CLOSE NESTED MODAL (aman + restore) =====================
   function closeNestedModal() {
+    // 🧩 simpan tindakan manual sebelum modal ditutup
+    try {
+      window.persistManualTindakanBeforeClose && window.persistManualTindakanBeforeClose();
+    } catch (e) {
+      console.warn("⚠️ Gagal persist manual tindakan sebelum close:", e);
+    }
+
+    console.log(
+      "🧩 [DEBUG] Simulasi tindakan sebelum close:",
+      window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan
+    );
+
     let modalContainer = document.getElementById("modalContainer");
     let modalContent = document.querySelector(".modal-content");
     let modalTitle = document.querySelector(".modal-title");
@@ -1288,14 +1329,6 @@ window.renderChecklistHtml = function(checklist) {
 
         modalTitle.innerHTML = prev.title || "(Untitled)";
         modalContent.innerHTML = prev.content || "<p>Tidak ada konten sebelumnya</p>";
-
-        setTimeout(() => {
-          Alpine.initTree(modalContent);
-          if (typeof window.renderManualTindakanList === "function") {
-            const tab = window.claimState?.tab || "admission";
-            window.renderManualTindakanList(tab);
-          }
-        }, 50);
       } else {
         // tutup total
         modalContainer.classList.add("hidden");
@@ -1303,11 +1336,32 @@ window.renderChecklistHtml = function(checklist) {
         modalContent.innerHTML = "";
         modalTitle.innerHTML = "";
       }
+
+      // 🧹 Bersihkan listener dropdown autocomplete
+      document.querySelectorAll('ul[x-teleport="body"]').forEach(el => {
+        if (el?._cleanup) el._cleanup();
+      });
+
+      // 🔁 Re-init Alpine dan render manual tindakan ulang
+      setTimeout(() => {
+        Alpine.initTree(modalContent);
+
+        // 🧩 Delay tambahan biar DOM siap & Alpine rehydrated
+        setTimeout(() => {
+          try {
+            if (typeof window.renderManualTindakanList === "function") {
+              const tab = window.claimState?.tab || "admission";
+              console.log("🧩 Re-render manual tindakan setelah Alpine reinit:", tab);
+              window.renderManualTindakanList(tab);
+            }
+          } catch (e) {
+            console.warn("⚠️ Gagal renderManualTindakanList setelah restore:", e);
+          }
+        }, 150);
+      }, 50);
+
     }, 250); // durasi sinkron dengan CSS transition
   }
-
-
-
 
   // === Tutup Regulasi (Balik ke modal asal) ===
   // ===================== CLOSE REGULATION MODAL (context-aware) =====================
