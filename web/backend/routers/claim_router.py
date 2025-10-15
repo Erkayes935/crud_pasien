@@ -908,11 +908,6 @@ async def regulation_detail(claim_id: int, payload: dict = Body(...)):
             }]
         }
 
-    # # kirim ke core_engine melalui claim_ai proxy
-    # result = await claim_ai.regulation_detail(payload)
-
-    # return result
-
 
 # ==================================================
 # i-DRG PREDICTION ENDPOINTS

@@ -326,7 +326,7 @@
         `<div class="p-4 text-red-500">
           <p>Gagal memuat detail regulasi: ${error.message || error}</p>
           <div class="mt-4">
-            <button onclick="closeModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Tutup</button>
+            <button onclick="closeRegulationModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Tutup</button>
           </div>
         </div>`
       );
@@ -1565,80 +1565,24 @@ window.renderChecklistHtml = function(checklist) {
 
   // === Tutup Regulasi (Balik ke modal asal) ===
   // ===================== CLOSE REGULATION MODAL (context-aware) =====================
-  function closeRegulationModal() {
-    console.log("🔻 closeRegulationModal triggered");
-  
-    // Dapatkan referensi DOM
-    let modalContainer = document.getElementById("modalContainer");
-    let modalContent = document.querySelector(".modal-content");
-    let modalTitle = document.querySelector(".modal-title");
-  
-    if (!modalContainer || !modalContent) {
-      console.warn("⚠️ closeRegulationModal: modalContainer tidak ditemukan");
-      return;
-    }
-  
-    // CRITICAL: Simpan stack sebelumnya jika ada (kecuali entri terakhir yang merupakan modal regulasi)
-    let previousStack = [];
-    if (window.claimState && window.claimState.modalStack && window.claimState.modalStack.length > 1) {
-      // Salin semua entri stack kecuali yang terakhir (yang merupakan modal regulasi)
-      previousStack = window.claimState.modalStack.slice(0, -1);
-    }  
-    // 1. Animasi fade-out dulu
-    modalContent.classList.add("modal-fade-exit");
-    setTimeout(() => modalContent.classList.add("modal-fade-exit-active"), 10);
-    // 2. Setelah animasi, kembalikan ke modal sebelumnya ATAU tutup total
-    setTimeout(() => {
-      // Reset class animasi
-      modalContent.classList.remove("modal-fade-exit", "modal-fade-exit-active");
-      // CRITICAL: Set stack ke kosong untuk mencegah restore otomatis
-      if (window.claimState) {
-        window.claimState.modalStack = [];
-        window.claimState.regulationSource = null;
-      }
-      // Cek apakah ada modal sebelumnya yang perlu ditampilkan kembali
-      if (previousStack.length > 0) {
-        // Ambil modal sebelumnya
-        const prev = previousStack.pop();    
-        // Tampilkan modal sebelumnya
-        modalTitle.innerHTML = prev.title || "(Untitled)";
-        modalContent.innerHTML = prev.content || "<p>Tidak ada konten sebelumnya</p>";   
-        // Kembalikan stack tanpa modal regulasi
-        if (window.claimState) {
-          window.claimState.modalStack = previousStack;
-        }     
-        // Initialize komponen Alpine dan event handler
-        setTimeout(() => {
-          Alpine.initTree(modalContent);
-          if (typeof window.renderManualTindakanList === "function") {
-            const tab = window.claimState?.tab || "admission";
-            window.renderManualTindakanList(tab);
-          }
-          // Reattach event handlers untuk regulation fields
-          document.querySelectorAll('.regulation-field').forEach(el => {
-            el.addEventListener('click', function() {
-              const field = this.getAttribute('data-field');
-              const diagnosisId = this.getAttribute('data-diagnosis-id');
-              const procedureId = this.getAttribute('data-procedure-id');
-              console.log("🔍 Regulation field clicked:", field, diagnosisId, procedureId);
-              window.openRegulationDetailModal(field, diagnosisId, procedureId);
-            });
-          });
-        
-          console.log("🔍 Restored previous modal, events reattached");
-        }, 50);
-      
-      } else {
-        // Tidak ada modal sebelumnya, tutup sepenuhnya
-        modalContainer.classList.add("hidden");
-        if (window.claimState) window.claimState.modalOpen = false;
-        modalContent.innerHTML = "";
-        modalTitle.innerHTML = "";
-      }
-    }, 150); // Durasi transisi
-  }
+    function closeRegulationModal() {
+      const source = window.claimState?.regulationSource || {};
+      console.log("🔻 closeRegulationModal triggered with source:", source);
 
-  // ==========================================================
+      if (source.type === "procedure" && window.claimState?.currentProcedure) {
+        openProcedureModal(window.claimState.currentProcedure.id);
+      } else if (source.type?.startsWith("idrg_diagnosis")) {
+        closeNestedModal();
+      } else if (source.type?.startsWith("idrg_summary")) {
+        const state = Alpine.$data(document.getElementById('claimRoot'));
+        state.modalOpen = false;
+      } else {
+        closeNestedModal();
+      }
+
+      window.claimState.regulationSource = null; // reset context
+    }
+// ==========================================================
 // 🧩 SISTEM NOTES FINAL (DOKTER / CODER / VERIFIKATOR)
 // ==========================================================
 
