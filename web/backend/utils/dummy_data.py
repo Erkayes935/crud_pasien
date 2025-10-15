@@ -611,8 +611,8 @@ def dummy_tindakan_detail(procedure_text: str):
             "procedure_text": "Apendektomi",
             "icd9": "47.09",
             "validitas": "Valid",
-            "status": "Final",
-            "ina_cbg": "C-04-01",
+            "status": "Wajib",
+            "ina_cbg": "Rp 2.000.000",
             "faskes": "RS Tipe B",
             "rawat_inap": "Ya",
             "syarat_klinis": "Nyeri perut kanan bawah, USG/CT confirm"
@@ -621,8 +621,8 @@ def dummy_tindakan_detail(procedure_text: str):
             "procedure_text": "Herniorafi",
             "icd9": "53.00",
             "validitas": "Valid",
-            "status": "Final",
-            "ina_cbg": "C-09-02",
+            "status": "Wajib",
+            "ina_cbg": "Rp 3.000.000",
             "faskes": "RS Tipe C",
             "rawat_inap": "Opsional",
             "syarat_klinis": "Benjolan inguinal"
@@ -631,8 +631,8 @@ def dummy_tindakan_detail(procedure_text: str):
             "procedure_text": "Gastroskopi",
             "icd9": "45.73",
             "validitas": "Warning",
-            "status": "Review",
-            "ina_cbg": "C-12-05",
+            "status": "Wajib",
+            "ina_cbg": "Rp 2.500.000",
             "faskes": "RS Tipe A",
             "rawat_inap": "Tidak",
             "syarat_klinis": "Nyeri epigastrium, indikasi perdarahan"

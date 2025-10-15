@@ -141,3 +141,117 @@ def get_rules_summary(diagnosis, rs_id=None, region_id=None):
         "layers": summary,
         "total_layers": len(summary)
     }
+
+def load_rules_multilayer(diagnoses: list, rs_id=None, region_id=None) -> dict:
+    """
+    Gabungkan rules multilayer dari DB + JSON nasional untuk kombinasi diagnosis & tindakan.
+    """
+    # Initialize merged dictionary
+    merged = {}
+    
+    try:
+        # Skip processing if empty diagnoses list
+        if not diagnoses or len(diagnoses) == 0:
+            print("[RULES_LOADER] Warning: Empty diagnoses list")
+            return {}
+            
+        # 1. Process rules from database for each diagnosis
+        for d in diagnoses:
+            # Skip empty diagnoses
+            if not d or d.strip() == "":
+                continue
+                
+            dx_rules = load_rules_for_diagnosis(d, rs_id, region_id)
+            if not dx_rules or not isinstance(dx_rules, dict) or "rules" not in dx_rules:
+                print(f"[RULES_LOADER] Warning: No rules found for diagnosis '{d}'")
+                continue
+                
+            # Merge rules for each field into the merged dictionary
+            for field, items in dx_rules["rules"].items():
+                if field not in merged:
+                    merged[field] = []
+                    
+                # Always ensure we're extending a list
+                if isinstance(items, list):
+                    merged[field].extend(items)
+                else:
+                    merged[field].append(items)
+
+        # 2. Add global/national rules that are not diagnosis-specific
+        
+        # Handle ICD10 rules
+        if "icd10_mapping" not in merged:
+            merged["icd10_mapping"] = []
+            
+        # Add ICD10 rules if they exist, converting to list item if necessary
+        if icd10_rules:
+            if isinstance(icd10_rules, dict):
+                merged["icd10_mapping"].append({
+                    "layer": "nasional",
+                    "sumber": "ICD-10 WHO",
+                    "isi": icd10_rules,
+                    "priority": LAYER_PRIORITIES.get("nasional", 2)
+                })
+            elif isinstance(icd10_rules, list):
+                merged["icd10_mapping"].extend(icd10_rules)
+        
+        # Handle ICD9 rules
+        if "icd9_mapping" not in merged:
+            merged["icd9_mapping"] = []
+            
+        # Add ICD9 rules if they exist, converting to list item if necessary  
+        if icd9_rules:
+            if isinstance(icd9_rules, dict):
+                merged["icd9_mapping"].append({
+                    "layer": "nasional",
+                    "sumber": "ICD-9-CM",
+                    "isi": icd9_rules,
+                    "priority": LAYER_PRIORITIES.get("nasional", 2)
+                })
+            elif isinstance(icd9_rules, list):
+                merged["icd9_mapping"].extend(icd9_rules)
+                
+        # Handle INACBG rules
+        if "ina_cbg" not in merged:
+            merged["ina_cbg"] = []
+            
+        # Add INACBG rules if they exist, converting to list item if necessary
+        if inacbg_rules:
+            if isinstance(inacbg_rules, dict):
+                merged["ina_cbg"].append({
+                    "layer": "nasional", 
+                    "sumber": "INA-CBG",
+                    "isi": inacbg_rules,
+                    "priority": LAYER_PRIORITIES.get("nasional", 2)
+                })
+            elif isinstance(inacbg_rules, list):
+                merged["ina_cbg"].extend(inacbg_rules)
+        
+        # 3. CRITICAL: Ensure ALL values are lists before sorting
+        for field_name in list(merged.keys()):
+            field_value = merged[field_name]
+            
+            # Fix non-list values
+            if not isinstance(field_value, list):
+                print(f"[RULES_LOADER] Converting non-list field '{field_name}' to list")
+                if field_value is None:
+                    merged[field_name] = []
+                else:
+                    merged[field_name] = [field_value]
+        
+        # 4. Sort fields only if they contain lists
+        for field_name in list(merged.keys()):
+            field_value = merged[field_name]
+            
+            # Attempt to sort only if it's a list
+            if isinstance(field_value, list):
+                try:
+                    field_value.sort(key=lambda x: x.get("priority", 99) if isinstance(x, dict) else 99)
+                except Exception as e:
+                    print(f"[RULES_LOADER] Sort error for field '{field_name}': {e}")
+        
+        return merged
+        
+    except Exception as e:
+        print(f"[RULES_LOADER] Error in load_rules_multilayer: {e}")
+        return {}  # Return empty dict on error
