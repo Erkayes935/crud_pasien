@@ -583,6 +583,7 @@ class ClaimTariff(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
     cbg_code = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
     tariff_amount = Column(Integer, nullable=True)
     status = Column(String(20), default="draft")   # draft / final
 
