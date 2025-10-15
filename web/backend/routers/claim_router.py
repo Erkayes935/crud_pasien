@@ -269,6 +269,14 @@ def claim_detail(
         models.ClaimSimulation.coder_verified == True
     ).all()
     
+    # Load approved mappings for verificator (if user is verificator)
+    approved_mappings = {}
+    user_roles = user.role_names if hasattr(user, 'role_names') else [user.role] if user.role else []
+    
+    if "verifikator" in user_roles:
+        from ..services.claim import simulation as sim_service
+        approved_mappings = sim_service.get_simulations_for_verificator(db, claim_id)
+    
     return templates.TemplateResponse("claim_detail.html", {
         "request": request,
         "claim": claim,
@@ -276,6 +284,7 @@ def claim_detail(
         "csrf_token": issue_csrf_token(request),
         "current_user": user,
         "coder_results": coder_results,
+        "approved_mappings": approved_mappings,  # ✅ New: Untuk verificator
     })
 
 
@@ -760,9 +769,30 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
     try:
         print(f"[PREDICT_DDX] Storing AI results for claim {cid}, stage {stage}")
         ai.clear_ai_results(db, cid)
+        
+        # ✅ CLEAR EXISTING MAPPINGS saat generate AI ulang
+        print(f"[PREDICT_DDX] Clearing existing mappings to prevent duplicates...")
+        from backend.services.claim.simulation import models
+        
+        # Clear existing ClaimSimulation mappings
+        deleted_sims = db.query(models.ClaimSimulation).filter(models.ClaimSimulation.claim_id == cid).delete()
+        
+        # Clear mapped diagnoses & procedures (yang dari mapping, bukan AI original)
+        deleted_diags = db.query(models.ClaimDiagnosis).filter(
+            models.ClaimDiagnosis.claim_id == cid,
+            models.ClaimDiagnosis.diagnosis_type.in_(["Diagnosis Utama", "Komorbid", "Komplikasi", "Primary", "Secondary"])
+        ).delete(synchronize_session=False)
+        
+        deleted_procs = db.query(models.ClaimProcedure).filter(
+            models.ClaimProcedure.claim_id == cid,
+            models.ClaimProcedure.procedure_type.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
+        ).delete(synchronize_session=False)
+        
+        print(f"[PREDICT_DDX] ✅ Cleared existing mappings: {deleted_sims} simulations, {deleted_diags} diagnoses, {deleted_procs} procedures")
+        
         ai.store_ai_recommendations(db, cid, normalized, "predict", stage)
         db.commit()
-        print(f"[PREDICT_DDX] Successfully stored AI results")
+        print(f"[PREDICT_DDX] Successfully stored AI results with clean mappings")
     except Exception as e:
         print(f"[PREDICT_DDX] Error storing results: {str(e)}")
         db.rollback()
