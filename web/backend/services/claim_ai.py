@@ -58,7 +58,31 @@ async def resume_medis(payload: dict):
 
 
 async def regulation_detail(payload: dict):
-    return await proxy_core_engine("/regulation_detail", payload)
+    """
+    Get regulation detail from core_engine.
+    """
+    try:
+        field = payload.get("field", "")
+        if not field:
+            return {"error": "Field is required"}
+        
+        result = await proxy_core_engine("/regulation_detail", payload)
+        return result
+    except Exception as e:
+        print(f"[REGULATION] Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "data": [{
+                "layer": "error",
+                "sumber": "Error",
+                "judul_regulasi": "Error",
+                "isi": f"Terjadi kesalahan saat memuat regulasi: {str(e)}",
+                "update": None,
+                "status": "Error",
+                "color": "#ef4444",
+            }]
+        }
 
 
 async def generate_claim_combos(payload: dict):
