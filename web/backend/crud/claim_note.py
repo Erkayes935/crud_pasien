@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_  # ✅ penting! biar filter or_() jalan
 from backend import models
 
 
@@ -63,10 +64,12 @@ def create_note(
     role: str,
     note_text: str,
     parent_id: int | None = None,
-    field_key: str | None = None,   # ✅ ditambahkan
+    field_key: str | None = None,
     stage: str | None = None,
-    timestamp=None
+    timestamp=None,
+    origin_item_id: int | None = None,  # ✅ tambahkan dukungan kolom baru
 ):
+    """Buat catatan baru untuk klaim"""
     note = models.ClaimNote(
         claim_id=claim_id,
         item_id=item_id,
@@ -74,9 +77,10 @@ def create_note(
         role=role,
         note_text=note_text,
         parent_id=parent_id,
-        field_key=field_key,   # ✅ sekarang valid
+        field_key=field_key,
         stage=stage,
-        timestamp=timestamp
+        timestamp=timestamp,
+        origin_item_id=origin_item_id  # ✅ ikut disimpan
     )
     db.add(note)
     db.commit()
@@ -84,10 +88,19 @@ def create_note(
     return note
 
 
-def get_notes(db: Session, claim_id: int, stage: str | None = None):
+def get_notes(db: Session, claim_id: int, stage: str | None = None, item_id: int | None = None):
+    """Ambil semua note berdasarkan klaim + filter opsional"""
     query = db.query(models.ClaimNote).filter(models.ClaimNote.claim_id == claim_id)
     if stage:
         query = query.filter(models.ClaimNote.stage == stage)
+    if item_id:
+        # 🔍 tampilkan semua note yang terkait (baik item_id atau origin_item_id)
+        query = query.filter(
+            or_(
+                models.ClaimNote.item_id == item_id,
+                models.ClaimNote.origin_item_id == item_id
+            )
+        )
     return query.all()
 
 

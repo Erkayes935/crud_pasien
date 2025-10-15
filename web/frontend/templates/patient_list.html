@@ -122,7 +122,7 @@
               <td class="py-4 px-3 text-center">
                 {% if flow == "claim" %}
                   <!-- Mode wizard klaim -->
-                  <a href="/patients/{{ p.id }}/visits?flow=claim"
+                  <a href="/claims/select-group?patient_id={{ p.id }}"
                      class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -132,7 +132,7 @@
                 {% else %}
                   {% if user and user.role == 'doctor' %}
                   <div class="flex gap-2 justify-center">
-                    <a href="/claims?patient_name={{ p.nama | urlencode }}"
+                    <a href="/claims/select-group?patient_id={{ p.id }}"
                        class="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>

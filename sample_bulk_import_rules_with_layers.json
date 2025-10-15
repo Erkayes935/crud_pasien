@@ -1,0 +1,83 @@
+[
+  {
+    "diagnosis": "Pneumonia",
+    "field": "justifikasi",
+    "isi": "Sesuai Permenkes 52/2016, diagnosis pneumonia harus berdasarkan gejala klinis dan penunjang radiologi",
+    "sumber": "Permenkes No. 52 Tahun 2016",
+    "rs_id": null,
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: permenkes (karena sumber Permenkes)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "syarat_klinis", 
+    "isi": "PNPK Pneumonia: demam, batuk produktif, sesak, ronki basah, infiltrat pada foto thorax",
+    "sumber": "PNPK Pneumonia Kemenkes 2023",
+    "rs_id": null,
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: nasional (karena sumber PNPK nasional)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "lama_rawat",
+    "isi": "PPK RS: LOS pneumonia dewasa 4-6 hari, disertai kultur sputum wajib",
+    "sumber": "PPK Pneumonia RS Notopuro 2024",
+    "rs_id": "rs_notopuro",
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: ppk (karena sumber PPK RS + rs_id diisi)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "tarif",
+    "isi": "Regional Jatim: Tarif pneumonia + 10% untuk RS Tipe A/B di Surabaya-Malang",
+    "sumber": "SE BPJS Jawa Timur No. 002/2024",
+    "rs_id": null,
+    "region_id": "jatim", 
+    "_layer_explanation": "AKAN JADI LAYER: regional (karena sumber SE BPJS regional + region_id diisi)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "syarat_klinis",
+    "isi": "BA RS Notopuro: Pneumonia wajib konsul Pulmonologi jika tidak respon terapi 72 jam",
+    "sumber": "BA RS Notopuro Oktober 2024",
+    "rs_id": "rs_notopuro",
+    "region_id": "jatim",
+    "_layer_explanation": "AKAN JADI LAYER: rs (karena sumber BA RS internal + rs_id + region_id diisi)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "kode_icd",
+    "isi": "Teknis e-Claim: Pneumonia tidak boleh double coding dengan ISPA (J06), gunakan kode spesifik J18.x",
+    "sumber": "Panduan Teknis e-Claim BPJS v5.2",
+    "rs_id": null,
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: bridging (karena sumber teknis e-Claim)"
+  },
+  {
+    "diagnosis": "Pneumonia",
+    "field": "justifikasi",
+    "isi": "AI Fraud Alert: Pneumonia dengan LOS >10 hari tanpa komplikasi memerlukan investigasi lebih lanjut",
+    "sumber": "AI Compliance System",
+    "rs_id": null,
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: fraud (karena sumber AI Compliance/fraud detection)"
+  },
+  {
+    "diagnosis": "Pneumonia", 
+    "field": "lama_rawat",
+    "isi": "Transisi i-DRG 2025: Pneumonia ikut pilot project perhitungan tarif i-DRG mulai Q1 2025",
+    "sumber": "Kebijakan Transisi i-DRG 2025",
+    "rs_id": null,
+    "region_id": null,
+    "_layer_explanation": "AKAN JADI LAYER: temporary (karena sumber kebijakan transisi/temporary)"
+  },
+  {
+    "diagnosis": "Hipertensi",
+    "field": "syarat_klinis",
+    "isi": "Syarat klinis hipertensi: Pengukuran TD dengan teknik yang benar, minimal 2x pengukuran, interval 1-2 minggu, kondisi pasien tenang",
+    "sumber": "Konsensus Hipertensi PERHI 2019",
+    "rs_id": "rs_mampang",
+    "region_id": "jatim",
+    "_layer_explanation": "AKAN JADI LAYER: rs (karena rs_id diisi, meski sumbernya nasional tapi di-customize untuk RS spesifik)"
+  }
+]

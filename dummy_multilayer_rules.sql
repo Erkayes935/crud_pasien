@@ -1,23 +1,19 @@
--- ====================================================================
--- DUMMY DATA untuk Multi-Layer Rule System (8 Layer)
--- Sesuai spesifikasi: Permenkes → Nasional → PPK → Regional → RS → Bridging → Fraud → Temporary
--- ====================================================================
+-- ===================================================
+-- DUMMY MULTILAYER RULES - Sample Data untuk Testing
+-- Sesuai Sistem 8-Layer AI-CLAIM Rules
+-- ===================================================
 
--- Clear existing dummy data (optional)
--- DELETE FROM rules_master WHERE created_by LIKE '%test%' OR created_by LIKE '%dummy%';
+-- Clear existing data
+DELETE FROM rules_master WHERE diagnosis IN ('Pneumonia', 'Hipertensi', 'Diabetes Melitus');
 
--- ====================================================================
--- LAYER 1: PERMENKES/BPJS PUSAT - Rules Nasional Resmi
--- ====================================================================
+-- ================ PNEUMONIA RULES ================
 
-INSERT INTO rules_master (diagnosis, field, layer, isi, sumber, rs_id, region_id, status, created_by) VALUES
-('Pneumonia', 'rawat_inap.lama_rawat', 'permenkes', 'LOS minimal 2 hari sesuai Permenkes 52/2016', 'Permenkes 52/2016 tentang Standar Pelayanan RS', NULL, NULL, 'official', 'ai_meta_pusat'),
-('DM Tipe 2', 'terapi.standar', 'permenkes', 'Terapi sesuai standar PERKENI terbaru', 'Permenkes Diabetes Mellitus 2024', NULL, NULL, 'official', 'ai_meta_pusat'),
-('Stroke', 'golden_time', 'permenkes', 'Penanganan dalam golden time 3 jam', 'Permenkes Stroke Akut 2023', NULL, NULL, 'official', 'ai_meta_pusat');
+-- 1. PERMENKES Layer (Priority 1)
+INSERT INTO rules_master (diagnosis, field, layer, isi, sumber, status, created_by, approved_by, approved_date) VALUES
+('Pneumonia', 'justifikasi', 'permenkes', 'Sesuai Permenkes 52/2016, diagnosis pneumonia harus berdasarkan gejala klinis dan penunjang radiologi', 'Permenkes No. 52 Tahun 2016', 'official', 'ai_meta_pusat', 'ai_meta_pusat', NOW()),
+('Pneumonia', 'lama_rawat', 'permenkes', 'Lama rawat pneumonia sesuai standar pelayanan rumah sakit: dewasa 3-5 hari, anak 5-7 hari', 'Permenkes No. 52 Tahun 2016', 'official', 'ai_meta_pusat', 'ai_meta_pusat', NOW());
 
--- ====================================================================
--- LAYER 2: NASIONAL (CP/PNPK/FORNAS/ICD/INA-CBG) - Clinical Pathways
--- ====================================================================
+-- 2. NASIONAL Layer (Priority 2)
 
 INSERT INTO rules_master (diagnosis, field, layer, isi, sumber, rs_id, region_id, status, created_by) VALUES
 ('Pneumonia', 'pemeriksaan.radiologi', 'nasional', 'Foto thorax PA wajib dilakukan dalam 24 jam', 'PNPK Pneumonia 2023', NULL, NULL, 'official', 'ai_meta_medis'),

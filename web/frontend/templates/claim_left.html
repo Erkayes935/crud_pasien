@@ -90,20 +90,72 @@
               </div>
             </details>
           </div>  
+          
           <!-- ================= DAILY TAB ================= -->
           <div x-show="tab.startsWith('daily')" class="space-y-4">
-            <div id="daily-accordion" class="space-y-2"></div>
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold">
-                Rekam Medis
-              </summary>
-              <div class="p-3 space-y-3">
-                {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
+            <!-- ========== Header & Tombol ========== -->
+            <div class="flex justify-between items-center">
+              <h3 class="font-semibold text-lg">Catatan Harian</h3>
+              <button type="button"
+                      class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+                      @click="addNewDailyDay()">
+                + Tambah Hari Rawat
+              </button>
+            </div>
+
+            <!-- ========== Panel AI Daily (Diagnosis/Komorbid/Komplikasi) ========== -->
+            <div class="space-y-2">
+              <details open class="border rounded">
+                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                  <span class="text-sm font-semibold">Diagnosis</span>
+                  <span id="count-diagnosis-daily" 
+                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                </summary>
+
+                <div class="p-3 overflow-x-auto">
+                  <table class="w-full text-xs border" id="diagnosis-daily"><tbody></tbody></table>
+                </div>
+              </details>
+
+              <details open class="border rounded">
+                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                  <span class="text-sm font-semibold">Komorbid</span>
+                  <span id="count-komorbid-daily" 
+                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                </summary>
+                <div class="p-3 overflow-x-auto">
+                  <table class="w-full text-xs border" id="komorbid-daily"><tbody></tbody></table>
+                </div>
+              </details>
+
+              <details open class="border rounded">
+                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                  <span class="text-sm font-semibold">Komplikasi</span>
+                  <span id="count-komplikasi-daily" 
+                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                </summary>
+                <div class="p-3 overflow-x-auto">
+                  <table class="w-full text-xs border" id="komplikasi-daily"><tbody></tbody></table>
+                </div>
+              </details>
+            </div>
+
+            <!-- ========== Rekam Medis Harian (loop via JS) ========== -->
+            <div class="mt-4">
+              <h3 class="font-semibold text-lg mb-2">Rekam Medis Harian</h3>
+              <div id="daily-accordion" class="space-y-2">
+                <!-- Akan diisi oleh JS lewat renderDailyAccordion() -->
               </div>
-            </details>
+            </div>
           </div>
+
+          <!-- Template rekam medis (jangan dihapus!) -->
+          <template id="rekamMedisTemplate">
+            {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
+              {% include "_form_renderer.html" %}
+            {% endfor %}
+          </template>
+
 
           <!-- ================= DISCHARGE TAB ================= -->
           <div x-show="tab==='discharge'" class="space-y-4">

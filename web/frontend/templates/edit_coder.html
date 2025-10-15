@@ -7,7 +7,8 @@
       action="/claims/{{ claim.id }}/coder"
       data-claim-id="{{ claim.id }}"
       class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
-
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <meta name="csrf-token" content="{{ csrf_token }}">
   <div id="claimRoot"
        x-data="claimData({ role: 'coder' })"
        data-claim-id="{{ claim.id }}"
@@ -78,13 +79,18 @@
                                 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-blue-500">
                 </td>
                 <td class="border p-2 text-center">
+                  <!-- 🧩 Tambahkan diagnosis_id agar note map ke item dokter -->
                   <button type="button"
                           class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
                           title="Buka Catatan"
                           @click="openNoteModal(
                             'Catatan Diagnosis',
                             '{{ item.field }}',
-                            { id: {{ item.item_id or 'null' }}, stage: '{{ stage }}' }
+                            { 
+                              id: {{ item.item_id or 'null' }},
+                              diagnosis_id: {{ item.diagnosis_id or 'null' }},
+                              stage: '{{ stage }}'
+                            }
                           )">🗒️</button>
                 </td>
                 <td class="border p-2 text-center">
@@ -143,13 +149,18 @@
                                 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-green-500">
                 </td>
                 <td class="border p-2 text-center">
+                  <!-- 🧩 Tambahkan procedure_id agar note map ke item dokter -->
                   <button type="button"
                           class="text-gray-500 hover:text-green-600 dark:hover:text-green-400"
                           title="Buka Catatan"
                           @click="openNoteModal(
                             'Catatan Tindakan',
                             '{{ item.field }}',
-                            { id: {{ item.item_id or 'null' }}, stage: '{{ stage }}' }
+                            { 
+                              id: {{ item.item_id or 'null' }},
+                              procedure_id: {{ item.procedure_id or 'null' }},
+                              stage: '{{ stage }}'
+                            }
                           )">🗒️</button>
                 </td>
                 <td class="border p-2 text-center">
@@ -194,13 +205,13 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/claim/claim.utils.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.state.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.manual.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.render.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.modals.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.api.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim/claim.bootstrap.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.utils.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.state.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.manual.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.render.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
+<script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
 
 <!-- ICD Autocomplete -->
 <script>
@@ -220,7 +231,7 @@ function searchICD(input, version) {
     } catch (err) {
       console.error("❌ Gagal cari ICD:", err);
     }
-  }, 300); // tunggu 300 ms sebelum fetch
+  }, 300);
 }
 </script>
 {% endblock %}
