@@ -1,0 +1,54 @@
+{
+  "rawat_inap.lama_rawat": "Lama Rawat Inap",
+  "diagnosis.primer": "Diagnosis Primer",
+  "diagnosis.sekunder": "Diagnosis Sekunder",
+  "diagnosis.komplikasi": "Komplikasi",
+  "diagnosis.komorbiditas": "Komorbiditas",
+  "indikasi.medis": "Indikasi Medis",
+  "syarat.klinis": "Syarat Klinis",
+  "bukti.klinis": "Bukti Klinis / Hasil Penunjang",
+
+  "tindakan.bedah": "Tindakan Bedah",
+  "tindakan.non_bedah": "Tindakan Non Bedah",
+  "tindakan.rehabilitasi": "Tindakan Rehabilitasi / Fisioterapi",
+  "tindakan.diagnostik": "Tindakan Diagnostik (ICD-9)",
+  "tindakan.icd9": "Kode ICD-9 Prosedur",
+
+  "lab.hematologi": "Lab Hematologi",
+  "lab.kimia_darah": "Lab Kimia Darah",
+  "lab.urin": "Lab Urin",
+  "lab.lain": "Lab Lain (Mikrobiologi, Imunologi)",
+  "radiologi.foto_thorax": "Radiologi Foto Thorax",
+  "radiologi.ct_scan": "Radiologi CT-Scan",
+  "radiologi.mri": "Radiologi MRI / USG",
+
+  "obat.antibiotik": "Obat Antibiotik",
+  "obat.analgesik": "Obat Analgesik",
+  "obat.antivirus": "Obat Antivirus",
+  "obat.antifungal": "Obat Antijamur / Antifungal",
+  "obat.kombinasi": "Obat Kombinasi",
+  "obat.fornas": "Obat Fornas (Formularium Nasional)",
+  "obat.non_fornas": "Obat Non-Fornas / Permintaan Khusus",
+
+  "administrasi.resume_medis": "Resume Medis",
+  "administrasi.laporan_operasi": "Laporan Operasi",
+  "administrasi.berkas_rujukan": "Berkas Rujukan / SEP",
+  "administrasi.lampiran": "Lampiran Pendukung",
+  "administrasi.sep_valid": "Validasi SEP / INA-CBG",
+
+  "bridging.kode_tarif": "Kode Tarif Bridging BPJS",
+  "bridging.icd_mapping": "Mapping ICD-CBG",
+  "bridging.cbg_group": "Grouping INA-CBG",
+  "bridging.idrg_mapping": "Mapping i-DRG",
+  "bridging.los_check": "Pemeriksaan LOS Otomatis",
+
+  "fraud.icd_combo": "Fraud: Kombinasi ICD Tidak Logis",
+  "fraud.duplikasi_tindakan": "Fraud: Duplikasi Tindakan",
+  "fraud.los_abnormal": "Fraud: LOS Tidak Wajar",
+  "fraud.biaya_tidak_logis": "Fraud: Biaya Tidak Logis",
+  "fraud.dx_tx_conflict": "Fraud: Diagnosis–Tindakan Tidak Sesuai",
+
+  "temporary.covid_policy": "Kebijakan COVID / Pandemi",
+  "temporary.idrg_transition": "Kebijakan Transisi i-DRG",
+  "temporary.edaran_khusus": "Edaran / Surat Sementara"
+}

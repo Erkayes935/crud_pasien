@@ -32,6 +32,9 @@
 
   // ================= Diagnosis Autocomplete =================
   function diagnosisAutocomplete(tab, tabPath, type = "diagnosis") {
+    // 🧩 fix: redirect tab daily -> daily-global sejak awal
+    if (tab === "daily") tab = "daily-global";
+
     return {
       query: "",
       results: [],
@@ -59,6 +62,9 @@
   }
 
   async function addManualIfNotFound(tab, type = "diagnosis") {
+    // 🧩 fix: redirect tab daily -> daily-global sejak awal
+    if (tab === "daily") tab = "daily-global";
+
     let el = document.querySelector(
       `[x-data*="diagnosisAutocomplete('${tab}'"][x-data*="'${type}')"]`
     );
@@ -67,18 +73,22 @@
         `[x-data*="diagnosisAutocomplete('daily"][x-data*="'${type}')"]`
       );
     }
+
     const ctx = el ? Alpine.$data(el) : null;
     if (!ctx) {
       console.warn("⚠️ addManualIfNotFound: konteks Alpine tidak ditemukan untuk", tab, type);
       return;
     }
+
     const text = ctx.query?.trim?.();
     if (!text) return;
+
     const found = (ctx.results || []).some(
       dx =>
         dx.name?.toLowerCase() === text.toLowerCase() ||
         dx.code?.toLowerCase() === text.toLowerCase()
     );
+
     if (!found) {
       const confirmAdd = await showConfirmModal(
         `${type.charAt(0).toUpperCase() + type.slice(1)} tidak ditemukan`,
@@ -92,96 +102,144 @@
     }
   }
 
+
   // ================= Render AI =================
   function renderAI(rows) {
     if (!Array.isArray(rows)) return;
-    rows = cleanObject(rows); // ❗ bersihkan semua "-" sebelum diproses
+
+    rows = cleanObject(rows);   // bersihkan data
     attachTindakan(rows);
 
     const admission = rows.filter(r => r.stage === "admission");
     const daily = rows.filter(r => r.stage && r.stage.startsWith("daily"));
     const discharge = rows.filter(r => r.stage === "discharge");
 
-    // Admission
-    renderTable("diagnosis-admission", admission.filter(r => r.category==="diagnosis"), "diagnosis", "admission");
-    renderTable("komorbid-admission", admission.filter(r => r.category==="komorbid"), "komorbid", "admission");
-    renderTable("komplikasi-admission", admission.filter(r => r.category==="komplikasi"), "komplikasi", "admission");
+    // ====================== ADMISSION ======================
+    renderTable(
+      "diagnosis-admission",
+      admission.filter(r => r.category === "diagnosis"),
+      "diagnosis",
+      "admission"
+    );
+    renderTable(
+      "komorbid-admission",
+      admission.filter(r => r.category === "komorbid"),
+      "komorbid",
+      "admission"
+    );
+    renderTable(
+      "komplikasi-admission",
+      admission.filter(r => r.category === "komplikasi"),
+      "komplikasi",
+      "admission"
+    );
 
-    // Daily
-    const dailyContainer = document.getElementById("daily-accordion");
-    if (dailyContainer) dailyContainer.innerHTML = "";
-    const groupedDaily = {};
-    daily.forEach(r => {
-      if (!groupedDaily[r.stage]) groupedDaily[r.stage] = [];
-      groupedDaily[r.stage].push(r);
-    });
-    Object.keys(groupedDaily).forEach((stage, idx) => {
-      const hari = groupedDaily[stage];
-      const dayId = `daily-${idx}`;
-      window.ensureDaily && window.ensureDaily(dayId);
+    // ====================== DAILY (GLOBAL) ======================
+    renderTable(
+      "diagnosis-daily",
+      daily.filter(r => r.category === "diagnosis"),
+      "diagnosis",
+      "daily-global"   // ✅ was "daily"
+    );
+    renderTable(
+      "komorbid-daily",
+      daily.filter(r => r.category === "komorbid"),
+      "komorbid",
+      "daily-global"
+    );
+    renderTable(
+      "komplikasi-daily",
+      daily.filter(r => r.category === "komplikasi"),
+      "komplikasi",
+      "daily-global"
+    );
 
-      dailyContainer && dailyContainer.insertAdjacentHTML("beforeend", `
-        <div class="bg-white dark:bg-gray-700 rounded shadow-sm mb-2" x-data="{open:true}">
-          <button type="button" @click="open=!open"
-            class="w-full flex justify-between px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold">
-            <span>Hari ${idx+1}</span>
-            <div class="flex items-center gap-3">
-              <span id="count-daily-${dayId}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-              <span x-show="open">⬆</span>
-              <span x-show="!open">⬇</span>
-            </div>
-          </button>
-          <div x-show="open" class="p-2 space-y-2">
-            ${["diagnosis","komorbid","komplikasi"].map(k => `
-              <details class="border rounded" open>
-                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
-                  <span class="font-semibold">${k[0].toUpperCase() + k.slice(1)}</span>
-                  <span id="count-${k}-${dayId}" class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                </summary>
-                <div class="p-3 overflow-x-auto">
-                  <table class="w-full text-xs border" id="${k}-${dayId}">
-                    <tbody id="${k}-${dayId}"></tbody>
-                  </table>
-                </div>
-              </details>
-            `).join("")}
-          </div>
-        </div>
-      `);
 
-      renderTable(`diagnosis-${dayId}`, hari.filter(r => r.category==="diagnosis"), "diagnosis", dayId);
-      renderTable(`komorbid-${dayId}`, hari.filter(r => r.category==="komorbid"), "komorbid", dayId);
-      renderTable(`komplikasi-${dayId}`, hari.filter(r => r.category==="komplikasi"), "komplikasi", dayId);
+    // 🔢 Hitung total global Daily (Diagnosis + Komorbid + Komplikasi)
+    const dailyCounter = document.getElementById("count-daily-global");
+    if (dailyCounter) {
+      const totalDaily =
+        (parseInt(document.getElementById("count-diagnosis-daily")?.textContent || 0)) +
+        (parseInt(document.getElementById("count-komorbid-daily")?.textContent || 0)) +
+        (parseInt(document.getElementById("count-komplikasi-daily")?.textContent || 0));
+      dailyCounter.textContent = totalDaily;
+    }
 
-      const dailyCounter = document.getElementById(`count-daily-${dayId}`);
-      if (dailyCounter) {
-        const totalDaily =
-          (parseInt(document.getElementById(`count-diagnosis-${dayId}`)?.textContent || 0)) +
-          (parseInt(document.getElementById(`count-komorbid-${dayId}`)?.textContent || 0)) +
-          (parseInt(document.getElementById(`count-komplikasi-${dayId}`)?.textContent || 0));
-        dailyCounter.textContent = totalDaily;
-      }
-    });
+    // ====================== DISCHARGE ======================
+    renderTable(
+      "diagnosis-discharge",
+      discharge.filter(r => r.category === "diagnosis"),
+      "diagnosis",
+      "discharge"
+    );
+    renderTable(
+      "komorbid-discharge",
+      discharge.filter(r => r.category === "komorbid"),
+      "komorbid",
+      "discharge"
+    );
+    renderTable(
+      "komplikasi-discharge",
+      discharge.filter(r => r.category === "komplikasi"),
+      "komplikasi",
+      "discharge"
+    );
 
-    // Discharge
-    renderTable("diagnosis-discharge", discharge.filter(r => r.category==="diagnosis"), "diagnosis", "discharge");
-    renderTable("komorbid-discharge", discharge.filter(r => r.category==="komorbid"), "komorbid", "discharge");
-    renderTable("komplikasi-discharge", discharge.filter(r => r.category==="komplikasi"), "komplikasi", "discharge");
-
-    // Buka otomatis semua section admission/discharge
-    document.querySelectorAll('#diagnosis-admission, #komorbid-admission, #komplikasi-admission, #diagnosis-discharge, #komorbid-discharge, #komplikasi-discharge')
+    // ====================== AUTO-OPEN SEMUA SECTION ======================
+    document
+      .querySelectorAll(
+        "#diagnosis-admission, #komorbid-admission, #komplikasi-admission, \
+        #diagnosis-daily, #komorbid-daily, #komplikasi-daily, \
+        #diagnosis-discharge, #komorbid-discharge, #komplikasi-discharge"
+      )
       .forEach(el => {
         const details = el.closest("details");
         if (details) details.setAttribute("open", "true");
       });
+    // ====================== SIMPAN KE STATE ======================
+    // di akhir bagian DAILY di renderAI()
+    const state = Alpine.$data(document.getElementById("claimRoot"));
+    if (!state.simulasi.daily) state.simulasi.daily = {};
+    state.simulasi.daily.global = {
+      diagnosis: daily.filter(r => r.category === "diagnosis"),
+      komorbid: daily.filter(r => r.category === "komorbid"),
+      komplikasi: daily.filter(r => r.category === "komplikasi")
+    };
+    // 🧩 sinkron ke root supaya ikut dibaca backend & simulasi
+    const s = Alpine.$data(document.getElementById("claimRoot"));
+    if (s) {
+      if (!s.simulasi.daily) s.simulasi.daily = {};
+      s.simulasi.daily.global = state.simulasi.daily.global;
+      // 🩹 jangan replace keseluruhan state daily
+      // cukup update data AI-nya saja agar manual tetap hidup
+      if (!s.simulasi["daily-global"]) s.simulasi["daily-global"] = {};
+      ["diagnosis","komorbid","komplikasi"].forEach(tp=>{
+        s.simulasi["daily-global"][tp] = daily.filter(r=>r.category===tp);
+      });
+
+      // sinkron ringan: isi daily.days terakhir
+      if (Array.isArray(s.simulasi.daily?.days) && s.simulasi.daily.days.length>0) {
+        const lastIdx = s.simulasi.daily.days.length-1;
+        const lastDay = s.simulasi.daily.days[lastIdx];
+        ["diagnosis","komorbid","komplikasi"].forEach(tp=>{
+          if (!Array.isArray(lastDay[tp])) lastDay[tp]=[];
+          const aiOnly = daily.filter(r=>r.category===tp).map(r=>({...r,isManual:false}));
+          // jangan hapus manual
+          const manuals = (lastDay[tp]||[]).filter(x=>x.isManual);
+          lastDay[tp] = [...aiOnly,...manuals];
+        });
+        s.simulasi[`daily-${lastIdx}`] = lastDay;
+      }
+    }
   }
+
 
   function renderMappingSelect(item, tab, type, index = null) {
     const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
 
     // ✅ fallback pakai index kalau item.id tidak ada
     // ✅ Kirim key unik berdasarkan kategori + tab
-    const key = encodeURIComponent(`${tab}-${type}-${item.kategori}`);
+    const key = encodeURIComponent(`${tab}-${type}-${item.kategori || item.nama_kategori}`);
     return `
       <select onchange="onMappingChange(event, '${tab}', '${type}', '${key}')"
               class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate">
@@ -206,7 +264,13 @@
   }
   // ================= Render Tabel =================
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
+    if (tab === "daily") tab = "daily-global";
     const state = Alpine.$data(document.getElementById("claimRoot"));
+    console.groupCollapsed("🧩 renderTable DEBUG");
+    console.log("targetId:", targetId);
+    console.log("tab:", tab, "type:", type);
+    console.log("state.simulasi[tab][type] sebelum render:", state.simulasi?.[tab]?.[type]);
+    console.groupEnd();
 
     if (!state.simulasi[tab]) state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [] };
 
@@ -237,94 +301,187 @@
       merged = [...aiItems, ...manualItems];
     }
 
-    // Dedup
+    // ✅ Dedup fix - buat ID unik untuk manual & biarkan tampil
     const seen = new Set();
     merged = merged.filter(it => {
-      const key = `${it.id}-${(it.nama_kategori || it.kategori || "").trim()}-${it.icd10_code || it.icd9_code || ""}-${it.tindakan || it.procedure_text || ""}-${it.child ? "child" : "parent"}`;
+      let key =
+        `${it.id || it._index || (it.isManual ? 'manual-' + (it.kategori || it.nama_kategori) : '')}` +
+        `-${(it.nama_kategori || it.kategori || "").trim()}` +
+        `-${it.icd10_code || it.icd9_code || ""}` +
+        `-${it.tindakan || it.procedure_text || ""}` +
+        `-${it.child ? "child" : "parent"}`;
+
+      // kalau manual tanpa id → selalu dianggap unik
+      if (it.isManual) key += `-${Math.random()}`;
+
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
+
     // Store parent items and flatten children into the main array for mapping
-    const flatItems = [];
-    merged.forEach(item => {
-      flatItems.push(item);
-      if (item.children && Array.isArray(item.children)) {
-        item.children.forEach((child, childIdx) => {
-          // Give each child a unique ID for mapping
-          child.id = child.id || `${item.id || 'parent'}-child-${childIdx}`;
-          child.parentId = item.id;
-          flatItems.push(child);
-        });
-      }
-    });
-    // 🧩 versi aman — bisa dipakai walau simulasi/tab/type belum ada
+    const flatItems = [...merged];
+    // ✅ gabungkan AI & Manual dua arah TANPA redeclare variabel
     if (!state.simulasi[tab]) state.simulasi[tab] = {};
-    if (!Array.isArray(state.simulasi[tab][type])) {
-      // belum ada data manual sama sekali → langsung assign
-      state.simulasi[tab][type] = flatItems;
+    const existing = Array.isArray(state.simulasi[tab][type]) ? state.simulasi[tab][type] : [];
+
+    // pakai nama berbeda supaya tidak bentrok dengan aiItems di atas
+    const keepManuals = existing.filter(it => it.isManual);
+    const newAIs     = flatItems.filter(it => !it.isManual);
+
+    // merge: manual disimpan, AI terbaru ditambahkan
+    const mergedItems = [...keepManuals, ...newAIs];
+
+    // 🧩 Simpan hasil merge AI + manual (jangan sentuh grouped di sini)
+    if (tab !== "daily-global") {
+      state.simulasi[tab][type] = JSON.parse(JSON.stringify(mergedItems));
     } else {
-      // sudah ada data manual → merge agar tidak hilang
-      const existingManuals = state.simulasi[tab][type].filter(it => it.isManual);
-      const mergedFlat = [
-        ...existingManuals,
-        ...flatItems.filter(it => !it.isManual)
+      const existingManuals = state.simulasi["daily-global"][type] || [];
+      const mergedFinal = [
+        ...mergedItems,
+        ...existingManuals.filter(
+          m => !mergedItems.some(ai => ai.kategori === m.kategori)
+        ),
       ];
-      state.simulasi[tab][type] = mergedFlat;
+      state.simulasi["daily-global"][type] = JSON.parse(JSON.stringify(mergedFinal));
     }
 
-    const target = document.getElementById(targetId);
-    if (!target) return;
+
+    // 🩹 UNIVERSAL PATCH – simpan children ke state.simulasi terpisah (aman semua tab)
+    if (Array.isArray(state.simulasi[tab]?.[type])) {
+      // Buat list children terpisah tanpa menambah array utama
+      const parents = state.simulasi[tab][type].filter(p => Array.isArray(p.children) && p.children.length > 0);
+      const allChildren = parents.flatMap(p =>
+        p.children.map(ch => ({
+          ...ch,
+          parentRef: p.id || p.kategori,
+          isChildClone: true
+        }))
+      );
+
+    }
+
+    // 🔍 log tambahan
+    console.groupCollapsed("🧩 renderTable MERGE DEBUG");
+    console.log("tab:", tab, "type:", type);
+    console.log("manuals:", keepManuals);
+    console.log("aiItems(new):", newAIs);
+    console.groupEnd();
+
+    let target = document.getElementById(targetId);
+    if (!target && targetId.includes("daily-global")) {
+      const fallbackId = targetId.replace("daily-global", "daily");
+      target = document.getElementById(fallbackId);
+    }
+
+    if (!target) {
+      console.warn("⚠️ renderTable: target element not found for", targetId);
+      return;
+    }
+
     target.innerHTML = "";
+    console.log("🧾 Rendering into target:", targetId, "data:", state.simulasi[tab][type]);
 
     // Group parent/child for rendering - rebuild hierarchy
+    // 🧩 Group parent/child for rendering - rebuild hierarchy (fix manual)
     let grouped = [];
     let parentMap = {};
     let lastParentKey = null;
 
-    merged.forEach(it => {
+    // Gunakan data akhir yang sudah digabung (AI + manual)
+    const allItems = state.simulasi?.[tab]?.[type] || merged;
+
+    // Loop semua item untuk rebuild hierarki
+    [...allItems].forEach(it => {
       const name = (it.nama_kategori || it.kategori || "").trim();
       if (!name) return;
       const itemType = it.type || type || "diagnosis";
 
-      // 🔥 Core_engine format: parent already has children array
+      // ✅ kalau manual tanpa anak → langsung jadi baris sendiri
+      if (it.isManual && !it.children && !it.child) {
+        grouped.push({
+          ...it,
+          kategori: name,
+          nama_kategori: name,
+          children: [] // biar struktur sama
+        });
+        return;
+      }
+
+      // 🔥 Core_engine format: parent sudah punya children
       if (it.children && Array.isArray(it.children)) {
         const parentWithChildren = {
           ...it,
           kategori: name,
           nama_kategori: name,
-          children: it.children.map(child => ({
+          children: it.children.map((child, idx) => ({
             ...child,
-            kategori: child.nama_kategori || child.kategori || child.name || '-',
-            nama_kategori: child.nama_kategori || child.kategori || child.name || '-',
-            klinis: child.klinis || '-',
-            icd10_code: child.icd10_code || child.icd || '-',
-            procedure_text: child.tindakan || child.procedure_text || '-',
-            score: child.score || child.confidence || '-',
-            id: child.id || `${it.id || 'parent'}-child-${child.name}` // ensure child has ID
+            kategori: child.nama_kategori || child.kategori || "-",
+            nama_kategori: child.nama_kategori || child.kategori || "-",
+            klinis: child.klinis || "-",
+            icd10_code: child.icd10_code || child.icd || "-",
+            procedure_text: child.tindakan || child.procedure_text || "-",
+            score: child.score || child.confidence || "-",
+            id: child.id || `${it.id || "parent"}-child-${idx}`
           }))
         };
         grouped.push(parentWithChildren);
+        return;
       }
+
       // 🔥 Development branch format: child flag
-      else if (it.child === true) {
-        if (lastParentKey && parentMap[lastParentKey]) {
-          const childWithId = {
-            ...it,
-            kategori: `${name} ${String.fromCharCode(97 + parentMap[lastParentKey].children.length)}`,
-            nama_kategori: name,
-            id: it.id || `${parentMap[lastParentKey].id}-child-${parentMap[lastParentKey].children.length}`
-          };
-          parentMap[lastParentKey].children.push(childWithId);
-        }
-      } else {
-        const parentKey = `${itemType}:${name}`;
-        parentMap[parentKey] = { ...it, kategori: name, nama_kategori: name, children: [] };
-        grouped.push(parentMap[parentKey]);
-        lastParentKey = parentKey;
+      if (it.child === true && lastParentKey && parentMap[lastParentKey]) {
+        const childWithId = {
+          ...it,
+          kategori: `${name} ${String.fromCharCode(
+            97 + parentMap[lastParentKey].children.length
+          )}`,
+          nama_kategori: name,
+          id:
+            it.id ||
+            `${parentMap[lastParentKey].id}-child-${parentMap[lastParentKey].children.length}`
+        };
+        parentMap[lastParentKey].children.push(childWithId);
+        return;
       }
+
+      // default parent (AI biasa)
+      const parentKey = `${itemType}:${name}`;
+      parentMap[parentKey] = {
+        ...it,
+        kategori: name,
+        nama_kategori: name,
+        children: []
+      };
+      grouped.push(parentMap[parentKey]);
+      lastParentKey = parentKey;
     });
+
+    // 🩹 Simpan hasil grouped (parent + children) ke simulasi
+    if (Array.isArray(grouped) && grouped.length > 0) {
+      state.simulasi[tab][type] = JSON.parse(JSON.stringify(grouped));
+    }
+
+    // 🩹 tambahan khusus daily-global agar children ikut tersimpan di simulasi
+    if (tab === "daily-global") {
+      const parents = grouped.filter(p => Array.isArray(p.children) && p.children.length > 0);
+      const allChildren = parents.flatMap(p =>
+        p.children.map(ch => ({
+          ...ch,
+          parentRef: p.id || p.kategori,
+          isChildClone: true
+        }))
+      );
+
+      // simpan anak-anak sebagai entri datar juga, biar bisa diproses updateSimulasi & mapping
+      state.simulasi["daily-global"][type] = [
+        ...(state.simulasi["daily-global"][type] || []),
+        ...allChildren.filter(
+          c => !state.simulasi["daily-global"][type].some(e => e.nama_kategori === c.nama_kategori)
+        )
+      ];
+    }
 
     // Header (sekali per table)
     const table = target.closest("table");
@@ -442,13 +599,38 @@
       Alpine.initTree(tbody);
     });
 
-    // Counter badge
+    // util: normalisasi & buat key unik
+    const makeKey = (it = {}) => {
+      const norm = v => (v || "").toString().trim().toLowerCase();
+      const name = norm(it.nama_kategori || it.kategori || it.name);
+      const icd  = norm(it.icd10_code || it.icd9_code);
+      // pakai kombinasi nama+ICD biar lebih stabil (kalau ICD kosong tetap aman)
+      return `${name}|${icd}`;
+    };
+
+    // ========== Counter badge per-section ==========
     const counterId = dayId ? `count-${type}-${dayId}` : `count-${type}-${tab}`;
     const countEl = document.getElementById(counterId);
     if (countEl) {
-      let total = grouped.reduce((sum, p) => sum + 1 + p.children.length, 0);
+      const seen = new Set();
+      let total = 0;
+      grouped.forEach(p => {
+        // skip clone/hidden
+        if (!p.isChildClone && !p.hidden) {
+          const k = makeKey(p);
+          if (k && !seen.has(k)) { seen.add(k); total += 1; }
+        }
+        (p.children || []).forEach(ch => {
+          if (!ch.isChildClone && !ch.hidden) {
+            const k = makeKey(ch);
+            if (k && !seen.has(k)) { seen.add(k); total += 1; }
+          }
+        });
+      });
       countEl.textContent = total;
     }
+
+    // Total harian (diagnosis+komorbid+komplikasi) tetap sama
     if (dayId) {
       const dailyCounter = document.getElementById(`count-daily-${dayId}`);
       if (dailyCounter) {
@@ -460,16 +642,49 @@
       }
     }
 
-    // Manual row (input) untuk doctor
+    // ========== Counter utama (badge biru header tab) ==========
+    let mainCounter = document.querySelector(`#count-${type}-${tab}`);
+    if (!mainCounter && tab === "daily-global") {
+      mainCounter = document.querySelector(`#count-${type}-daily`);
+    }
+    if (mainCounter) {
+      const arr = Array.isArray(state.simulasi?.[tab]?.[type]) ? state.simulasi[tab][type] : [];
+      const seen = new Set();
+      let total = 0;
+      arr.forEach(p => {
+        if (!p.isChildClone && !p.hidden) {
+          const k = makeKey(p);
+          if (k && !seen.has(k)) { seen.add(k); total += 1; }
+        }
+        (p.children || []).forEach(ch => {
+          if (!ch.isChildClone && !ch.hidden) {
+            const k = makeKey(ch);
+            if (k && !seen.has(k)) { seen.add(k); total += 1; }
+          }
+        });
+      });
+      mainCounter.textContent = total;
+    }
+
+    // === Manual input row untuk doctor ===
     if (!skipManualRow && (Alpine.$data(document.getElementById("claimRoot")).role === "doctor")) {
-      if (tab === "admission" || tab === "discharge" || String(tab).startsWith("daily-")) {
+      if (
+        tab === "admission" ||
+        tab === "discharge" ||
+        tab === "daily" ||
+        tab === "daily-global" ||
+        String(tab).startsWith("daily-")
+      ) {
         const manualTbody = document.createElement("tbody");
         const tabPath = String(tab).startsWith("daily-")
           ? `manualInput.daily[\`${tab}\`].${type}`
           : `manualInput.${tab}.${type}`;
+        const manualRowId = `manual-${tab}-${type}-${Date.now()}`;
 
-        manualTbody.insertAdjacentHTML("beforeend", `
-          <tr class="manual-row bg-gray-50 dark:bg-gray-800">
+        manualTbody.insertAdjacentHTML(
+          "beforeend",
+          `
+          <tr id="${manualRowId}" class="manual-row bg-gray-50 dark:bg-gray-800">
             <td class="border px-3 py-2 whitespace-nowrap relative overflow-visible max-w-[180px]">
               <div x-data="diagnosisAutocomplete('${tab}', '${tabPath}', '${type}')" class="relative">
                 <input type="text"
@@ -477,10 +692,7 @@
                       @input.debounce.300ms="search"
                       @keydown.enter.prevent="results.length ? select(results[0]) : addManualIfNotFound()"
                       placeholder="Cari penyakit..."
-                      class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900
-                              text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
-
-                <!-- dropdown suggestion -->
+                      class="w-full px-2 py-1 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600">
                 <ul x-show="results.length > 0"
                     class="absolute left-0 top-full mt-1 z-[9999] bg-white dark:bg-gray-800 border w-full rounded max-h-40 overflow-y-auto shadow-lg">
                   <template x-for="item in results" :key="item.code">
@@ -507,12 +719,15 @@
               <button type="button" @click="addManualIfNotFound('${tab}', '${type}')" class="bg-green-600 text-white px-2 py-1 rounded">➕</button>
             </td>
           </tr>
-        `);
+        `
+        );
 
+        // 🧩 append manualTbody ke PARENT TABLE (bukan ke target tbody)
         target.appendChild(manualTbody);
         Alpine.initTree(manualTbody);
       }
     }
+
     // === Sinkron render list tindakan manual di modal ===
     if (type === "diagnosis" && typeof window.renderManualTindakanList === "function") {
       setTimeout(() => window.renderManualTindakanList(tab), 0);
