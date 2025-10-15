@@ -300,8 +300,6 @@
 
       console.log("[REGULATION] Payload sent to backend:", payload);
 
-      openModal("Loading", "<div class='text-center'><div class='spinner'></div><p>Loading regulations...</p></div>");
-
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
