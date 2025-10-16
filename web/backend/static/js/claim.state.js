@@ -183,10 +183,16 @@
 
   // normalisasi opsi mapping
   function normalizeOpt(opt) {
+    // Diagnosis mappings
     if (opt === "Diagnosis Utama" || opt === "Utama" || opt === "Primary Claim" || opt === "Primary") return "Primary";
     if (opt === "Komorbid" || opt === "Secondary-Komorbid") return "Secondary-Komorbid";
     if (opt === "Komplikasi" || opt === "Secondary-Komplikasi") return "Secondary-Komplikasi";
     if (opt === "Sekunder" || opt === "Secondary Claim" || opt === "Secondary") return "Secondary";
+    
+    // 🎯 NEW: Action/Procedure mappings
+    if (opt === "Primary Action" || opt === "Tindakan Utama") return "Primary Action";
+    if (opt === "Secondary Actions" || opt === "Tindakan Sekunder") return "Secondary Actions";
+    
     if (opt === "None") return "None";
     return opt;
   }
@@ -296,15 +302,30 @@
       // fungsi
       addNewDailyDay() { addNewDailyDay(this); },
       renderDailyAccordion() { renderDailyAccordion(this); },
-      init() {
+      async init() {
         const role = this.role;
         const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+        
+        console.log("🚀 [ALPINE INIT] Starting initialization", { role, claimId });
+        console.log("🔍 [ALPINE INIT] Initial simulasi state:", JSON.stringify(this.simulasi, null, 2));
+        
         if (this.simulasi.daily.days.length === 0) {
           this.addNewDailyDay();   // bikin Hari 1 kosong
         }
+        
+        // 🎯 CRITICAL FIX: Load simulations IMMEDIATELY in init, not setTimeout
         if ((role === 'verifikator' || role === 'doctor') && claimId) {
-          setTimeout(() => window.loadSimulations && window.loadSimulations(claimId), 0);
+          console.log("🔄 [ALPINE INIT] Loading simulations during initialization...");
+          if (window.loadSimulations) {
+            await window.loadSimulations(claimId);
+            console.log("✅ [ALPINE INIT] Simulations loaded successfully");
+            console.log("🔍 [ALPINE INIT] Final simulasi state:", JSON.stringify(this.simulasi, null, 2));
+          } else {
+            console.warn("⚠️ [ALPINE INIT] window.loadSimulations not available!");
+          }
         }
+        
+        console.log("🏁 [ALPINE INIT] Initialization completed");
       },
 
       statusIcon(s) {
@@ -328,11 +349,20 @@
     const state = Alpine.$data(document.getElementById("claimRoot"));
     if (!tab) tab = "admission";
     const finalOpt = normalizeOpt(opt || value?.mapping || "");
-
+    console.log("🎯 normalizeOpt result:", { original: opt, normalized: finalOpt });
+    
     if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
       state.simulasi[tab] = {};
     }
     let sim = state.simulasi[tab];
+    
+    // 🔍 DEBUG: Check current sim state before update
+    console.log("📋 [BEFORE UPDATE] Current sim state:", {
+      utama: sim.utama,
+      sekunder: sim.sekunder,
+      tindakanUtama: sim.tindakanUtama,
+      tindakanSekunder: sim.tindakanSekunder
+    });
 
     if (!("utama" in sim)) sim.utama = null;
     if (!Array.isArray(sim.sekunder)) sim.sekunder = [];
@@ -349,10 +379,12 @@
           label: value.label || ""
         };
 
+    // 🎯 FIX: Set proper labels for loaded data
     if (source) {
       if (finalOpt === "Primary") item.label = "Utama Klinis";
       else if (finalOpt === "Secondary-Komorbid") item.label = "Komorbid";
       else if (finalOpt === "Secondary-Komplikasi") item.label = "Komplikasi";
+      else if (finalOpt === "Secondary") item.label = "Sekunder Klinis"; // ✅ NEW: Label for secondary diagnosis
     }
 
     // Diagnosis
@@ -379,12 +411,15 @@
       const nama = typeof value === "string" ? value : (value.name || value.label || "(tanpa nama)");
       const id = typeof value === "string" ? null : (value.id || null);
 
-      if (finalOpt === "Primary") {
+      // 🎯 FIX: Handle normalized "Primary Action"
+      if (finalOpt === "Primary Action") {
         const oldPrimary = sim.tindakanUtama;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
         sim.tindakanUtama = { tindakan_utama_id: id, name: nama };
         if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
-      } else if (finalOpt === "Secondary") {
+      } 
+      // 🎯 FIX: Handle normalized "Secondary Actions"  
+      else if (finalOpt === "Secondary Actions") {
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         if (!sim.tindakanSekunder.find(td => td.name === nama)) {
           sim.tindakanSekunder.push({ tindakan_sekunder_id: id, name: nama });
@@ -393,6 +428,14 @@
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
       }
+      
+      // 🔍 DEBUG: Check sim state after tindakan update
+      console.log("🎯 [AFTER TINDAKAN UPDATE] Updated sim state:", {
+        tindakanUtama: sim.tindakanUtama,
+        tindakanSekunder: sim.tindakanSekunder,
+        finalOpt: finalOpt,
+        nama: nama
+      });
     }
 
     // Daily tab sync
@@ -422,12 +465,37 @@
     }
 
     // 🧩 Tambahkan log debug di sini
-    console.groupCollapsed("🧩 updateSimulasi DEBUG");
-    console.log("tab:", tab);
-    console.log("type:", type);
-    console.log("finalOpt:", finalOpt);
-    console.log("sim setelah update:", JSON.parse(JSON.stringify(state.simulasi[tab])));
-    console.groupEnd();
+    console.log("🧩 updateSimulasi DEBUG - tab:", tab, "type:", type, "finalOpt:", finalOpt);
+    console.log("📋 [BEFORE] sim state:", JSON.parse(JSON.stringify(state.simulasi[tab])));
+    console.log("📋 [AFTER] sim setelah update:", JSON.parse(JSON.stringify(state.simulasi[tab])));
+    
+    // 🔍 CRITICAL DEBUG: Check final tindakan state
+    if (type === "tindakan") {
+      console.log("🎯 TINDAKAN FINAL STATE:");
+      console.log("  - tindakanUtama:", state.simulasi[tab].tindakanUtama);
+      console.log("  - tindakanSekunder:", state.simulasi[tab].tindakanSekunder);
+      console.log("  - Template should show:", {
+        primaryAction: state.simulasi[tab].tindakanUtama?.name || "TIDAK ADA",
+        secondaryActions: (state.simulasi[tab].tindakanSekunder || []).map(t => t.name)
+      });
+      
+      // 🔥 FORCE ALPINE REACTIVITY CHECK
+      console.log("🔥 [REACTIVITY CHECK] Full simulasi object:", state.simulasi);
+      console.log("🔥 [REACTIVITY CHECK] Alpine state reference:", typeof state, !!state);
+      
+      // 🚨 CRITICAL: Force template update
+      try {
+        const claimRoot = document.getElementById("claimRoot");
+        if (claimRoot && Alpine) {
+          console.log("🔄 [FORCE UPDATE] Triggering Alpine refresh...");
+          Alpine.nextTick(() => {
+            console.log("✅ [FORCE UPDATE] NextTick completed");
+          });
+        }
+      } catch (e) {
+        console.error("❌ [FORCE UPDATE] Failed:", e);
+      }
+    }
 
     // 🩹 sinkron ringkasan kanan khusus untuk tab Daily
     if (["daily", "daily-global"].includes(tab)) {
