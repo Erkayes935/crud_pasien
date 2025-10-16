@@ -168,17 +168,24 @@ def select_group_page(
     request: Request,
     patient_id: int = Query(...),
     db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor")),
+    user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
 ):
     """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
     groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
     csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("claim_group_select.html", {
-        "request": request,
-        "groups": groups,
-        "patient_id": patient_id,
-        "csrf_token": csrf_token
-    })
+
+    return templates.TemplateResponse(
+        "claim_group_select.html",
+        {
+            "request": request,
+            "groups": groups,
+            "patient_id": patient_id,
+            "csrf_token": csrf_token,
+            "user": user,              # ✅ penting untuk navbar
+            "current_user": user,      # ✅ konsisten dengan halaman lain
+        },
+    )
+
 
 @router.get("/select-visit")
 def select_visit_page(
@@ -269,6 +276,14 @@ def claim_detail(
         models.ClaimSimulation.coder_verified == True
     ).all()
     
+    # Load approved mappings for verificator (if user is verificator)
+    approved_mappings = {}
+    user_roles = user.role_names if hasattr(user, 'role_names') else [user.role] if user.role else []
+    
+    if "verifikator" in user_roles:
+        from ..services.claim import simulation as sim_service
+        approved_mappings = sim_service.get_simulations_for_verificator(db, claim_id)
+    
     return templates.TemplateResponse("claim_detail.html", {
         "request": request,
         "claim": claim,
@@ -276,30 +291,13 @@ def claim_detail(
         "csrf_token": issue_csrf_token(request),
         "current_user": user,
         "coder_results": coder_results,
+        "approved_mappings": approved_mappings,  # ✅ New: Untuk verificator
     })
 
 
 # ==================================================
 # ADD / EDIT / UPDATE / FINALIZE
 # ==================================================
-
-@router.get("/select-group")
-def select_group_page(
-    request: Request,
-    patient_id: int = Query(...),
-    db: Session = Depends(get_db),
-    user=Depends(require_roles_session("doctor")),
-):
-    """Halaman memilih group klaim: buat baru atau lanjut yang sudah ada"""
-    groups = db.query(models.ClaimGroup).filter_by(patient_id=patient_id).all()
-    csrf_token = issue_csrf_token(request)
-    return templates.TemplateResponse("claim_group_select.html", {
-        "request": request,
-        "groups": groups,
-        "patient_id": patient_id,
-        "csrf_token": csrf_token
-    })
-
 
 @router.post("/create-group")
 def create_group(
@@ -390,43 +388,46 @@ def edit_claim_form(
 ):
     """Form edit klaim dinamis berdasarkan role dengan workflow tracking"""
     
-    # 🔍 Ambil klaim dari database
     claim = db.query(models.Claim).get(claim_id)
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
     csrf_token = issue_csrf_token(request)
 
-    # ✅ Ambil role dari sistem baru (bisa multiple)
+    # Get user roles
     roles = user.role_names or []
     has_doctor = "doctor" in roles
     has_coder = "coder" in roles
     has_verifikator = "verifikator" in roles
 
-    # ✅ WORKFLOW VALIDATION
+    # Count total roles
+    total_roles = sum([has_doctor, has_coder, has_verifikator])
+    
+    # WORKFLOW VALIDATION (skip for multi-role users)
     current_workflow = claim.workflow_status or "draft"
     
-    # Doctor can only edit if in draft or doctor_submitted
-    if has_doctor and not has_coder and not has_verifikator:
-        if current_workflow not in ["draft", "doctor_submitted"]:
+    # Multi-role users can bypass workflow checks
+    if total_roles == 1:  # Single role user
+        if has_doctor and current_workflow not in ["draft", "doctor_submitted"]:
             flash(request, "⚠️ Klaim sudah masuk ke tahap coder/verifikator", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-    
-    # Coder can only edit if doctor_submitted or coder_review
-    if has_coder and not has_verifikator and not has_doctor:
-        if current_workflow not in ["doctor_submitted", "coder_review", "coder_verified"]:
+        
+        if has_coder and current_workflow not in ["doctor_submitted", "coder_review", "coder_verified"]:
             flash(request, "⚠️ Klaim belum siap untuk review coder atau sudah selesai", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-    
-    # Verifikator can only edit if coder_verified
-    if has_verifikator and not has_coder and not has_doctor:
-        if current_workflow not in ["coder_verified", "verifikator_review"]:
+        
+        if has_verifikator and current_workflow not in ["coder_verified", "verifikator_review"]:
             flash(request, "⚠️ Klaim belum diverifikasi coder", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+    else:
+        # Multi-role: No workflow restriction
+        print(f"✅ Multi-role user {user.name} - bypassing workflow checks")
 
-    # ✅ Tentukan template dinamis
-    if sum([has_doctor, has_coder, has_verifikator]) > 1:
+    # TEMPLATE SELECTION
+    if total_roles > 1:
+        # Multi-role: Combine view (doctor left + verifikator right)
         template_name = "claim_combine.html"
+        print(f"🎯 Using combined template for multi-role user")
     elif has_verifikator:
         template_name = "claim_right.html"
     elif has_coder:
@@ -434,12 +435,12 @@ def edit_claim_form(
     elif has_doctor:
         template_name = "claim_left.html"
     else:
-        template_name = "claim_right.html"
+        template_name = "claim_right.html"  # fallback
 
-    # 🔄 Ambil simulasi & summary
-    sim, summ = load_sim_and_summary(db, claim_id, include_summary=not has_doctor)
+    # Load simulation & summary
+    sim, summ = load_sim_and_summary(db, claim_id, include_summary=not has_doctor or total_roles > 1)
 
-    # 🩺 Ambil data rekam medis (jika ada)
+    # Load medical record data
     existing_medical_data = {}
     if claim.medical_record_id:
         medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
@@ -449,20 +450,20 @@ def edit_claim_form(
                 if fname and hasattr(medical_record, fname):
                     existing_medical_data[fname] = getattr(medical_record, fname)
 
-    # 🔗 Apply mapping hasil AI ke simulasi
+    # Apply existing mappings to simulation
     existing_mappings = load_existing_mappings(db, claim_id)
     if existing_mappings and sim and "simulasi" in sim:
         sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
 
-    # ✅ Load hasil verifikasi coder untuk verifikator
+    # Load coder results for verifikator
     coder_results = None
-    if has_verifikator:
+    if has_verifikator or total_roles > 1:
         coder_results = db.query(models.ClaimSimulation).filter(
             models.ClaimSimulation.claim_id == claim_id,
             models.ClaimSimulation.coder_verified == True
         ).all()
 
-    # 🧩 Siapkan context dasar
+    # Base context
     context = {
         "request": request,
         "mode": "edit",
@@ -474,24 +475,23 @@ def edit_claim_form(
         "isDoctor": has_doctor,
         "isVerifikator": has_verifikator,
         "isCoder": has_coder,
+        "isMultiRole": total_roles > 1,  # New flag for multi-role
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
         "existing_medical_data": existing_medical_data,
-        "coder_results": coder_results,  # ✅ Tambahan untuk verifikator
+        "coder_results": coder_results,
         "workflow_status": current_workflow,
     }
 
-    # 🩹 FIX untuk template coder: tambahkan claim & stages
+    # Special handling for coder template
     if template_name == "edit_coder.html":
         from ..services.claim import simulation as sim_service
         stages = sim_service.get_simulations_for_coder(db, claim_id)
         context["claim"] = claim
         context["stages"] = stages
 
-    # 🚀 Render template sesuai role
     return templates.TemplateResponse(template_name, context)
-
 
 @router.post("/{claim_id}/update-draft", name="save_draft")
 async def update_claim_draft(
@@ -576,8 +576,10 @@ async def finalize_claim(
     user=Depends(require_roles_session("verifikator")),
     _=Depends(require_csrf_dep),
 ):
-    """Finalize klaim oleh verifikator"""
-    # ✅ Ambil semua form field dari POST body
+    """
+    Finalize klaim oleh verifikator.
+    Multi-role user (doctor + verifikator) bisa BYPASS workflow coder.
+    """
     form_data = await request.form()
     form_dict = dict(form_data)
 
@@ -585,15 +587,54 @@ async def finalize_claim(
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    # Validasi workflow
-    if claim.workflow_status != "coder_verified":
-        flash(request, "⚠️ Klaim harus diverifikasi coder terlebih dahulu", "error")
+    # Check user roles
+    roles = user.role_names or []
+    has_doctor = "doctor" in roles
+    has_verifikator = "verifikator" in roles
+    bypass_coder = has_doctor and has_verifikator
+
+    # Validasi minimal diagnosis
+    sim_count = db.query(models.ClaimSimulation).filter(
+        models.ClaimSimulation.claim_id == claim_id
+    ).count()
+    if sim_count == 0:
+        flash(request, "⚠️ Minimal harus ada 1 diagnosis/simulasi sebelum finalisasi", "error")
         return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
 
-    # Jalankan finalize service
-    core.finalize_claim_service(db, claim_id, user, form_dict)
+    # Workflow validation
+    if not bypass_coder:
+        # Normal flow: harus sudah coder_verified
+        if claim.workflow_status != "coder_verified":
+            flash(request, "⚠️ Klaim harus diverifikasi coder terlebih dahulu", "error")
+            return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+    else:
+        # BYPASS FLOW: Isi historis workflow untuk audit trail
+        now = datetime.now()
+        
+        # Auto-fill doctor submission jika belum
+        if not getattr(claim, "doctor_submitted_at", None):
+            claim.doctor_submitted_at = now
+            claim.doctor_submitted_by = user.name
+        
+        # Auto-fill coder verification (self-verify karena bypass)
+        if not getattr(claim, "coder_verified_at", None):
+            claim.coder_verified_at = now
+            claim.coder_verified_by = f"{user.name} (bypass)"
+        
+        # Set workflow ke coder_verified sebelum finalize
+        claim.workflow_status = "coder_verified"
+        db.commit()  # Commit intermediate state
+        
+        print(f"✅ BYPASS MODE: User {user.name} has both doctor+verifikator roles")
 
-    # Update status klaim
+    # Execute finalize service
+    try:
+        core.finalize_claim_service(db, claim_id, user, form_dict)
+    except Exception as e:
+        flash(request, f"⚠️ Gagal finalize klaim: {str(e)}", "error")
+        return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
+
+    # Update final status
     claim.workflow_status = "finalized"
     claim.finalized_at = datetime.now()
     claim.finalized_by = user.name
@@ -601,8 +642,6 @@ async def finalize_claim(
 
     flash(request, "✅ Klaim berhasil difinalisasi", "success")
     return RedirectResponse("/dashboard", status_code=303)
-
-
 # ==================================================
 # DELETE
 # ==================================================
@@ -760,9 +799,30 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
     try:
         print(f"[PREDICT_DDX] Storing AI results for claim {cid}, stage {stage}")
         ai.clear_ai_results(db, cid)
+        
+        # ✅ CLEAR EXISTING MAPPINGS saat generate AI ulang
+        print(f"[PREDICT_DDX] Clearing existing mappings to prevent duplicates...")
+        from backend.services.claim.simulation import models
+        
+        # Clear existing ClaimSimulation mappings
+        deleted_sims = db.query(models.ClaimSimulation).filter(models.ClaimSimulation.claim_id == cid).delete()
+        
+        # Clear mapped diagnoses & procedures (yang dari mapping, bukan AI original)
+        deleted_diags = db.query(models.ClaimDiagnosis).filter(
+            models.ClaimDiagnosis.claim_id == cid,
+            models.ClaimDiagnosis.diagnosis_type.in_(["Diagnosis Utama", "Komorbid", "Komplikasi", "Primary", "Secondary"])
+        ).delete(synchronize_session=False)
+        
+        deleted_procs = db.query(models.ClaimProcedure).filter(
+            models.ClaimProcedure.claim_id == cid,
+            models.ClaimProcedure.procedure_type.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
+        ).delete(synchronize_session=False)
+        
+        print(f"[PREDICT_DDX] ✅ Cleared existing mappings: {deleted_sims} simulations, {deleted_diags} diagnoses, {deleted_procs} procedures")
+        
         ai.store_ai_recommendations(db, cid, normalized, "predict", stage)
         db.commit()
-        print(f"[PREDICT_DDX] Successfully stored AI results")
+        print(f"[PREDICT_DDX] Successfully stored AI results with clean mappings")
     except Exception as e:
         print(f"[PREDICT_DDX] Error storing results: {str(e)}")
         db.rollback()

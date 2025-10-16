@@ -93,8 +93,11 @@
     return REGULATION_FIELDS[fieldName] === true;
   }
 
+  // global flag untuk cegah duplikasi modal (restore regulasi)
+  window.__suppressModalStack = false;
 
   function openModal(title, content, options = {}) {
+    // pastikan claimState tersedia
     window.claimState = window.claimState || {};
     window.claimState.modalStack = window.claimState.modalStack || [];
 
@@ -126,13 +129,17 @@
     }
 
     // simpan modal lama ke stack (restore system)
-    const oldTitle = modalTitle.innerHTML?.trim();
-    const oldHTML = modalContent.innerHTML?.trim();
-    if (oldHTML && oldTitle) {
-      window.claimState.modalStack.push({ title: oldTitle, content: oldHTML });
-      if (window.claimState.modalStack.length > 10)
-        window.claimState.modalStack.shift();
+    // 🚫 tapi jangan push kalau sedang restore dari overlay regulasi
+    if (!window.__suppressModalStack) {
+      const oldTitle = modalTitle.innerHTML?.trim();
+      const oldHTML = modalContent.innerHTML?.trim();
+      if (oldHTML && oldTitle) {
+        window.claimState.modalStack.push({ title: oldTitle, content: oldHTML });
+        if (window.claimState.modalStack.length > 10)
+          window.claimState.modalStack.shift();
+      }
     }
+
 
     // Log that we're opening the modal
     console.log("🔍 Opening modal with title:", title);
@@ -200,6 +207,12 @@
       
       console.log("🔍 Event handlers attached to regulation fields");
     }, 50);
+
+    // ✅ Auto-reset flag setelah modal sukses terbuka (hindari duplikasi restore)
+    if (window.__suppressModalStack) {
+      console.log("🔧 Reset suppress flag setelah modal dibuka");
+      window.__suppressModalStack = false;
+    }
   }
 
   function renderRegulationDetailMultilayer(data, fieldName) {
@@ -259,6 +272,85 @@
     `;
   }
 
+  function openOverlayModal(title, htmlContent, sourceType = null, sourceId = null) {
+    // 🩵 reset global font biar modal lain gak ikut besar
+    document.body.classList.remove("text-xl", "text-yellow-500", "font-bold");
+
+    // simpan context biar tau nanti harus balik ke mana
+    window.claimState = window.claimState || {};
+    window.claimState.regulationSource = { type: sourceType, id: sourceId };
+
+    let overlay = document.getElementById("overlayRegulasi");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "overlayRegulasi";
+      overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-[999]";
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="bg-gray-900 text-white p-6 rounded-2xl max-w-4xl w-[90%] shadow-xl relative animate-fade-in">
+        <button type="button"
+                class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
+                onclick="closeOverlayModal()">✕</button>
+        <h2 class="text-lg font-semibold mb-4 text-center text-white">${title}</h2>
+        ${htmlContent}
+      </div>
+    `;
+  }
+
+
+  // =======================
+  // Close overlay regulasi
+  // =======================
+  function closeOverlayModal() {
+    const overlay = document.getElementById("overlayRegulasi");
+    if (!overlay) return;
+
+    overlay.remove();
+
+    const src = window.claimState?.regulationSource || {};
+    console.log("🔻 closeOverlayModal triggered:", src);
+
+    const lastType = src.type;
+    window.claimState.regulationSource = null;
+
+    // ❌ Reset flag agar tidak ada restore diagnosis ganda
+    window.claimState.pendingRestoreDiagnosis = false;
+
+    if (lastType === "procedure" && window.claimState?.currentProcedure?.id) {
+      console.log("🩵 Restore modal tindakan:", window.claimState.currentProcedure);
+      if (window.claimState.modalOpen) {
+        console.warn("⛔ Skip restore tindakan karena modal masih terbuka");
+        return;
+      }
+      openProcedureModal(
+        window.claimState.currentProcedure.id,
+        window.claimState.currentProcedure.name
+      );
+    } 
+    else if (lastType === "diagnosis" && window.claimState?.currentDiagnosis) {
+      console.log("🩵 Restore modal diagnosis:", window.claimState.currentDiagnosis);
+      // ✅ Cegah duplikasi modal jika masih terbuka
+      if (window.claimState.modalOpen) {
+        console.warn("⛔ Skip restore diagnosis karena modal masih terbuka");
+        return;
+      }
+      window.__suppressModalStack = true; // 🚫 hindari push ke stack
+      openModal(
+        `<div class="flex flex-col items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">
+            ${window.claimState.currentDiagnosisTitle || "Diagnosis"}
+          </span>
+        </div>`,
+        renderDiagnosisDetail(window.claimState.currentDiagnosis),
+        { hideDefaultClose: false }
+      );
+      window.__suppressModalStack = false;
+    }
+  }
+
   // =======================
   // Main function to open regulation modal
   // =======================
@@ -283,7 +375,7 @@
         if (el) diagnosisFromUI = el.dataset.diseaseName || el.textContent.trim();
       }
 
-      // Tambahan dari versi temanmu → kirim rs_id, region_id, current_value
+      // payload utama
       const payload = {
         claim_id: claimId,
         kategori: diagnosisFromUI || "Regulasi Umum",
@@ -294,7 +386,6 @@
       if (diagnosisId) payload.item_id = diagnosisId;
       if (procedureId) payload.item_id = procedureId;
 
-      // coba ambil nilai field aktif dari modal (opsional)
       const currentField = document.querySelector(`[data-field="${fieldName}"] .col-value`);
       if (currentField) payload.current_value = currentField.textContent.trim();
 
@@ -310,23 +401,29 @@
       console.log("[REGULATION] Response:", result);
 
       if (result.status === "success") {
-        openModal(
+        // langsung buka overlay tanpa nutup modal utama
+        openOverlayModal(
           `${fieldName.replace('_', ' ').toUpperCase()}`,
-          renderRegulationDetailMultilayer(result.data, fieldName)
+          renderRegulationDetailMultilayer(result.data, fieldName),
+          procedureId ? "procedure" : "diagnosis",
+          procedureId || diagnosisId
         );
       } else {
         throw new Error(result.message || "Gagal memuat regulasi");
       }
     } catch (error) {
       console.error(`❌ Error fetching regulation detail:`, error);
-      openModal(
+      openOverlayModal(
         "Error",
-        `<div class="p-4 text-red-500">
+        `<div class="p-4 text-red-500 text-center">
           <p>Gagal memuat detail regulasi: ${error.message || error}</p>
           <div class="mt-4">
-            <button onclick="closeRegulationModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Tutup</button>
+            <button onclick="closeOverlayModal()" class="bg-blue-500 text-white px-4 py-2 rounded">
+              Tutup
+            </button>
           </div>
-        </div>`
+        </div>`,
+        "diagnosis"
       );
     }
   }
@@ -486,7 +583,7 @@ function updateRingkasanFromRow(itemId, dx) {
         
         const modalContent = renderDiagnosisDetail(result);
         openModal(`
-          <div class="flex flex-col items-start items-center">
+          <div class="flex flex-col items-start items-center animate-fade-in">
             <span class="text-lg font-bold">Detail Diagnosis</span>
             <span class="font-bold text-2xl mb-2 text-yellow-500">${diseaseName}</span>
           </div>`,
@@ -517,7 +614,7 @@ function updateRingkasanFromRow(itemId, dx) {
         
         // 🔥 Use new renderDiagnosisDetail for consistent parsing
         const modalContent = renderDiagnosisDetail(dx);
-        openModal(`<div class="flex flex-col items-start items-center">
+        openModal(`<div class="flex flex-col items-start items-center animate-fade-in">
           <span class="text-lg font-bold">Detail Diagnosis</span>
           <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
         </div>`, modalContent, { hideDefaultClose: false });
@@ -532,7 +629,7 @@ function updateRingkasanFromRow(itemId, dx) {
 
       // 🔥 Use new renderDiagnosisDetail for consistent parsing
       const modalContent = renderDiagnosisDetail(dx);
-      openModal(`<div class="flex flex-col items-start items-center">
+      openModal(`<div class="flex flex-col items-start items-center animate-fade-in">
         <span class="text-lg font-bold">Detail Diagnosis</span>
         <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
       </div>`, modalContent, { hideDefaultClose: false });
@@ -1334,41 +1431,15 @@ window.renderChecklistHtml = function(checklist) {
   }
 
   async function openProcedureModal(procId, procedureName) {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+    const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
-  // Ambil nama tindakan dari DOM jika belum dikirim
-  if (!procedureName) {
-    const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
-    procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
-  }
-
-  console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
-
-  // Check if this is a manual procedure - if so, use openManualDetailModal instead
-    const state = Alpine.$data(document.getElementById('claimRoot'));
-    const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
-    const manualTindakan = allTindakan.find(t => 
-      t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
-    );
-    
-    if (manualTindakan) {
-      console.log("🔧 Detected manual procedure, using openManualDetailModal");
-      openManualDetailModal(manualTindakan);
-      return;
+    // Ambil nama tindakan dari DOM jika belum dikirim
+    if (!procedureName) {
+      const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
+      procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
     }
 
-  try {
-    // Request ke core_engine /analyze_procedure
-    console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
-    const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        claim_id: parseInt(claimId),
-        procedure_name: procedureName,
-        rekam_medis: []
-      })
-    });
+    console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const result = await res.json();
@@ -1382,76 +1453,114 @@ window.renderChecklistHtml = function(checklist) {
       const multilayer = d.multilayer_rules?.[fieldName] || null; // 🔹 ambil multilayer untuk field ini
       const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
       let safeValue = value || "";
+    // Check if this is a manual procedure - if so, use openManualDetailModal instead
+      const state = Alpine.$data(document.getElementById('claimRoot'));
+      const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
+      const manualTindakan = allTindakan.find(t => 
+        t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
+      );
       
-      // Special handling untuk tarif INA-CBG
-      if (fieldName === "ina_cbg" && value && value !== "") {
-        console.log("💰 Formatting tarif:", value, typeof value);
-        const numericValue = parseInt(value);
-        if (!isNaN(numericValue)) {
-          safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
-        } else {
-          safeValue = value; // keep original if not numeric
+      if (manualTindakan) {
+        console.log("🔧 Detected manual procedure, using openManualDetailModal");
+        openManualDetailModal(manualTindakan);
+        return;
+      }
+
+    try {
+      // Request ke core_engine /analyze_procedure
+      console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
+      const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          claim_id: parseInt(claimId),
+          procedure_name: procedureName,
+          rekam_medis: []
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const result = await res.json();
+      console.log("[RESP] /analyze_procedure", result);
+
+      const d = result.data || result;
+        console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
+
+      const renderProcBox = (label, value, fieldName = null) => {
+        const multilayer = d.multilayer_rules?.[fieldName] || null; // 🔹 ambil multilayer untuk field ini
+        const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
+        let safeValue = value || "";
+        
+        // Special handling untuk tarif INA-CBG
+        if (fieldName === "ina_cbg" && value && value !== "") {
+          console.log("💰 Formatting tarif:", value, typeof value);
+          const numericValue = parseInt(value);
+          if (!isNaN(numericValue)) {
+            safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
+          } else {
+            safeValue = value; // keep original if not numeric
+          }
         }
-      }
 
-      const hasRegulation = checkFieldHasRegulation(fieldName);
-      let content = `<span class="text-white">${safeValue}</span>`;
-      if (hasRules) {
-        // --- versi multilayer (seperti contohmu) ---
-        const listItems = multilayer.items
-          .map(
-          (r) =>`
-            <li class="ml-5 list-disc marker:text-blue-400 dark:marker:text-blue-300 text-sm leading-snug">
-              ${r.isi} <span class="text-gray-400 dark:text-gray-500">(${r.sumber})</span>
-          </li>`
-          )
-          .join("");
+        const hasRegulation = checkFieldHasRegulation(fieldName);
+        let content = `<span class="text-white">${safeValue}</span>`;
+        if (hasRules) {
+          // --- versi multilayer (seperti contohmu) ---
+          const listItems = multilayer.items
+            .map(
+            (r) =>`
+              <li class="ml-5 list-disc marker:text-blue-400 dark:marker:text-blue-300 text-sm leading-snug">
+                ${r.isi} <span class="text-gray-400 dark:text-gray-500">(${r.sumber})</span>
+            </li>`
+            )
+            .join("");
 
-        const combinedLabel = multilayer.combined_label
-          ? `<div class="text-xs italic text-blue-400 mt-1">Gabungan aturan: ${multilayer.combined_label}</div>`
-          : "";
+          const combinedLabel = multilayer.combined_label
+            ? `<div class="text-xs italic text-blue-400 mt-1">Gabungan aturan: ${multilayer.combined_label}</div>`
+            : "";
 
-        content = `
-          <ul class="space-y-1 list-outside">${listItems}</ul>
-          ${combinedLabel}
-        `;
-      } else {
-        // --- fallback: isi dari AI biasa ---
-        content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
-      }
+          content = `
+            <ul class="space-y-1 list-outside">${listItems}</ul>
+            ${combinedLabel}
+          `;
+        } else {
+          // --- fallback: isi dari AI biasa ---
+          content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
+        }
 
-      if (hasRegulation && fieldName && safeValue !== "") {
-        content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200"
-                         title="📋 Klik untuk melihat regulasi ${fieldName}"
-                         data-field="${fieldName}"
-                         data-procedure-id="${procId}"
-                         @click="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
-      }
+        if (hasRegulation && fieldName && safeValue !== "") {
+          content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200"
+                          title="📋 Klik untuk melihat regulasi ${fieldName}"
+                          data-field="${fieldName}"
+                          data-procedure-id="${procId}"
+                          @click="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+        }
 
-      return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
-              <div class="bg-gray-800 px-3 py-2 rounded text-white">${content}</div>`;
-    };
+        return `<div class="bg-gray-700 px-3 py-2 rounded font-semibold text-white"><b>${label}:</b></div>
+                <div class="bg-gray-800 px-3 py-2 rounded text-white">${content}</div>`;
+      };
 
-    // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
-    const notifications = d.notifications || {
-      tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
-    };
+      // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
+      const notifications = d.notifications || {
+        tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
+      };
 
-    console.log("📋 Notifications (procedure):", notifications);
+      console.log("📋 Notifications (procedure):", notifications);
 
-    // 🔹 Tambahkan notifikasi di atas semua detail tindakan
-    const content = `
-      <div class="relative mb-4 text-center">
-        <h3 class="text-xl font-bold text-yellow-500">Detail Tindakan: ${procedureName}</h3>
-        <button type="button"
-                onclick="closeNestedModal()"
-                class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">
-          ✕
-        </button>
-      </div>
+      // 🔹 Tambahkan notifikasi di atas semua detail tindakan
+      const content = `
+        <div class="flex flex-col items-center animate-fade-in">
+          <span class="text-sm text-white">Detail Tindakan</span>
+          <span class="text-2xl font-bold text-yellow-500">${procedureName}</span>
+          <button type="button"
+                  onclick="closeNestedModal()"
+                  class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">
+            ✕
+          </button>
+        </div>
 
 
-      ${renderNotificationBox("tindakan", notifications)}
+        ${renderNotificationBox("tindakan", notifications)}
 
       <div class="grid grid-cols-2 gap-2 mt-3">
         ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
@@ -1484,21 +1593,25 @@ window.renderChecklistHtml = function(checklist) {
 
     openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
-    // Simpan referensi supaya regulasi tahu asalnya
+    // 🔹 Simpan referensi supaya regulasi tahu asalnya
     window.claimState = window.claimState || {};
-    window.claimState.currentProcedure = { id: procId };
+    window.claimState.currentProcedure = { id: procId, name: procedureName };
 
-    // Update deskripsi list tindakan (instan)
-    const itemEl = document.querySelector(`[data-procid='${procId}'] span[title], [data-procid='${procId}'] span.block`);
+    // 🔹 Update deskripsi list tindakan (instan)
+    const itemEl = document.querySelector(
+      `[data-procid='${procId}'] span[title], [data-procid='${procId}'] span.block, [data-procid='${procId}'] .text-xs`
+    );
     if (itemEl) {
       const deskripsiGabungan = d.deskripsi || "";
       itemEl.textContent = deskripsiGabungan;
       itemEl.setAttribute("title", deskripsiGabungan);
     }
-  } catch (err) {
-    console.error("❌ Gagal load detail tindakan:", err);
+
+    } catch (err) {
+      console.error("❌ Gagal load detail tindakan:", err);
+    }
+
   }
-}
 
 
   async function openManualDetailModal(it, tab, idx) {
@@ -1519,9 +1632,9 @@ window.renderChecklistHtml = function(checklist) {
 
       // 🟡 judul tengah dua baris + tombol ✕ kanan atas
       const title = `
-        <div class="relative w-full text-center mb-4">
+        <div class="flex flex-col items-center animate-fade-in">
           <div>
-            <span class="text-sm font-semibold block">Detail Tindakan Manual</span>
+            <span class="text-sm font-semibold text-white">Detail Tindakan Manual</span>
             <span class="text-2xl font-bold text-yellow-500">${detail.procedure_text}</span>
           </div>
           <button type="button"
@@ -1662,27 +1775,26 @@ window.renderChecklistHtml = function(checklist) {
       }, 50);
 
     }, 250); // durasi sinkron dengan CSS transition
-  }
 
-  // === Tutup Regulasi (Balik ke modal asal) ===
-  // ===================== CLOSE REGULATION MODAL (context-aware) =====================
-    function closeRegulationModal() {
-      const source = window.claimState?.regulationSource || {};
-      console.log("🔻 closeRegulationModal triggered with source:", source);
-
-      if (source.type === "procedure" && window.claimState?.currentProcedure) {
-        openProcedureModal(window.claimState.currentProcedure.id);
-      } else if (source.type?.startsWith("idrg_diagnosis")) {
-        closeNestedModal();
-      } else if (source.type?.startsWith("idrg_summary")) {
-        const state = Alpine.$data(document.getElementById('claimRoot'));
-        state.modalOpen = false;
-      } else {
-        closeNestedModal();
-      }
-
-      window.claimState.regulationSource = null; // reset context
+    if (window.claimState?.pendingRestoreDiagnosis) {
+      setTimeout(() => {
+        if (window.claimState?.currentDiagnosis) {
+          console.log("🩵 Balik ke modal diagnosis setelah tindakan ditutup");
+          openModal(
+            `<div class="flex flex-col items-center">
+              <span class="text-lg font-bold">Detail Diagnosis</span>
+              <span class="font-bold text-2xl mb-2 text-yellow-500">
+                ${window.claimState.currentDiagnosisTitle || "Diagnosis"}
+              </span>
+            </div>`,
+            renderDiagnosisDetail(window.claimState.currentDiagnosis),
+            { hideDefaultClose: false }
+          );
+        }
+        window.claimState.pendingRestoreDiagnosis = false;
+      }, 100);
     }
+  }
 // ==========================================================
 // 🧩 SISTEM NOTES FINAL (DOKTER / CODER / VERIFIKATOR)
 // ==========================================================
@@ -1934,10 +2046,11 @@ window.openProcedureModal = openProcedureModal;
 window.openManualDetailModal = openManualDetailModal;
 window.closeNestedModal = closeNestedModal;
 window.openRegulationDetailModal = openRegulationDetailModal;
-window.closeRegulationModal = closeRegulationModal;
 window.tindakanAutocomplete = tindakanAutocomplete;
 window.showConfirmModal = showConfirmModal;
 window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
+window.openOverlayModal = openOverlayModal;
+window.closeOverlayModal = closeOverlayModal;
 
 // ==================================================
 // i-DRG PREDICTION HELPER FUNCTIONS
@@ -2356,4 +2469,4 @@ window.renderFaktorSeverityHtml = function(faktor) {
   return '-';
 };
 
-})();
+}})();

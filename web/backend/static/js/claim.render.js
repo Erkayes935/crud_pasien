@@ -1,8 +1,133 @@
 // =============== Rendering simulasi, tabel, dan mapping select ===============
 (function () {
+  // =============== Updated hasRole Function (Multi-Role Support) ===============
+  /**
+   * Cek apakah user memiliki role tertentu (mendukung multi-role)
+   * @param {string} roleName - Nama role yang dicek (case-insensitive)
+   * @returns {boolean} - true jika user memiliki role tersebut
+   */
+  function hasRole(roleName) {
+    try {
+      const state = window.claimState || {};
+      let userRoles = [];
+
+      // Prioritas 1: Ambil dari roles array (multi-role system)
+      if (Array.isArray(state.roles) && state.roles.length > 0) {
+        userRoles = state.roles.map(r => {
+          // Handle jika roles berupa object {id, name}
+          if (typeof r === 'object' && r.name) {
+            return r.name.toLowerCase();
+          }
+          // Handle jika roles berupa string
+          return String(r).toLowerCase();
+        });
+      }
+      // Prioritas 2: Fallback ke role_names array
+      else if (Array.isArray(state.role_names) && state.role_names.length > 0) {
+        userRoles = state.role_names.map(r => String(r).toLowerCase());
+      }
+      // Prioritas 3: Fallback ke single role (legacy)
+      else if (state.role) {
+        userRoles = [String(state.role).toLowerCase()];
+      }
+      // Prioritas 4: Fallback ke backend context window.roles
+      else if (Array.isArray(window.roles) && window.roles.length > 0) {
+        userRoles = window.roles.map(r => {
+          if (typeof r === 'object' && r.name) {
+            return r.name.toLowerCase();
+          }
+          return String(r).toLowerCase();
+        });
+      }
+
+      // Normalize input role name
+      const normalizedRoleName = String(roleName).toLowerCase().trim();
+
+      // Cek apakah user memiliki role yang dicari
+      const hasTheRole = userRoles.includes(normalizedRoleName);
+
+      // Debug log (opsional, bisa dihapus di production)
+      if (window.DEBUG_ROLES) {
+        console.log('[hasRole] Check:', {
+          searching: normalizedRoleName,
+          userRoles: userRoles,
+          result: hasTheRole
+        });
+      }
+
+      return hasTheRole;
+
+    } catch (e) {
+      console.warn("[hasRole] Error checking role:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Cek apakah user memiliki salah satu dari beberapa role
+   * @param {string[]} roleNames - Array nama role yang dicek
+   * @returns {boolean} - true jika user memiliki minimal 1 role
+   */
+  function hasAnyRole(roleNames) {
+    if (!Array.isArray(roleNames)) {
+      return false;
+    }
+    return roleNames.some(roleName => hasRole(roleName));
+  }
+
+  /**
+   * Cek apakah user memiliki semua role yang disebutkan
+   * @param {string[]} roleNames - Array nama role yang dicek
+   * @returns {boolean} - true jika user memiliki semua role
+   */
+  function hasAllRoles(roleNames) {
+    if (!Array.isArray(roleNames)) {
+      return false;
+    }
+    return roleNames.every(roleName => hasRole(roleName));
+  }
+
+  /**
+   * Get semua role yang dimiliki user (untuk debugging/display)
+   * @returns {string[]} - Array nama role user
+   */
+  function getUserRoles() {
+    try {
+      const state = window.claimState || {};
+      
+      if (Array.isArray(state.roles) && state.roles.length > 0) {
+        return state.roles.map(r => {
+          if (typeof r === 'object' && r.name) return r.name;
+          return String(r);
+        });
+      }
+      
+      if (Array.isArray(state.role_names) && state.role_names.length > 0) {
+        return state.role_names;
+      }
+      
+      if (state.role) {
+        return [state.role];
+      }
+      
+      if (Array.isArray(window.roles) && window.roles.length > 0) {
+        return window.roles.map(r => {
+          if (typeof r === 'object' && r.name) return r.name;
+          return String(r);
+        });
+      }
+      
+      return [];
+    } catch (e) {
+      console.warn("[getUserRoles] Error:", e);
+      return [];
+    }
+  }
+
+  // =============== Utility Functions ===============
   // Hilangkan "-" dari data AI sebelum render
   function cleanValue(val) {
-    if (val === "-" || val === " - " || val === "–") return "";
+    if (val === "-" || val === " - " || val === "—") return "";
     if (typeof val === "string") return val.trim() === "-" ? "" : val.trim();
     return val;
   }
@@ -102,7 +227,6 @@
     }
   }
 
-
   // ================= Render AI =================
   function renderAI(rows) {
     if (!Array.isArray(rows)) return;
@@ -154,8 +278,7 @@
       "daily-global"
     );
 
-
-    // 🔢 Hitung total global Daily (Diagnosis + Komorbid + Komplikasi)
+    // 📢 Hitung total global Daily (Diagnosis + Komorbid + Komplikasi)
     const dailyCounter = document.getElementById("count-daily-global");
     if (dailyCounter) {
       const totalDaily =
@@ -196,8 +319,8 @@
         const details = el.closest("details");
         if (details) details.setAttribute("open", "true");
       });
+
     // ====================== SIMPAN KE STATE ======================
-    // di akhir bagian DAILY di renderAI()
     const state = Alpine.$data(document.getElementById("claimRoot"));
     if (!state.simulasi.daily) state.simulasi.daily = {};
     state.simulasi.daily.global = {
@@ -205,13 +328,14 @@
       komorbid: daily.filter(r => r.category === "komorbid"),
       komplikasi: daily.filter(r => r.category === "komplikasi")
     };
+
     // 🧩 sinkron ke root supaya ikut dibaca backend & simulasi
     const s = Alpine.$data(document.getElementById("claimRoot"));
     if (s) {
       if (!s.simulasi.daily) s.simulasi.daily = {};
       s.simulasi.daily.global = state.simulasi.daily.global;
+
       // 🩹 jangan replace keseluruhan state daily
-      // cukup update data AI-nya saja agar manual tetap hidup
       if (!s.simulasi["daily-global"]) s.simulasi["daily-global"] = {};
       ["diagnosis","komorbid","komplikasi"].forEach(tp=>{
         s.simulasi["daily-global"][tp] = daily.filter(r=>r.category===tp);
@@ -233,16 +357,27 @@
     }
   }
 
-
+  // ================= Render Mapping Select =================
   function renderMappingSelect(item, tab, type, index = null) {
-    const disabled = (window.claimState?.role !== 'doctor') ? 'disabled' : '';
+    // ✅ Cek multi-role: doctor atau multi memiliki akses edit
+    const canEdit = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
+    const disabled = canEdit ? '' : 'disabled';
+    
+    // Debug log
+    if (window.DEBUG_ROLES) {
+      console.log('[renderMappingSelect]', {
+        canEdit,
+        userRoles: getUserRoles(),
+        item: item.kategori || item.nama_kategori
+      });
+    }
 
     // ✅ fallback pakai index kalau item.id tidak ada
     // ✅ Kirim key unik berdasarkan kategori + tab
     const key = encodeURIComponent(`${tab}-${type}-${item.kategori || item.nama_kategori}`);
     return `
       <select onchange="onMappingChange(event, '${tab}', '${type}', '${key}')"
-              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate">
+              class="border px-2 py-1 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 max-w-[200px] truncate" ${disabled}>
         <option value="" ${!item.mapping ? "selected" : ""}>Pilih</option>
         <option value="Diagnosis Utama" ${item.mapping==="Diagnosis Utama"?"selected":""}>Diagnosis Utama</option>
         <option value="Komorbid" ${item.mapping==="Komorbid"?"selected":""}>Komorbid</option>
@@ -252,8 +387,7 @@
     `;
   }
 
-
-  // Nilai kosong => kosong, "-" juga dihapus
+  // ================= Render Value =================
   function renderValue(val) {
     if (val === undefined || val === null) return `<span class="block w-full text-center text-gray-400"></span>`;
     const clean = cleanValue(val);
@@ -262,10 +396,12 @@
     }
     return `<span class="block w-full text-center text-gray-400"></span>`;
   }
+
   // ================= Render Tabel =================
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     if (tab === "daily") tab = "daily-global";
     const state = Alpine.$data(document.getElementById("claimRoot"));
+    
     console.groupCollapsed("🧩 renderTable DEBUG");
     console.log("targetId:", targetId);
     console.log("tab:", tab, "type:", type);
@@ -283,6 +419,7 @@
     const aiItems = newAiItems.length > 0 ? newAiItems : oldAiItems;
 
     if (aiItems.length === 0 && type === "tindakan") {
+      const tbody = document.getElementById(targetId);
       if (tbody) {
         tbody.innerHTML = `
           <tr>
@@ -291,7 +428,7 @@
             </td>
           </tr>`;
       }
-      return; // jangan lanjut render tabel kosong
+      return;
     }
 
     let merged;
@@ -319,16 +456,15 @@
       return true;
     });
 
-
     // Store parent items and flatten children into the main array for mapping
     const flatItems = [...merged];
+
     // ✅ gabungkan AI & Manual dua arah TANPA redeclare variabel
     if (!state.simulasi[tab]) state.simulasi[tab] = {};
     const existing = Array.isArray(state.simulasi[tab][type]) ? state.simulasi[tab][type] : [];
 
-    // pakai nama berbeda supaya tidak bentrok dengan aiItems di atas
     const keepManuals = existing.filter(it => it.isManual);
-    const newAIs     = flatItems.filter(it => !it.isManual);
+    const newAIs = flatItems.filter(it => !it.isManual);
 
     // merge: manual disimpan, AI terbaru ditambahkan
     const mergedItems = [...keepManuals, ...newAIs];
@@ -347,10 +483,8 @@
       state.simulasi["daily-global"][type] = JSON.parse(JSON.stringify(mergedFinal));
     }
 
-
     // 🩹 UNIVERSAL PATCH – simpan children ke state.simulasi terpisah (aman semua tab)
     if (Array.isArray(state.simulasi[tab]?.[type])) {
-      // Buat list children terpisah tanpa menambah array utama
       const parents = state.simulasi[tab][type].filter(p => Array.isArray(p.children) && p.children.length > 0);
       const allChildren = parents.flatMap(p =>
         p.children.map(ch => ({
@@ -359,7 +493,6 @@
           isChildClone: true
         }))
       );
-
     }
 
     // 🔍 log tambahan
@@ -383,16 +516,13 @@
     target.innerHTML = "";
     console.log("🧾 Rendering into target:", targetId, "data:", state.simulasi[tab][type]);
 
-    // Group parent/child for rendering - rebuild hierarchy
     // 🧩 Group parent/child for rendering - rebuild hierarchy (fix manual)
     let grouped = [];
     let parentMap = {};
     let lastParentKey = null;
 
-    // Gunakan data akhir yang sudah digabung (AI + manual)
     const allItems = state.simulasi?.[tab]?.[type] || merged;
 
-    // Loop semua item untuk rebuild hierarki
     [...allItems].forEach(it => {
       const name = (it.nama_kategori || it.kategori || "").trim();
       if (!name) return;
@@ -404,7 +534,7 @@
           ...it,
           kategori: name,
           nama_kategori: name,
-          children: [] // biar struktur sama
+          children: []
         });
         return;
       }
@@ -474,7 +604,6 @@
         }))
       );
 
-      // simpan anak-anak sebagai entri datar juga, biar bisa diproses updateSimulasi & mapping
       state.simulasi["daily-global"][type] = [
         ...(state.simulasi["daily-global"][type] || []),
         ...allChildren.filter(
@@ -488,6 +617,10 @@
     if (table && !table.querySelector("thead")) {
       const thead = document.createElement("thead");
       thead.className = "bg-gray-100 dark:bg-gray-800";
+      
+      // ✅ Cek apakah user memiliki akses mapping (doctor atau multi-role)
+      const showMapping = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
+      
       thead.innerHTML = `
         <tr>
           <th class="border px-3 py-2 w-[20%]">Kategori</th>
@@ -495,11 +628,12 @@
           <th class="border px-3 py-2 w-[10%]">ICD</th>
           <th class="border px-3 py-2 w-[25%]">Tindakan</th>
           <th class="border px-3 py-2 w-[10%]">Score</th>
-          ${state.role === "doctor" ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ``}
+          ${showMapping ? `<th class="border px-3 py-2 w-[10%]">Mapping</th>` : ``}
         </tr>`;
       table.insertBefore(thead, table.firstChild);
     }
 
+    // Clean up data
     grouped = grouped.map(it => {
       for (const key of ["kategori", "nama_kategori", "klinis", "icd10_code", "icd9_code", "tindakan", "procedure_text", "score"]) {
         if (it[key] === undefined || it[key] === null || it[key] === "-") it[key] = "";
@@ -513,7 +647,7 @@
         });
       }
       return it;
-    });  
+    });
 
     // Render rows
     grouped.forEach((parent, idx) => {
@@ -527,6 +661,9 @@
       const titleTindakan = tindakanText;
       const titleICD = icdText;
       const titleKlinis = klinisText;
+
+      // ✅ Cek apakah user memiliki akses mapping
+      const showMapping = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
 
       tbody.insertAdjacentHTML("beforeend", `
         <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
@@ -553,10 +690,7 @@
             <td class="border px-3 py-2 w-[10%] text-center">
               <span class="block w-full truncate">${renderValue(parent.score)}</span>
             </td>
-            ${state.role === "doctor" ? `
-            <td class="border px-3 py-2 text-center">
-              ${renderMappingSelect(parent, tab, type, idx)}
-            </td>` : ``}
+            ${showMapping ? `<td class="border px-3 py-2 text-center">${renderMappingSelect(parent, tab, type, idx)}</td>` : ``}
           </tr>
       `);
 
@@ -587,10 +721,7 @@
             <td class="border px-3 py-2 text-center w-[10%]">
               <span class="block w-full truncate">${renderValue(child.score)}</span>
             </td>
-            ${state.role === "doctor" ? `
-            <td class="border px-3 py-2 text-center">
-              ${renderMappingSelect(child, tab, type, `${idx}-child-${cIdx}`)}
-            </td>` : ``}
+            ${hasRole('doctor') ? `<td class="border px-3 py-2 text-center">${renderMappingSelect(child, tab, type, `${idx}-child-${cIdx}`)}</td>` : ``}
           </tr>
         `);
       });
@@ -604,7 +735,6 @@
       const norm = v => (v || "").toString().trim().toLowerCase();
       const name = norm(it.nama_kategori || it.kategori || it.name);
       const icd  = norm(it.icd10_code || it.icd9_code);
-      // pakai kombinasi nama+ICD biar lebih stabil (kalau ICD kosong tetap aman)
       return `${name}|${icd}`;
     };
 
@@ -615,7 +745,6 @@
       const seen = new Set();
       let total = 0;
       grouped.forEach(p => {
-        // skip clone/hidden
         if (!p.isChildClone && !p.hidden) {
           const k = makeKey(p);
           if (k && !seen.has(k)) { seen.add(k); total += 1; }
@@ -630,7 +759,7 @@
       countEl.textContent = total;
     }
 
-    // Total harian (diagnosis+komorbid+komplikasi) tetap sama
+    // Total harian (diagnosis+komorbid+komplikasi)
     if (dayId) {
       const dailyCounter = document.getElementById(`count-daily-${dayId}`);
       if (dailyCounter) {
@@ -667,7 +796,7 @@
     }
 
     // === Manual input row untuk doctor ===
-    if (!skipManualRow && (Alpine.$data(document.getElementById("claimRoot")).role === "doctor")) {
+    if (!skipManualRow && hasAnyRole(['doctor', 'coder'])) {
       if (
         tab === "admission" ||
         tab === "discharge" ||
@@ -722,7 +851,6 @@
         `
         );
 
-        // 🧩 append manualTbody ke PARENT TABLE (bukan ke target tbody)
         target.appendChild(manualTbody);
         Alpine.initTree(manualTbody);
       }
@@ -734,11 +862,29 @@
     }
   }
 
-
-  // export
-  
+  // =============== Export Functions ===============
+  window.hasRole = hasRole;
+  window.hasAnyRole = hasAnyRole;
+  window.hasAllRoles = hasAllRoles;
+  window.getUserRoles = getUserRoles;
   window.diagnosisAutocomplete = diagnosisAutocomplete;
   window.renderAI = renderAI;
   window.renderTable = renderTable;
   window.addManualIfNotFound = addManualIfNotFound;
+
+  // Optional: Enable debug mode
+  if (typeof window.DEBUG_ROLES === 'undefined') {
+    window.DEBUG_ROLES = false;
+  }
+
+  // Log initialization
+  console.log("✅ claim.render.js loaded - Multi-role support enabled");
+  console.log("📋 Available functions:", {
+    hasRole: "Check single role",
+    hasAnyRole: "Check multiple roles (OR)",
+    hasAllRoles: "Check multiple roles (AND)",
+    getUserRoles: "Get all user roles",
+    renderAI: "Render AI recommendations",
+    renderTable: "Render diagnosis/procedure tables"
+  });
 })();
