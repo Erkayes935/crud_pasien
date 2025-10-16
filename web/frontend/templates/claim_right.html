@@ -49,7 +49,9 @@
                 </label>
                 <template x-if="simulasi[tab].utama">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
+                    <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors"
+                            @click="showStoredDiagnosisModalVerificator(simulasi[tab].utama.name)"
+                            :title="'Klik untuk detail diagnosis: ' + (simulasi[tab].utama?.name || '-')"
                             x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
                     <!-- Rules Button -->
                     <button type="button" 
@@ -93,7 +95,9 @@
                 </label>
                 <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
+                    <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium cursor-pointer hover:bg-indigo-200 transition-colors"
+                            @click="showStoredDiagnosisModalVerificator(dx.name)"
+                            :title="'Klik untuk detail diagnosis: ' + (dx.name || '-')"
                             x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
                     <!-- Rules Button untuk Secondary Claims -->
                     <button type="button" 
@@ -128,7 +132,9 @@
                 </label>
                 <template x-if="simulasi[tab].tindakanUtama">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
+                    <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium cursor-pointer hover:bg-green-200 transition-colors"
+                            @click="showStoredProcedureModalVerificator(simulasi[tab].tindakanUtama?.name)"
+                            :title="'Klik untuk detail tindakan: ' + (simulasi[tab].tindakanUtama?.name || '-')"
                             x-text="simulasi[tab].tindakanUtama?.name"></span>
                     <!-- Rules Button untuk Primary Action -->
                     <button type="button" 
@@ -155,7 +161,9 @@
                 </label>
                 <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
+                    <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium cursor-pointer hover:bg-teal-200 transition-colors"
+                            @click="showStoredProcedureModalVerificator(tdk.name)"
+                            :title="'Klik untuk detail tindakan: ' + (tdk.name || '-')"
                             x-text="(tdk.name || '-')"></span>
                     <!-- Rules Button untuk Secondary Actions -->
                     <button type="button" 
@@ -783,6 +791,8 @@ function renderRulesContent(rulesData) {
     document.getElementById('rulesModal').style.display = 'none';
     window.rulesModalData = { open: false, diagnosis: null, loading: false, rulesData: null };
   };
+
+
 </script>
 
 <!-- Enhanced Multilayer Rules Modal dengan Tabs -->
