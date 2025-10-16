@@ -79,7 +79,7 @@
         klinis: "",
         icd10_code: "",
         procedure_text: "",
-        score: 0.8,
+        score: 85,
         mapping: "",
         isManual: true,
         source: "Manual",
