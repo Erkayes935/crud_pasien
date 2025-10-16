@@ -300,8 +300,6 @@
 
       console.log("[REGULATION] Payload sent to backend:", payload);
 
-      openModal("Loading", "<div class='text-center'><div class='spinner'></div><p>Loading regulations...</p></div>");
-
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -332,7 +330,6 @@
       );
     }
   }
-
 
 // =====================================================
 // UPDATE RINGKASAN FROM ROW (asli kamu — tidak diubah isinya)
@@ -583,8 +580,7 @@ function updateRingkasanFromRow(itemId, dx) {
     `;
   }
 
-  function renderFieldMultilayer(fieldData, label) {
-    // Check if fieldData is null or undefined before proceeding
+  function renderFieldMultilayer(fieldData, label, fieldName = "syarat_klinis", diagnosisId = null) {
     if (!fieldData) {
       return `
         <div class="grid grid-cols-2">
@@ -592,49 +588,55 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-3 py-2">-</div>
         </div>
       `;
-   }
+    }
 
-    // Verifikasi tipe data fieldData terlebih dahulu
     const isi = typeof fieldData === 'string' 
       ? fieldData 
       : (fieldData?.isi !== undefined ? fieldData.isi : "-");
-  
-    const isMultiline = typeof isi === "string" && isi.includes("•");
+
+    const isMultiline = typeof isi === "string" && (isi.includes("•") || isi.includes("["));
 
     if (isMultiline) {
-      // pisahkan per baris bullet
-      const lines = isi.split("\n").filter(l => l.trim() !== "");
-      const listItems = lines
-        .map(line => {
-          // ambil layer dan sumber dengan regex ringan
-          const match = line.match(/•\s*\[(.*?)\]\s*(.*?)\((.*?)\)/);
-          if (match) {
-            const layer = match[1];
-            const ruleText = match[2].trim();
-            const sumber = match[3];
-            return `
-              <li class="leading-snug mb-1">
-                <span class="text-blue-500 dark:text-blue-400 font-semibold">• [${layer}]</span>
-                <span class="text-gray-900 dark:text-gray-100">${ruleText}</span>
-                <span class="italic text-gray-500 dark:text-gray-400">(${sumber})</span>
-              </li>
-            `;
-          }
-          // fallback kalau gak match
-          return `<li class="leading-snug mb-1">${line}</li>`;
-        })
-        .join("");
+      const lines = isi.split(/\n|(?=•)/).filter(line => line.trim() !== "");
+      const itemsHtml = lines.map(line => {
+        const match = line.match(/(?:•\s*)?\[(.*?)\]\s*([^:]+):\s*(.*?)(?:\((.+?)\))?$/);
+        if (match) {
+          const layer = match[1].trim().toLowerCase();
+          const title = match[2].trim();
+          const detail = match[3].trim();
+          const sumber = match[4] ? `(${match[4].trim()})` : "";
+
+          // Pewarnaan font judul sesuai layer (tanpa blok)
+          const colorClass = getLayerColorClass(layer)
+            .replace(/bg\-\w+\-\d+\s?/g, '')
+            .replace(/dark\:bg\-\w+\-\d+\s?/g, '');
+
+          // Link ke modal regulasi, field tetap field utama!
+          return `
+            <li class="mb-2 leading-snug">
+              <span class="font-semibold ${colorClass} cursor-pointer hover:underline regulation-field"
+                    title="📋 Klik untuk melihat regulasi ${label}"
+                    data-field="${fieldName}"
+                    data-layer="${layer}"
+                    data-diagnosis-id="${diagnosisId || ''}"
+                    onclick="window.openRegulationDetailModal('${fieldName}', '${diagnosisId || ''}', null, '${layer}')">
+                ${title}:
+              </span>
+              <span class="ml-1">${detail}</span>
+              ${sumber ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-1">${sumber}</span>` : ""}
+            </li>
+          `;
+        } else {
+          return `<li class="mb-2 leading-snug">${line.trim().replace(/^•\s*/, '')}</li>`;
+        }
+      }).join("");
 
       return `
         <div class="grid grid-cols-2 align-top">
           <div class="bg-gray-700 text-white px-3 py-2 align-top">${label}</div>
           <div class="bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 px-3 py-2 align-top">
-            <ul class="list-none space-y-1">${listItems}</ul>
-            ${
-              fieldData.label_multilayer
-                ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>`
-                : ""
-            }
+            <ul class="list-disc pl-4 space-y-1">${itemsHtml}</ul>
+            ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>` : ""}
           </div>
         </div>
       `;
@@ -646,11 +648,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <div class="bg-gray-700 text-white px-3 py-2 align-top">${label}</div>
         <div class="bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm align-top whitespace-pre-line">
           ${isi}
-          ${
-            fieldData.label_multilayer
-              ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>`
-              : ""
-          }
+          ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>` : ""}
         </div>
       </div>
     `;
@@ -746,7 +744,23 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("klinis", notifications)}
             ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
             ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
-            ${(console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis), renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
+            ${
+              (function() {
+                console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis);
+                const hasMultilayers = typeof klinis.syarat_klinis === 'string' && 
+                  (klinis.syarat_klinis.includes('[RS]') || 
+                  klinis.syarat_klinis.includes('[Nasional]') ||
+                  klinis.syarat_klinis.includes('[PNPK]') ||
+                  klinis.syarat_klinis.includes('•'));
+                if (hasMultilayers) {
+                  // Kirim fieldName dan diagnosisId ke renderFieldMultilayer
+                  return renderFieldMultilayer({isi: klinis.syarat_klinis}, "Syarat Klinis", "syarat_klinis", diagnosisId);
+                } else {
+                  return renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis");
+                }
+              })()
+            }
+
           </div>
         </section>
 
@@ -756,10 +770,48 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
             ${renderNotificationBox("icd", notifications)}
             ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
-            ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
-            ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
-            ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
-            ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus")}
+            ${
+              (function() {
+                console.log("📋 ICD10 - kode_ganda:", icd10.kode_ganda);
+                const hasMultilayers = typeof icd10.kode_ganda === 'string' && 
+                  (icd10.kode_ganda.includes('[Nasional]') || 
+                  icd10.kode_ganda.includes('[PPK]') ||
+                  icd10.kode_ganda.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.kode_ganda }, "Kode Ganda", "kode_ganda", diagnosisId);
+                } else {
+                  return renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda");
+                }
+              })()
+            }
+            ${
+              (function() {
+                console.log("📋 ICD10 - z_code:", icd10.z_code);
+                const hasMultilayers = typeof icd10.z_code === 'string' && 
+                  (icd10.z_code.includes('[Nasional]') || 
+                  icd10.z_code.includes('[PPK]') ||
+                  icd10.z_code.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.z_code }, "Z-Code", "z_code", diagnosisId);
+                } else {
+                  return renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code");
+                }
+              })()
+            }
+            ${
+              (function() {
+                console.log("📋 ICD10 - kode_bpjs_khusus:", icd10.kode_bpjs_khusus);
+                const hasMultilayers = typeof icd10.kode_bpjs_khusus === 'string' && 
+                  (icd10.kode_bpjs_khusus.includes('[Permenkes]') || 
+                  icd10.kode_bpjs_khusus.includes('[Nasional]') ||
+                  icd10.kode_bpjs_khusus.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.kode_bpjs_khusus }, "Kode Khusus BPJS", "kode_bpjs_khusus", diagnosisId);
+                } else {
+                  return renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus");
+                }
+              })()
+            }
           </div>
         </section>
 
@@ -780,15 +832,40 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
           <div class="space-y-3 p-3 bg-gray-50 dark:bg-gray-700">
             ${renderNotificationBox("rawat", notifications)}
-            ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi")}
+            ${
+              (function() {
+                console.log("📋 RAWAT - indikasi:", rawat.indikasi);
+                const hasMultilayers = typeof rawat.indikasi === 'string' && 
+                  (rawat.indikasi.includes('[RS]') || 
+                  rawat.indikasi.includes('[Nasional]') || 
+                  rawat.indikasi.includes('[PNPK]') || 
+                  rawat.indikasi.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: rawat.indikasi }, "Indikasi", "indikasi", diagnosisId);
+                } else {
+                  return renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi");
+                }
+              })()
+            }
             ${renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria")}
             ${
-              (typeof rawat.lama_rawat === "object" && rawat.lama_rawat !== null) &&
-              ((rawat.lama_rawat.isi !== undefined && rawat.lama_rawat.isi !== null) || 
-              rawat.lama_rawat.label_multilayer)
-              ? renderFieldMultilayer(rawat.lama_rawat, "Lama Rawat")
-              : renderBox("Lama Rawat", rawat.lama_rawat || "-", rawat.status_lama || "default", diagnosisId, "lama_rawat")
+              (function() {
+                console.log("RAWAT - lama_rawat:", rawat.lama_rawat);
+                const hasMultilayers = typeof rawat.lama_rawat === 'string' && 
+                  (rawat.lama_rawat.includes('[PPK]') || 
+                  rawat.lama_rawat.includes('[Nasional]') ||
+                  rawat.lama_rawat.includes('[RS]') ||
+                  rawat.lama_rawat.includes('[Temporary]') ||
+                  rawat.lama_rawat.includes('•'));
+                if (hasMultilayers) {
+                  // Kirim fieldName dan diagnosisId ke renderFieldMultilayer
+                  return renderFieldMultilayer({isi: rawat.lama_rawat}, "Lama Rawat", "lama_rawat", diagnosisId);
+                } else {
+                  return renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat");
+                }
+              })()
             }
+                        
           </div>
         </section>
 
@@ -814,14 +891,23 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
             ${renderNotificationBox("rujukan", notifications)}
-            ${renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan")}
-            ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
             ${
-              (typeof rujukan.kriteria === "object" && rujukan.kriteria) &&
-              (rujukan.kriteria.isi !== undefined || rujukan.kriteria.label_multilayer)
-              ? renderFieldMultilayer(rujukan.kriteria, "Kriteria Rujukan")
-              : renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")
+              (function() {
+                console.log("🔁 RUJUKAN - indikasi:", rujukan.indikasi);
+                const hasMultilayers = typeof rujukan.indikasi === 'string' && 
+                  (rujukan.indikasi.includes('[RS]') || 
+                  rujukan.indikasi.includes('[Nasional]') || 
+                  rujukan.indikasi.includes('[PNPK]') || 
+                  rujukan.indikasi.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: rujukan.indikasi }, "Indikasi Rujukan", "indikasi_rujukan", diagnosisId);
+                } else {
+                  return renderBox("Indikasi Rujukan", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan");
+                }
+              })()
             }
+            ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
+            ${renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")}
           </div>
         </section>
 
@@ -1140,8 +1226,8 @@ window.renderChecklistHtml = function(checklist) {
     const tindakanList = (list && list.length > 0)
       ? list.map(td => {
           const nama = td.nama || td.tindakan || "";
-          const deskripsi = td.deskripsi || td.description || "";
           const procId = td.id || td.procedure_id || "";
+          const description = td.deskripsi || "";
           return `
             <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
                 data-procid="${procId}">
@@ -1149,7 +1235,7 @@ window.renderChecklistHtml = function(checklist) {
                    onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
               <div>
                 <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-                      title="${deskripsi}">${deskripsi}</span>
+                      title="${description}">${"&nbsp;"}</span>
               </div>
               ${window.claimState?.role === "doctor" ? `
                 <div class="flex space-x-2 justify-end">
@@ -1238,7 +1324,7 @@ window.renderChecklistHtml = function(checklist) {
     setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
 
     return tindakanList + manualForm;
-  }
+}
 
   function buildModalContent(it) {
     let content = renderDiagnosisDetail(it);
@@ -1289,6 +1375,7 @@ window.renderChecklistHtml = function(checklist) {
     console.log("[RESP] /analyze_procedure", result);
 
     const d = result.data || result;
+    console.log("Description from API:", d.deskripsi);
       console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
     const renderProcBox = (label, value, fieldName = null) => {
@@ -1368,7 +1455,7 @@ window.renderChecklistHtml = function(checklist) {
 
       <div class="grid grid-cols-2 gap-2 mt-3">
         ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
-        ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
+        ${renderProcBox("Deskripsi", d.deskripsi, "deskripsi")}
         ${renderProcBox("Validitas", d.validitas, "validitas")}
         ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
         ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
@@ -1384,6 +1471,17 @@ window.renderChecklistHtml = function(checklist) {
       </div>
     `;
 
+    // 🩺 Auto-update kolom deskripsi di daftar tindakan utama
+    const procRow = document.querySelector(`[data-procid="${procId}"]`);
+    if (procRow) {
+      const descCell = procRow.querySelector("span[title], span.block");
+      if (descCell) {
+        const newDesc = d.deskripsi || d.icd9_code || d.validitas || "-";
+        descCell.textContent = newDesc;
+        descCell.setAttribute("title", newDesc);
+      }
+    }
+
     openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
     // Simpan referensi supaya regulasi tahu asalnya
@@ -1391,9 +1489,12 @@ window.renderChecklistHtml = function(checklist) {
     window.claimState.currentProcedure = { id: procId };
 
     // Update deskripsi list tindakan (instan)
-    const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
-    const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
-    if (itemEl) itemEl.textContent = deskripsiGabungan;
+    const itemEl = document.querySelector(`[data-procid='${procId}'] span[title], [data-procid='${procId}'] span.block`);
+    if (itemEl) {
+      const deskripsiGabungan = d.deskripsi || "";
+      itemEl.textContent = deskripsiGabungan;
+      itemEl.setAttribute("title", deskripsiGabungan);
+    }
   } catch (err) {
     console.error("❌ Gagal load detail tindakan:", err);
   }
@@ -1855,10 +1956,10 @@ window.getPrediction = function(field) {
 
 window.getSeverityLabel = function(index) {
   const severityLabel = {
-    "1": "Minor (Level 1)",
-    "2": "Moderate (Level 2)", 
-    "3": "Major (Level 3)",
-    "4": "Extreme (Level 4)"
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
   };
   return severityLabel[index] || index;
 };
