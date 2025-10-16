@@ -1449,11 +1449,7 @@ window.renderChecklistHtml = function(checklist) {
     console.log("Description from API:", d.deskripsi);
       console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
-    const renderProcBox = (label, value, fieldName = null) => {
-      const multilayer = d.multilayer_rules?.[fieldName] || null; // 🔹 ambil multilayer untuk field ini
-      const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
-      let safeValue = value || "";
-    // Check if this is a manual procedure - if so, use openManualDetailModal instead
+      // Check if this is a manual procedure - if so, use openManualDetailModal instead
       const state = Alpine.$data(document.getElementById('claimRoot'));
       const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
       const manualTindakan = allTindakan.find(t => 
@@ -1579,7 +1575,7 @@ window.renderChecklistHtml = function(checklist) {
         )}
       </div>
     `;
-
+  
     // 🩺 Auto-update kolom deskripsi di daftar tindakan utama
     const procRow = document.querySelector(`[data-procid="${procId}"]`);
     if (procRow) {
@@ -1592,6 +1588,7 @@ window.renderChecklistHtml = function(checklist) {
     }
 
     openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
+
 
     // 🔹 Simpan referensi supaya regulasi tahu asalnya
     window.claimState = window.claimState || {};
@@ -1610,9 +1607,7 @@ window.renderChecklistHtml = function(checklist) {
     } catch (err) {
       console.error("❌ Gagal load detail tindakan:", err);
     }
-
   }
-
 
   async function openManualDetailModal(it, tab, idx) {
     try {
@@ -2379,6 +2374,7 @@ style.innerHTML = `
   animation: fade-in-up 0.25s ease-out;
 }
 `;
+
 document.head.appendChild(style);
 
 
@@ -2469,4 +2465,4 @@ window.renderFaktorSeverityHtml = function(faktor) {
   return '-';
 };
 
-}})();
+})();
