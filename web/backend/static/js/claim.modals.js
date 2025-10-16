@@ -1084,13 +1084,13 @@ window.renderChecklistHtml = function(checklist) {
           
           <!-- AI Notification (Added here) -->
           <div x-show="!loading && data && data.status === 'success'" class="p-3 bg-gray-100 dark:bg-gray-700">
-            <template x-if="data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
+            <template x-if="data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
               <div 
                 :class="{
-                  'bg-green-100 border-green-500 text-green-800': data.data.idrg_prediction.notifications.idrg.status === 'success',
-                  'bg-yellow-100 border-yellow-500 text-yellow-800': data.data.idrg_prediction.notifications.idrg.status === 'warning',
-                  'bg-red-100 border-red-500 text-red-800': data.data.idrg_prediction.notifications.idrg.status === 'error',
-                  'bg-blue-100 border-blue-500 text-blue-800': data.data.idrg_prediction.notifications.idrg.status === 'info'
+                  'bg-green-100 border-green-500 text-green-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'success',
+                  'bg-yellow-100 border-yellow-500 text-yellow-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'warning',
+                  'bg-red-100 border-red-500 text-red-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'error',
+                  'bg-blue-100 border-blue-500 text-blue-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'info'
                 }"
                 class="notification-box border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
                 <span class="text-lg" x-text="{
@@ -1098,14 +1098,14 @@ window.renderChecklistHtml = function(checklist) {
                   'warning': '⚠️',
                   'error': '❌',
                   'info': 'ℹ️'
-                }[data.data.idrg_prediction.notifications.idrg.status] || '🔔'"></span>
+                }[(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status) || 'info'] || '🔔'"></span>
                 <div>
                   <strong>Notifikasi AI (IDRG)</strong>
-                  <div class="text-xs leading-snug mt-0.5" x-text="data.data.idrg_prediction.notifications.idrg.message"></div>
+                  <div class="text-xs leading-snug mt-0.5" x-text="(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.message) || 'Loading...'"></div>
                 </div>
               </div>
             </template>
-            <div x-show="!(data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-gray-100 border-gray-400 text-gray-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+            <div x-show="!(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-gray-100 border-gray-400 text-gray-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
               <span class="text-lg">🔔</span>
               <div>
                 <strong>Notifikasi AI (IDRG)</strong>
@@ -1116,7 +1116,7 @@ window.renderChecklistHtml = function(checklist) {
           
           <!-- Prediction Results -->
           <div x-show="!loading && data && data.status === 'success'">
-            <template x-if="data.data && data.data.idrg_prediction">
+            <template x-if="data && data.data && data.data.idrg_prediction">
               <div class="space-y-2 p-4">
                 ${renderPredictionRow("Kode i-DRG", "<span x-text='data.data.idrg_prediction.group_idrg || \"-\"'></span>")}
                 ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(data.data.idrg_prediction.severity_index) || \"-\"'></span>")}

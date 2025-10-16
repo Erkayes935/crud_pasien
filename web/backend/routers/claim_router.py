@@ -837,6 +837,11 @@ async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Sessio
         print(f"[ANALYZE_DIAGNOSIS] Storing analysis results for claim {claim_id}")
         stage = payload.get("stage", "admission")
         
+        # 🔥 Add diagnosis name from request to result for storage
+        diagnosis_name = payload.get("disease_name", "")
+        if diagnosis_name:
+            result["diagnosis_text"] = diagnosis_name
+        
         # ✅ Store diagnosis (existing functionality)
         ai.store_ai_recommendations(db, claim_id, result, "diagnosis", stage)
         
@@ -975,6 +980,10 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
 
     try:
         print(f"[ANALYZE_PROCEDURE] Storing analysis results for claim {cid} - procedure: {procedure_name}")
+        
+        # 🔥 INJECT procedure_text from procedure_name payload for database storage
+        if result and isinstance(result, dict):
+            result["procedure_text"] = procedure_name
         
         # ✅ Store basic procedure info (existing functionality)
         ai.store_ai_recommendations(db, cid, result, "procedure", stage)

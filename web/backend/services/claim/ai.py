@@ -89,6 +89,7 @@ def store_ai_recommendations(
                         child=False,
                         confidence_score=item.get("score"),
                         is_deleted=False,
+                        is_dummy=False,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
                     )
@@ -116,6 +117,7 @@ def store_ai_recommendations(
                             child=True,
                             confidence_score=child.get("score"),
                             is_deleted=False,
+                            is_dummy=False,
                             created_at=datetime.utcnow(),
                             updated_at=datetime.utcnow(),
                         )
@@ -129,6 +131,7 @@ def store_ai_recommendations(
                 icd10_code=ai_data.get("icd10_code"),
                 klinis=ai_data.get("justifikasi"),
                 is_deleted=False,
+                is_dummy=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
@@ -141,6 +144,7 @@ def store_ai_recommendations(
                 category="diagnosis",
                 diagnosis_id=diag.id,
                 is_deleted=False,
+                is_dummy=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
@@ -150,24 +154,18 @@ def store_ai_recommendations(
             proc = models.ClaimProcedure(
                 claim_id=claim_id,
                 procedure_text=ai_data.get("procedure_text"),
-                icd9_code=ai_data.get("icd9_code"),
+                procedure_type="analysis",  
+                requirement_flag=False,
+                stage=stage,
                 is_deleted=False,
+                is_dummy=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
             db.add(proc)
             db.flush()
 
-            rec = models.ClaimAIRecommendation(
-                claim_id=claim_id,
-                stage=stage,
-                category="procedure",
-                procedure_id=proc.id,
-                is_deleted=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(rec)
+            # ℹ️ ClaimAIRecommendation hanya untuk diagnosis, bukan procedure
 
         elif mode == "combos":
             # biasanya combos disimpan via store_ai_evaluations / bulk_store_ai_results_from_core
