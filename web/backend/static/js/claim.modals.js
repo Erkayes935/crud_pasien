@@ -259,6 +259,59 @@
     `;
   }
 
+  function openOverlayModal(title, htmlContent, sourceType = null, sourceId = null) {
+  // simpan context biar tau nanti harus balik ke mana
+    window.claimState = window.claimState || {};
+    window.claimState.regulationSource = { type: sourceType, id: sourceId };
+
+    let overlay = document.getElementById("overlayRegulasi");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "overlayRegulasi";
+      overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-[999]";
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="bg-gray-900 text-white p-6 rounded-2xl max-w-4xl w-[90%] shadow-xl relative animate-fade-in">
+        <button type="button"
+                class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
+                onclick="closeOverlayModal()">✕</button>
+        <h2 class="text-xl font-bold mb-4 text-center">${title}</h2>
+        ${htmlContent}
+      </div>
+    `;
+  }
+
+  // fungsi penutup overlay regulasi
+  function closeOverlayModal() {
+    const overlay = document.getElementById("overlayRegulasi");
+    if (overlay) overlay.remove();
+
+    const src = window.claimState?.regulationSource || {};
+    console.log("🔻 closeOverlayModal triggered:", src);
+
+    // panggil balik modal induk
+    if (src.type === "procedure" && window.claimState?.currentProcedure) {
+      openProcedureModal(window.claimState.currentProcedure.id);
+    } else if (src.type === "diagnosis" && window.claimState?.currentDiagnosis) {
+      openModal(
+        `<div class="flex flex-col items-center">
+          <span class="text-lg font-bold">Detail Diagnosis</span>
+          <span class="font-bold text-2xl mb-2 text-yellow-500">
+            ${window.claimState.currentDiagnosisTitle || "Diagnosis"}
+          </span>
+        </div>`,
+        renderDiagnosisDetail(window.claimState.currentDiagnosis),
+        { hideDefaultClose: false }
+      );
+    }
+
+    window.claimState.regulationSource = null;
+  }
+
+
+
   // =======================
   // Main function to open regulation modal
   // =======================
@@ -310,23 +363,36 @@
       console.log("[REGULATION] Response:", result);
 
       if (result.status === "success") {
-        openModal(
+      // tutup modal lama dulu
+        if (typeof closeNestedModal === "function") {
+          try { closeNestedModal(); } catch (e) { console.warn("Modal lama sudah tertutup"); }
+        }
+
+        openOverlayModal(
           `${fieldName.replace('_', ' ').toUpperCase()}`,
-          renderRegulationDetailMultilayer(result.data, fieldName)
+          renderRegulationDetailMultilayer(result.data, fieldName),
+          procedureId ? "procedure" : "diagnosis",
+          procedureId || diagnosisId
         );
+
+
       } else {
         throw new Error(result.message || "Gagal memuat regulasi");
       }
     } catch (error) {
       console.error(`❌ Error fetching regulation detail:`, error);
-      openModal(
+      openOverlayModal(
         "Error",
-        `<div class="p-4 text-red-500">
+        `<div class="p-4 text-red-500 text-center">
           <p>Gagal memuat detail regulasi: ${error.message || error}</p>
           <div class="mt-4">
-            <button onclick="closeRegulationModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Tutup</button>
+            <button onclick="closeOverlayModal()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded">
+              Tutup
+            </button>
           </div>
-        </div>`
+        </div>`,
+        "diagnosis"  // atau "procedure" kalau kamu mau overlay error tetap tahu asalnya
       );
     }
   }
@@ -1560,26 +1626,6 @@ window.renderChecklistHtml = function(checklist) {
 
     }, 250); // durasi sinkron dengan CSS transition
   }
-
-  // === Tutup Regulasi (Balik ke modal asal) ===
-  // ===================== CLOSE REGULATION MODAL (context-aware) =====================
-    function closeRegulationModal() {
-      const source = window.claimState?.regulationSource || {};
-      console.log("🔻 closeRegulationModal triggered with source:", source);
-
-      if (source.type === "procedure" && window.claimState?.currentProcedure) {
-        openProcedureModal(window.claimState.currentProcedure.id);
-      } else if (source.type?.startsWith("idrg_diagnosis")) {
-        closeNestedModal();
-      } else if (source.type?.startsWith("idrg_summary")) {
-        const state = Alpine.$data(document.getElementById('claimRoot'));
-        state.modalOpen = false;
-      } else {
-        closeNestedModal();
-      }
-
-      window.claimState.regulationSource = null; // reset context
-    }
 // ==========================================================
 // 🧩 SISTEM NOTES FINAL (DOKTER / CODER / VERIFIKATOR)
 // ==========================================================
@@ -1831,10 +1877,11 @@ window.openProcedureModal = openProcedureModal;
 window.openManualDetailModal = openManualDetailModal;
 window.closeNestedModal = closeNestedModal;
 window.openRegulationDetailModal = openRegulationDetailModal;
-window.closeRegulationModal = closeRegulationModal;
 window.tindakanAutocomplete = tindakanAutocomplete;
 window.showConfirmModal = showConfirmModal;
 window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
+window.openOverlayModal = openOverlayModal;
+window.closeOverlayModal = closeOverlayModal;
 
 // ==================================================
 // i-DRG PREDICTION HELPER FUNCTIONS
