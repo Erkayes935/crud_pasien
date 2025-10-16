@@ -1441,14 +1441,6 @@ window.renderChecklistHtml = function(checklist) {
 
     console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const result = await res.json();
-    console.log("[RESP] /analyze_procedure", result);
-
-    const d = result.data || result;
-    console.log("Description from API:", d.deskripsi);
-      console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
-
       // Check if this is a manual procedure - if so, use openManualDetailModal instead
       const state = Alpine.$data(document.getElementById('claimRoot'));
       const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
@@ -1554,7 +1546,6 @@ window.renderChecklistHtml = function(checklist) {
             ✕
           </button>
         </div>
-
 
         ${renderNotificationBox("tindakan", notifications)}
 
