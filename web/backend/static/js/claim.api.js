@@ -286,7 +286,15 @@
     if (claimRoot && typeof Alpine !== "undefined") {
       try {
         const state = Alpine.$data(claimRoot);
-        if (state && state.simulasi) result.simulasi = JSON.stringify(state.simulasi);
+        if (state && state.simulasi) {
+          console.log("🔍 [SAVE_DEBUG] Current state.simulasi:", state.simulasi);
+          
+          // 🎯 TRANSFORM: Convert frontend structure to backend-expected format
+          const transformedSimulasi = transformSimulasiForBackend(state.simulasi);
+          console.log("🔄 [SAVE_DEBUG] Transformed simulasi:", transformedSimulasi);
+          
+          result.simulasi = JSON.stringify(transformedSimulasi);
+        }
         if (window.claimState && window.claimState.summary)
           result.summary = JSON.stringify(window.claimState.summary);
       } catch (err) {
@@ -307,20 +315,81 @@
       const body = await res.json();
       const sims = body.data || [];
 
-      sims.forEach((s) => {
-        if (s.diagnosis_utama_id)
+      console.log(`🔄 [LOAD_SIMULATIONS] Loading ${sims.length} simulation records for claim ${claimId}`);
+
+      sims.forEach((s, index) => {
+        console.log(`📄 Processing simulation ${index + 1}:`, {
+          stage: s.stage,
+          primary_diag: s.diagnosis_utama_name,
+          secondary_diag: s.diagnosis_sekunder_name,
+          primary_action: s.tindakan_utama_name,
+          secondary_action: s.tindakan_sekunder_name
+        });
+
+        // 🎯 PRIMARY DIAGNOSIS
+        if (s.diagnosis_utama_id) {
           setTimeout(
-            () =>
+            () => {
+              console.log(`✅ Loading PRIMARY diagnosis: ${s.diagnosis_utama_name} (stage: ${s.stage})`);
               window.updateSimulasi("diagnosis", "Primary", {
                 id: s.diagnosis_utama_id,
                 name: s.diagnosis_utama_name || "(tanpa nama)",
                 mapping: "Primary",
-              }, true, s.stage),
-            0
+              }, true, s.stage);
+            },
+            index * 10 // Stagger timing to avoid conflicts
           );
+        }
+
+        // 🎯 SECONDARY DIAGNOSIS  
+        if (s.diagnosis_sekunder_id) {
+          setTimeout(
+            () => {
+              console.log(`✅ Loading SECONDARY diagnosis: ${s.diagnosis_sekunder_name} (stage: ${s.stage})`);
+              window.updateSimulasi("diagnosis", "Secondary", {
+                id: s.diagnosis_sekunder_id,
+                name: s.diagnosis_sekunder_name || "(tanpa nama)",
+                mapping: "Secondary",
+              }, true, s.stage);
+            },
+            index * 10 + 5
+          );
+        }
+
+        // 🎯 PRIMARY ACTION
+        if (s.tindakan_utama_id) {
+          setTimeout(
+            () => {
+              console.log(`✅ Loading PRIMARY action: ${s.tindakan_utama_name} (stage: ${s.stage})`);
+              window.updateSimulasi("tindakan", "Primary Action", {
+                id: s.tindakan_utama_id,
+                name: s.tindakan_utama_name || "(tanpa nama)",
+                mapping: "Primary Action",
+              }, true, s.stage);
+            },
+            index * 10 + 10
+          );
+        }
+
+        // 🎯 SECONDARY ACTION
+        if (s.tindakan_sekunder_id) {
+          setTimeout(
+            () => {
+              console.log(`✅ Loading SECONDARY action: ${s.tindakan_sekunder_name} (stage: ${s.stage})`);
+              window.updateSimulasi("tindakan", "Secondary Actions", {
+                id: s.tindakan_sekunder_id,
+                name: s.tindakan_sekunder_name || "(tanpa nama)",
+                mapping: "Secondary Actions",
+              }, true, s.stage);
+            },
+            index * 10 + 15
+          );
+        }
       });
+
+      console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);
     } catch (e) {
-      console.error("Gagal load simulations", e);
+      console.error("❌ [LOAD_SIMULATIONS] Gagal load simulations:", e);
     }
   }
 
@@ -440,6 +509,103 @@ window.submitCoderVerification = submitCoderVerification;
     }
   }
 
+  // ============================================================
+  // TRANSFORM SIMULASI FOR BACKEND
+  // ============================================================
+  function transformSimulasiForBackend(frontendSimulasi) {
+    /**
+     * Transform frontend simulasi structure to backend-expected format
+     * 
+     * Frontend: { stage: { utama: {...}, sekunder: [...], tindakanUtama: {...}, tindakanSekunder: [...] } }
+     * Backend Expected: { stage: { diagnosis: [...], komorbid: [...], komplikasi: [...], tindakan: [...] } }
+     */
+    const transformed = {};
+    
+    for (const [stage, stageData] of Object.entries(frontendSimulasi)) {
+      if (!stageData || typeof stageData !== 'object') continue;
+      
+      transformed[stage] = {
+        diagnosis: [],
+        komorbid: [],
+        komplikasi: [],
+        tindakan: []
+      };
+      
+      // 🎯 PRIMARY DIAGNOSIS (utama)
+      if (stageData.utama) {
+        const primaryDiag = {
+          ...stageData.utama,
+          mapping: "Primary" // Ensure consistent mapping
+        };
+        transformed[stage].diagnosis.push(primaryDiag);
+        console.log(`🔄 [TRANSFORM] Added PRIMARY diagnosis: ${primaryDiag.name}`);
+      }
+      
+      // 🎯 SECONDARY DIAGNOSES (sekunder)
+      if (Array.isArray(stageData.sekunder)) {
+        stageData.sekunder.forEach(diag => {
+          if (diag && typeof diag === 'object') {
+            const secondaryDiag = {
+              ...diag,
+              mapping: diag.mapping || "Secondary" // Ensure mapping
+            };
+            
+            // Categorize by mapping type
+            if (diag.mapping === "Komorbid" || diag.mapping === "Secondary-Komorbid") {
+              transformed[stage].komorbid.push(secondaryDiag);
+              console.log(`🔄 [TRANSFORM] Added KOMORBID: ${diag.name}`);
+            } else if (diag.mapping === "Komplikasi" || diag.mapping === "Secondary-Komplikasi") {
+              transformed[stage].komplikasi.push(secondaryDiag);
+              console.log(`🔄 [TRANSFORM] Added KOMPLIKASI: ${diag.name}`);
+            } else {
+              transformed[stage].diagnosis.push(secondaryDiag);
+              console.log(`🔄 [TRANSFORM] Added SECONDARY diagnosis: ${diag.name}`);
+            }
+          }
+        });
+      }
+      
+      // 🎯 PRIMARY ACTION (tindakanUtama)
+      if (stageData.tindakanUtama) {
+        const primaryAction = {
+          ...stageData.tindakanUtama,
+          mapping: "Primary Action" // Ensure consistent mapping
+        };
+        transformed[stage].tindakan.push(primaryAction);
+        console.log(`🔄 [TRANSFORM] Added PRIMARY action: ${primaryAction.name}`);
+      }
+      
+      // 🎯 SECONDARY ACTIONS (tindakanSekunder)
+      if (Array.isArray(stageData.tindakanSekunder)) {
+        stageData.tindakanSekunder.forEach(action => {
+          if (action && typeof action === 'object') {
+            const secondaryAction = {
+              ...action,
+              mapping: "Secondary Actions" // Ensure consistent mapping
+            };
+            transformed[stage].tindakan.push(secondaryAction);
+            console.log(`🔄 [TRANSFORM] Added SECONDARY action: ${action.name}`);
+          }
+        });
+      }
+      
+      // 🎯 LEGACY: Also include arrays from original structure if they exist
+      ['diagnosis', 'komorbid', 'komplikasi', 'tindakan'].forEach(category => {
+        if (Array.isArray(stageData[category])) {
+          stageData[category].forEach(item => {
+            if (item && typeof item === 'object' && !transformed[stage][category].some(existing => existing.name === item.name)) {
+              transformed[stage][category].push(item);
+              console.log(`🔄 [TRANSFORM] Added legacy ${category}: ${item.name}`);
+            }
+          });
+        }
+      });
+    }
+    
+    console.log(`🎉 [TRANSFORM] Transformation complete for ${Object.keys(transformed).length} stages`);
+    return transformed;
+  }
+
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
   window.searchTindakan = searchTindakan;
@@ -448,4 +614,5 @@ window.submitCoderVerification = submitCoderVerification;
   window.get_form_as_dict = get_form_as_dict;
   window.loadRules = loadRules;
   window.submitRuleFeedback = submitRuleFeedback;
+  window.transformSimulasiForBackend = transformSimulasiForBackend;
 })();
