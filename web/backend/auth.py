@@ -123,20 +123,51 @@ def current_user_session(request: Request):
     }
 
 def require_roles_session(*allowed_roles: str):
+    """
+    Dependency untuk memeriksa session dan role user.
+    Kompatibel dengan sistem multi-role (user_roles) dan legacy (role string dengan koma).
+    """
     def _dep(request: Request, db: Session = Depends(get_db)):
         uid = request.session.get("user_id")
         if not uid:
+            print("🚫 [AUTH] Tidak ada user_id di session")
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         user = db.query(models.User).get(uid)
         if not user:
+            print(f"🚫 [AUTH] User dengan id={uid} tidak ditemukan di DB")
             raise HTTPException(status_code=401, detail="User not found")
 
-        # ✅ multi-role aware
-        user_roles = user.role_names  # gabungan role lama dan baru (dari models.py)
+        # --- Ambil semua role user ---
+        user_roles = []
+
+        # 1️⃣ dari relasi multi-role
+        if user.role_names:
+            for r in user.role_names:
+                # jika masih ada koma di satu string
+                user_roles.extend([x.strip() for x in str(r).split(",") if x.strip()])
+
+        # 2️⃣ fallback ke kolom role (legacy)
+        elif user.role:
+            user_roles = [r.strip() for r in user.role.split(",") if r.strip()]
+
+        # Simpan ke session untuk FE
+        request.session["roles"] = user_roles
+
+        print("🧩 [AUTH DEBUG]")
+        print(f"  🔸 user.id      = {user.id}")
+        print(f"  🔸 user.email   = {user.email}")
+        print(f"  🔸 user.role    = {user.role}")
+        print(f"  🔸 user.role_names = {user.role_names}")
+        print(f"  🔸 Detected roles = {user_roles}")
+        print(f"  🔸 Allowed roles  = {allowed_roles}")
+
+        # --- Validasi role ---
         if allowed_roles and not any(r in user_roles for r in allowed_roles):
+            print("🚫 [AUTH] Akses ditolak: tidak cocok dengan allowed_roles")
             raise HTTPException(status_code=403, detail="Forbidden")
 
+        print("✅ [AUTH] Akses diizinkan, lanjut ke endpoint")
         return user
 
     return _dep

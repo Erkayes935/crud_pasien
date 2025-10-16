@@ -95,7 +95,7 @@ def update_claim_draft_service(db: Session, claim_id: int, user, form_data: dict
 
     # Simpan simulasi
     if sim_data:
-        save_simulasi(db, claim.id, sim_data)
+        save_simulasi(db, claim.id, sim_data, form_data)
 
     # Simpan evaluasi
     if summ_data:
