@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-
+<!-- ================= INI Untuk Verifikator ================= -->
 <form id="claimForm"
       method="post"
       action="/claims/{{ record.id }}/finalize"
@@ -371,7 +371,11 @@
                             <span class="ml-4">Prioritas: </span><span x-text="selectedFeedbackRule?.priority" class="font-medium"></span>
                         </div>
                     </div>
-                    
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
                     <!-- Feedback Form -->
                     <form @submit.prevent="submitFeedback">
                         <div class="mb-4">
@@ -379,11 +383,12 @@
                                 Masukan Anda <span class="text-red-500">*</span>
                             </label>
                             <textarea id="feedback-text" 
-                                      x-model="feedbackForm.feedback"
-                                      rows="6" 
-                                      required
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                      placeholder="Deskripsikan masukan, saran, atau koreksi untuk aturan ini..."></textarea>
+                                    name="feedback"
+                                    x-model="feedbackForm.feedback"
+                                    rows="6" 
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    placeholder="Deskripsikan masukan, saran, atau koreksi untuk aturan ini..."></textarea>
                         </div>
                         
                         <div class="flex justify-end space-x-3">
@@ -400,11 +405,6 @@
                             </button>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</form>
 
 
 {% endblock %}
