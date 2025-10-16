@@ -248,6 +248,44 @@ FIELD_RULE_MAP = {
             "desc": "Ringkasan singkat AI atas isi regulasi."
         },
     },
+
+    # ==============================================================
+    # 🏥 DOMAIN: i-DRG
+    # ==============================================================
+    "idrg": {
+        "kode_idrg": {
+            "source": "Rule", "layers": [2, 8], "type": "rule",
+            "desc": "Kode i-DRG resmi dari grouper nasional."
+        },
+        "severity_index": {
+            "source": "Hybrid", "layers": [2, 3, 8], "type": "hybrid",
+            "desc": "Level keparahan kasus menurut i-DRG (1-4)."
+        },
+        "checklist_dokumentasi": {
+            "source": "Rule", "layers": [2, 8], "type": "rule",
+            "desc": "Syarat dokumen untuk validasi i-DRG."
+        },
+        "faktor_penentu_severity": {
+            "source": "Hybrid", "layers": [2, 3], "type": "hybrid",
+            "desc": "Faktor utama yang menentukan level severity i-DRG."
+        },
+        "ungroupable_alert": {
+            "source": "Rule", "layers": [2, 8], "type": "rule",
+            "desc": "Peringatan klaim tidak masuk group i-DRG."
+        },
+        "estimasi_tarif_idrg": {
+            "source": "Rule", "layers": [2, 8], "type": "rule", 
+            "desc": "Tarif sesuai i-DRG nasional."
+        },
+        "gap_analysis": {
+            "source": "Hybrid", "layers": [2, 8], "type": "hybrid",
+            "desc": "Selisih tarif i-DRG dengan INA-CBG lama."
+        },
+        "rekomendasi_ai": {
+            "source": "AI", "layers": [], "type": "ai",
+            "desc": "Rekomendasi AI untuk optimasi dokumentasi."
+        },
+    },
 }
 
 # ==============================================================
@@ -342,6 +380,38 @@ FIELD_NAME_ALIAS = {
     "isi_regulasi": ["isi_regulasi", "regulasi.isi", "aturan.detail"],
     "cakupan": ["cakupan", "regulasi.cakupan", "ruang_lingkup"],
     "ai_summary": ["ai_summary", "regulasi.ringkasan", "summary_ai"],
+
+    # ======================================================
+    # 🏥 i-DRG
+    # ======================================================
+    "kode_idrg": [
+        "kode_idrg", "group_idrg", "idrg_code", "prediksi_group_idrg", 
+        "prediksi_group_idrg_kombinasi", "group_idrg_kombinasi"
+    ],
+    "severity_index": [
+        "severity_index", "severity", "tingkat_keparahan", "severity_level", 
+        "severity_kombinasi"
+    ],
+    "checklist_dokumentasi": [
+        "checklist_dokumentasi", "checklist_idrg", "syarat_dokumentasi",
+        "checklist_idrg_kombinasi"
+    ],
+    "faktor_penentu_severity": [
+        "faktor_penentu_severity", "severity_factors", "faktor_severity"
+    ],
+    "ungroupable_alert": [
+        "ungroupable_alert", "risiko_ungroupable", "ungroupable_risk", "ungroupable"
+    ],
+    "estimasi_tarif_idrg": [
+        "estimasi_tarif_idrg", "tarif_idrg", "estimasi_tarif", "tarif", 
+        "idrg_tariff", "tarif.idrg"
+    ],
+    "gap_analysis": [
+        "gap_analysis", "gap_with_inacbg", "selisih_tarif"
+    ],
+    "rekomendasi_ai": [
+        "rekomendasi_ai", "ai_recommendation", "ai_summary", "rekomendasi"
+    ],
 }
 
 def match_field_alias(field_name: str, db_field: str) -> bool:

@@ -127,7 +127,7 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
       "procedure": "{procedure}",
       "icd9_code": "Kode ICD-9-CM yang akurat sesuai WHO/BPJS",
       "icd9_desc": "Deskripsi lengkap ICD-9-CM Indonesia",
-      "deskripsi": "Penjelasan detail tindakan medis",
+      "deskripsi": "Ringkasan singkat: Kode ICD-9, Status, INA-CBG",
       "validitas": "VALID/TIDAK VALID/PERLU REVIEW + alasan klinis yang jelas",
       "status_tindakan": "WAJIB/OPSIONAL/SUPPORTIVE + justifikasi berdasarkan CP/PNPK",
       "status": "Status singkat untuk tampilan UI",
@@ -189,12 +189,38 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     # ================================================================
     # 3️⃣ BUILD RESPONSE (tetap sama + tambahan multilayer)
     # ================================================================
+    
+    # Extract fields for description formatting
+    icd9_code = _sv(ai_data.get("icd9_code", ""))
+    status = _sv(ai_data.get("status_tindakan", ""))
+    ina_cbg_tarif = _sv(ai_data.get("ina_cbg_tarif", ""))
+    
+    # Format description like manual entries: "ICD-9: code, Status: value, INA-CBG: price"
+    formatted_description = ""
+    if icd9_code:
+        formatted_description += f"ICD-9: {icd9_code}"
+        
+    if status:
+        if formatted_description:
+            formatted_description += ", "
+        formatted_description += f"Status: {status}"
+        
+    if ina_cbg_tarif:
+        if formatted_description:
+            formatted_description += ", "
+        formatted_description += f"INA-CBG: {ina_cbg_tarif}"
+
+    # Check if this is an explicit procedure view request (not just from diagnosis analysis)
+    is_explicit_procedure_request = payload.get("procedure_name") and procedure
+    
+    # Don't expose the formatted description in the API response
+    # We'll only set it to deskripsi when explicitly viewing procedure details
     result = {
         "procedure": _sv(ai_data.get("procedure", procedure), procedure or "-"),
-        "icd9_code": _sv(ai_data.get("icd9_code", "")),
-        "icd9": _sv(ai_data.get("icd9_code", "")),
+        "icd9_code": icd9_code,
+        "icd9": icd9_code,
         "icd9_desc": _sv(ai_data.get("icd9_desc", "")),
-        "deskripsi": _sv(ai_data.get("deskripsi", ai_data.get("icd9_desc", ""))),
+        "deskripsi": formatted_description if is_explicit_procedure_request else "",  # Keep empty until explicitly viewed
         "validitas": merge_ai_with_rules(_sv(ai_data.get("validitas", "")), "validitas", multilayer_output),
         "status_tindakan": merge_ai_with_rules(_sv(ai_data.get("status_tindakan", "")), "status_tindakan", multilayer_output),
         "status": _sv(ai_data.get("status", ai_data.get("status_tindakan", ""))),
