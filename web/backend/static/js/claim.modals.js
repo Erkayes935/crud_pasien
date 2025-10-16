@@ -2684,20 +2684,23 @@ function renderDiagnosisDetailReadOnly(data) {
   const diagnosisName = data.diagnosis_name || data.name || "";
   const diagnosisId = data.diagnosis_id || data.id || Date.now();
   
+  // Get diagnosis detail from the correct nested structure
+  const detail = data.diagnosis_detail || {};
+  
   // Build the structure similar to doctor but from database
   const klinis = {
-    justifikasi: data.justifikasi || "",
-    bukti_klinis: data.bukti_klinis || "", 
-    syarat_klinis: data.syarat_klinis || "",
+    justifikasi: detail.justifikasi || "",
+    bukti_klinis: detail.bukti_klinis || "", 
+    syarat_klinis: detail.syarat_klinis || "",
     status: "readonly"
   };
 
   const icd10 = {
-    kode_icd: data.icd10_code || "",
-    struktur_icd10: data.struktur_icd10 || "",
-    kode_ganda: data.kode_ganda || "",
-    z_code: data.z_code || "",
-    kode_bpjs_khusus: data.kode_bpjs_khusus || "",
+    kode_icd: detail.icd10_code || "",
+    struktur_icd10: detail.struktur_icd10 || "",
+    kode_ganda: detail.kode_ganda || "",
+    z_code: detail.z_code || "",
+    kode_bpjs_khusus: detail.kode_bpjs_khusus || "",
     status_icd: "readonly"
   };
 
@@ -2812,8 +2815,12 @@ function renderDiagnosisDetailReadOnly(data) {
  */
 function renderProcedureDetailReadOnly(data) {
   const procedureName = data.procedure_name || data.name || "";
+  // Use both procedure_detail and analysis (backward compatibility)
+  const detail = data.procedure_detail || {};
   const analysis = data.analysis || {};
   const regulasi = data.regulasi || [];
+  
+  console.log("🔧 [VERIFICATOR] renderProcedureDetailReadOnly received:", data);
   
   const renderProcBoxReadOnly = (label, value, fieldName = null) => {
     const safeValue = value || "-";
@@ -2848,13 +2855,14 @@ function renderProcedureDetailReadOnly(data) {
 
       <!-- Basic Info -->
       <div class="grid grid-cols-2 gap-2 text-sm">
-        ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code, "icd9_code")}
-        ${renderProcBoxReadOnly("Deskripsi", analysis.icd9_desc || analysis.description, "icd9_desc")}
-        ${renderProcBoxReadOnly("Validitas", analysis.validitas)}
-        ${renderProcBoxReadOnly("Status", analysis.status, "status")}
-        ${renderProcBoxReadOnly("Tarif INA-CBG", analysis.ina_cbg, "ina_cbg")}
-        ${renderProcBoxReadOnly("Faskes", analysis.faskes, "faskes")}
-        ${renderProcBoxReadOnly("Rawat Inap", analysis.rawat_inap, "rawat_inap_tindakan")}
+        ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code || detail.icd9_code, "icd9_code")}
+        ${renderProcBoxReadOnly("Deskripsi", procedureName, "icd9_desc")}
+        ${renderProcBoxReadOnly("Validitas", analysis.validitas || detail.validitas, "validitas")}
+        ${renderProcBoxReadOnly("Status", analysis.status_tindakan || detail.status_tindakan, "status")}
+        ${renderProcBoxReadOnly("Tarif INA-CBG", analysis.ina_cbg || detail.ina_cbg, "ina_cbg")}
+        ${renderProcBoxReadOnly("Faskes", analysis.faskes_tindakan || detail.faskes_tindakan, "faskes")}
+        ${renderProcBoxReadOnly("Rawat Inap", analysis.rawat_inap_tindakan || detail.rawat_inap_tindakan, "rawat_inap_tindakan")}
+        ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis || detail.syarat_klinis, "syarat_klinis")}
         ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis, "syarat_klinis")}
       </div>
 
