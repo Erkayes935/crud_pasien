@@ -49,15 +49,24 @@
                 </label>
                 <template x-if="simulasi[tab].utama">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
-                            x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
-                    <!-- Rules Button -->
-                    <button type="button" 
-                            @click="showRulesModal(simulasi[tab].utama.name)"
-                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
-                            title="Lihat Aturan Multilayer">
-                      📘 Rules
-                    </button>
+                      <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium"
+                              x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
+                      <!-- Rules Button -->
+                      <button type="button" 
+                              @click="showRulesModal(simulasi[tab].utama.name)"
+                              class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                              title="Lihat Aturan Multilayer">
+                        📘 Rules
+                      </button>
+                      <select x-show="role !== 'doctor'"
+                        :disabled="role === 'doctor'"
+                        x-model="simulasi[tab].utama.mapping"
+                        @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+                        class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="None">None</option>
+                      </select>
                     </div>
                 </template>
                 <template x-if="!simulasi[tab]?.utama || null">
@@ -93,15 +102,24 @@
                 </label>
                 <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
-                            x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
-                    <!-- Rules Button untuk Secondary Claims -->
-                    <button type="button" 
-                            @click="showRulesModal(dx.name)"
-                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                            title="Lihat Aturan Multilayer">
-                      📘 Rules
-                    </button>
+                      <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium"
+                              x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
+                      <!-- Rules Button untuk Secondary Claims -->
+                      <button type="button" 
+                              @click="showRulesModal(dx.name)"
+                              class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                              title="Lihat Aturan Multilayer">
+                        📘 Rules
+                      </button>
+                      <select x-show="role !== 'doctor'"
+                        :disabled="role === 'doctor'"
+                        x-model="dx.mapping"
+                        @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+                        class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                        <option value="Secondary">Secondary</option>
+                        <option value="Primary">Primary</option>
+                        <option value="None">None</option>
+                      </select>
                     </div>
                 </template>
                 <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
@@ -128,15 +146,24 @@
                 </label>
                 <template x-if="simulasi[tab].tindakanUtama">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
-                            x-text="simulasi[tab].tindakanUtama?.name"></span>
-                    <!-- Rules Button untuk Primary Action -->
-                    <button type="button" 
-                            @click="showRulesModal(simulasi[tab].tindakanUtama?.name)"
-                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
-                            title="Lihat Aturan Multilayer">
-                      📘 Rules
-                    </button>
+                      <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium"
+                              x-text="simulasi[tab].tindakanUtama?.name"></span>
+                      <!-- Rules Button untuk Primary Action -->
+                      <button type="button" 
+                              @click="showRulesModal(simulasi[tab].tindakanUtama?.name)"
+                              class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                              title="Lihat Aturan Multilayer">
+                        📘 Rules
+                      </button>
+                      <select x-show="role !== 'doctor'"
+                        :disabled="role === 'doctor'"
+                        x-model="simulasi[tab].tindakanUtama.mapping"
+                        @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+                        class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                        <option value="Primary">Primary</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="None">None</option>
+                      </select>
                     </div>
                 </template>
                 </div>
@@ -155,15 +182,24 @@
                 </label>
                 <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
                     <div class="flex items-center gap-2 mt-2">
-                    <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
-                            x-text="(tdk.name || '-')"></span>
-                    <!-- Rules Button untuk Secondary Actions -->
-                    <button type="button" 
-                            @click="showRulesModal(tdk.name)"
-                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                            title="Lihat Aturan Multilayer">
-                      📘 Rules
-                    </button>
+                      <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium"
+                              x-text="(tdk.name || '-')"></span>
+                      <!-- Rules Button untuk Secondary Actions -->
+                      <button type="button" 
+                              @click="showRulesModal(tdk.name)"
+                              class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                              title="Lihat Aturan Multilayer">
+                        📘 Rules
+                      </button>
+                      <select x-show="role !== 'doctor'"
+                        :disabled="role === 'doctor'"
+                        x-model="tdk.mapping"
+                        @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+                        class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                        <option value="Secondary">Secondary</option>
+                        <option value="Primary">Primary</option>
+                        <option value="None">None</option>
+                      </select>
                     </div>
                 </template>
                 </div>
