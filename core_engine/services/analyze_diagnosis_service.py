@@ -46,7 +46,7 @@ def format_multilayer_rules(rule_list: list):
         src = r.get("sumber", "-")
         layer = r.get("layer", "-").capitalize()
         isi = r.get("isi", "-").strip()
-        lines.append(f"• [{layer}] {isi} ({src})")
+        lines.append(f"• [{layer}]: {isi} ({src})")
     return "\n".join(lines)
 
 # ==============================
@@ -66,7 +66,7 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
     {{
       "aspek_klinis": {{
         "justifikasi": "Penjelasan medis mengapa diagnosis ini tepat berdasarkan gejala dan pemeriksaan",
-        "bukti": ["Gejala 1", "Tanda klinis 2", "Hasil pemeriksaan 3"],
+        "bukti_klinis": ["Gejala atau temuan yang mendukung diagnosis, misalnya hasil pemeriksaan, keluhan pasien, dan tanda vital yang relevan"],
         "syarat_medis": ["Kriteria diagnosis 1", "Kriteria diagnosis 2"]
       }},
       "icd10": {{
@@ -112,6 +112,11 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
     - Format JSON harus persis sesuai struktur di atas
     - Setiap field harus lengkap dan informatif
     - "notifications" harus berisi kalimat evaluatif singkat (maks 2 kalimat).
+    - Pastikan bagian "bukti_klinis" berisi daftar gejala, tanda, atau hasil pemeriksaan yang diambil dari REKAM MEDIS dan yang mendukung diagnosis.
+        Contoh:
+        REKAM MEDIS: ["Batuk berdahak", "Demam 38°C", "Rontgen menunjukkan infiltrat"]
+        Output:
+        "bukti_klinis": ["Batuk berdahak", "Demam 38°C", "Infiltrat pada rontgen paru"]
     """
 
     try:
@@ -139,6 +144,15 @@ def ensure_default_gpt_structure(gpt_result, disease_name):
     # Pastikan minimal data klinis ada
     if not gpt_result["aspek_klinis"].get("justifikasi"):
         gpt_result["aspek_klinis"]["justifikasi"] = f"Diagnosis {disease_name} perlu dikonfirmasi dengan pemeriksaan penunjang dan evaluasi klinis lebih lanjut."
+    
+    # Pastikan bukti_klinis selalu list
+    bukti_data = gpt_result["aspek_klinis"].get("bukti_klinis") or gpt_result["aspek_klinis"].get("bukti")
+    if isinstance(bukti_data, str):
+        gpt_result["aspek_klinis"]["bukti_klinis"] = [bukti_data]
+    elif isinstance(bukti_data, list):
+        gpt_result["aspek_klinis"]["bukti_klinis"] = bukti_data
+    else:
+        gpt_result["aspek_klinis"]["bukti_klinis"] = []
 
     # Pastikan data ICD-10 ada
     if not gpt_result["icd10"].get("utama"):
@@ -219,7 +233,7 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     # 6️⃣ Smart Merge (berdasarkan FIELD_RULE_MAP)
     # ============================================================
     MULTILAYER_FIELDS = [
-        "syarat_klinis", "kode_bpjs_khusus", "z_code",
+        "syarat_klinis", "kode_ganda", "kode_bpjs_khusus", "z_code",
         "lama_rawat", "indikasi", "kriteria",
         "rujukan_kriteria", "rujukan_tujuan",
         "ina_cbg_kode", "ina_cbg_tarif"
@@ -243,7 +257,17 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
             if field_name in MULTILAYER_FIELDS:
                 multilayer_rules = []
                 for db_field, rules in rule_data_db.items():
-                    if match_field_alias(field_name, db_field) and isinstance(rules, list) and len(rules) > 0:
+                    db_sec, db_sub = extract_field_path(db_field)
+                    # Tambahkan debug print untuk melihat pencocokan
+                    # print(f"DEBUG: field_name={field_name}, db_field={db_field}, db_sec={db_sec}, db_sub={db_sub}")
+                    if (
+                        match_field_alias(field_name, db_field)
+                        or (db_sub and match_field_alias(field_name, db_sub))
+                        or (db_sec and match_field_alias(field_name, db_sec))
+                        or db_field == field_name
+                        or (db_sub and db_sub == field_name)
+                        or (db_sec and db_sec == field_name)
+                    ) and isinstance(rules, list) and len(rules) > 0:
                         for r in rules:
                             multilayer_rules.append({
                                 "layer": r.get("layer", "-"),
@@ -251,17 +275,26 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
                                 "isi": r.get("isi", "-")
                             })
 
+                # PERBAIKAN: Jika section_key == "icd10", juga cek field tanpa prefix
+                if not multilayer_rules and section_key == "icd10":
+                    for db_field, rules in rule_data_db.items():
+                        if db_field in ["kode_ganda", "z_code"] and isinstance(rules, list) and len(rules) > 0:
+                            for r in rules:
+                                multilayer_rules.append({
+                                    "layer": r.get("layer", "-"),
+                                    "sumber": r.get("sumber", "-"),
+                                    "isi": r.get("isi", "-")
+                                })
+
                 if multilayer_rules:
                     formatted = "\n".join([
                         f"• [{r['layer'].capitalize()}] {r['isi']} ({r['sumber']})"
                         for r in multilayer_rules
                     ])
                     merged[field_name] = formatted
-                    continue  # lanjut ke field berikutnya
                 else:
-                    # Tambahkan default value jika tidak ada rules
-                    merged[field_name] = "-"
-                    continue
+                    merged[field_name] = val_ai or "-"
+                continue
 
             # 🔹 Kalau bukan multilayer → merge normal
             if not should_use_ai("diagnosis", field):
@@ -588,6 +621,20 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
         if result["rujukan"]["kriteria"] != "-":
             result["rujukan"]["indikasi"] = result["rujukan"]["kriteria"]
             result["rujukan"]["status_indikasi"] = "complete"
+    
+    # Formatting tambahan bukti_klinis untuk tampilan yang lebih rapi
+    if result.get("klinis", {}).get("bukti_klinis"):
+        bukti_text = result["klinis"]["bukti_klinis"]
+        if isinstance(bukti_text, str):
+            # tambahkan spasi setelah koma kalau belum ada
+            result["klinis"]["bukti_klinis"] = bukti_text.replace(",", ", ")
+            # hilangkan spasi ganda berlebihan
+            result["klinis"]["bukti_klinis"] = " ".join(
+                result["klinis"]["bukti_klinis"].split()
+            )
+        elif isinstance(bukti_text, list):
+            # kalau list, gabung jadi string rapi
+            result["klinis"]["bukti_klinis"] = ", ".join(bukti_text)
 
     print(f"[DIAGNOSIS] ✅ Analisis selesai ({result['data_completeness']} lengkap)")
     return result

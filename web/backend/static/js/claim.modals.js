@@ -887,6 +887,7 @@ function updateRingkasanFromRow(itemId, dx) {
                 const hasMultilayers = typeof icd10.z_code === 'string' && 
                   (icd10.z_code.includes('[Nasional]') || 
                   icd10.z_code.includes('[PPK]') ||
+                  icd10.z_code.includes('[Regional]') ||
                   icd10.z_code.includes('•'));
                 if (hasMultilayers) {
                   return renderFieldMultilayer({ isi: icd10.z_code }, "Z-Code", "z_code", diagnosisId);
@@ -901,6 +902,8 @@ function updateRingkasanFromRow(itemId, dx) {
                 const hasMultilayers = typeof icd10.kode_bpjs_khusus === 'string' && 
                   (icd10.kode_bpjs_khusus.includes('[Permenkes]') || 
                   icd10.kode_bpjs_khusus.includes('[Nasional]') ||
+                  icd10.kode_bpjs_khusus.includes('[Bridging]') ||
+                  icd10.kode_bpjs_khusus.includes('[Fraud]') ||
                   icd10.kode_bpjs_khusus.includes('•'));
                 if (hasMultilayers) {
                   return renderFieldMultilayer({ isi: icd10.kode_bpjs_khusus }, "Kode Khusus BPJS", "kode_bpjs_khusus", diagnosisId);
