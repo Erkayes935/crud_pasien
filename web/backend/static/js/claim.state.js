@@ -440,7 +440,7 @@
       console.log("🔍 [TINDAKAN DEBUG] Comparison:", finalOpt === "Primary", finalOpt === "Secondary");
 
       // 🎯 FIX: Handle normalized "Primary" for tindakan
-      if (finalOpt === "Primary") {
+      if (finalOpt === "Primary" || finalOpt === "Primary Action") {
         console.log("✅ [TINDAKAN] Entering PRIMARY branch");
         const oldPrimary = sim.tindakanUtama;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
@@ -449,7 +449,7 @@
         console.log("✅ [TINDAKAN] Set tindakanUtama:", sim.tindakanUtama);
       } 
       // 🎯 FIX: Handle normalized "Secondary" for tindakan
-      else if (finalOpt === "Secondary") {
+      else if (finalOpt === "Secondary" || finalOpt === "Secondary Actions") {
         console.log("✅ [TINDAKAN] Entering SECONDARY branch");
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         if (!sim.tindakanSekunder.find(td => td.name === nama)) {
