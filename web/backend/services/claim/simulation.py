@@ -62,19 +62,27 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
     for s in sims:
         if s.stage not in sim:
             sim[s.stage] = {
-                "utama_diagnosis": None,
-                "utama_tindakan": None,
-                "sekunder_diagnosis": [],
-                "sekunder_tindakan": []
+                "diagnosis": [],
+                "komorbid": [],
+                "komplikasi": [],
+                "utama": None,
+                "sekunder": [],
+                "tindakanUtama": None,
+                "tindakanSekunder": [],
+                "tarifDraft": None
             }
         if s.diagnosis_utama_id:
-            sim[s.stage]["utama_diagnosis"] = {"id": s.diagnosis_utama_id, "type": "diagnosis"}
+            sim[s.stage]["utama"] = {"id": s.diagnosis_utama_id, "type": "diagnosis"}
         if s.tindakan_utama_id:
-            sim[s.stage]["utama_tindakan"] = {"id": s.tindakan_utama_id, "type": "tindakan"}
+            sim[s.stage]["tindakanUtama"] = {"id": s.tindakan_utama_id, "name": "tindakan"}
         if s.diagnosis_sekunder_id:
-            sim[s.stage]["sekunder_diagnosis"].append({"id": s.diagnosis_sekunder_id, "type": "diagnosis"})
+            if "sekunder" not in sim[s.stage]:
+                sim[s.stage]["sekunder"] = []
+            sim[s.stage]["sekunder"].append({"id": s.diagnosis_sekunder_id, "type": "diagnosis"})
         if s.tindakan_sekunder_id:
-            sim[s.stage]["sekunder_tindakan"].append({"id": s.tindakan_sekunder_id, "type": "tindakan"})
+            if "tindakanSekunder" not in sim[s.stage]:
+                sim[s.stage]["tindakanSekunder"] = []
+            sim[s.stage]["tindakanSekunder"].append({"id": s.tindakan_sekunder_id, "name": "tindakan"})
 
     # === Evaluasi (opsional, untuk verifikator/coder) ===
     if include_summary:

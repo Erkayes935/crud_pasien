@@ -436,22 +436,32 @@
       const nama = typeof value === "string" ? value : (value.name || value.label || "(tanpa nama)");
       const id = typeof value === "string" ? null : (value.id || null);
 
-      // 🎯 FIX: Handle normalized "Primary Action"
-      if (finalOpt === "Primary Action") {
+      console.log("🔍 [TINDAKAN DEBUG] Values:", { finalOpt, nama, id, typeOfFinalOpt: typeof finalOpt });
+      console.log("🔍 [TINDAKAN DEBUG] Comparison:", finalOpt === "Primary", finalOpt === "Secondary");
+
+      // 🎯 FIX: Handle normalized "Primary" for tindakan
+      if (finalOpt === "Primary") {
+        console.log("✅ [TINDAKAN] Entering PRIMARY branch");
         const oldPrimary = sim.tindakanUtama;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
         sim.tindakanUtama = { tindakan_utama_id: id, name: nama };
         if (oldPrimary && oldPrimary.name !== nama) sim.tindakanSekunder.unshift(oldPrimary);
+        console.log("✅ [TINDAKAN] Set tindakanUtama:", sim.tindakanUtama);
       } 
-      // 🎯 FIX: Handle normalized "Secondary Actions"  
-      else if (finalOpt === "Secondary Actions") {
+      // 🎯 FIX: Handle normalized "Secondary" for tindakan
+      else if (finalOpt === "Secondary") {
+        console.log("✅ [TINDAKAN] Entering SECONDARY branch");
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         if (!sim.tindakanSekunder.find(td => td.name === nama)) {
           sim.tindakanSekunder.push({ tindakan_sekunder_id: id, name: nama });
         }
+        console.log("✅ [TINDAKAN] Added to tindakanSekunder:", sim.tindakanSekunder);
       } else if (finalOpt === "None") {
+        console.log("✅ [TINDAKAN] Entering NONE branch");
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
+      } else {
+        console.log("❌ [TINDAKAN] NO BRANCH MATCHED! finalOpt:", finalOpt);
       }
       
       // 🔍 DEBUG: Check sim state after tindakan update

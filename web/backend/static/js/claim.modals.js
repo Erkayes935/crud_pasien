@@ -428,8 +428,6 @@
     }
   }
 
-
-
 // =====================================================
 // UPDATE RINGKASAN FROM ROW (asli kamu — tidak diubah isinya)
 // =====================================================
@@ -679,8 +677,7 @@ function updateRingkasanFromRow(itemId, dx) {
     `;
   }
 
-  function renderFieldMultilayer(fieldData, label) {
-    // Check if fieldData is null or undefined before proceeding
+  function renderFieldMultilayer(fieldData, label, fieldName = "syarat_klinis", diagnosisId = null) {
     if (!fieldData) {
       return `
         <div class="grid grid-cols-2">
@@ -688,49 +685,55 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-3 py-2">-</div>
         </div>
       `;
-   }
+    }
 
-    // Verifikasi tipe data fieldData terlebih dahulu
     const isi = typeof fieldData === 'string' 
       ? fieldData 
       : (fieldData?.isi !== undefined ? fieldData.isi : "-");
-  
-    const isMultiline = typeof isi === "string" && isi.includes("•");
+
+    const isMultiline = typeof isi === "string" && (isi.includes("•") || isi.includes("["));
 
     if (isMultiline) {
-      // pisahkan per baris bullet
-      const lines = isi.split("\n").filter(l => l.trim() !== "");
-      const listItems = lines
-        .map(line => {
-          // ambil layer dan sumber dengan regex ringan
-          const match = line.match(/•\s*\[(.*?)\]\s*(.*?)\((.*?)\)/);
-          if (match) {
-            const layer = match[1];
-            const ruleText = match[2].trim();
-            const sumber = match[3];
-            return `
-              <li class="leading-snug mb-1">
-                <span class="text-blue-500 dark:text-blue-400 font-semibold">• [${layer}]</span>
-                <span class="text-gray-900 dark:text-gray-100">${ruleText}</span>
-                <span class="italic text-gray-500 dark:text-gray-400">(${sumber})</span>
-              </li>
-            `;
-          }
-          // fallback kalau gak match
-          return `<li class="leading-snug mb-1">${line}</li>`;
-        })
-        .join("");
+      const lines = isi.split(/\n|(?=•)/).filter(line => line.trim() !== "");
+      const itemsHtml = lines.map(line => {
+        const match = line.match(/(?:•\s*)?\[(.*?)\]\s*([^:]+):\s*(.*?)(?:\((.+?)\))?$/);
+        if (match) {
+          const layer = match[1].trim().toLowerCase();
+          const title = match[2].trim();
+          const detail = match[3].trim();
+          const sumber = match[4] ? `(${match[4].trim()})` : "";
+
+          // Pewarnaan font judul sesuai layer (tanpa blok)
+          const colorClass = getLayerColorClass(layer)
+            .replace(/bg\-\w+\-\d+\s?/g, '')
+            .replace(/dark\:bg\-\w+\-\d+\s?/g, '');
+
+          // Link ke modal regulasi, field tetap field utama!
+          return `
+            <li class="mb-2 leading-snug">
+              <span class="font-semibold ${colorClass} cursor-pointer hover:underline regulation-field"
+                    title="📋 Klik untuk melihat regulasi ${label}"
+                    data-field="${fieldName}"
+                    data-layer="${layer}"
+                    data-diagnosis-id="${diagnosisId || ''}"
+                    onclick="window.openRegulationDetailModal('${fieldName}', '${diagnosisId || ''}', null, '${layer}')">
+                ${title}:
+              </span>
+              <span class="ml-1">${detail}</span>
+              ${sumber ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-1">${sumber}</span>` : ""}
+            </li>
+          `;
+        } else {
+          return `<li class="mb-2 leading-snug">${line.trim().replace(/^•\s*/, '')}</li>`;
+        }
+      }).join("");
 
       return `
         <div class="grid grid-cols-2 align-top">
           <div class="bg-gray-700 text-white px-3 py-2 align-top">${label}</div>
           <div class="bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 px-3 py-2 align-top">
-            <ul class="list-none space-y-1">${listItems}</ul>
-            ${
-              fieldData.label_multilayer
-                ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>`
-                : ""
-            }
+            <ul class="list-disc pl-4 space-y-1">${itemsHtml}</ul>
+            ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>` : ""}
           </div>
         </div>
       `;
@@ -742,11 +745,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <div class="bg-gray-700 text-white px-3 py-2 align-top">${label}</div>
         <div class="bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm align-top whitespace-pre-line">
           ${isi}
-          ${
-            fieldData.label_multilayer
-              ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>`
-              : ""
-          }
+          ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>` : ""}
         </div>
       </div>
     `;
@@ -842,7 +841,23 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("klinis", notifications)}
             ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
             ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
-            ${(console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis), renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
+            ${
+              (function() {
+                console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis);
+                const hasMultilayers = typeof klinis.syarat_klinis === 'string' && 
+                  (klinis.syarat_klinis.includes('[RS]') || 
+                  klinis.syarat_klinis.includes('[Nasional]') ||
+                  klinis.syarat_klinis.includes('[PNPK]') ||
+                  klinis.syarat_klinis.includes('•'));
+                if (hasMultilayers) {
+                  // Kirim fieldName dan diagnosisId ke renderFieldMultilayer
+                  return renderFieldMultilayer({isi: klinis.syarat_klinis}, "Syarat Klinis", "syarat_klinis", diagnosisId);
+                } else {
+                  return renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis");
+                }
+              })()
+            }
+
           </div>
         </section>
 
@@ -852,10 +867,48 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
             ${renderNotificationBox("icd", notifications)}
             ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
-            ${renderBox("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
-            ${renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
-            ${renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
-            ${renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus")}
+            ${
+              (function() {
+                console.log("📋 ICD10 - kode_ganda:", icd10.kode_ganda);
+                const hasMultilayers = typeof icd10.kode_ganda === 'string' && 
+                  (icd10.kode_ganda.includes('[Nasional]') || 
+                  icd10.kode_ganda.includes('[PPK]') ||
+                  icd10.kode_ganda.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.kode_ganda }, "Kode Ganda", "kode_ganda", diagnosisId);
+                } else {
+                  return renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda");
+                }
+              })()
+            }
+            ${
+              (function() {
+                console.log("📋 ICD10 - z_code:", icd10.z_code);
+                const hasMultilayers = typeof icd10.z_code === 'string' && 
+                  (icd10.z_code.includes('[Nasional]') || 
+                  icd10.z_code.includes('[PPK]') ||
+                  icd10.z_code.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.z_code }, "Z-Code", "z_code", diagnosisId);
+                } else {
+                  return renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code");
+                }
+              })()
+            }
+            ${
+              (function() {
+                console.log("📋 ICD10 - kode_bpjs_khusus:", icd10.kode_bpjs_khusus);
+                const hasMultilayers = typeof icd10.kode_bpjs_khusus === 'string' && 
+                  (icd10.kode_bpjs_khusus.includes('[Permenkes]') || 
+                  icd10.kode_bpjs_khusus.includes('[Nasional]') ||
+                  icd10.kode_bpjs_khusus.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: icd10.kode_bpjs_khusus }, "Kode Khusus BPJS", "kode_bpjs_khusus", diagnosisId);
+                } else {
+                  return renderBox("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus");
+                }
+              })()
+            }
           </div>
         </section>
 
@@ -876,15 +929,40 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RAWAT INAP</div>
           <div class="space-y-3 p-3 bg-gray-50 dark:bg-gray-700">
             ${renderNotificationBox("rawat", notifications)}
-            ${renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi")}
+            ${
+              (function() {
+                console.log("📋 RAWAT - indikasi:", rawat.indikasi);
+                const hasMultilayers = typeof rawat.indikasi === 'string' && 
+                  (rawat.indikasi.includes('[RS]') || 
+                  rawat.indikasi.includes('[Nasional]') || 
+                  rawat.indikasi.includes('[PNPK]') || 
+                  rawat.indikasi.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: rawat.indikasi }, "Indikasi", "indikasi", diagnosisId);
+                } else {
+                  return renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi");
+                }
+              })()
+            }
             ${renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria")}
             ${
-              (typeof rawat.lama_rawat === "object" && rawat.lama_rawat !== null) &&
-              ((rawat.lama_rawat.isi !== undefined && rawat.lama_rawat.isi !== null) || 
-              rawat.lama_rawat.label_multilayer)
-              ? renderFieldMultilayer(rawat.lama_rawat, "Lama Rawat")
-              : renderBox("Lama Rawat", rawat.lama_rawat || "-", rawat.status_lama || "default", diagnosisId, "lama_rawat")
+              (function() {
+                console.log("RAWAT - lama_rawat:", rawat.lama_rawat);
+                const hasMultilayers = typeof rawat.lama_rawat === 'string' && 
+                  (rawat.lama_rawat.includes('[PPK]') || 
+                  rawat.lama_rawat.includes('[Nasional]') ||
+                  rawat.lama_rawat.includes('[RS]') ||
+                  rawat.lama_rawat.includes('[Temporary]') ||
+                  rawat.lama_rawat.includes('•'));
+                if (hasMultilayers) {
+                  // Kirim fieldName dan diagnosisId ke renderFieldMultilayer
+                  return renderFieldMultilayer({isi: rawat.lama_rawat}, "Lama Rawat", "lama_rawat", diagnosisId);
+                } else {
+                  return renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat");
+                }
+              })()
             }
+                        
           </div>
         </section>
 
@@ -910,14 +988,23 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-blue-600 text-white px-3 py-2 font-bold">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
             ${renderNotificationBox("rujukan", notifications)}
-            ${renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan")}
-            ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
             ${
-              (typeof rujukan.kriteria === "object" && rujukan.kriteria) &&
-              (rujukan.kriteria.isi !== undefined || rujukan.kriteria.label_multilayer)
-              ? renderFieldMultilayer(rujukan.kriteria, "Kriteria Rujukan")
-              : renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")
+              (function() {
+                console.log("🔁 RUJUKAN - indikasi:", rujukan.indikasi);
+                const hasMultilayers = typeof rujukan.indikasi === 'string' && 
+                  (rujukan.indikasi.includes('[RS]') || 
+                  rujukan.indikasi.includes('[Nasional]') || 
+                  rujukan.indikasi.includes('[PNPK]') || 
+                  rujukan.indikasi.includes('•'));
+                if (hasMultilayers) {
+                  return renderFieldMultilayer({ isi: rujukan.indikasi }, "Indikasi Rujukan", "indikasi_rujukan", diagnosisId);
+                } else {
+                  return renderBox("Indikasi Rujukan", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan");
+                }
+              })()
             }
+            ${renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan")}
+            ${renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan")}
           </div>
         </section>
 
@@ -1084,13 +1171,13 @@ window.renderChecklistHtml = function(checklist) {
           
           <!-- AI Notification (Added here) -->
           <div x-show="!loading && data && data.status === 'success'" class="p-3 bg-gray-100 dark:bg-gray-700">
-            <template x-if="data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
+            <template x-if="data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
               <div 
                 :class="{
-                  'bg-green-100 border-green-500 text-green-800': data.data.idrg_prediction.notifications.idrg.status === 'success',
-                  'bg-yellow-100 border-yellow-500 text-yellow-800': data.data.idrg_prediction.notifications.idrg.status === 'warning',
-                  'bg-red-100 border-red-500 text-red-800': data.data.idrg_prediction.notifications.idrg.status === 'error',
-                  'bg-blue-100 border-blue-500 text-blue-800': data.data.idrg_prediction.notifications.idrg.status === 'info'
+                  'bg-green-100 border-green-500 text-green-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'success',
+                  'bg-yellow-100 border-yellow-500 text-yellow-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'warning',
+                  'bg-red-100 border-red-500 text-red-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'error',
+                  'bg-blue-100 border-blue-500 text-blue-800': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'info'
                 }"
                 class="notification-box border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
                 <span class="text-lg" x-text="{
@@ -1098,14 +1185,14 @@ window.renderChecklistHtml = function(checklist) {
                   'warning': '⚠️',
                   'error': '❌',
                   'info': 'ℹ️'
-                }[data.data.idrg_prediction.notifications.idrg.status] || '🔔'"></span>
+                }[(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status) || 'info'] || '🔔'"></span>
                 <div>
                   <strong>Notifikasi AI (IDRG)</strong>
-                  <div class="text-xs leading-snug mt-0.5" x-text="data.data.idrg_prediction.notifications.idrg.message"></div>
+                  <div class="text-xs leading-snug mt-0.5" x-text="(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.message) || 'Loading...'"></div>
                 </div>
               </div>
             </template>
-            <div x-show="!(data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-gray-100 border-gray-400 text-gray-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+            <div x-show="!(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-gray-100 border-gray-400 text-gray-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
               <span class="text-lg">🔔</span>
               <div>
                 <strong>Notifikasi AI (IDRG)</strong>
@@ -1116,7 +1203,7 @@ window.renderChecklistHtml = function(checklist) {
           
           <!-- Prediction Results -->
           <div x-show="!loading && data && data.status === 'success'">
-            <template x-if="data.data && data.data.idrg_prediction">
+            <template x-if="data && data.data && data.data.idrg_prediction">
               <div class="space-y-2 p-4">
                 ${renderPredictionRow("Kode i-DRG", "<span x-text='data.data.idrg_prediction.group_idrg || \"-\"'></span>")}
                 ${renderPredictionRow("Severity Index", "<span x-text='getSeverityLabel(data.data.idrg_prediction.severity_index) || \"-\"'></span>")}
@@ -1236,8 +1323,8 @@ window.renderChecklistHtml = function(checklist) {
     const tindakanList = (list && list.length > 0)
       ? list.map(td => {
           const nama = td.nama || td.tindakan || "";
-          const deskripsi = td.deskripsi || td.description || "";
           const procId = td.id || td.procedure_id || "";
+          const description = td.deskripsi || "";
           return `
             <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2"
                 data-procid="${procId}">
@@ -1245,7 +1332,7 @@ window.renderChecklistHtml = function(checklist) {
                    onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
               <div>
                 <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-                      title="${deskripsi}">${deskripsi}</span>
+                      title="${description}">${"&nbsp;"}</span>
               </div>
               ${window.claimState?.role === "doctor" ? `
                 <div class="flex space-x-2 justify-end">
@@ -1334,7 +1421,7 @@ window.renderChecklistHtml = function(checklist) {
     setTimeout(() => window.renderManualTindakanList && window.renderManualTindakanList(), 0);
 
     return tindakanList + manualForm;
-  }
+}
 
   function buildModalContent(it) {
     let content = renderDiagnosisDetail(it);
@@ -1354,7 +1441,7 @@ window.renderChecklistHtml = function(checklist) {
 
     console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
-    // Check if this is a manual procedure - if so, use openManualDetailModal instead
+      // Check if this is a manual procedure - if so, use openManualDetailModal instead
       const state = Alpine.$data(document.getElementById('claimRoot'));
       const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
       const manualTindakan = allTindakan.find(t => 
@@ -1460,50 +1547,58 @@ window.renderChecklistHtml = function(checklist) {
           </button>
         </div>
 
-
         ${renderNotificationBox("tindakan", notifications)}
 
-        <div class="grid grid-cols-2 gap-2 mt-3">
-          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
-          ${renderProcBox("Deskripsi", d.icd9_desc || d.deskripsi, "deskripsi")}
-          ${renderProcBox("Validitas", d.validitas, "validitas")}
-          ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
-          ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
-          ${renderProcBox("Faskes", d.faskes, "faskes")}
-          ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
-          ${renderProcBox(
-            "Syarat Klinis",
-            d.multilayer_rules?.syarat_klinis
-              ? mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
-              : d.syarat_klinis,
-            "syarat_klinis"
-          )}
-        </div>
-      `;
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
+        ${renderProcBox("Deskripsi", d.deskripsi, "deskripsi")}
+        ${renderProcBox("Validitas", d.validitas, "validitas")}
+        ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
+        ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+        ${renderProcBox("Faskes", d.faskes, "faskes")}
+        ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
+        ${renderProcBox(
+          "Syarat Klinis",
+          d.multilayer_rules?.syarat_klinis
+            ? mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
+            : d.syarat_klinis,
+          "syarat_klinis"
+        )}
+      </div>
+    `;
+  
+    // 🩺 Auto-update kolom deskripsi di daftar tindakan utama
+    const procRow = document.querySelector(`[data-procid="${procId}"]`);
+    if (procRow) {
+      const descCell = procRow.querySelector("span[title], span.block");
+      if (descCell) {
+        const newDesc = d.deskripsi || d.icd9_code || d.validitas || "-";
+        descCell.textContent = newDesc;
+        descCell.setAttribute("title", newDesc);
+      }
+    }
 
-      openModal(
-        `<div class="text-center">
-          <span class="text-sm text-white block">Detail Tindakan</span>
-          <span class="text-xl font-semibold text-yellow-500">${procedureName}</span>
-        </div>`,
-        content,
-        { hideDefaultClose: true, disableAutoTitle: true }
-      );
+    openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
 
-      // Simpan referensi supaya regulasi tahu asalnya
-      window.claimState = window.claimState || {};
-      window.claimState.currentProcedure = { id: procId, name: procedureName };
+    // 🔹 Simpan referensi supaya regulasi tahu asalnya
+    window.claimState = window.claimState || {};
+    window.claimState.currentProcedure = { id: procId, name: procedureName };
 
-      // Update deskripsi list tindakan (instan)
-      const itemEl = document.querySelector(`[data-procid='${procId}'] .text-xs`);
-      const deskripsiGabungan = d.icd9_desc || d.deskripsi || procedureName;
-      if (itemEl) itemEl.textContent = deskripsiGabungan;
+    // 🔹 Update deskripsi list tindakan (instan)
+    const itemEl = document.querySelector(
+      `[data-procid='${procId}'] span[title], [data-procid='${procId}'] span.block, [data-procid='${procId}'] .text-xs`
+    );
+    if (itemEl) {
+      const deskripsiGabungan = d.deskripsi || "";
+      itemEl.textContent = deskripsiGabungan;
+      itemEl.setAttribute("title", deskripsiGabungan);
+    }
+
     } catch (err) {
       console.error("❌ Gagal load detail tindakan:", err);
     }
   }
-
 
   async function openManualDetailModal(it, tab, idx) {
     try {
@@ -1960,10 +2055,10 @@ window.getPrediction = function(field) {
 
 window.getSeverityLabel = function(index) {
   const severityLabel = {
-    "1": "Minor (Level 1)",
-    "2": "Moderate (Level 2)", 
-    "3": "Major (Level 3)",
-    "4": "Extreme (Level 4)"
+    "1": "Minor (1)",
+    "2": "Moderate (2)",
+    "3": "Major (3)",
+    "4": "Extreme (4)"
   };
   return severityLabel[index] || index;
 };
@@ -2270,6 +2365,7 @@ style.innerHTML = `
   animation: fade-in-up 0.25s ease-out;
 }
 `;
+
 document.head.appendChild(style);
 
 
@@ -2359,5 +2455,589 @@ window.renderFaktorSeverityHtml = function(faktor) {
   
   return '-';
 };
+
+// ===============================================================================================
+// 🔍 VERIFICATOR READ-ONLY MODAL FUNCTIONS (USING DATABASE ENDPOINTS)
+// ===============================================================================================
+
+/**
+ * 🔍 Main function to show stored diagnosis modal for verificator
+ * Uses database endpoints instead of core_engine
+ */
+window.showStoredDiagnosisModalVerificator = async function(diagnosisName) {
+  if (!diagnosisName) {
+    alert('❌ Nama diagnosis tidak ditemukan');
+    return;
+  }
+
+  console.log('🔍 [VERIFICATOR] Loading stored diagnosis data for:', diagnosisName);
+  
+  try {
+    const claimId = document.querySelector('[data-claim-id]')?.getAttribute('data-claim-id');
+    if (!claimId) {
+      throw new Error('Claim ID tidak ditemukan');
+    }
+
+    // Show loading modal
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">🔍 Detail Diagnosis: ${diagnosisName}</span>
+        <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      `<div class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data diagnosis...</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+    
+    const response = await fetch(`/claims/${claimId}/stored-diagnosis-detail/${encodeURIComponent(diagnosisName)}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ [VERIFICATOR] Stored diagnosis data loaded:', data);
+    
+    // Update modal with actual content
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">🔍 Detail Diagnosis: ${diagnosisName}</span>
+        <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      renderDiagnosisDetailReadOnly(data),
+      { hideDefaultClose: false }
+    );
+    
+    // Store current diagnosis for nested modals
+    window.claimState.currentDiagnosis = data;
+    
+  } catch (error) {
+    console.error('❌ [VERIFICATOR] Failed to load stored diagnosis data:', error);
+    openModal(
+      `🔍 Detail Diagnosis: ${diagnosisName}`,
+      `<div class="text-center py-8 text-red-500">
+        <p>❌ Gagal memuat data diagnosis</p>
+        <p class="text-sm mt-2">${error.message}</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+  }
+};
+
+/**
+ * 🔧 Main function to show stored procedure modal for verificator  
+ * Uses database endpoints instead of core_engine
+ */
+window.showStoredProcedureModalVerificator = async function(procedureName) {
+  if (!procedureName) {
+    alert('❌ Nama tindakan tidak ditemukan');
+    return;
+  }
+
+  console.log('🔧 [VERIFICATOR] Loading stored procedure data for:', procedureName);
+  
+  try {
+    const claimId = document.querySelector('[data-claim-id]')?.getAttribute('data-claim-id');
+    if (!claimId) {
+      throw new Error('Claim ID tidak ditemukan');
+    }
+
+    // Show loading modal
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">🔧 Detail Tindakan: ${procedureName}</span>
+        <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      `<div class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data tindakan...</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+    
+    const response = await fetch(`/claims/${claimId}/stored-procedure-detail/${encodeURIComponent(procedureName)}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ [VERIFICATOR] Stored procedure data loaded:', data);
+    
+    // Update modal with actual content
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">🔧 Detail Tindakan: ${procedureName}</span>
+        <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      renderProcedureDetailReadOnly(data),
+      { hideDefaultClose: false }
+    );
+    
+    // Store current procedure for nested modals
+    window.claimState.currentProcedure = data;
+    
+  } catch (error) {
+    console.error('❌ [VERIFICATOR] Failed to load stored procedure data:', error);
+    openModal(
+      `🔧 Detail Tindakan: ${procedureName}`,
+      `<div class="text-center py-8 text-red-500">
+        <p>❌ Gagal memuat data tindakan</p>
+        <p class="text-sm mt-2">${error.message}</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+  }
+};
+
+/**
+ * 📋 Function to show stored regulation modal for verificator
+ * Uses database endpoints instead of core_engine  
+ */
+window.showStoredRegulationModalVerificator = async function(fieldName, context = 'general') {
+  if (!fieldName) {
+    alert('❌ Field name tidak ditemukan');
+    return;
+  }
+
+  console.log('📋 [VERIFICATOR] Loading stored regulation data for:', fieldName);
+  
+  try {
+    const claimId = document.querySelector('[data-claim-id]')?.getAttribute('data-claim-id');
+    if (!claimId) {
+      throw new Error('Claim ID tidak ditemukan');
+    }
+
+    // Show loading modal  
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">📋 Detail Regulasi: ${fieldName}</span>
+        <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      `<div class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600"></div>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data regulasi...</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+    
+    const response = await fetch(`/claims/${claimId}/stored-regulation-detail/${encodeURIComponent(fieldName)}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ [VERIFICATOR] Stored regulation data loaded:', data);
+    
+    // Update modal with actual content
+    openModal(
+      `<div class="flex items-center">
+        <span class="text-lg font-bold">📋 Detail Regulasi: ${fieldName}</span>
+        <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">READ-ONLY</span>
+      </div>`,
+      renderRegulationDetailReadOnly(data),
+      { hideDefaultClose: false }
+    );
+    
+  } catch (error) {
+    console.error('❌ [VERIFICATOR] Failed to load stored regulation data:', error);
+    openModal(
+      `📋 Detail Regulasi: ${fieldName}`,
+      `<div class="text-center py-8 text-red-500">
+        <p>❌ Gagal memuat data regulasi</p>
+        <p class="text-sm mt-2">${error.message}</p>
+      </div>`,
+      { hideDefaultClose: false }
+    );
+  }
+};
+
+/**
+ * 🎨 Render diagnosis detail in read-only mode for verificator
+ * Same UI as doctor but with read-only styling and database data
+ */
+function renderDiagnosisDetailReadOnly(data) {
+  console.log("📋 [VERIFICATOR] renderDiagnosisDetailReadOnly received data:", data);
+  
+  // Extract data from stored format
+  const diagnosisName = data.diagnosis_name || data.name || "";
+  const diagnosisId = data.diagnosis_id || data.id || Date.now();
+  
+  // Get diagnosis detail from the correct nested structure
+  const detail = data.diagnosis_detail || {};
+  
+  // Build the structure similar to doctor but from database
+  const klinis = {
+    justifikasi: detail.justifikasi || "",
+    bukti_klinis: detail.bukti_klinis || "", 
+    syarat_klinis: detail.syarat_klinis || "",
+    status: "readonly"
+  };
+
+  const icd10 = {
+    kode_icd: detail.icd10_code || "",
+    struktur_icd10: detail.struktur_icd10 || "",
+    kode_ganda: detail.kode_ganda || "",
+    z_code: detail.z_code || "",
+    kode_bpjs_khusus: detail.kode_bpjs_khusus || "",
+    status_icd: "readonly"
+  };
+
+  const tindakan = data.tindakan || [];
+  const regulasi = data.regulasi || [];
+  const idrg_data = data.idrg_data || null;
+
+  // Read-only version of renderBox - no onClick for regulations
+  const renderBoxReadOnly = (label, value, status = "readonly", diagnosisId = null, fieldName = null) => {
+    let colorClass = "bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
+    
+    const safeValue = value || "-";
+    console.log(`📋 [VERIFICATOR] renderBoxReadOnly(${label}): value="${value}", safeValue="${safeValue}"`);
+
+    const hasRegulation = checkFieldHasRegulation(fieldName);
+    
+    let content = safeValue;
+    if (hasRegulation && diagnosisId && safeValue !== "") {
+      // Clickable for regulations but read-only context
+      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
+                  title="📋 Klik untuk melihat regulasi ${fieldName} (Read-Only)" 
+                  data-field="${fieldName}"
+                  data-diagnosis-id="${diagnosisId}"
+                  onclick="window.showStoredRegulationModalVerificator('${fieldName}', 'diagnosis')">${safeValue}</span>`;
+    }
+    
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="${colorClass} px-3 py-2">${content}</div>
+      </div>
+    `;
+  };
+
+  // Read-only notification box
+  const renderNotificationBoxReadOnly = (section) => {
+    return `
+      <div class="notification-box bg-blue-50 border-blue-400 text-blue-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+        <span class="text-lg">👁️</span>
+        <div>
+          <strong>Mode Read-Only</strong>
+          <div class="text-xs leading-snug mt-0.5">Data ini telah disimpan oleh doctor dan hanya bisa dilihat.</div>
+        </div>
+      </div>
+    `;
+  };
+
+  return `
+    <div class="space-y-6 text-sm">
+      <!-- Read-Only Notice -->
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-l-4 border-blue-500">
+        <div class="flex items-center">
+          <span class="text-blue-600 text-lg mr-2">👁️</span>
+          <div>
+            <h4 class="font-semibold text-blue-900 dark:text-blue-300">Mode Read-Only Verificator</h4>
+            <p class="text-blue-800 dark:text-blue-400 text-sm">Data ini telah disimpan oleh doctor dan hanya bisa dilihat oleh verificator</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🩺 KLINIS -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderNotificationBoxReadOnly("klinis")}
+          ${renderBoxReadOnly("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi")}
+          ${renderBoxReadOnly("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis")}
+          ${renderBoxReadOnly("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis")}
+        </div>
+      </section>
+
+      <!-- 🧾 ICD-10 -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
+        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderNotificationBoxReadOnly("icd")}
+          ${renderBoxReadOnly("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd")}
+          ${renderBoxReadOnly("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
+          ${renderBoxReadOnly("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
+          ${renderBoxReadOnly("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
+          ${renderBoxReadOnly("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus")}
+        </div>
+      </section>
+
+      <!-- 📊 i-DRG (From Database) -->
+      ${renderIdrgSectionReadOnly(idrg_data)}
+
+      <!-- ⚙️ TINDAKAN -->
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
+        <div class="p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderNotificationBoxReadOnly("tindakan")}
+          ${renderTindakanReadOnly(tindakan)}
+        </div>
+      </section>
+
+      <!-- 📋 REGULASI -->
+      ${regulasi.length > 0 ? `
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-yellow-600 text-white px-3 py-2 font-bold">REGULASI TERKAIT</div>
+        <div class="p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderRegulatiListReadOnly(regulasi)}
+        </div>
+      </section>` : ''}
+
+    </div>
+  `;
+}
+
+/**
+ * 🎨 Render procedure detail in read-only mode for verificator
+ */
+function renderProcedureDetailReadOnly(data) {
+  const procedureName = data.procedure_name || data.name || "";
+  // Use both procedure_detail and analysis (backward compatibility)
+  const detail = data.procedure_detail || {};
+  const analysis = data.analysis || {};
+  const regulasi = data.regulasi || [];
+  
+  console.log("🔧 [VERIFICATOR] renderProcedureDetailReadOnly received:", data);
+  
+  const renderProcBoxReadOnly = (label, value, fieldName = null) => {
+    const safeValue = value || "-";
+    
+    let content = safeValue;
+    if (fieldName && checkFieldHasRegulation(fieldName) && safeValue !== "-") {
+      content = `<span class="cursor-pointer hover:underline hover:text-blue-600" 
+                  title="📋 Klik untuk melihat regulasi ${fieldName}" 
+                  onclick="window.showStoredRegulationModalVerificator('${fieldName}', 'procedure')">${safeValue}</span>`;
+    }
+
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2"><b>${label}:</b></div>
+        <div class="bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-3 py-2">${content}</div>
+      </div>
+    `;
+  };
+
+  return `
+    <div class="space-y-6 text-sm">
+      <!-- Read-Only Notice -->
+      <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-l-4 border-green-500">
+        <div class="flex items-center">
+          <span class="text-green-600 text-lg mr-2">👁️</span>
+          <div>
+            <h4 class="font-semibold text-green-900 dark:text-green-300">Mode Read-Only Verificator</h4>
+            <p class="text-green-800 dark:text-green-400 text-sm">Data ini telah disimpan oleh doctor dan hanya bisa dilihat oleh verificator</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Basic Info -->
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code || detail.icd9_code, "icd9_code")}
+        ${renderProcBoxReadOnly("Deskripsi", procedureName, "icd9_desc")}
+        ${renderProcBoxReadOnly("Validitas", analysis.validitas || detail.validitas, "validitas")}
+        ${renderProcBoxReadOnly("Status", analysis.status_tindakan || detail.status_tindakan, "status")}
+        ${renderProcBoxReadOnly("Tarif INA-CBG", analysis.ina_cbg || detail.ina_cbg, "ina_cbg")}
+        ${renderProcBoxReadOnly("Faskes", analysis.faskes_tindakan || detail.faskes_tindakan, "faskes")}
+        ${renderProcBoxReadOnly("Rawat Inap", analysis.rawat_inap_tindakan || detail.rawat_inap_tindakan, "rawat_inap_tindakan")}
+        ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis || detail.syarat_klinis, "syarat_klinis")}
+        ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis, "syarat_klinis")}
+      </div>
+
+      <!-- Regulations -->
+      ${regulasi.length > 0 ? `
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-yellow-600 text-white px-3 py-2 font-bold">REGULASI TERKAIT</div>
+        <div class="p-3 bg-gray-100 dark:bg-gray-700">
+          ${renderRegulatiListReadOnly(regulasi)}
+        </div>
+      </section>` : ''}
+    </div>
+  `;
+}
+
+/**
+ * 🎨 Render regulation detail in read-only mode
+ */
+function renderRegulationDetailReadOnly(data) {
+  const regulations = data.regulations || [];
+  const fieldName = data.field_name || "";
+  
+  if (regulations.length === 0) {
+    return `
+      <div class="text-center py-8 text-gray-500">
+        <p>📋 Belum ada regulasi untuk field: ${fieldName}</p>
+        <p class="text-sm mt-2">Sistem menggunakan aturan nasional standar</p>
+      </div>
+    `;
+  }
+
+  // Group by layer and render similar to doctor modal
+  const rulesByLayer = {};
+  regulations.forEach(rule => {
+    if (!rulesByLayer[rule.layer]) {
+      rulesByLayer[rule.layer] = [];
+    }
+    rulesByLayer[rule.layer].push(rule);
+  });
+
+  const sortedLayers = Object.keys(rulesByLayer).sort((a, b) => {
+    const priorities = { 'permenkes': 1, 'nasional': 2, 'ppk': 3, 'regional': 4, 'rs': 5 };
+    return (priorities[a] || 99) - (priorities[b] || 99);
+  });
+
+  let html = `
+    <div class="space-y-4">
+      <!-- Read-Only Notice -->
+      <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border-l-4 border-yellow-500">
+        <div class="flex items-center">
+          <span class="text-yellow-600 text-lg mr-2">👁️</span>
+          <div>
+            <h4 class="font-semibold text-yellow-900 dark:text-yellow-300">Mode Read-Only Verificator</h4>
+            <p class="text-yellow-800 dark:text-yellow-400 text-sm">Regulasi untuk field: <strong>${fieldName}</strong></p>
+          </div>
+        </div>
+      </div>
+  `;
+
+  sortedLayers.forEach(layer => {
+    const layerLabel = getLayerLabel(layer);
+    const layerColor = getLayerColorClass(layer);
+    const rules = rulesByLayer[layer];
+
+    html += `
+      <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div class="bg-gray-100 dark:bg-gray-800 px-4 py-2">
+          <span class="font-semibold">${layerLabel} (${rules.length} aturan)</span>
+        </div>
+        <div class="space-y-3 p-4">
+    `;
+
+    rules.forEach(rule => {
+      html += `
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-2 py-1 text-xs font-semibold rounded-full ${layerColor}">${layer.toUpperCase()}</span>
+            <span class="text-sm font-medium">${rule.field || fieldName}</span>
+          </div>
+          <div class="text-sm text-gray-800 dark:text-gray-200 mb-2 leading-relaxed">${rule.isi}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <strong>Sumber:</strong> ${rule.sumber}
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+/**
+ * 🎨 Helper functions for read-only rendering
+ */
+function renderTindakanReadOnly(list) {
+  if (!list || list.length === 0) {
+    return `<div class="italic text-gray-500">Tidak ada tindakan tersimpan</div>`;
+  }
+
+  return list.map(td => {
+    const nama = td.name || td.procedure_text || td.tindakan || "";
+    const stage = td.stage || "";
+    const type = td.procedure_type || td.type || "";
+    
+    return `
+      <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-gray-800 p-3 rounded shadow mb-2">
+        <div class="font-semibold text-green-600 underline cursor-pointer truncate"
+             title="Klik untuk detail tindakan (Read-Only)"
+             onclick="window.showStoredProcedureModalVerificator('${nama}')">${nama}</div>
+        <div>
+          <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm">${stage}</span>
+        </div>
+        <div>
+          <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">${type}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRegulatiListReadOnly(regulations) {
+  if (!regulations || regulations.length === 0) {
+    return `<div class="italic text-gray-500">Tidak ada regulasi tersimpan</div>`;
+  }
+
+  return regulations.map(reg => {
+    return `
+      <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-500 mb-2 cursor-pointer"
+           title="Klik untuk detail regulasi (Read-Only)"
+           onclick="window.showStoredRegulationModalVerificator('${reg.field}')">
+        <div class="font-medium text-yellow-900 dark:text-yellow-300">${reg.field || 'Field'}</div>
+        <div class="text-sm text-yellow-700 dark:text-yellow-400 mt-1">${truncateText(reg.isi || 'Tidak ada detail', 100)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderIdrgSectionReadOnly(idrg_data) {
+  if (!idrg_data) {
+    return `
+      <section class="rounded shadow overflow-hidden">
+        <div class="bg-blue-600 text-white px-3 py-2 font-bold">i-DRG</div>
+        <div class="p-4 text-center text-gray-500">
+          <p>📊 Tidak ada data i-DRG tersimpan</p>
+        </div>
+      </section>
+    `;
+  }
+
+  const renderIdrgRow = (label, value) => {
+    return `
+      <div class="grid grid-cols-2">
+        <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
+        <div class="bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-3 py-2">${value || '-'}</div>
+      </div>
+    `;
+  };
+
+  return `
+    <section class="rounded shadow overflow-hidden">
+      <div class="bg-blue-600 text-white px-3 py-2 font-bold">i-DRG</div>
+      <div class="p-3 bg-gray-100 dark:bg-gray-700">
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded mb-3 border-l-4 border-blue-500">
+          <div class="flex items-center">
+            <span class="text-blue-600 text-lg mr-2">👁️</span>
+            <div>
+              <h4 class="font-semibold text-blue-900 dark:text-blue-300">Data i-DRG Tersimpan</h4>
+              <p class="text-blue-800 dark:text-blue-400 text-sm">Data hasil analisis AI yang telah disimpan doctor</p>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-1">
+          ${renderIdrgRow("Group i-DRG", idrg_data.group_idrg)}
+          ${renderIdrgRow("Cost Weight", idrg_data.cost_weight)}
+          ${renderIdrgRow("Tarif", idrg_data.tarif ? `Rp ${Number(idrg_data.tarif).toLocaleString('id-ID')}` : '')}
+          ${renderIdrgRow("Severity Index", idrg_data.severity_index)}
+          ${renderIdrgRow("Checklist", idrg_data.checklist_dokumentasi)}
+        </div>
+      </div>
+    </section>
+  `;
+}
 
 })();

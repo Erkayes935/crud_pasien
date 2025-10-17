@@ -67,6 +67,17 @@
                         <option value="Secondary">Secondary</option>
                         <option value="None">None</option>
                       </select>
+                    <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors"
+                            @click="showStoredDiagnosisModalVerificator(simulasi[tab].utama.name)"
+                            :title="'Klik untuk detail diagnosis: ' + (simulasi[tab].utama?.name || '-')"
+                            x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
+                    <!-- Rules Button -->
+                    <button type="button" 
+                            @click="showRulesModal(simulasi[tab].utama.name)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                            title="Lihat Aturan Multilayer">
+                      📘 Rules
+                    </button>
                     </div>
                 </template>
                 <template x-if="!simulasi[tab]?.utama || null">
@@ -120,6 +131,17 @@
                         <option value="Primary">Primary</option>
                         <option value="None">None</option>
                       </select>
+                    <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium cursor-pointer hover:bg-indigo-200 transition-colors"
+                            @click="showStoredDiagnosisModalVerificator(dx.name)"
+                            :title="'Klik untuk detail diagnosis: ' + (dx.name || '-')"
+                            x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
+                    <!-- Rules Button untuk Secondary Claims -->
+                    <button type="button" 
+                            @click="showRulesModal(dx.name)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                            title="Lihat Aturan Multilayer">
+                      📘 Rules
+                    </button>
                     </div>
                 </template>
                 <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
@@ -164,6 +186,17 @@
                         <option value="Secondary">Secondary</option>
                         <option value="None">None</option>
                       </select>
+                    <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium cursor-pointer hover:bg-green-200 transition-colors"
+                            @click="showStoredProcedureModalVerificator(simulasi[tab].tindakanUtama?.name)"
+                            :title="'Klik untuk detail tindakan: ' + (simulasi[tab].tindakanUtama?.name || '-')"
+                            x-text="simulasi[tab].tindakanUtama?.name"></span>
+                    <!-- Rules Button untuk Primary Action -->
+                    <button type="button" 
+                            @click="showRulesModal(simulasi[tab].tindakanUtama?.name)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                            title="Lihat Aturan Multilayer">
+                      📘 Rules
+                    </button>
                     </div>
                 </template>
                 </div>
@@ -200,6 +233,17 @@
                         <option value="Primary">Primary</option>
                         <option value="None">None</option>
                       </select>
+                    <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium cursor-pointer hover:bg-teal-200 transition-colors"
+                            @click="showStoredProcedureModalVerificator(tdk.name)"
+                            :title="'Klik untuk detail tindakan: ' + (tdk.name || '-')"
+                            x-text="(tdk.name || '-')"></span>
+                    <!-- Rules Button untuk Secondary Actions -->
+                    <button type="button" 
+                            @click="showRulesModal(tdk.name)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                            title="Lihat Aturan Multilayer">
+                      📘 Rules
+                    </button>
                     </div>
                 </template>
                 </div>
@@ -819,6 +863,8 @@ function renderRulesContent(rulesData) {
     document.getElementById('rulesModal').style.display = 'none';
     window.rulesModalData = { open: false, diagnosis: null, loading: false, rulesData: null };
   };
+
+
 </script>
 
 <!-- Enhanced Multilayer Rules Modal dengan Tabs -->

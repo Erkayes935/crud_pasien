@@ -52,61 +52,89 @@ def get_dashboard_data(db: Session, current_user):
     )
 
     # =========================
-    # CLAIMS
+    # CLAIMS (role-based)
     # =========================
-    data["total_claims"] = (
-        db.query(models.Claim).filter(models.Claim.is_deleted == False).count()
-    )
-    data["claims"] = (
-        db.query(models.Claim)
-        .options(joinedload(models.Claim.patient))
-        .filter(models.Claim.is_deleted == False)
-        .order_by(models.Claim.id.desc())
-        .limit(10)
-        .all()
-    )
+    roles = current_user.role_names or [current_user.role]
+    query = db.query(models.Claim).options(joinedload(models.Claim.patient))
+    query = query.filter(models.Claim.is_deleted == False)
 
+    # === ROLE FILTERS ===
+    if "doctor" in roles and not any(r in roles for r in ["coder", "verifikator"]):
+        # Dokter hanya klaim miliknya yang masih draft / belum disubmit final
+        query = query.filter(
+            models.Claim.doctor_id == current_user.id,
+            models.Claim.workflow_status.in_(["draft", "doctor_submitted"])
+        )
+
+    elif "coder" in roles and not any(r in roles for r in ["doctor", "verifikator"]):
+        # Coder melihat klaim yang siap atau sedang direview
+        query = query.filter(
+            models.Claim.workflow_status.in_(
+                ["doctor_submitted", "coder_review", "coder_verified"]
+            )
+        )
+
+    elif "verifikator" in roles and not any(r in roles for r in ["doctor", "coder"]):
+        # Verifikator hanya klaim yang sudah diverifikasi coder
+        query = query.filter(
+            models.Claim.workflow_status.in_(
+                ["coder_verified", "verifikator_review"]
+            )
+        )
+
+    elif any(r in roles for r in ["superadmin", "admin_rs"]):
+        # Admin/Superadmin → semua klaim RS-nya
+        if hasattr(current_user, "hospital") and current_user.hospital:
+            query = query.filter(models.Claim.hospital_id == current_user.hospital.id)
+
+    else:
+        # Multi-role → semua klaim di RS
+        if hasattr(current_user, "hospital") and current_user.hospital:
+            query = query.filter(models.Claim.hospital_id == current_user.hospital.id)
+
+    # === Ambil data klaim ===
+    data["claims"] = query.order_by(models.Claim.created_at.desc()).limit(10).all()
+
+    # === Statistik umum ===
+    data["total_claims"] = db.query(models.Claim).filter(models.Claim.is_deleted == False).count()
     data["draft_claims"] = (
         db.query(models.Claim)
-        .filter(models.Claim.is_final == False, models.Claim.is_deleted == False)
+        .filter(
+            models.Claim.is_final == False,
+            models.Claim.is_deleted == False,
+            models.Claim.workflow_status.in_(["draft", "doctor_submitted"])
+        )
         .count()
     )
     data["final_claims"] = (
         db.query(models.Claim)
-        .filter(models.Claim.is_final == True, models.Claim.is_deleted == False)
+        .filter(
+            models.Claim.is_final == True,
+            models.Claim.is_deleted == False,
+            models.Claim.workflow_status == "finalized"
+        )
         .count()
     )
 
-    data["draft_claims_list"] = []
-    if current_user.role == "verifikator":
-        data["draft_claims_list"] = (
-            db.query(models.Claim)
-            .options(joinedload(models.Claim.patient))
-            .filter(models.Claim.is_final == False, models.Claim.is_deleted == False)
-            .order_by(models.Claim.id.desc())
-            .all()
-        )
-
+    # === List final (tetap untuk tabel bawah) ===
     data["final_claims_list"] = (
         db.query(models.Claim)
         .options(joinedload(models.Claim.patient))
         .filter(models.Claim.is_final == True, models.Claim.is_deleted == False)
         .order_by(models.Claim.id.desc())
+        .limit(10)
         .all()
     )
 
     # =========================
-    # TOTAL USERS (opsional)
+    # TOTAL USERS & PASIEN LIST
     # =========================
     if current_user.role in ["superadmin", "admin_rs"]:
         data["total_users"] = db.query(models.User).count()
     else:
         data["total_users"] = None
 
-    # =========================
-    # PASIEN LIST (opsional)
-    # =========================
-    if current_user.role in ["doctor", "coder", "verifikator"]:
+    if any(r in roles for r in ["doctor", "coder", "verifikator"]):
         data["pasien_list"] = (
             db.query(models.Patient).filter(models.Patient.is_deleted == False).all()
         )
