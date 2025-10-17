@@ -181,21 +181,27 @@
     }, 300);
   }
 
-  // normalisasi opsi mapping
-  function normalizeOpt(opt) {
-    // Diagnosis mappings
-    if (opt === "Diagnosis Utama" || opt === "Utama" || opt === "Primary Claim" || opt === "Primary") return "Primary";
-    if (opt === "Komorbid" || opt === "Secondary-Komorbid") return "Secondary-Komorbid";
-    if (opt === "Komplikasi" || opt === "Secondary-Komplikasi") return "Secondary-Komplikasi";
-    if (opt === "Sekunder" || opt === "Secondary Claim" || opt === "Secondary") return "Secondary";
-    
-    // 🎯 NEW: Action/Procedure mappings - map to Primary/Secondary for consistency  
-    if (opt === "Primary Action" || opt === "Tindakan Utama") return "Primary";
-    if (opt === "Secondary Actions" || opt === "Tindakan Sekunder") return "Secondary";
-    
-    if (opt === "None") return "None";
-    return opt;
+  // normalisasi opsi mapping (universal untuk diagnosis & tindakan)
+  function normalizeOpt(opt, type = null) {
+    if (!opt) return opt;
+    const o = String(opt).trim();
+
+    // Diagnosis
+    if (o === "Diagnosis Utama" || o === "Utama" || o === "Primary Claim" || o === "Primary")
+      return type === "tindakan" ? "Primary Action" : "Primary";
+    if (o === "Komorbid" || o === "Secondary-Komorbid") return "Secondary-Komorbid";
+    if (o === "Komplikasi" || o === "Secondary-Komplikasi") return "Secondary-Komplikasi";
+    if (o === "Sekunder" || o === "Secondary Claim" || o === "Secondary")
+      return type === "tindakan" ? "Secondary Actions" : "Secondary";
+
+    if (o === "Primary Action" || o === "Tindakan Utama") return "Primary Action";
+    if (o === "Secondary Actions" || o === "Tindakan Sekunder") return "Secondary Actions";
+
+    if (o === "None") return "None";
+    return o;
   }
+
+
 
   function normalizeItem(val) {
     if (typeof val === "string") {
@@ -315,15 +321,19 @@
         
         // 🎯 CRITICAL FIX: Load simulations IMMEDIATELY in init, not setTimeout
         if ((role === 'verifikator' || role === 'doctor') && claimId) {
-          console.log("🔄 [ALPINE INIT] Loading simulations during initialization...");
+          console.log("🔄 [ALPINE INIT] Loading simulations with safe delay...");
           if (window.loadSimulations) {
-            await window.loadSimulations(claimId);
-            console.log("✅ [ALPINE INIT] Simulations loaded successfully");
-            console.log("🔍 [ALPINE INIT] Final simulasi state:", JSON.stringify(this.simulasi, null, 2));
-          } else {
-            console.warn("⚠️ [ALPINE INIT] window.loadSimulations not available!");
+            setTimeout(async () => {
+              try {
+                await window.loadSimulations(claimId);
+                console.log("✅ [ALPINE INIT] Simulations loaded successfully (delayed)");
+              } catch (e) {
+                console.error("❌ [ALPINE INIT] Failed to load simulations:", e);
+              }
+            }, 500); // 🔧 beri jeda 0.5 detik agar Alpine siap
           }
         }
+
         
         console.log("🏁 [ALPINE INIT] Initialization completed");
       },
@@ -348,7 +358,7 @@
     if (tab === "daily") tab = "daily-global";
     const state = Alpine.$data(document.getElementById("claimRoot"));
     if (!tab) tab = "admission";
-    const finalOpt = normalizeOpt(opt || value?.mapping || "");
+    const finalOpt = normalizeOpt(opt || value?.mapping || "", type);
     console.log("🎯 normalizeOpt result:", { original: opt, normalized: finalOpt });
     
     if (!state.simulasi[tab] || typeof state.simulasi[tab] !== "object" || Array.isArray(state.simulasi[tab])) {
@@ -392,19 +402,34 @@
       if (finalOpt === "Primary") {
         const oldPrimary = sim.utama;
         sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
+
+        // 🩹 set mapping agar dropdown tidak nyangkut
+        item.mapping = "Primary";
         sim.utama = { diagnosis_utama_id: item.id, ...item };
-        if (oldPrimary && oldPrimary.name !== item.name) sim.sekunder.unshift(oldPrimary);
+
+        // kalau ada primary lama, ubah mapping-nya jadi secondary biar turun
+        if (oldPrimary && oldPrimary.name !== item.name) {
+          oldPrimary.mapping = "Secondary";
+          sim.sekunder.unshift(oldPrimary);
+        }
+
       } else if (finalOpt.startsWith("Secondary")) {
         if (sim.utama && sim.utama.name === item.name) sim.utama = null;
+
+        // 🩹 pastikan mapping tertulis "Secondary"
+        item.mapping = "Secondary";
+
         const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
         const secItem = { diagnosis_sekunder_id: item.id, ...item };
         if (idx === -1) sim.sekunder.push(secItem);
         else sim.sekunder[idx] = secItem;
+
       } else if (finalOpt === "None") {
         if (sim.utama && sim.utama.name === item.name) sim.utama = null;
         sim.sekunder = sim.sekunder.filter(dx => dx.name !== item.name);
       }
     }
+
 
     // Tindakan
     if (type === "tindakan") {
@@ -415,7 +440,7 @@
       console.log("🔍 [TINDAKAN DEBUG] Comparison:", finalOpt === "Primary", finalOpt === "Secondary");
 
       // 🎯 FIX: Handle normalized "Primary" for tindakan
-      if (finalOpt === "Primary") {
+      if (finalOpt === "Primary" || finalOpt === "Primary Action") {
         console.log("✅ [TINDAKAN] Entering PRIMARY branch");
         const oldPrimary = sim.tindakanUtama;
         sim.tindakanSekunder = sim.tindakanSekunder.filter(td => td.name !== nama);
@@ -424,7 +449,7 @@
         console.log("✅ [TINDAKAN] Set tindakanUtama:", sim.tindakanUtama);
       } 
       // 🎯 FIX: Handle normalized "Secondary" for tindakan
-      else if (finalOpt === "Secondary") {
+      else if (finalOpt === "Secondary" || finalOpt === "Secondary Actions") {
         console.log("✅ [TINDAKAN] Entering SECONDARY branch");
         if (sim.tindakanUtama?.name === nama) sim.tindakanUtama = null;
         if (!sim.tindakanSekunder.find(td => td.name === nama)) {

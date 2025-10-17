@@ -358,33 +358,44 @@
 
         // 🎯 PRIMARY ACTION
         if (s.tindakan_utama_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading PRIMARY action: ${s.tindakan_utama_name} (stage: ${s.stage})`);
-              window.updateSimulasi("tindakan", "Primary Action", {
-                id: s.tindakan_utama_id,
-                name: s.tindakan_utama_name || "(tanpa nama)",
-                mapping: "Primary Action",
-              }, true, s.stage);
-            },
-            index * 10 + 10
-          );
+          window.updateSimulasi("tindakan", "Primary Action", {
+            id: s.tindakan_utama_id,
+            name: s.tindakan_utama_name || "(tanpa nama)",
+            mapping: "Primary Action",
+          }, true, s.stage);
         }
 
         // 🎯 SECONDARY ACTION
         if (s.tindakan_sekunder_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading SECONDARY action: ${s.tindakan_sekunder_name} (stage: ${s.stage})`);
-              window.updateSimulasi("tindakan", "Secondary Actions", {
-                id: s.tindakan_sekunder_id,
-                name: s.tindakan_sekunder_name || "(tanpa nama)",
-                mapping: "Secondary Actions",
-              }, true, s.stage);
-            },
-            index * 10 + 15
-          );
+          window.updateSimulasi("tindakan", "Secondary Actions", {
+            id: s.tindakan_sekunder_id,
+            name: s.tindakan_sekunder_name || "(tanpa nama)",
+            mapping: "Secondary Actions",
+          }, true, s.stage);
         }
+
+      });
+      // 🩹 PATCH KOMPATIBILITAS UNTUK STRUKTUR BARU
+      const state =
+        Alpine?.$data(document.getElementById("claimRoot")) ||
+        window.claimState ||
+        {};
+
+      Object.keys(state.simulasi || {}).forEach(tab => {
+        const sim = state.simulasi[tab];
+        if (!sim || typeof sim !== "object") return;
+
+        // kalau partner menaruh semua tindakan di array `tindakan`
+        if (Array.isArray(sim.tindakan)) {
+          const primary = sim.tindakan.find(t => (t.mapping || '').toLowerCase().includes('primary'));
+          const secondary = sim.tindakan.filter(t => (t.mapping || '').toLowerCase().includes('secondary'));
+          sim.tindakanUtama = primary || null;
+          sim.tindakanSekunder = secondary || [];
+        }
+
+        // fallback agar field tetap ada
+        if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
+        if (!("tindakanSekunder" in sim)) sim.tindakanSekunder = [];
       });
 
       console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);

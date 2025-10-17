@@ -82,65 +82,56 @@ def export_claims(
 
 from typing import Optional
 
+from sqlalchemy.orm import joinedload
+
 @router.get("")
 def list_claims(
     request: Request,
     status: Optional[str] = Query(None),
     tanggal_kunjungan: Optional[str] = Query(None),
     patient_name: Optional[str] = Query(None),
-    claim_id: Optional[str] = Query(None),   # ubah ke str agar aman parse manual
-    visit_id: Optional[str] = Query(None),   # ubah ke str juga
+    claim_id: Optional[str] = Query(None),
+    visit_id: Optional[str] = Query(None),
     workflow_status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
     """List klaim dengan filter berdasarkan role"""
+    query = db.query(models.Claim).options(
+        joinedload(models.Claim.patient),
+        joinedload(models.Claim.visit),
+        joinedload(models.Claim.group)
+    )
 
-    query = db.query(models.Claim)
-
-    # ✅ ROLE-BASED FILTERING
+    # 🔹 ROLE-BASED FILTER (tetap sama seperti sebelumnya)
     roles = user.role_names or []
-
     if "verifikator" in roles and "coder" not in roles and "doctor" not in roles:
-        query = query.filter(
-            models.Claim.workflow_status.in_(["coder_verified", "verifikator_review", "finalized"])
-        )
+        query = query.filter(models.Claim.workflow_status.in_(["coder_verified", "verifikator_review", "finalized"]))
     elif "coder" in roles and "verifikator" not in roles and "doctor" not in roles:
-        query = query.filter(
-            models.Claim.workflow_status.in_(["doctor_submitted", "coder_review", "coder_verified"])
-        )
+        query = query.filter(models.Claim.workflow_status.in_(["doctor_submitted", "coder_review", "coder_verified"]))
     elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
         query = query.filter(models.Claim.doctor_id == user.id)
 
-    # ✅ NORMALIZE EMPTY STRINGS TO NONE
-    if claim_id == "":
-        claim_id = None
-    if visit_id == "":
-        visit_id = None
-    if tanggal_kunjungan == "":
-        tanggal_kunjungan = None
-    if patient_name == "":
-        patient_name = None
-    if workflow_status == "":
-        workflow_status = None
-    if status == "":
-        status = None
-
-    # ✅ Apply additional filters
+    # 🔹 Filter tambahan (tetap sama)
     if status:
         query = query.filter(models.Claim.status == status)
     if workflow_status:
         query = query.filter(models.Claim.workflow_status == workflow_status)
-    if tanggal_kunjungan:
-        query = query.filter(models.Claim.tanggal_kunjungan == tanggal_kunjungan)
     if patient_name:
-        query = query.filter(models.Claim.patient_name.ilike(f"%{patient_name}%"))
+        query = query.join(models.Patient).filter(models.Patient.nama.ilike(f"%{patient_name}%"))
+    if tanggal_kunjungan:
+        query = query.join(models.Visit).filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
     if claim_id and str(claim_id).isdigit():
         query = query.filter(models.Claim.id == int(claim_id))
-    if visit_id and str(visit_id).isdigit():
-        query = query.filter(models.Claim.visit_id == int(visit_id))
 
     claims = query.order_by(models.Claim.created_at.desc()).all()
+
+    # 🔹 Inject atribut tambahan untuk template
+    for c in claims:
+        c.patient_name = c.patient.nama if c.patient else "-"
+        c.patient_rm = c.patient.no_rm if c.patient else "-"
+        c.tanggal_kunjungan = c.visit.tanggal_kunjungan if c.visit else None
+        c.hospital_name = c.hospital.nama if c.hospital else "-"
 
     return templates.TemplateResponse(
         "claim_list.html",

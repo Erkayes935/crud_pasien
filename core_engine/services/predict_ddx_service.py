@@ -15,8 +15,8 @@ def _json(x: Any) -> str:
     except Exception:
         return str(x)
 
-def _rand(a=0.6, b=0.95) -> float:
-    return round(random.uniform(a, b), 2)
+def _rand(a=0.6, b=0.95) -> int:
+    return random.randint(int(a * 100), int(b * 100))
 
 def _as_list(x, default=None):
     return x if isinstance(x, list) else (default or [])
@@ -134,34 +134,49 @@ Catatan:
 
     # --- post-processing: children minimal 1, isi confidence jika kosong, top-3 ---
     def fix_item(item: Dict[str, Any]) -> Dict[str, Any]:
-        # confidence parent
-        if not isinstance(item.get("confidence"), (int, float)):
-            item["confidence"] = _rand(0.6, 0.95)
+      # 🔹 Konversi confidence parent
+      if isinstance(item.get("confidence"), (int, float)):
+          val = item["confidence"]
+          # kalau confidence masih dalam skala 0–1 → ubah ke persen bulat
+          item["confidence"] = int(val * 100) if val <= 1 else int(val)
+      else:
+          # kalau kosong atau bukan angka → isi random 60–95%
+          item["confidence"] = _rand(0.6, 0.95)
 
-        # children list
-        children = item.get("children", [])
-        if not isinstance(children, list):
-            children = []
+      # 🔹 Proses anak-anak
+      children = item.get("children", [])
+      if not isinstance(children, list):
+          children = []
 
-        fixed_children: List[Dict[str, Any]] = []
-        for ch in children:
-            if not isinstance(ch, dict):
-                continue
-            if not isinstance(ch.get("confidence"), (int, float)):
-                ch["confidence"] = _rand(0.6, 0.9)
-            if "name" in ch and isinstance(ch["name"], str) and ch["name"].strip():
-                fixed_children.append({"name": ch["name"].strip(), "confidence": ch["confidence"]})
+      fixed_children: List[Dict[str, Any]] = []
+      for ch in children:
+          if not isinstance(ch, dict):
+              continue
 
-        # fallback: minimal 1 anak
-        if not fixed_children:
-            parent_name = item.get("parent") or "Unspecified"
-            fixed_children.append({
-                "name": f"{parent_name} - Unspecified subtype",
-                "confidence": _rand(0.6, 0.8)
-            })
+          # sama: konversi confidence anak ke persen
+          if isinstance(ch.get("confidence"), (int, float)):
+              val = ch["confidence"]
+              ch["confidence"] = int(val * 100) if val <= 1 else int(val)
+          else:
+              ch["confidence"] = _rand(0.6, 0.9)
 
-        item["children"] = fixed_children[:3]  # batasi anak juga kalau perlu
-        return item
+          if "name" in ch and isinstance(ch["name"], str) and ch["name"].strip():
+              fixed_children.append({
+                  "name": ch["name"].strip(),
+                  "confidence": ch["confidence"]
+              })
+
+      # 🔹 fallback: minimal 1 anak
+      if not fixed_children:
+          parent_name = item.get("parent") or "Unspecified"
+          fixed_children.append({
+              "name": f"{parent_name} - Unspecified subtype",
+              "confidence": _rand(0.6, 0.8)
+          })
+
+      item["children"] = fixed_children[:3]  # batasi max 3 anak
+      return item
+
 
     out = {"diagnosis": [], "komorbid": [], "komplikasi": []}
     for section in ["diagnosis", "komorbid", "komplikasi"]:
