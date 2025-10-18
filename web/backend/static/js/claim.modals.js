@@ -2315,47 +2315,48 @@ function isTindakanFound(ctx, text) {
   );
 }
 
-// ========== REUSABLE UI KONFIRMASI (tidak pakai window.) ==========
-async function showConfirmModal(title, message) {
+// ===================== Confirm Modal =====================
+function showConfirmModal(title, message) {
   return new Promise((resolve) => {
-    const old = document.getElementById("confirmModal");
-    if (old) old.remove();
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/40 backdrop-blur-sm z-[9998] flex items-center justify-center";
 
     const modal = document.createElement("div");
-    modal.id = "confirmModal";
-    modal.className =
-      "fixed inset-0 flex items-center justify-center bg-black/60 z-50";
-
+    modal.className = "bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full text-center";
     modal.innerHTML = `
-      <div class="bg-gray-900 text-white rounded-xl shadow-xl p-6 w-[90%] max-w-md text-center border border-gray-700 animate-fade-in-up">
-        <h3 class="text-lg font-semibold mb-3">${title}</h3>
-        <p class="text-sm text-gray-300 mb-6">${message}</p>
-        <div class="flex justify-center space-x-4">
-          <button type="button"
-                  class="px-4 py-2 rounded bg-gray-600 hover:bg-gray-700 text-white"
-                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
-            Batal
-          </button>
-          <button type="button"
-                  class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white"
-                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false; true">
-            Tambahkan
-          </button>
-        </div>
+      <h2 class="text-lg font-bold mb-3 text-gray-800 dark:text-gray-100">${title}</h2>
+      <p class="text-gray-700 dark:text-gray-200 mb-6">${message}</p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmYes"
+          class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Tambahkan</button>
+        <button id="confirmNo"
+          class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500">Batal</button>
       </div>
     `;
-    document.body.appendChild(modal);
 
-    modal.querySelector("#confirmNo").onclick = () => {
-      modal.remove();
-      resolve(false);
-    };
-    modal.querySelector("#confirmYes").onclick = () => {
-      modal.remove();
-      resolve(true);
-    };
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    function cleanup(result) {
+      overlay.remove();
+      resolve(result);
+    }
+
+    modal.querySelector("#confirmYes").addEventListener("click", () => cleanup(true));
+    modal.querySelector("#confirmNo").addEventListener("click", () => cleanup(false));
+    overlay.addEventListener("keydown", (e) => e.key === "Escape" && cleanup(false));
   });
 }
+
+// 👉 export fungsi ini biar bisa dipakai di file lain
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { showConfirmModal };
+} else {
+  // kalau environment kamu belum pakai module bundler, simpan di namespace kecil
+  const ns = window.AIClaim = window.AIClaim || {};
+  ns.showConfirmModal = showConfirmModal;
+}
+
 
 // animasi lembut biar konsisten sama modal lain
 const style = document.createElement("style");
@@ -2680,6 +2681,13 @@ function renderDiagnosisDetailReadOnly(data) {
   
   // Get diagnosis detail from the correct nested structure
   const detail = data.diagnosis_detail || {};
+
+  // ✅ PATCH: kalau diagnosis_detail kosong tapi field langsung di root, ambil dari root
+  if (Object.keys(detail).length === 0 && data.justifikasi) {
+    console.log("🩹 [PATCH] Flattened data detected, using root-level fields for read-only view");
+    Object.assign(detail, data);
+  }
+
   
   // Build the structure similar to doctor but from database
   const klinis = {
@@ -2813,6 +2821,13 @@ function renderProcedureDetailReadOnly(data) {
   const detail = data.procedure_detail || {};
   const analysis = data.analysis || {};
   const regulasi = data.regulasi || [];
+
+  // ✅ PATCH: kalau procedure_detail kosong tapi field langsung di root, ambil dari root
+  if (Object.keys(detail).length === 0 && (data.icd9_code || data.validitas || data.status_tindakan)) {
+    console.log("🩹 [PATCH] Flattened procedure data detected, using root-level fields for read-only view");
+    Object.assign(detail, data);
+  }
+
   
   console.log("🔧 [VERIFICATOR] renderProcedureDetailReadOnly received:", data);
   

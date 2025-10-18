@@ -69,9 +69,33 @@
       if (!Array.isArray(state.simulasi[tab][type]))
         state.simulasi[tab][type] = [];
 
-      // ambil detail dari backend
-      const detailRes = await window.getDiagnosisDetail(selected.code);
-      const rowData = detailRes?.data || {};
+      // ambil detail dari backend (fallback kalau code kosong)
+      let rowData = {};
+      try {
+        if (selected.code) {
+          const detailRes = await window.getDiagnosisDetail(selected.code);
+          rowData = detailRes?.data || {};
+        } else {
+          // ⚙️ fallback jika diagnosis tidak ada di database
+          rowData = {
+            name: selected.name || "(Manual Input)",
+            kategori: selected.name || "(Manual Input)",
+            klinis: "",
+            icd10_code: "",
+            source: "Manual",
+          };
+        }
+      } catch (err) {
+        console.warn("⚠️ getDiagnosisDetail gagal, gunakan fallback manual:", err);
+        rowData = {
+          name: selected.name || "(Manual Input)",
+          kategori: selected.name || "(Manual Input)",
+          klinis: "",
+          icd10_code: "",
+          source: "Manual",
+        };
+      }
+
 
       // buat item manual baru
       const newItem = {
