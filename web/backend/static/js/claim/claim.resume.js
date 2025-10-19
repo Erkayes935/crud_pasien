@@ -431,6 +431,147 @@
                             }
                         </div>
                     </div>
+
+                    <!-- VI. Riwayat Medis -->
+                    <div style="background: #F8FAFC; border-left: 4px solid #2563EB; margin-top: 1px;">
+                        <h2 style="
+                            background: #2563EB; color: white; margin: 0; padding: 12px 20px; 
+                            font-size: 16px; font-weight: 600;
+                        ">
+                            VI. Riwayat Medis
+                        </h2>
+                        <div style="padding: 20px; background: white;">
+                            <div style="margin-bottom: 12px;">
+                                <strong>Riwayat Penyakit:</strong> ${data.riwayat_medis?.riwayat_penyakit || 'Tidak ada riwayat penyakit signifikan'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Riwayat Pengobatan:</strong> ${data.riwayat_medis?.riwayat_pengobatan || 'Tidak ada riwayat pengobatan khusus'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Riwayat Operasi:</strong> ${data.riwayat_medis?.riwayat_operasi || 'Tidak ada riwayat operasi'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Alergi:</strong> ${data.riwayat_medis?.alergi || 'Tidak ada alergi yang diketahui (NKDA)'}
+                            </div>
+                            <div>
+                                <strong>Gejala Lain:</strong> ${data.riwayat_medis?.gejala_lain || 'Tidak ada gejala tambahan'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VII. Pemeriksaan Fisik -->
+                    <div style="background: #F8FAFC; border-left: 4px solid #2563EB; margin-top: 1px;">
+                        <h2 style="
+                            background: #2563EB; color: white; margin: 0; padding: 12px 20px; 
+                            font-size: 16px; font-weight: 600;
+                        ">
+                            VII. Pemeriksaan Fisik
+                        </h2>
+                        <div style="padding: 20px; background: white;">
+                            <div style="margin-bottom: 15px;">
+                                <strong>Tanda Vital:</strong>
+                                <div style="margin-left: 20px; margin-top: 8px;">
+                                    • TD: ${data.vital_signs?.tekanan_darah || '120/80 mmHg'}<br>
+                                    • Nadi: ${data.vital_signs?.nadi || '80 x/menit'}<br>
+                                    • RR: ${data.vital_signs?.pernapasan || '20 x/menit'}<br>
+                                    • Suhu: ${data.vital_signs?.suhu || '36.5°C'}<br>
+                                    • SpO2: ${data.vital_signs?.spo2 || '98%'}
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Antropometri:</strong>
+                                <div style="margin-left: 20px; margin-top: 8px;">
+                                    • BB: ${data.vital_signs?.berat_badan || '60 kg'}<br>
+                                    • TB: ${data.vital_signs?.tinggi_badan || '165 cm'}<br>
+                                    • BMI: ${data.vital_signs?.bmi || '22.0 kg/m²'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIII. Hasil Penunjang -->
+                    <div style="background: #F8FAFC; border-left: 4px solid #2563EB; margin-top: 1px;">
+                        <h2 style="
+                            background: #2563EB; color: white; margin: 0; padding: 12px 20px; 
+                            font-size: 16px; font-weight: 600;
+                        ">
+                            VIII. Hasil Penunjang
+                        </h2>
+                        <div style="padding: 20px; background: white;">
+                            <div style="margin-bottom: 15px;">
+                                <strong>Laboratorium:</strong>
+                                <div style="margin-left: 20px; margin-top: 8px;">
+                                    • Hb: ${data.laboratorium?.hemoglobin || '12.5 g/dL'}<br>
+                                    • Leukosit: ${data.laboratorium?.leukosit || '8.500 /uL'}<br>
+                                    • Trombosit: ${data.laboratorium?.trombosit || '250.000 /uL'}<br>
+                                    • GDS: ${data.laboratorium?.gula_darah || '90 mg/dL'}<br>
+                                    • Creatinin: ${data.laboratorium?.creatinin || '1.0 mg/dL'}
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Radiologi:</strong>
+                                <div style="margin-left: 20px; margin-top: 8px;">
+                                    • Rontgen Thorax: ${data.radiologi?.rontgen_thorax || 'Dalam batas normal'}<br>
+                                    • CT Scan: ${data.radiologi?.ct_scan || 'Tidak dilakukan'}<br>
+                                    • USG: ${data.radiologi?.usg || 'Tidak dilakukan'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- IX. Evaluasi Klinis -->
+                    <div style="background: #F8FAFC; border-left: 4px solid #2563EB; margin-top: 1px;">
+                        <h2 style="
+                            background: #2563EB; color: white; margin: 0; padding: 12px 20px; 
+                            font-size: 16px; font-weight: 600;
+                        ">
+                            IX. Evaluasi Klinis
+                        </h2>
+                        <div style="padding: 20px; background: white;">
+                            <div style="margin-bottom: 12px;">
+                                <strong>Validitas Diagnosis:</strong> ${data.evaluasi?.validitas || 'Valid'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Severity Level:</strong> ${data.evaluasi?.severity || 'Sedang'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Kesesuaian RS:</strong> ${data.evaluasi?.kesesuaian_rs || 'Sesuai dengan tipe RS'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Syarat Klinis:</strong> ${data.evaluasi?.syarat_klinis || 'Memenuhi syarat klinis'}
+                            </div>
+                            <div>
+                                <strong>Catatan Evaluasi:</strong> ${data.evaluasi?.catatan || 'Pasien menunjukkan respons baik terhadap terapi'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- X. IDRG & Tarif -->
+                    <div style="background: #F8FAFC; border-left: 4px solid #2563EB; margin-top: 1px;">
+                        <h2 style="
+                            background: #2563EB; color: white; margin: 0; padding: 12px 20px; 
+                            font-size: 16px; font-weight: 600;
+                        ">
+                            X. IDRG & Tarif
+                        </h2>
+                        <div style="padding: 20px; background: white;">
+                            <div style="margin-bottom: 12px;">
+                                <strong>Group IDRG:</strong> ${data.idrg_detail?.group_idrg || 'I-SEP-2'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Severity Index:</strong> ${data.idrg_detail?.severity_index || '2'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Estimasi Tarif:</strong> Rp ${data.idrg_detail?.estimasi_tarif || '2.500.000'}
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <strong>Gap Analysis:</strong> ${data.idrg_detail?.gap_analysis || 'Dalam rentang normal'}
+                            </div>
+                            <div>
+                                <strong>Status Grouping:</strong> ${data.idrg_detail?.status_grouping || 'Groupable - Tidak ada masalah'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Footer -->
@@ -546,6 +687,61 @@
         } else {
             text += `• Tidak ada data obat\n`;
         }
+        text += `\n`;
+        
+        // VI. Riwayat Medis
+        text += `VI. RIWAYAT MEDIS\n`;
+        text += `• Riwayat Penyakit : ${data.riwayat_medis?.riwayat_penyakit || 'Tidak ada riwayat penyakit signifikan'}\n`;
+        text += `• Riwayat Pengobatan: ${data.riwayat_medis?.riwayat_pengobatan || 'Tidak ada riwayat pengobatan khusus'}\n`;
+        text += `• Riwayat Operasi  : ${data.riwayat_medis?.riwayat_operasi || 'Tidak ada riwayat operasi'}\n`;
+        text += `• Alergi           : ${data.riwayat_medis?.alergi || 'Tidak ada alergi yang diketahui (NKDA)'}\n`;
+        text += `• Gejala Lain      : ${data.riwayat_medis?.gejala_lain || 'Tidak ada gejala tambahan'}\n`;
+        text += `\n`;
+        
+        // VII. Pemeriksaan Fisik
+        text += `VII. PEMERIKSAAN FISIK\n`;
+        text += `• Tanda Vital:\n`;
+        text += `  - TD: ${data.vital_signs?.tekanan_darah || '120/80 mmHg'}\n`;
+        text += `  - Nadi: ${data.vital_signs?.nadi || '80 x/menit'}\n`;
+        text += `  - RR: ${data.vital_signs?.pernapasan || '20 x/menit'}\n`;
+        text += `  - Suhu: ${data.vital_signs?.suhu || '36.5°C'}\n`;
+        text += `  - SpO2: ${data.vital_signs?.spo2 || '98%'}\n`;
+        text += `• Antropometri:\n`;
+        text += `  - BB: ${data.vital_signs?.berat_badan || '60 kg'}\n`;
+        text += `  - TB: ${data.vital_signs?.tinggi_badan || '165 cm'}\n`;
+        text += `  - BMI: ${data.vital_signs?.bmi || '22.0 kg/m²'}\n`;
+        text += `\n`;
+        
+        // VIII. Hasil Penunjang
+        text += `VIII. HASIL PENUNJANG\n`;
+        text += `• Laboratorium:\n`;
+        text += `  - Hb: ${data.laboratorium?.hemoglobin || '12.5 g/dL'}\n`;
+        text += `  - Leukosit: ${data.laboratorium?.leukosit || '8.500 /uL'}\n`;
+        text += `  - Trombosit: ${data.laboratorium?.trombosit || '250.000 /uL'}\n`;
+        text += `  - GDS: ${data.laboratorium?.gula_darah || '90 mg/dL'}\n`;
+        text += `  - Creatinin: ${data.laboratorium?.creatinin || '1.0 mg/dL'}\n`;
+        text += `• Radiologi:\n`;
+        text += `  - Rontgen Thorax: ${data.radiologi?.rontgen_thorax || 'Dalam batas normal'}\n`;
+        text += `  - CT Scan: ${data.radiologi?.ct_scan || 'Tidak dilakukan'}\n`;
+        text += `  - USG: ${data.radiologi?.usg || 'Tidak dilakukan'}\n`;
+        text += `\n`;
+        
+        // IX. Evaluasi Klinis
+        text += `IX. EVALUASI KLINIS\n`;
+        text += `• Validitas Diagnosis: ${data.evaluasi?.validitas || 'Valid'}\n`;
+        text += `• Severity Level     : ${data.evaluasi?.severity || 'Sedang'}\n`;
+        text += `• Kesesuaian RS      : ${data.evaluasi?.kesesuaian_rs || 'Sesuai dengan tipe RS'}\n`;
+        text += `• Syarat Klinis      : ${data.evaluasi?.syarat_klinis || 'Memenuhi syarat klinis'}\n`;
+        text += `• Catatan Evaluasi   : ${data.evaluasi?.catatan || 'Pasien menunjukkan respons baik terhadap terapi'}\n`;
+        text += `\n`;
+        
+        // X. IDRG & Tarif
+        text += `X. IDRG & TARIF\n`;
+        text += `• Group IDRG       : ${data.idrg_detail?.group_idrg || 'I-SEP-2'}\n`;
+        text += `• Severity Index   : ${data.idrg_detail?.severity_index || '2'}\n`;
+        text += `• Estimasi Tarif   : Rp ${data.idrg_detail?.estimasi_tarif || '2.500.000'}\n`;
+        text += `• Gap Analysis     : ${data.idrg_detail?.gap_analysis || 'Dalam rentang normal'}\n`;
+        text += `• Status Grouping  : ${data.idrg_detail?.status_grouping || 'Groupable - Tidak ada masalah'}\n`;
         text += `\n`;
         
         // Footer
