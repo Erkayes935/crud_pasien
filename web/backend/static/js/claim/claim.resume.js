@@ -271,7 +271,13 @@
     function renderResumePreview(data, mode, settings) {
         const preview = document.getElementById('resumePreview');
         
-        // Extract data dari response
+        // ✅ CHECK MODE untuk render berbeda
+        if (mode === "naratif") {
+            renderNaratifPreview(data, settings);
+            return;
+        }
+        
+        // Extract data dari response untuk LIST MODE
         const pasien = data.identitas || {};
         const visit = data.visit || {};
         const diagnosis = data.diagnosis || {};
@@ -593,6 +599,190 @@
         console.log("✅ Resume preview rendered");
     }
 
+    function renderNaratifPreview(data, settings) {
+        const preview = document.getElementById('resumePreview');
+        const pasien = data.identitas || {};
+        
+        // ✅ RENDER NARATIF MODE - Display AI-generated text content
+        let content = `
+            <div style="
+                background: white; color: #333; font-family: 'Segoe UI', Arial, sans-serif;
+                border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                margin: 0; padding: 0;
+            ">
+                <!-- Header dengan Logo -->
+                <div style="
+                    background: linear-gradient(135deg, #059669, #047857); 
+                    color: white; padding: 25px; text-align: center; position: relative;
+                ">
+                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <div style="
+                            background: white; width: 60px; height: 60px; border-radius: 12px; 
+                            display: flex; align-items: center; justify-content: center; margin-right: 15px;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        ">
+                            <svg width="36" height="36" viewBox="0 0 100 100" style="fill: #059669;">
+                                <path d="M50 15 L60 35 L80 35 L65 50 L70 70 L50 60 L30 70 L35 50 L20 35 L40 35 Z"/>
+                                <circle cx="50" cy="50" r="25" fill="none" stroke="#059669" stroke-width="3"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 24px; font-weight: bold; margin: 0;">AIClaim</div>
+                            <div style="font-size: 14px; opacity: 0.9;">AI Narrative Mode</div>
+                        </div>
+                    </div>
+                    
+                    <h1 style="
+                        font-size: 22px; font-weight: 600; margin: 0; 
+                        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    ">
+                        RESUME MEDIS - NARATIF AI
+                    </h1>
+                    <div style="font-size: 16px; margin-top: 5px; opacity: 0.95;">
+                        ${pasien.nama || 'Pasien'} (${pasien.no_rm || 'RM0000'})
+                    </div>
+                </div>
+
+                <!-- AI Generated Content - Parsed jadi Sections -->
+                <div style="padding: 0; margin: 0;">
+                    ${parseNaratifToSections(data.naratif || 'Generating AI narrative...')}
+                </div>
+
+                <!-- Footer -->
+                <div style="
+                    background: #f8fafc; border-top: 1px solid #e2e8f0; 
+                    padding: 20px; text-align: center; font-size: 12px; color: #64748b;
+                ">
+                    Generated automatically by AI Claim Core | Version 2025.10<br>
+                    Tanggal Generate: ${new Date().toLocaleDateString('id-ID', { 
+                        day: 'numeric', month: 'long', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                    })} WIB
+                </div>
+            </div>
+        `;
+        
+        preview.innerHTML = content;
+        console.log("✅ Naratif resume preview rendered");
+    }
+
+    function parseNaratifToSections(narrativeText) {
+        // ✅ PARSE AI narrative text jadi structured sections
+        const lines = narrativeText.split('\n');
+        const sections = [];
+        let currentSection = null;
+        let currentContent = [];
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            
+            // Detect section headers: "1. IDENTITAS", "2. DIAGNOSIS", etc
+            const sectionMatch = trimmed.match(/^(\d+)\.\s*(.+)$/);
+            if (sectionMatch) {
+                // Save previous section
+                if (currentSection) {
+                    sections.push({
+                        number: currentSection.number,
+                        title: currentSection.title,
+                        content: currentContent.join('\n').trim()
+                    });
+                }
+                
+                // Start new section
+                currentSection = {
+                    number: sectionMatch[1],
+                    title: sectionMatch[2]
+                };
+                currentContent = [];
+            } else if (trimmed && currentSection) {
+                // Add content to current section
+                currentContent.push(line);
+            } else if (!currentSection && trimmed) {
+                // Content before first section (title, etc)
+                sections.push({
+                    number: '',
+                    title: 'Header',
+                    content: trimmed,
+                    isHeader: true
+                });
+            }
+        });
+
+        // Add last section
+        if (currentSection) {
+            sections.push({
+                number: currentSection.number,
+                title: currentSection.title,
+                content: currentContent.join('\n').trim()
+            });
+        }
+
+        // Generate HTML dengan green theme
+        let html = '';
+        
+        sections.forEach((section, index) => {
+            if (section.isHeader) {
+                // Skip header karena sudah di header component
+                return;
+            }
+            
+            html += `
+                <div style="
+                    background: white; 
+                    border-left: 4px solid #059669; 
+                    margin: 15px 25px; 
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    border: 1px solid #d1fae5;
+                ">
+                    <!-- Section Header -->
+                    <div style="
+                        background: linear-gradient(135deg, #059669, #047857); 
+                        color: white; 
+                        padding: 15px 25px; 
+                        border-radius: 7px 7px 0 0;
+                        font-weight: 600;
+                        font-size: 16px;
+                    ">
+                        ${section.number ? section.number + '. ' : ''}${section.title}
+                    </div>
+                    
+                    <!-- Section Content -->
+                    <div style="padding: 20px 25px;">
+                        <div style="
+                            font-size: 15px; 
+                            line-height: 1.8; 
+                            color: #374151;
+                            white-space: pre-wrap;
+                            font-family: 'Segoe UI', Arial, sans-serif;
+                        ">${section.content}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Add professional footer
+        html += `
+            <div style="
+                margin: 25px 25px 10px 25px; 
+                text-align: center; 
+                padding: 20px;
+                background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+                border-radius: 8px;
+                border: 1px solid #d1fae5;
+            ">
+                <div style="font-size: 14px; color: #047857; font-weight: 600; margin-bottom: 8px;">
+                    🤖 AI-Generated Medical Resume
+                </div>
+                <div style="font-size: 12px; color: #059669;">
+                    Generated by OpenAI | Professional Quality | ${new Date().toLocaleDateString('id-ID')}
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+
     function copyResumeText() {
         if (!currentResumeData) {
             alert("❌ Tidak ada data resume untuk disalin");
@@ -625,7 +815,12 @@
             ringkas: document.getElementById('formatRingkas').checked
         };
         
-        // Extract data
+        // ✅ HANDLE NARATIF MODE - Return AI generated text directly
+        if (mode === "naratif") {
+            return data.naratif || 'Generating AI narrative...';
+        }
+        
+        // Extract data untuk LIST MODE
         const pasien = data.identitas || {};
         const visit = data.visit || {};
         const diagnosis = data.diagnosis || {};
