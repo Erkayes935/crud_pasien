@@ -353,6 +353,9 @@ def list_claims(
     tarif_cbg_max: Optional[int] = Query(None),
     los_min: Optional[int] = Query(None),
     los_max: Optional[int] = Query(None),
+    # 🚀 NEW: Pagination parameters
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    limit: int = Query(50, ge=1, le=1000, description="Items per page (max 1000)"),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
@@ -416,8 +419,15 @@ def list_claims(
             )
         )
 
-    # Get claims first, then apply AI status filter in Python (since it's computed)
-    claims_pre_filter = query.order_by(models.Claim.created_at.desc()).all()
+    # 🚀 PERFORMANCE FIX: Apply pagination to prevent memory issues
+    # Calculate offset
+    offset = (page - 1) * limit
+    
+    # Get total count for pagination info
+    total_count = query.count()
+    
+    # Get paginated claims
+    claims_pre_filter = query.order_by(models.Claim.created_at.desc()).offset(offset).limit(limit).all()
     
     # Apply computed field filters
     claims = []
@@ -489,6 +499,17 @@ def list_claims(
             "tarif_cbg_max": tarif_cbg_max,
             "los_min": los_min,
             "los_max": los_max,
+            # 🚀 NEW: Pagination info
+            "pagination": {
+                "current_page": page,
+                "items_per_page": limit,
+                "total_items": total_count,
+                "total_pages": (total_count + limit - 1) // limit,  # Ceiling division
+                "has_previous": page > 1,
+                "has_next": page < (total_count + limit - 1) // limit,
+                "previous_page": page - 1 if page > 1 else None,
+                "next_page": page + 1 if page < (total_count + limit - 1) // limit else None,
+            },
         },
     )
 
@@ -1148,7 +1169,7 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
         
         deleted_procs = db.query(models.ClaimProcedure).filter(
             models.ClaimProcedure.claim_id == cid,
-            models.ClaimProcedure.procedure_type.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
+            models.ClaimProcedure.procedure_source.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
         ).delete(synchronize_session=False)
         
         print(f"[PREDICT_DDX] ✅ Cleared existing mappings: {deleted_sims} simulations, {deleted_diags} diagnoses, {deleted_procs} procedures")
@@ -1189,7 +1210,7 @@ async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Sessio
                 # Create ClaimProcedure entry
                 procedure = models.ClaimProcedure(
                     claim_id=claim_id,
-                    procedure_type="modal_diagnosis",  # Mark as procedure from modal diagnosis
+                    procedure_source="modal_diagnosis",  # Mark as procedure from modal diagnosis
                     procedure_text=tindakan_item.get("name", ""),
                     requirement_flag=False,  # Add required field
                     stage=stage,
@@ -1327,7 +1348,7 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
             existing_procedure = db.query(models.ClaimProcedure).filter_by(
                 claim_id=cid,
                 procedure_text=procedure_name,
-                procedure_type="modal_procedure",  # Mark as procedure from modal
+                procedure_source="modal_procedure",  # Mark as procedure from modal
                 is_deleted=False
             ).first()
             
@@ -1335,7 +1356,7 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
                 # Create new ClaimProcedure
                 existing_procedure = models.ClaimProcedure(
                     claim_id=cid,
-                    procedure_type="modal_procedure",
+                    procedure_source="modal_procedure",
                     procedure_text=procedure_name,
                     requirement_flag=False,  # Add required field
                     stage=stage,
@@ -2823,11 +2844,11 @@ def verify_claim_storage(
         procedures = db.query(models.ClaimProcedure).filter_by(
             claim_id=claim_id, is_deleted=False
         ).all()
-        modal_procedures = [p for p in procedures if p.procedure_type in ["modal_diagnosis", "modal_procedure"]]
+        modal_procedures = [p for p in procedures if p.procedure_source in ["modal_diagnosis", "modal_procedure"]]
         result["storage_verification"]["procedures"] = {
             "total_count": len(procedures),
             "modal_count": len(modal_procedures),
-            "modal_types": [p.procedure_type for p in modal_procedures],
+            "modal_types": [p.procedure_source for p in modal_procedures],
             "status": "✅ OK" if modal_procedures else "⚠️ No modal procedures"
         }
         
@@ -3032,7 +3053,7 @@ async def get_stored_procedure_detail(
                 "procedure_name": procedure_name,
                 "procedure_detail": {
                     "procedure_text": procedure.procedure_text,
-                    "procedure_type": procedure.procedure_type,
+                    "procedure_source": procedure.procedure_source,
                     "stage": procedure.stage,
                     "requirement_flag": procedure.requirement_flag,
                     "icd9_code": proc_detail.icd9_tindakan or "-",
@@ -3258,7 +3279,7 @@ def get_stored_data_summary(
             proc_summary = {
                 "id": proc.id,
                 "name": proc.procedure_text,
-                "type": proc.procedure_type,
+                "type": proc.procedure_source,
                 "stage": proc.stage,
                 "has_details": has_details,
                 "clickable": True  # Can open modal
@@ -3291,7 +3312,7 @@ def get_stored_data_summary(
         result["summary"]["statistics"] = {
             "total_diagnoses": len(diagnoses),
             "total_procedures": len(procedures),
-            "modal_procedures": len([p for p in procedures if p.procedure_type in ["modal_diagnosis", "modal_procedure"]]),
+            "modal_procedures": len([p for p in procedures if p.procedure_source in ["modal_diagnosis", "modal_procedure"]]),
             "total_regulations": regulations_count,
             "idrg_records": len(idrg_diagnosis),
             "data_richness_score": min(100, (len(diagnoses) * 10 + len(procedures) * 8 + regulations_count * 5 + len(idrg_diagnosis) * 15))
@@ -3336,13 +3357,21 @@ def _get_secondary_diagnoses(claim):
     return len([d for d in claim.diagnoses if d.diagnosis_type == "sekunder" and not d.is_deleted])
 
 def _get_primary_procedure(claim):
-    """Get primary procedure from claim"""
+    """Get primary procedure from claim - Updated for new schema (procedure_type -> procedure_source)"""
     if not claim.procedures:
         return "-"
     
-    primary = next((p for p in claim.procedures if p.procedure_type == "utama" and not p.is_deleted), None)
+    # Look for primary procedure using procedure_source (renamed from procedure_type)
+    primary = next((p for p in claim.procedures if p.procedure_source == "utama" and not p.is_deleted), None)
     if primary:
-        return f"{primary.procedure_text} ({primary.icd9_code or '-'})"
+        # Try to get ICD9 code from procedure_details if available
+        icd9_code = "-"
+        if hasattr(primary, 'procedure_details') and primary.procedure_details:
+            detail_with_icd9 = next((d for d in primary.procedure_details if d.icd9_final_by_coder and not d.is_deleted), None)
+            if detail_with_icd9:
+                icd9_code = detail_with_icd9.icd9_final_by_coder
+        
+        return f"{primary.procedure_text} ({icd9_code})"
     
     # Fallback to medical record  
     if claim.medical_record and claim.medical_record.tindakan:
