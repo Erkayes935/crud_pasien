@@ -185,7 +185,7 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     print(f"[DIAGNOSIS] Mulai analisis multilayer untuk {disease_name}")
 
     # 1️⃣ Ambil rule multilayer dari DB
-    multilayer = load_rules_for_diagnosis(disease_name, rs_id=rs_id, region_id=region_id)
+    multilayer = load_rules_for_diagnosis(disease_name, rs_id=rs_id, region_id=region_id, scope="diagnosis")
     rule_data_db = multilayer.get("rules", {})
 
     # 2️⃣ Ambil rule nasional (JSON)

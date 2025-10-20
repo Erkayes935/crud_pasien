@@ -354,7 +354,7 @@
   // =======================
   // Main function to open regulation modal
   // =======================
-  async function openRegulationDetailModal(fieldName, diagnosisId, procedureId = null) {
+  async function openRegulationDetailModal(fieldName, diagnosisId = null, procedureId = null) {
     try {
       const claimId =
         window.claimState?.selectedClaimId ||
@@ -362,29 +362,50 @@
         new URLSearchParams(window.location.search).get('claim_id') ||
         1;
 
-      console.log(`[REGULATION] Opening modal for field=${fieldName}, diagnosis=${diagnosisId}, claimId=${claimId}`);
-
-      let diagnosisFromUI =
+      // 🔹 Determine diagnosis name from multiple possible sources (ensure kategori always diagnosis)
+      const diagnosisName =
         window.claimState?.currentDiagnosis?.disease_name ||
         window.claimState?.currentDiagnosis?.diagnosis_text ||
         window.claimState?.currentDiagnosisTitle ||
+        document.querySelector('.diagnosis-name, .diagnosis-title, .selected-diagnosis')?.textContent?.trim() ||
         "";
 
-      if (!diagnosisFromUI) {
-        const el = document.querySelector('.diagnosis-name, .diagnosis-title, .selected-diagnosis');
-        if (el) diagnosisFromUI = el.dataset.diseaseName || el.textContent.trim();
-      }
+      // 🔹 Determine procedure name if this is a tindakan scope
+      const procedureName =
+        (procedureId && (window.claimState?.currentProcedure?.name ||
+          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()))
+        || window.claimState?.currentProcedure?.name
+        || document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()
+        || "";
+
+      // Decide scope
+      let scope = procedureId ? "tindakan" : "diagnosis";
 
       // payload utama
       const payload = {
         claim_id: claimId,
-        kategori: diagnosisFromUI || "Regulasi Umum",
+        // Always send kategori as the diagnosis name (backend expects diagnosis in 'kategori')
+        kategori: diagnosisName || "Regulasi Umum",
         field: fieldName,
-        rs_id: "rs_notopuro",
-        region_id: "jatim"
+        scope,
+        rs_id: window.claimState?.rs_id || "rs_notopuro",
+        region_id: window.claimState?.region_id || "jatim",
       };
-      if (diagnosisId) payload.item_id = diagnosisId;
-      if (procedureId) payload.item_id = procedureId;
+
+      // backward-compatible explicit fields for backend convenience
+      if (diagnosisName) {
+        payload.diagnosis_name = diagnosisName;
+      }
+
+      // jika tindakan, sertakan nama procedure di payload (key 'procedure' untuk konsistensi backend)
+      if (procedureId || procedureName) {
+        payload.procedure = procedureName || "";
+        // keep item_id for procedure context
+        if (procedureId) payload.item_id = procedureId;
+      }
+
+      // jika dipanggil dengan diagnosisId, sertakan item_id juga
+      if (diagnosisId && !payload.item_id) payload.item_id = diagnosisId;
 
       const currentField = document.querySelector(`[data-field="${fieldName}"] .col-value`);
       if (currentField) payload.current_value = currentField.textContent.trim();
@@ -394,14 +415,13 @@
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
       console.log("[REGULATION] Response:", result);
 
       if (result.status === "success") {
-        // langsung buka overlay tanpa nutup modal utama
         openOverlayModal(
           `${fieldName.replace('_', ' ').toUpperCase()}`,
           renderRegulationDetailMultilayer(result.data, fieldName),
@@ -569,7 +589,8 @@ function updateRingkasanFromRow(itemId, dx) {
           body: JSON.stringify({ 
             claim_id: parseInt(claimId), 
             disease_name: diseaseName,
-            rekam_medis: []
+            rekam_medis: [],
+            scope: "diagnosis"
           })
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -1054,19 +1075,36 @@ window.getSeverityLabel = function(index) {
 
 window.renderChecklistHtml = function(checklist) {
   if (!checklist) return '-';
-  
-  // Check if array
-  if (Array.isArray(checklist)) {
-    // Look for existing bullet points in each item
-    return checklist.map(item => {
-      // Remove any existing bullet points (• or - or *)
-      const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
-      return `<li>• ${cleanItem}</li>`;
-    }).join('');
+
+  // Jika string, split menjadi array baris bila ada newline
+  let items = [];
+  if (typeof checklist === 'string') {
+    items = checklist.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  } else if (Array.isArray(checklist)) {
+    items = checklist.slice();
+  } else {
+    return checklist;
   }
-  
-  // If string - don't add bullet points, just return as-is
-  return checklist;
+
+  // Clean each item: remove leading bullets/markers and duplicate bullets
+  const cleaned = items.map(item => {
+    let s = String(item).trim();
+    // remove leading bullet characters or dash/star, optionally repeated
+    s = s.replace(/^[•\-\*\u2022]\s*/, '');
+    // remove duplicated inner bullets like "• • ..." or duplicated bracketed tags
+    s = s.replace(/\s*•\s*/g, ' • ').replace(/\s{2,}/g, ' ').trim();
+    return s;
+  }).filter(Boolean);
+
+  if (cleaned.length === 0) return '-';
+
+  // Render as list (no extra "• " added if item already starts with bullet)
+  const html = cleaned.map(it => {
+    const itemText = it.startsWith('•') ? it.replace(/^•\s*/, '') : it;
+    return `<li>${itemText}</li>`;
+  }).join('');
+
+  return `<ul class="list-disc pl-4">${html}</ul>`;
 };
 
   // Define helper functions at the module level
@@ -1081,6 +1119,19 @@ window.renderChecklistHtml = function(checklist) {
   }
 
   window.getPrediction = getPrediction;  // Make it globally available
+
+  function formatRupiah(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    
+    // Jika sudah ada “Rp” di depan, jangan ubah
+    if (typeof value === 'string' && value.trim().startsWith('Rp')) return value;
+
+    // Ambil hanya digit angka
+    const numeric = Number(String(value).replace(/[^\d]/g, ''));
+    if (isNaN(numeric) || numeric === 0) return '-';
+    
+    return 'Rp ' + numeric.toLocaleString('id-ID');
+  }
 
   function renderIdrgSection(idrg, claimId, diagnosisName = null) {
     // Get claim ID dan diagnosis name dari context jika tidak ada parameter
@@ -1213,8 +1264,8 @@ window.renderChecklistHtml = function(checklist) {
                 ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(data.data.idrg_prediction.checklist_dokumentasi)'></span>")}
                 ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(data.data.idrg_prediction.faktor_penentu_severity)'></span>")}
                 ${renderPredictionRow("Ungroupable Alert", "<span x-text='data.data.idrg_prediction.ungroupable_alert || \"-\"'></span>")}
-                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"data.data.idrg_prediction.estimasi_tarif_idrg !== '' ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
-                ${renderPredictionRow("Gap Analysis", "<span x-text=\"data.data.idrg_prediction.gap_analysis ? 'Rp ' + parseInt(data.data.idrg_prediction.gap_analysis).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"formatRupiah(data.data.idrg_prediction.estimasi_tarif_idrg)\"></span>")}
+                ${renderPredictionRow("Gap Analysis", "<span x-text=\"formatRupiah(data.data.idrg_prediction.gap_analysis)\"></span>")}
               </div>
             </template>
           </div>
@@ -1309,9 +1360,9 @@ window.renderChecklistHtml = function(checklist) {
         ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
         ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
         ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "")}
-        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "")}
-        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "")}
-        
+        ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"formatRupiah(data.data.idrg_prediction.estimasi_tarif_idrg)\"></span>")}
+        ${renderPredictionRow("Gap Analysis", "<span x-text=\"formatRupiah(data.data.idrg_prediction.gap_analysis)\"></span>")}
+
         <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
           <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
           <strong>Mode:</strong> Single Diagnosis • 
@@ -1466,7 +1517,8 @@ window.renderChecklistHtml = function(checklist) {
         body: JSON.stringify({
           claim_id: parseInt(claimId),
           procedure_name: procedureName,
-          rekam_medis: []
+          rekam_medis: [],
+          scope: "tindakan"
         })
       });
 
@@ -2094,7 +2146,6 @@ window.renderFaktorSeverityHtml = function(faktor) {
 // i-DRG PREDICTION
 // ==================================================
 
-// Function untuk prediksi i-DRG individual diagnosis
 window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
   console.log("🤖 Predicting i-DRG for diagnosis:", diagnosisName);
   
@@ -2125,17 +2176,47 @@ window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
       throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
     }
     
-    const result = await response.json();
-    console.log("[RESP] /predict_idrg", result);
-    
-    if (result.error) {
-      throw new Error(result.error);
+    const json = await response.json();
+    console.log("[RESP] /predict_idrg (raw)", json);
+
+    // Normalize shape: always return { status:'success', data: { idrg_prediction: {...}, engine_version, diagnosis } }
+    let idrgPrediction = null;
+    if (json?.data?.idrg_prediction) {
+      idrgPrediction = json.data.idrg_prediction;
+    } else if (json?.data && (json.data.group_idrg || json.data.severity_index || json.data.checklist_dokumentasi)) {
+      // server returned prediction fields directly under data
+      idrgPrediction = json.data;
+    } else if (json?.idrg_prediction) {
+      idrgPrediction = json.idrg_prediction;
+    } else {
+      // fallback: use whole payload
+      idrgPrediction = json.data || json;
     }
-    
-    return {
+
+    const normalized = {
       status: 'success',
-      data: result
+      data: {
+        idrg_prediction: idrgPrediction,
+        engine_version: json.engine_version || json.data?.engine_version || 'predict_idrg@local',
+        diagnosis: json.diagnosis || diagnosisName || ''
+      }
     };
+    
+    // --- Normalisasi: terima beberapa nama field dari backend ---
+    // backend kadang mengirim "estimasi_tarif" atau "estimasi_tarif_idrg"
+    const p = normalized.data.idrg_prediction || {};
+    if (!p.estimasi_tarif_idrg && p.estimasi_tarif) p.estimasi_tarif_idrg = p.estimasi_tarif;
+    // juga map gap analysis
+    if (!p.gap_analysis && (p.gap_vs_cbg || p.gap)) p.gap_analysis = p.gap_vs_cbg || p.gap;
+    // pastikan checklist_dokumentasi adalah array atau cleaned string
+    if (p.checklist_dokumentasi && typeof p.checklist_dokumentasi === 'string') {
+      // jika string berisi newline, ubah ke array baris bersih
+      const lines = p.checklist_dokumentasi.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      p.checklist_dokumentasi = lines.length > 1 ? lines : p.checklist_dokumentasi;
+    }
+
+    console.log("[RESP] /predict_idrg (normalized)", normalized);
+    return normalized;
     
   } catch (error) {
     console.error("❌ Error predicting i-DRG:", error);
@@ -2251,6 +2332,7 @@ window.renderIdrgPredictionResult = function(data) {
     </div>
   `;
 };
+
 
 // Function untuk refresh prediksi i-DRG
 window.refreshIdrgPrediction = async function(claimId, diagnosisName) {
@@ -2370,8 +2452,6 @@ style.innerHTML = `
 `;
 
 document.head.appendChild(style);
-
-
 
   // 🔹 fungsi utama — dipanggil dari tombol + atau Enter
   async function addManualTindakanIfNotFound() {

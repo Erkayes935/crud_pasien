@@ -35,7 +35,7 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     region_id = ctx.get("region_id")
     hospital_level = ctx.get("hospital_level", "")
 
-    multilayer = load_rules_for_diagnosis(dx_pri, rs_id=rs_id, region_id=region_id)
+    multilayer = load_rules_for_diagnosis(dx_pri, rs_id=rs_id, region_id=region_id, scope="tindakan", procedure=procedure)
     all_rules = multilayer.get("rules", {})
     tindakan_map = FIELD_RULE_MAP.get("tindakan", {})
 

@@ -31,6 +31,8 @@ class RulesMaster(Base):
     feedback_date = Column(DateTime, nullable=True) # Tanggal feedback
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))
     updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+    scope = Column(String(50), nullable=True)       # diagnosis / tindakan / idrg / kombinasi / umum
+    procedure = Column(Text, nullable=True)         # nama tindakan, misal 'X-Ray Thorax', 'Antibiotik IV'
 
     def __repr__(self):
         return f"<RulesMaster(id={self.id}, diagnosis={self.diagnosis}, layer={self.layer}, status={self.status})>"
