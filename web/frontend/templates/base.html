@@ -219,40 +219,43 @@
   {% endif %}
 
   <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-
-    const toggleBtn = document.getElementById('themeToggle');
+  document.addEventListener("DOMContentLoaded", () => {
     const htmlEl = document.documentElement;
-    const moonIcon = document.getElementById('themeIconMoon');
-    const sunIcon = document.getElementById('themeIconSun');
+    const btn = document.getElementById("themeToggle");
+    const moonIcon = document.getElementById("themeIconMoon");
+    const sunIcon = document.getElementById("themeIconSun");
 
-    function updateThemeIcon() {
-      if (htmlEl.classList.contains('dark')) {
-        moonIcon.classList.add('hidden');
-        sunIcon.classList.remove('hidden');
-      } else {
-        sunIcon.classList.add('hidden');
-        moonIcon.classList.remove('hidden');
-      }
-    }
+    if (!btn) return; // kalau belum render, skip
 
-    // init theme
-    if (localStorage.getItem('theme') === 'dark') {
-      htmlEl.classList.add('dark');
+    const updateThemeIcon = () => {
+      const dark = htmlEl.classList.contains("dark");
+      moonIcon.classList.toggle("hidden", dark);
+      sunIcon.classList.toggle("hidden", !dark);
+    };
+
+    // init state
+    if (localStorage.getItem("theme") === "dark") {
+      htmlEl.classList.add("dark");
     }
     updateThemeIcon();
 
-    toggleBtn.addEventListener('click', () => {
-      htmlEl.classList.toggle('dark');
-      localStorage.setItem('theme', htmlEl.classList.contains('dark') ? 'dark' : 'light');
+    // toggle handler
+    btn.addEventListener("click", () => {
+      htmlEl.classList.toggle("dark");
+      localStorage.setItem("theme", htmlEl.classList.contains("dark") ? "dark" : "light");
       updateThemeIcon();
     });
 
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll(".flash").forEach(el => {
-        setTimeout(() => { el.classList.add("hide"); setTimeout(() => el.remove(), 500); }, 3000);
-      });
-    });
+    // posisi khusus halaman welcome
+    const path = window.location.pathname;
+    if (path === "/" || path === "/welcome") {
+      btn.classList.add(
+        "fixed", "top-3", "right-3", "z-50",
+        "bg-white/80", "dark:bg-gray-800/80",
+        "shadow", "border", "border-gray-300", "dark:border-gray-700"
+      );
+    }
+  });
   </script>
 
   <script src="{{ url_for('static', path='js/tooltip.rules.js') }}"></script>

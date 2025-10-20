@@ -92,6 +92,15 @@ def _update_medical_record_from_form(db: Session, claim, user, form_data: dict, 
         if field in form_data and form_data[field] is not None:
             setattr(mr, field, form_data[field])
 
+    record_type = (
+        form_data.get("record_type")
+        or form_data.get("stage")
+        or getattr(mr, "record_type", None)
+        or "claim"
+    )
+
+    mr.record_type = record_type
+
     mr.updated_at = datetime.utcnow()
 
     latest_version = db.query(func.max(models.MedicalRecordLog.version)) \

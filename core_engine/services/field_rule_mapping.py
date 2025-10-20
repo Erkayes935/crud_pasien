@@ -161,62 +161,114 @@ FIELD_RULE_MAP = {
     },
 
     # ==============================================================
-    # ⚙️ DOMAIN: KOMBINASI KLAIM (Evaluasi Diagnosis + Tindakan + Alternatif)
+    # ⚙️ DOMAIN: KOMBINASI KLAIM (Evaluasi Diagnosis + Tindakan + i-DRG)
     # ==============================================================
     "kombinasi": {
-        # ----- Evaluasi Kombinasi Diagnosis -----
-        "validitas_klinis": {
-            "source": "Hybrid", "layers": [2, 3], "type": "hybrid",
-            "desc": "Apakah kombinasi diagnosis utama + sekunder sah menurut CP/PNPK/PPK RS/Regional."
+       "validitas_klinis_kombinasi": {
+            "alias": ["validitas", "validitas_kombinasi", "kombinasi.validitas"],
+            "layers": [2, 3, 4, 5],  # CP/PNPK/Regional/RS
+            "desc": "Menilai kesesuaian kombinasi diagnosis dengan aturan CP/RS."
         },
         "severity": {
-            "source": "Hybrid", "layers": [2, 8], "type": "hybrid",
-            "desc": "Tingkat keparahan kombinasi (AI + rule severity i-DRG/INA-CBG)."
+            "alias": ["severity", "severity_index", "tingkat_keparahan"],
+            "layers": [2, 8],  # Nasional + iDRG
+            "desc": "Tingkat keparahan kombinasi diagnosis."
         },
         "kode_ina_cbg": {
-            "source": "Rule", "layers": [2], "type": "rule",
-            "desc": "Kode INA-CBG untuk kombinasi diagnosis/tindakan."
+            "alias": ["kode_cbg", "kode_ina_cbg", "cbg_code", "inacbg.kode"],
+            "layers": [2, 6],  # Nasional + Bridging INA-CBG
+            "desc": "Mapping kombinasi diagnosis terhadap kode INA-CBG."
         },
         "estimasi_tarif": {
-            "source": "Hybrid", "layers": [2, 5], "type": "hybrid",
-            "desc": "Tarif klaim (rule dasar + penyesuaian AI/RS)."
+            "alias": ["tarif", "estimasi_tarif", "tarif_idrg"],
+            "layers": [2, 4, 5, 8],  # Nasional + Regional + RS + iDRG
+            "desc": "Estimasi tarif kombinasi diagnosis."
         },
-        "syarat_klinis": {
-            "source": "Rule", "layers": [2, 3, 4, 5], "type": "rule",
-            "desc": "Daftar syarat klinis kombinasi."
+        "syarat_klinis_kombinasi": {
+            "alias": ["syarat_klinis", "syarat_klinis_kombinasi", "syarat_klinis.diagnosis"],
+            "layers": [2, 3, 4, 5],  # CP + PNPK + Regional + RS
+            "desc": "Syarat klinis yang harus dipenuhi pada kombinasi diagnosis."
         },
         "evaluasi_faskes": {
-            "source": "Rule", "layers": [1, 4], "type": "rule",
-            "desc": "Validasi kewenangan faskes (Permenkes/Regional)."
+            "alias": ["faskes", "evaluasi_faskes", "kewenangan_rs"],
+            "layers": [1, 2, 5],  # Permenkes + Nasional + RS Lokal
+            "desc": "Kewenangan RS sesuai klasifikasi faskes."
         },
         "rawat_inap": {
-            "source": "Hybrid", "layers": [2, 5], "type": "hybrid",
-            "desc": "Durasi rawat yang sesuai severity."
+            "alias": ["rawat_inap", "rawat_inap.lama_rawat", "lama_rawat"],
+            "layers": [2, 3, 5],  # CP/PNPK + RS Lokal
+            "desc": "Lama rawat dan indikasi rawat inap kombinasi diagnosis."
         },
 
-        # ----- Evaluasi Kombinasi Tindakan -----
-        "tindakan_wajib": {
-            "source": "Rule", "layers": [2, 3, 5], "type": "rule",
-            "desc": "Tindakan wajib berdasarkan CP/PPK RS."
+        # ---------------------------
+        # 🔸 Bagian Evaluasi Tindakan
+        # ---------------------------
+        "tindakan_wajib_kombinasi": {
+            "alias": ["tindakan.wajib", "tindakan.status", "tindakan_wajib"],
+            "layers": [2, 3, 5],  # CP/PNPK/RS Lokal
+            "desc": "Apakah tindakan wajib pada kombinasi diagnosis tertentu."
         },
         "validasi_pilihan": {
-            "source": "Hybrid", "layers": [2, 3, 4, 5], "type": "hybrid",
-            "desc": "Validasi tindakan yang dipilih oleh verifikator."
+            "alias": ["tindakan.validasi", "validasi_pilihan", "tindakan.verifikasi"],
+            "layers": [2, 3, 5],  # Nasional + PPK + RS
+            "desc": "Validasi tindakan utama/sekunder oleh verifikator."
         },
         "dampak_tarif": {
-            "source": "Hybrid", "layers": [2, 8], "type": "hybrid",
-            "desc": "Pengaruh tindakan terhadap tarif (severity naik/turun)."
+            "alias": ["dampak_tarif", "tarif", "ina_cbg.tarif", "idrg.tarif"],
+            "layers": [2, 4, 8],  # Nasional + Regional + iDRG
+            "desc": "Dampak tindakan terhadap tarif INA-CBG/iDRG."
         },
         "konflik_duplikasi": {
-            "source": "AI", "layers": [7], "type": "ai",
-            "desc": "Pendeteksian duplikasi/konflik tindakan oleh AI Fraud Engine."
+            "alias": ["fraud", "konflik", "duplikasi"],
+            "layers": [7],  # Fraud layer only
+            "desc": "Deteksi potensi konflik atau duplikasi tindakan."
+        }, 
+
+        # ---------------------
+        # 🏥 Evaluasi i-DRG Kombinasi
+        # ---------------------
+        "prediksi_group_idrg": {
+            "source": "Hybrid", "layers": [2, 8],
+            "type": "hybrid",
+            "desc": "Group i-DRG hasil pairing ICD-10/9 dan severity."
+        },
+        "faktor_penentu_severity": {
+            "source": "Hybrid", "layers": [2, 3],
+            "type": "hybrid",
+            "desc": "Faktor penentu severity (sepsis, ventilator > 96 jam, multi-komorbid, dll)."
+        },
+        "checklist_idrg_kombinasi": {
+            "source": "Rule", "layers": [2, 8],
+            "type": "rule",
+            "desc": "Checklist dokumen wajib untuk grouping i-DRG (kultur, radiologi, resume medis)."
+        },
+        "ungroupable_alert": {
+            "source": "Rule", "layers": [2, 8],
+            "type": "rule",
+            "desc": "Peringatan klaim tidak dapat dikelompokkan (i-DRG Ungroupable)."
+        },
+        "estimasi_tarif_idrg": {
+            "source": "Rule", "layers": [2, 8],
+            "type": "rule",
+            "desc": "Estimasi tarif i-DRG nasional atau transisi."
+        },
+        "gap_tarif": {
+            "source": "Hybrid", "layers": [2, 8],
+            "type": "hybrid",
+            "desc": "Analisis selisih tarif INA-CBG vs i-DRG (positif/negatif)."
         },
 
-        # ----- Alternatif Kombinasi -----
-        "alternatif_klaim": {
+        # ---------------------
+        # 🧠 Alternatif Kombinasi (AI Simulation)
+        # ---------------------
+        "alternatif_kombinasi": {
             "source": "AI", "layers": [], "type": "ai",
-            "desc": "Simulasi alternatif kombinasi klaim (what-if)."
-        }
+            "desc": "Simulasi kombinasi diagnosis + tindakan alternatif (what-if scenario)."
+        },
+        "rekomendasi_verifikator": {
+            "source": "AI", "layers": [], "type": "ai",
+            "desc": "Rekomendasi singkat AI untuk verifikator (flag success / warning / info)."
+        },
     },
 
     # ==============================================================
@@ -278,6 +330,7 @@ FIELD_RULE_MAP = {
             "desc": "Tarif sesuai i-DRG nasional."
         },
         "gap_analysis": {
+            "alias": ["gap_analysis", "selisih_tarif"],
             "source": "Hybrid", "layers": [2, 8], "type": "hybrid",
             "desc": "Selisih tarif i-DRG dengan INA-CBG lama."
         },

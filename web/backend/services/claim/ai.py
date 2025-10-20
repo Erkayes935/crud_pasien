@@ -73,10 +73,10 @@ def store_ai_recommendations(
                         claim_id=claim_id,
                         diagnosis_type=category,
                         diagnosis_text=item.get("kategori"),
-                        confidence_score=item.get("score"),
                         is_deleted=False,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
+                        is_dummy=False
                     )
                     db.add(diag)
                     db.flush()
@@ -101,7 +101,7 @@ def store_ai_recommendations(
                             claim_id=claim_id,
                             diagnosis_type=category,
                             diagnosis_text=child.get("kategori"),
-                            confidence_score=child.get("score"),
+                            is_dummy=False,
                             is_deleted=False,
                             created_at=datetime.utcnow(),
                             updated_at=datetime.utcnow(),
@@ -141,8 +141,9 @@ def store_ai_recommendations(
             rec = models.ClaimAIRecommendation(
                 claim_id=claim_id,
                 stage=stage,
-                category="diagnosis",
+                category=category,
                 diagnosis_id=diag.id,
+                confidence_score=ai_data.get("score"),
                 is_deleted=False,
                 is_dummy=False,
                 created_at=datetime.utcnow(),

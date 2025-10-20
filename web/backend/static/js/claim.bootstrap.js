@@ -21,6 +21,7 @@ window.idrgDropdown = function ({ claimId }) {
           const payload = {
             claim_id: Number(claimId),
             mode: "combo",
+            scope: "idrg",
             primary_claim: simData.utama?.name || '',
             secondary_claims: (simData.sekunder || []).map(d => d.name).filter(Boolean),
             primary_action: simData.tindakanUtama?.name || '',

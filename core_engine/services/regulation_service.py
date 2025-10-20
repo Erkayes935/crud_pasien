@@ -8,7 +8,7 @@ from openai import OpenAI
 from sqlalchemy.orm import Session
 from database_connection import SessionLocal
 from models import RulesMaster
-from .rules_loader import load_rules_multilayer, get_active_rule_for_field
+from .rules_loader import load_rules_multilayer, load_rules_for_diagnosis, get_active_rule_for_field
 from .field_rule_mapping import FIELD_NAME_ALIAS, match_field_alias
 
 
@@ -229,129 +229,92 @@ def collect_regulations_for_field(payload: dict, field: str):
     untuk field tertentu.
     """
     try:
-        diagnosis = payload.get("kategori") or payload.get("diagnosis_name") or "default"
+        diagnosis_name = payload.get("kategori") or payload.get("diagnosis_name") or "default"
+        procedure_name = payload.get("procedure_name") or payload.get("procedure") or None
         rs_id = payload.get("rs_id")
         region_id = payload.get("region_id")
+        scope = payload.get("scope") or ("tindakan" if procedure_name else "diagnosis")
 
-        # Get the original field name from payload if provided (frontend might send it)
-        original_field = payload.get("original_field", field)
-        
-        # Get all possible field aliases using the field_rule_mapping
-        field_aliases = get_field_aliases(field)
-        
-        # Log for troubleshooting
-        print(f"[REGULATION] Collecting rules for field={field}, diagnosis={diagnosis}")
-        print(f"[REGULATION] Field aliases: {field_aliases}")
-        print(f"[REGULATION] Context: rs_id={rs_id}, region_id={region_id}")
-        
-        # Handle empty diagnosis secara eksplisit
-        if not diagnosis or diagnosis.strip() == "" or diagnosis == "default":
-            return [{
-                "layer": "default",
-                "sumber": "Informasi",
-                "judul_regulasi": "Diagnosis Tidak Terdeteksi",
-                "isi": f"Untuk melihat regulasi terkait '{field.replace('_', ' ')}', silakan pilih diagnosis terlebih dahulu.",
-                "status": "Info",
-                "color": "#9ca3af"
-            }]
-        
-        # Ambil multilayer rules (gabungan semua layer)
-        # IMPORTANT: Only try to call load_rules_multilayer if diagnosis is not empty
-        all_rules = {}  # Default empty rules
-        if diagnosis and diagnosis.strip() != "":
-            try:
-                all_rules = load_rules_multilayer([diagnosis], rs_id, region_id)
-                
-                # Debug: show what fields are available in the rules
-                if all_rules:
-                    print(f"[REGULATION] Available fields in rules: {list(all_rules.keys())}")
-            except Exception as rule_err:
-                print(f"[REGULATION] Error loading rules: {rule_err}")
-                # Continue with empty rules dictionary
+        db = SessionLocal()
 
-        # Try to find matching rules using all field aliases
-        rules_for_field = []
-        matched_field = None
-        
-        # PERBAIKAN: Pindah blok ini ke setelah all_rules diinisialisasi
-        # First check if any of our aliases match directly
-        for alias in field_aliases:
-            if alias in all_rules:
-                rules_for_field = all_rules[alias]
-                matched_field = alias
-                print(f"[REGULATION] Found exact match using alias: {alias}")
-                break
-        
-        # If no direct match found, try partial matching
-        if not rules_for_field:
-            for rule_field in all_rules.keys():
-                for alias in field_aliases:
-                    if alias in rule_field or rule_field in alias:
-                        rules_for_field = all_rules[rule_field]
-                        matched_field = rule_field
-                        print(f"[REGULATION] Found partial match: alias='{alias}' → field='{rule_field}'")
-                        break
-                if rules_for_field:
-                    break
+         # 🔹 Ambil rules berdasarkan kombinasi diagnosis + procedure jika ada
+        if procedure_name:
+            print(f"[REGULATION] Looking for combined rule: {diagnosis_name} + {procedure_name}")
+            rules = db.query(RulesMaster).filter(
+                RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                RulesMaster.procedure.ilike(f"%{procedure_name}%"),
+                RulesMaster.field.ilike(f"%{field}%"),
+                RulesMaster.status.in_(["official", "active"])
+            ).all()
 
-        # Mapping warna layer (untuk FE)
-        LAYER_COLOR = {
-            "nasional": "#3b82f6",
-            "regional": "#22c55e",
-            "rs": "#eab308",
-            "bridging": "#a855f7",
-            "fraud": "#ef4444",
-            "temporary": "#9ca3af"
-        }
+            # fallback ke diagnosis-only kalau kosong
+            if not rules:
+                print(f"[REGULATION] No combined rule found, fallback to diagnosis-only")
+                rules = db.query(RulesMaster).filter(
+                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                    RulesMaster.procedure.is_(None),
+                    RulesMaster.field.ilike(f"%{field}%"),
+                    RulesMaster.status.in_(["official", "active"])
+                ).all()
+        else:
+            # 🔹 Mode diagnosis-only
+            rules = db.query(RulesMaster).filter(
+                RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                RulesMaster.field.ilike(f"%{field}%"),
+                RulesMaster.status.in_(["official", "active"])
+            ).all()
 
+        db.close()
+
+        # 🔹 Format output multilayer (warna, sumber, dll)
         formatted = []
-        for rule in rules_for_field:
-            # Skip if rule is not a dictionary
-            if not isinstance(rule, dict):
-                continue
-                
-            formatted.append({
-                "layer": rule.get("layer", "nasional"),
-                "sumber": rule.get("sumber", "Tidak diketahui"),
-                "judul_regulasi": rule.get("judul", field.replace("_", " ").title()),
-                "isi": rule.get("isi") or "-",
-                "update": str(rule.get("updated_at", ""))[:10] if rule.get("updated_at") else None,
-                "status": "Verified (Official)",
-                "color": LAYER_COLOR.get(rule.get("layer", "nasional"), "#3b82f6"),
-                "tanggal_update": rule.get("updated_at", None)
-            })
+        if rules:
+            for rule in rules:
+                formatted.append({
+                    "layer": rule.layer,
+                    "sumber": rule.sumber,
+                    "judul_regulasi": f"{rule.layer.upper()} {field.replace('_', ' ').title()}",
+                    "isi": rule.isi,
+                    "status": "Verified (Official)",
+                    "color": {
+                        "nasional": "#3b82f6",
+                        "ppk": "#60a5fa",
+                        "rs": "#eab308",
+                        "bridging": "#a855f7",
+                        "fraud": "#ef4444",
+                        "temporary": "#9ca3af"
+                    }.get(rule.layer, "#3b82f6")
+                })
 
-        # If no rules found, provide a fallback message
+        # 🔹 fallback info
         if not formatted:
+            diagnosis_label = (
+                f"{diagnosis_name} + {procedure_name}" if procedure_name else diagnosis_name
+            )
             formatted = [{
                 "layer": "default",
-                "sumber": f"Regulasi untuk {original_field}",
-                "judul_regulasi": original_field.replace("_", " ").title(),
-                "isi": "Tidak ada regulasi spesifik untuk field ini." + 
-                       (f" Diagnosis: {diagnosis}" if diagnosis and diagnosis != "default" else "") +
-                       f"\n\nField yang dicari: {field}" +
-                       (f"\nField yang cocok: {matched_field}" if matched_field else "") +
-                       f"\nAlias yang dicoba: {', '.join(field_aliases)}",
-                "update": None,
+                "sumber": f"Aturan umum untuk field '{field}'",
+                "judul_regulasi": f"Detail Regulasi: {field}",
+                "isi": (
+                    f"Tidak ada regulasi spesifik untuk field '{field}' dan diagnosis '{diagnosis_label}'.\n\n"
+                    f"Field yang dicari: {field}\n"
+                    f"Alias yang dicoba: {', '.join(['faskes', 'faskes.tipe_rs', 'faskes.kewenangan'])}"
+                ),
                 "status": "Default",
-                "color": "#9ca3af",
-                "tanggal_update": None
+                "color": "#9ca3af"
             }]
 
         return formatted
-        
+
     except Exception as e:
-        print(f"[REGULATION] Error in collect_regulations_for_field: {str(e)}")
-        # Return error as a regulation item
+        print(f"[REGULATION] Error in collect_regulations_for_field: {e}")
         return [{
             "layer": "error",
             "sumber": "Error",
             "judul_regulasi": "Error",
             "isi": f"Terjadi kesalahan saat memuat regulasi: {str(e)}",
-            "update": None,
             "status": "Error",
-            "color": "#ef4444",
-            "tanggal_update": None
+            "color": "#ef4444"
         }]
     
 def get_general_regulations_for_field(field: str):
