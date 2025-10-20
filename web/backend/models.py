@@ -278,6 +278,7 @@ class ClaimDiagnosis(Base):
 
     diagnosis_type = Column(String(50), nullable=False)  # utama / sekunder
     diagnosis_text = Column(Text, nullable=False)
+    diagnosis_source = Column(String(50), default="manual")  # ai/manual
     icd10_code = Column(String(20), nullable=True)
     justifikasi = Column(Text, nullable=True)
     syarat_klinis = Column(Text, nullable=True)
@@ -309,7 +310,7 @@ class ClaimProcedure(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
-    procedure_type = Column(String(50), nullable=False)  # utama / sekunder
+    procedure_source = Column(String(50), default="manual")
     procedure_text = Column(Text, nullable=False)
     requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))
 
@@ -784,8 +785,17 @@ class User(Base):
     role = Column(String(50), nullable=True, default="doctor")
 
     # new multi-role system
-    roles = relationship("Role", secondary="user_roles", back_populates="users")
-    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
+    roles = relationship(
+        "Role",
+        secondary="user_roles",
+        back_populates="users",
+        overlaps="user_roles"
+    )
+    user_roles = relationship(
+        "UserRole",
+        back_populates="user",
+        overlaps="roles,users"
+    )
 
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
     is_deleted = Column(Boolean, nullable=False, default=False, server_default=text("false"))
@@ -833,7 +843,17 @@ class Role(Base):
     created_at = Column(DateTime, server_default=text("now()"))
 
     # Relasi ke users
-    users = relationship("User", secondary="user_roles", back_populates="roles")
+    users = relationship(
+        "User",
+        secondary="user_roles",
+        back_populates="roles",
+        overlaps="user_roles"
+    )
+    user_roles = relationship(
+        "UserRole",
+        back_populates="role",
+        overlaps="roles,users"
+    )
 
     def __repr__(self):
         return f"<Role(name={self.name})>"
@@ -854,8 +874,17 @@ class UserRole(Base):
     is_deleted = Column(Boolean, nullable=False, server_default=text("false"))
 
     # Relasi opsional
-    user = relationship("User", back_populates="user_roles")
-    role = relationship("Role")
+
+    user = relationship(
+        "User",
+        back_populates="user_roles",
+        overlaps="roles,users"
+    )
+    role = relationship(
+        "Role",
+        back_populates="user_roles",
+        overlaps="roles,users"
+    )
 
     def __repr__(self):
         return f"<UserRole(user_id={self.user_id}, role_id={self.role_id})>"
