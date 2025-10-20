@@ -150,6 +150,209 @@ def list_claims(
         },
     )
 
+# ==================================================
+# MANAGERIAL: EPISODE & KLAIM (ADMIN/MANAJEMEN)
+# ==================================================
+from sqlalchemy.orm import joinedload
+
+@router.get("/manage")
+def manage_claims_page(
+    request: Request,
+    patient_id: int = Query(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs", "superadmin", "doctor", "manajemen")),
+):
+    """
+    Halaman manajemen klaim pasien:
+    - Tampilkan semua episode (ClaimGroup) 
+    - Tampilkan semua klaim dalam setiap episode
+    - Tampilkan visit yang belum masuk episode
+    """
+    # Get patient data
+    patient = db.query(models.Patient).filter_by(id=patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Pasien tidak ditemukan")
+
+    # Get all groups (episodes) untuk pasien ini dengan eager loading
+    groups = (
+        db.query(models.ClaimGroup)
+        .filter(models.ClaimGroup.patient_id == patient_id)
+        .options(
+            joinedload(models.ClaimGroup.claims)
+            .joinedload(models.Claim.visit)
+            .joinedload(models.Visit.hospital),
+            joinedload(models.ClaimGroup.claims)
+            .joinedload(models.Claim.visit_links)
+        )
+        .order_by(models.ClaimGroup.created_at.desc())
+        .all()
+    )
+
+    # Count total claims
+    total_claims = sum(len(group.claims) for group in groups)
+
+    # Get all visits untuk patient ini
+    all_visits = (
+        db.query(models.Visit)
+        .filter(models.Visit.patient_id == patient_id)
+        .options(joinedload(models.Visit.hospital))
+        .order_by(models.Visit.tanggal_kunjungan.desc())
+        .all()
+    )
+
+    # Get visit IDs yang sudah masuk ke klaim
+    claimed_visit_ids = set()
+    
+    for group in groups:
+        for claim in group.claims:
+            # Main visit
+            if claim.visit_id:
+                claimed_visit_ids.add(claim.visit_id)
+            
+            # Linked visits
+            for link in claim.visit_links:
+                try:
+                    claimed_visit_ids.add(int(link.external_visit_id))
+                except (ValueError, TypeError):
+                    continue
+
+    # Filter visits yang belum masuk ke episode manapun
+    available_visits = [v for v in all_visits if v.id not in claimed_visit_ids]
+
+    # Debug log
+    print(f"[MANAGE] Patient: {patient.nama}")
+    print(f"[MANAGE] Groups found: {len(groups)}")
+    print(f"[MANAGE] Total claims: {total_claims}")
+    print(f"[MANAGE] Available visits: {len(available_visits)}")
+    
+    for group in groups:
+        print(f"[MANAGE] - Group {group.kode_group}: {len(group.claims)} claims")
+        for claim in group.claims:
+            print(f"[MANAGE]   - Claim #{claim.id}: workflow={claim.workflow_status}, visits={len(claim.visit_links) + 1}")
+
+    return templates.TemplateResponse(
+        "claim_manage.html",
+        {
+            "request": request,
+            "patient": patient,
+            "groups": groups,
+            "total_claims": total_claims,
+            "visits": available_visits,
+            "user": user,
+            "current_user": user,
+            "csrf_token": issue_csrf_token(request),
+        },
+    )
+
+
+@router.get("/{claim_id}/visits")
+def get_claim_visits(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin"))
+):
+    """Get all visits for a specific claim"""
+    claim = db.query(models.Claim).options(
+        joinedload(models.Claim.visit),
+        joinedload(models.Claim.visit_links)
+    ).get(claim_id)
+    
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    visits = []
+    
+    # Main visit
+    if claim.visit:
+        visits.append({
+            "id": claim.visit.id,
+            "claim_id": claim_id,
+            "tanggal_kunjungan": claim.visit.tanggal_kunjungan.strftime('%d %b %Y') if claim.visit.tanggal_kunjungan else '-',
+            "poli": claim.visit.poli or '-',
+            "jenis_kunjungan": claim.visit.jenis_kunjungan or 'Rawat Jalan',
+            "is_primary": True
+        })
+    
+    # Linked visits
+    for link in claim.visit_links:
+        try:
+            visit_id = int(link.external_visit_id)
+            visit = db.query(models.Visit).filter_by(id=visit_id).first()
+            if visit:
+                visits.append({
+                    "id": visit.id,
+                    "claim_id": claim_id,
+                    "tanggal_kunjungan": visit.tanggal_kunjungan.strftime('%d %b %Y') if visit.tanggal_kunjungan else '-',
+                    "poli": visit.poli or '-',
+                    "jenis_kunjungan": visit.jenis_kunjungan or 'Rawat Jalan',
+                    "is_primary": False
+                })
+        except (ValueError, TypeError):
+            continue
+    
+    return {"visits": visits}
+
+@router.post("/move-visit")
+def move_visit(
+    request: Request,
+    visit_id: str = Form(...),
+    target_claim_id: int = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs", "superadmin", "doctor")),
+    _=Depends(require_csrf_dep),
+):
+    """
+    Pindahkan visit (via ClaimVisitLink.external_visit_id) ke klaim lain.
+    Jika visit belum punya link, buat link baru.
+    """
+    target_claim = db.query(models.Claim).get(target_claim_id)
+    if not target_claim:
+        raise HTTPException(status_code=404, detail="Klaim target tidak ditemukan")
+
+    link = db.query(models.ClaimVisitLink).filter_by(external_visit_id=str(visit_id)).first()
+    if not link:
+        # buat tautan baru ke klaim target
+        hospital_id = getattr(user.hospital, "id", None)
+        link = models.ClaimVisitLink(
+            claim_id=target_claim.id,
+            external_visit_id=str(visit_id),
+            hospital_id=hospital_id,
+        )
+        db.add(link)
+    else:
+        # update klaim tujuan
+        link.claim_id = target_claim.id
+
+    db.commit()
+    flash(request, f"✅ Visit {visit_id} dipindahkan ke klaim #{target_claim_id}", "success")
+    return RedirectResponse(url=f"/claims/manage?patient_id={target_claim.patient_id}", status_code=303)
+
+
+@router.post("/{claim_id}/move-to-group")
+def move_claim_to_group(
+    request: Request,
+    claim_id: int,
+    target_group_id: int = Form(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("admin_rs", "superadmin", "doctor")),
+    _=Depends(require_csrf_dep),
+):
+    """
+    Pindahkan klaim ke episode (ClaimGroup) lain.
+    """
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Klaim tidak ditemukan")
+
+    target_group = db.query(models.ClaimGroup).get(target_group_id)
+    if not target_group:
+        raise HTTPException(status_code=404, detail="Episode tujuan tidak ditemukan")
+
+    claim.group_id = target_group.id
+    db.commit()
+
+    flash(request, f"✅ Klaim #{claim_id} dipindahkan ke episode {target_group.nama_group}", "success")
+    return RedirectResponse(url=f"/claims/manage?patient_id={target_group.patient_id}", status_code=303)
 
 # ==================================================
 # GROUP (EPISODE KLAIM)
@@ -2358,7 +2561,6 @@ async def get_regional_report_detail(
         "review_notes": report.review_notes
     }
 
-
 def get_layer_color_class(layer: str) -> str:
     """
     Return CSS color class for different rule layers
@@ -2971,3 +3173,44 @@ def get_stored_data_summary(
         print(f"[STORED_DATA_SUMMARY] ❌ Error loading stored data summary: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to load stored data summary: {str(e)}")
 
+
+
+@router.get("/{claim_id}/visits")
+def get_claim_visits(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin"))
+):
+    """Get all visits for a specific claim"""
+    claim = db.query(models.Claim).get(claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    # Main visit
+    visits = []
+    if claim.visit:
+        visits.append({
+            "id": claim.visit.id,
+            "claim_id": claim_id,
+            "tanggal_kunjungan": claim.visit.tanggal_kunjungan.strftime('%d %b %Y'),
+            "poli": claim.visit.poli,
+            "jenis_kunjungan": claim.visit.jenis_kunjungan,
+            "is_primary": True
+        })
+    
+    # Linked visits
+    for link in claim.visit_links:
+        visit = db.query(models.Visit).filter_by(
+            id=int(link.external_visit_id)
+        ).first()
+        if visit:
+            visits.append({
+                "id": visit.id,
+                "claim_id": claim_id,
+                "tanggal_kunjungan": visit.tanggal_kunjungan.strftime('%d %b %Y'),
+                "poli": visit.poli,
+                "jenis_kunjungan": visit.jenis_kunjungan,
+                "is_primary": False
+            })
+    
+    return {"visits": visits}

@@ -1337,7 +1337,7 @@ window.renderChecklistHtml = function(checklist) {
                 <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
                       title="${description}">${"&nbsp;"}</span>
               </div>
-              ${window.claimState?.role === "doctor" ? `
+
                 <div class="flex space-x-2 justify-end">
                   <button type="button"
                           onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
@@ -1345,7 +1345,7 @@ window.renderChecklistHtml = function(checklist) {
                   <button type="button"
                           onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
                           class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-                </div>` : ``}
+                </div>
             </div>
           `;
         }).join("")
