@@ -124,6 +124,7 @@ def store_ai_recommendations(
                         db.add(child_rec)
 
         elif mode == "diagnosis":
+            category = "diagnosis"
             diag = models.ClaimDiagnosis(
                 claim_id=claim_id,
                 diagnosis_type="analysis",
