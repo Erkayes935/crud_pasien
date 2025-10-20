@@ -985,7 +985,7 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
             existing_procedure = db.query(models.ClaimProcedure).filter_by(
                 claim_id=cid,
                 procedure_text=procedure_name,
-                procedure_type="modal_procedure",  # Mark as procedure from modal
+                procedure_source="manual",  # Mark as procedure from modal
                 is_deleted=False
             ).first()
             
@@ -993,7 +993,7 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
                 # Create new ClaimProcedure
                 existing_procedure = models.ClaimProcedure(
                     claim_id=cid,
-                    procedure_type="modal_procedure",
+                    procedure_source="manual",
                     procedure_text=procedure_name,
                     requirement_flag=False,  # Add required field
                     stage=stage,
