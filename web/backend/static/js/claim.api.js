@@ -409,9 +409,14 @@
     return await res.json();
   }
   async function getDiagnosisDetail(code) {
+    if (!code) {
+      return { data: {} }; // 🔧 fallback kosong
+    }
     const res = await fetch(`/claims/search/diagnosis/detail/${code}`);
+    if (!res.ok) return { data: {} };
     return await res.json();
   }
+
   async function searchTindakan(query) {
     const res = await fetch(`/claims/search/tindakan?query=${query}`);
     return await res.json();

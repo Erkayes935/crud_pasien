@@ -16,6 +16,7 @@ from sqlalchemy import func
 from ... import models
 from .simulation import save_simulasi
 from .ai import store_ai_evaluations
+from .helper import _update_medical_record_from_form
 from .. import claim_helper
 import json
 
@@ -30,7 +31,8 @@ def add_claim_service(db: Session, visit_id: int, user, hospital_id: int | None 
     visit = db.query(models.Visit).get(visit_id)
     if not visit:
         return None
-
+    
+    # Buat klaim
     claim = models.Claim(
         claim_date=datetime.utcnow(),
         visit_id=visit_id,
@@ -57,6 +59,43 @@ def add_claim_service(db: Session, visit_id: int, user, hospital_id: int | None 
         description=f"Klaim {claim.id} dibuat oleh {user.name}",
         updated_by=user.id,
         updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=False
+    ))
+    # Buat Rekam Medis
+    mr = models.MedicalRecord(
+        patient_id=visit.patient_id,
+        visit_id=visit_id,
+        doctor_id=visit.doctor_id,
+        doctor_name=visit.doctor_name,
+        record_type="admission",
+        is_final=False,
+        notes_date=datetime.utcnow(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        is_deleted=False,
+        is_dummy=True
+    )
+
+    db.add(mr)
+    db.flush()
+    db.refresh(mr)
+
+    # link-kan ke klaim
+    claim.medical_record_id = mr.id
+
+    # rekam medis log
+    latest_version = db.query(func.max(models.MedicalRecordLog.version)) \
+                       .filter(models.MedicalRecordLog.medical_record_id == mr.id) \
+                       .scalar() or 0
+    db.add(models.MedicalRecordLog(
+        medical_record_id=mr.id,
+        action="CREATED",
+        description=f"Rekam medis {mr.id} dibuat oleh {user.name}",
+        updated_by=user.id,
+        updated_at=datetime.utcnow(),
+        version=latest_version + 1,
+        data_snapshot=json.dumps(mr.to_dict() if hasattr(mr, "to_dict") else {}, ensure_ascii=False),
         is_deleted=False,
         is_dummy=False
     ))

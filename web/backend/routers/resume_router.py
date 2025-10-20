@@ -61,6 +61,53 @@ async def generate_claim_resume(  # ✅ UBAH NAMA FUNCTION untuk avoid conflict
                 "dpjp": getattr(claim.medical_record, 'doctor_name', '') if claim.medical_record else getattr(claim, 'doctor_name', '') or "-",
                 "perawat": "-"
             },
+            
+            # ✅ VI-IX: REAL DATA dari database
+            "riwayat_medis": {
+                "alergi_obat": getattr(claim.medical_record, 'alergi', '') if claim.medical_record else "Tidak ada alergi yang diketahui",
+                "riwayat_operasi": getattr(claim.medical_record, 'riwayat_operasi', '') if claim.medical_record else "Tidak ada riwayat operasi",
+                "riwayat_penyakit": getattr(claim.medical_record, 'riwayat_penyakit', '') if claim.medical_record else "Tidak ada riwayat penyakit signifikan",
+                "riwayat_pengobatan": getattr(claim.medical_record, 'riwayat_pengobatan', '') if claim.medical_record else "Tidak ada riwayat pengobatan khusus",
+                "gejala_lain": getattr(claim.medical_record, 'gejala_lain', '') if claim.medical_record else "Tidak ada gejala tambahan"
+            },
+            "vital_signs": {
+                "tekanan_darah": getattr(claim.medical_record, 'tekanan_darah', '') if claim.medical_record else "-",
+                "nadi": getattr(claim.medical_record, 'nadi', '') if claim.medical_record else "-",
+                "suhu": getattr(claim.medical_record, 'suhu', '') if claim.medical_record else "-",
+                "pernapasan": getattr(claim.medical_record, 'pernapasan', '') if claim.medical_record else "-",
+                "spo2": getattr(claim.medical_record, 'spo2', '') if claim.medical_record else "-",
+                "berat_badan": getattr(claim.medical_record, 'berat_badan', '') if claim.medical_record else "-",
+                "tinggi_badan": getattr(claim.medical_record, 'tinggi_badan', '') if claim.medical_record else "-"
+            },
+            "laboratorium": {
+                "hemoglobin": getattr(claim.medical_record, 'hemoglobin', '') if claim.medical_record else "-",
+                "leukosit": getattr(claim.medical_record, 'leukosit', '') if claim.medical_record else "-",
+                "trombosit": getattr(claim.medical_record, 'trombosit', '') if claim.medical_record else "-",
+                "gula_darah": getattr(claim.medical_record, 'gula_darah', '') if claim.medical_record else "-",
+                "creatinin": getattr(claim.medical_record, 'creatinin', '') if claim.medical_record else "-"
+            },
+            "radiologi": {
+                "rontgen_thorax": getattr(claim.medical_record, 'rontgen_thorax', '') if claim.medical_record else "-",
+                "ct_scan": getattr(claim.medical_record, 'ct_scan', '') if claim.medical_record else "Tidak dilakukan",
+                "usg": getattr(claim.medical_record, 'usg', '') if claim.medical_record else "Tidak dilakukan"
+            },
+            "evaluasi": {
+                "diagnosis_awal": getattr(claim.medical_record, 'diagnosis_awal', '') if claim.medical_record else "-",
+                "komorbid": getattr(claim.medical_record, 'komorbid', '') if claim.medical_record else "-",
+                "komplikasi": getattr(claim.medical_record, 'komplikasi', '') if claim.medical_record else "-",
+                "validasi_fornas": getattr(claim.medical_record, 'validasi_fornas', '') if claim.medical_record else "-",
+                "notes_doctor": getattr(claim.medical_record, 'notes_doctor', '') if claim.medical_record else "-"
+            },
+            "idrg_detail": {
+                # Data IDRG akan diambil dari claim atau proses terpisah
+                "kode_idrg": "-",
+                "deskripsi_idrg": "Belum ada mapping IDRG", 
+                "severity_level": "-",
+                "base_rate": "-",
+                "cost_weight": "-",
+                "tarif_klaim": "-"
+            },
+            
             "mode": mode,
             "settings": settings
         }

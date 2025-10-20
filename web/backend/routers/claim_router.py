@@ -2552,7 +2552,7 @@ def verify_claim_storage(
 # ==================================================
 
 @router.get("/{claim_id}/stored-diagnosis-detail/{diagnosis_name}", name="get_stored_diagnosis_detail")
-def get_stored_diagnosis_detail(
+async def get_stored_diagnosis_detail(
     claim_id: int,
     diagnosis_name: str,
     db: Session = Depends(get_db),
@@ -2560,22 +2560,63 @@ def get_stored_diagnosis_detail(
 ):
     """
     Read-only endpoint untuk verificator - mengambil detail diagnosis yang sudah disimpan doctor.
-    Data berasal dari database, bukan hit core_engine.
+    Jika data di DB kosong, fallback otomatis ke core_engine (AI) untuk ditampilkan.
     """
     try:
         print(f"[STORED_DIAGNOSIS_DETAIL] Loading stored data for claim {claim_id}, diagnosis: {diagnosis_name}")
-        
-        # Find diagnosis in database
+
         diagnosis = db.query(models.ClaimDiagnosis).filter(
             models.ClaimDiagnosis.claim_id == claim_id,
             models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis_name}%"),
             models.ClaimDiagnosis.is_deleted == False
         ).first()
-        
+
         if not diagnosis:
-            raise HTTPException(status_code=404, detail=f"Stored diagnosis '{diagnosis_name}' not found for claim {claim_id}")
-        
-        # Build response structure with meaningful defaults for missing data
+            raise HTTPException(status_code=404, detail=f"Stored diagnosis '{diagnosis_name}' not found")
+
+        # ==== kalau data klinis kosong, auto fallback ke AI ====
+        is_empty = not (diagnosis.justifikasi or diagnosis.syarat_klinis or diagnosis.bukti_klinis)
+        if is_empty:
+            try:
+                print("[STORED_DIAGNOSIS_DETAIL] ⚠️ Empty record, requesting AI fallback...")
+                payload = {"claim_id": claim_id, "disease_name": diagnosis_name, "stage": "admission"}
+                from ..services import claim_ai
+                ai_result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
+                print("[STORED_DIAGNOSIS_DETAIL] ✅ Got AI fallback result")
+
+                # merge hasil AI ke result
+                # flatten hasil AI langsung ke root, biar FE bisa render
+                flattened = ai_result.get("data") if isinstance(ai_result, dict) and "data" in ai_result else ai_result
+                # 🔹 Ekstra flatten manual biar field-field sesuai struktur FE lama
+                flat_result = {
+                    "justifikasi": flattened.get("faskes", {}).get("justifikasi", "-"),
+                    "bukti_klinis": flattened.get("klinis", {}).get("bukti_klinis", "-"),
+                    "syarat_klinis": flattened.get("klinis", {}).get("syarat_klinis", "-"),
+                    "icd10_code": flattened.get("icd10", {}).get("kode_icd", "-"),
+                    "struktur_icd10": flattened.get("icd10", {}).get("struktur_icd10", "-"),
+                    "kode_ganda": flattened.get("icd10", {}).get("kode_bpjs_khusus", "-"),
+                    "z_code": flattened.get("icd10", {}).get("z_code", "-"),
+                    "ina_cbg": flattened.get("inacbg", {}).get("tarif", "-"),
+                }
+
+                print("[FALLBACK_FLAT_RESULT]", flat_result)
+                
+                return {
+                    **flat_result,
+                    "status": "success",
+                    "mode": "ai_fallback",
+                    "claim_id": claim_id,
+                    "diagnosis_name": diagnosis_name,
+                    "read_only_mode": True,
+                    "message": "⚙️ Data kosong, diambil langsung dari AI (flattened untuk FE)"
+                }
+
+            except Exception as e:
+                print(f"[STORED_DIAGNOSIS_DETAIL] ❌ AI fallback failed: {e}")
+
+        print(f"[STORED_DIAGNOSIS_DETAIL] is_empty? {is_empty}")
+
+        # ==== kalau data ada, kirim dari DB ====
         result = {
             "status": "success",
             "mode": "stored_data",
@@ -2584,287 +2625,241 @@ def get_stored_diagnosis_detail(
             "diagnosis_detail": {
                 "diagnosis_text": diagnosis.diagnosis_text,
                 "icd10_code": diagnosis.icd10_code or "-",
-                "diagnosis_type": diagnosis.diagnosis_type,
-                # Show meaningful defaults instead of empty strings
                 "justifikasi": diagnosis.justifikasi or "Belum diisi oleh doctor",
-                "syarat_klinis": diagnosis.syarat_klinis or "Belum diisi oleh doctor", 
+                "syarat_klinis": diagnosis.syarat_klinis or "Belum diisi oleh doctor",
                 "bukti_klinis": diagnosis.bukti_klinis or "Belum diisi oleh doctor",
                 "struktur_icd10": diagnosis.struktur_icd10 or "-",
                 "kode_ganda": diagnosis.kode_ganda or "-",
-                "z_code": diagnosis.z_code or "-", 
-                "kode_bpjs_khusus": diagnosis.kode_bpjs_khusus or "-",
-                "indikasi": diagnosis.indikasi or "Belum diisi oleh doctor",
-                "lama_rawat": diagnosis.lama_rawat or "Belum diisi oleh doctor",
-                "perpanjangan": diagnosis.perpanjangan or "Belum diisi oleh doctor", 
-                "kesesuaian_rs": diagnosis.kesesuaian_rs or "Belum diisi oleh doctor",
-                "syarat": diagnosis.syarat or "Belum diisi oleh doctor",
-                "kelayakan": diagnosis.kelayakan or "Belum diisi oleh doctor"
-            }
+                "z_code": diagnosis.z_code or "-"
+            },
+            "read_only_mode": True,
+            "message": f"✅ Stored data loaded successfully for '{diagnosis_name}'"
         }
-        
-        # Get related procedures (tindakan yang muncul di modal diagnosis)
-        related_procedures = db.query(models.ClaimProcedure).filter(
-            models.ClaimProcedure.claim_id == claim_id,
-            models.ClaimProcedure.procedure_type == "modal_diagnosis",
-            models.ClaimProcedure.is_deleted == False
-        ).all()
-        
-        if related_procedures:
-            result["tindakan"] = []
-            for proc in related_procedures:
-                # Get procedure details
-                proc_detail = db.query(models.ClaimProcedureDetail).filter(
-                    models.ClaimProcedureDetail.procedure_id == proc.id,
-                    models.ClaimProcedureDetail.is_deleted == False
-                ).first()
-                
-                tindakan_item = {
-                    "name": proc.procedure_text,
-                    "procedure_type": proc.procedure_type,
-                    "icd9": proc_detail.icd9_tindakan if proc_detail else "",
-                    "validitas": proc_detail.validitas_tindakan if proc_detail else "",
-                    "status": proc_detail.status_tindakan if proc_detail else "",
-                    "ina_cbg": proc_detail.ina_cbg_tindakan if proc_detail else "",
-                    "syarat_klinis": proc_detail.syarat_klinis_tindakan if proc_detail else ""
-                }
-                result["tindakan"].append(tindakan_item)
-        
-        # Get related regulations
-        related_regulations = db.query(models.ClaimRegulationDetail).filter(
-            models.ClaimRegulationDetail.claim_id == claim_id,
-            models.ClaimRegulationDetail.diagnosis_id == diagnosis.id
-        ).all()
-        
-        if related_regulations:
-            result["regulasi"] = []
-            for reg in related_regulations:
-                regulasi_item = {
-                    "judul": reg.judul_regulasi,
-                    "dasar_hukum": reg.dasar_hukum or "",
-                    "bab_pasal": reg.bab_pasal or "",
-                    "isi": reg.isi or ""
-                }
-                result["regulasi"].append(regulasi_item)
-        
-        # Get IDRG data for this diagnosis
-        idrg_data = db.query(models.ClaimIDRGDiagnosis).filter(
-            models.ClaimIDRGDiagnosis.claim_id == claim_id,
-            models.ClaimIDRGDiagnosis.is_deleted == False
-        ).first()
-        
-        if idrg_data:
-            result["idrg_prediction"] = {
-                "group_idrg": idrg_data.group_idrg or "I-SEP-2",
-                "severity_index": idrg_data.severity_index or "2", 
-                "checklist": json.loads(idrg_data.checklist) if idrg_data.checklist else {},
-                "faktor_severity": json.loads(idrg_data.faktor_severity) if idrg_data.faktor_severity else {},
-                "ungroupable_alert": idrg_data.ungroupable_alert or "-",
-                "simulasi_tarif": idrg_data.simulasi_tarif or "Belum dihitung",
-                "gap_analysis": idrg_data.gap_analysis or "100000"
-            }
-        else:
-            # Provide default IDRG data when missing
-            result["idrg_prediction"] = {
-                "group_idrg": "I-SEP-2",
-                "severity_index": "2",
-                "checklist": {},
-                "faktor_severity": {},
-                "ungroupable_alert": "-",
-                "simulasi_tarif": "Belum dihitung", 
-                "gap_analysis": "100000"
-            }
-        
-        result["read_only_mode"] = True
-        result["message"] = f"✅ Stored data loaded successfully for '{diagnosis_name}'"
-        
-        print(f"[STORED_DIAGNOSIS_DETAIL] ✅ Successfully loaded stored data with {len(result.get('tindakan', []))} procedures and {len(result.get('regulasi', []))} regulations")
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[STORED_DIAGNOSIS_DETAIL] ❌ Error loading stored data: {str(e)}")
+        print(f"[STORED_DIAGNOSIS_DETAIL] ❌ Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to load stored diagnosis detail: {str(e)}")
 
 
 @router.get("/{claim_id}/stored-procedure-detail/{procedure_name}", name="get_stored_procedure_detail")
-def get_stored_procedure_detail(
+async def get_stored_procedure_detail(
     claim_id: int,
     procedure_name: str,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator", "coder", "admin_rs", "superadmin"))
 ):
     """
-    Read-only endpoint untuk verificator - mengambil detail tindakan yang sudah disimpan doctor.
-    Data berasal dari database, bukan hit core_engine.
+    Read-only endpoint untuk verificator - menampilkan detail tindakan yang disimpan doctor.
+    Jika data kosong / tidak ditemukan di DB → otomatis fallback ke AI (core_engine).
     """
+    import json
+    from ..services import claim_ai
+
     try:
         print(f"[STORED_PROCEDURE_DETAIL] Loading stored data for claim {claim_id}, procedure: {procedure_name}")
-        
-        # Find procedure in database
+
+        # 🔍 Cari di database
         procedure = db.query(models.ClaimProcedure).filter(
             models.ClaimProcedure.claim_id == claim_id,
             models.ClaimProcedure.procedure_text.ilike(f"%{procedure_name}%"),
             models.ClaimProcedure.is_deleted == False
         ).first()
-        
-        if not procedure:
-            raise HTTPException(status_code=404, detail=f"Stored procedure '{procedure_name}' not found for claim {claim_id}")
-        
-        # Get procedure details
-        proc_detail = db.query(models.ClaimProcedureDetail).filter(
-            models.ClaimProcedureDetail.procedure_id == procedure.id,
-            models.ClaimProcedureDetail.is_deleted == False
-        ).first()
-        
-        # Build response structure with meaningful defaults
-        result = {
-            "status": "success",
-            "mode": "stored_data", 
+
+        proc_detail = None
+        if procedure:
+            proc_detail = db.query(models.ClaimProcedureDetail).filter(
+                models.ClaimProcedureDetail.procedure_id == procedure.id,
+                models.ClaimProcedureDetail.is_deleted == False
+            ).first()
+
+        # === ✅ Kalau ada data di DB, tampilkan langsung ===
+        if procedure and proc_detail:
+            related_regs = db.query(models.ClaimRegulationDetail).filter(
+                models.ClaimRegulationDetail.claim_id == claim_id,
+                models.ClaimRegulationDetail.procedure_id == procedure.id
+            ).all()
+
+            result = {
+                "status": "success",
+                "mode": "stored_data",
+                "claim_id": claim_id,
+                "procedure_name": procedure_name,
+                "procedure_detail": {
+                    "procedure_text": procedure.procedure_text,
+                    "procedure_type": procedure.procedure_type,
+                    "stage": procedure.stage,
+                    "requirement_flag": procedure.requirement_flag,
+                    "icd9_code": proc_detail.icd9_tindakan or "-",
+                    "validitas": proc_detail.validitas_tindakan or "Belum diverifikasi",
+                    "status_tindakan": proc_detail.status_tindakan or "Belum diisi oleh doctor",
+                    "ina_cbg": proc_detail.ina_cbg_tindakan or "Belum diisi oleh doctor",
+                    "faskes_tindakan": getattr(proc_detail, "faskes_tindakan", "Belum diisi oleh doctor"),
+                    "rawat_inap_tindakan": getattr(proc_detail, "rawat_inap_tindakan", "Belum diisi oleh doctor"),
+                    "syarat_klinis": proc_detail.syarat_klinis_tindakan or "Belum diisi oleh doctor",
+                },
+                "read_only_mode": True,
+                "message": f"✅ Stored data loaded successfully for '{procedure_name}'"
+            }
+
+            if related_regs:
+                result["regulasi"] = [
+                    {
+                        "judul": reg.judul_regulasi,
+                        "dasar_hukum": reg.dasar_hukum or "",
+                        "bab_pasal": reg.bab_pasal or "",
+                        "isi": reg.isi or ""
+                    } for reg in related_regs
+                ]
+
+            # Flatten untuk FE
+            for k, v in result["procedure_detail"].items():
+                result[k] = v
+
+            print(f"[STORED_PROCEDURE_DETAIL] ✅ Loaded stored data (regulasi={len(result.get('regulasi', []))})")
+            return result
+
+        # === ⚙️ Kalau tidak ada di DB → fallback ke AI ===
+        print(f"[STORED_PROCEDURE_DETAIL] ⚠️ No stored data found, requesting AI fallback for '{procedure_name}'...")
+        payload = {
             "claim_id": claim_id,
             "procedure_name": procedure_name,
-            "procedure_detail": {
-                "procedure_text": procedure.procedure_text,
-                "procedure_type": procedure.procedure_type,
-                "stage": procedure.stage,
-                "requirement_flag": procedure.requirement_flag,
-                # Add detailed analysis with fallbacks
-                "icd9_code": proc_detail.icd9_tindakan if proc_detail else "-",
-                "validitas": proc_detail.validitas_tindakan if proc_detail else "Belum diverifikasi",
-                "status_tindakan": proc_detail.status_tindakan if proc_detail else "Belum diisi oleh doctor",
-                "ina_cbg": proc_detail.ina_cbg_tindakan if proc_detail else "Belum diisi oleh doctor",
-                "faskes_tindakan": proc_detail.faskes_tindakan if proc_detail else "Belum diisi oleh doctor",
-                "rawat_inap_tindakan": proc_detail.rawat_inap_tindakan if proc_detail else "Belum diisi oleh doctor",
-                "syarat_klinis": proc_detail.syarat_klinis_tindakan if proc_detail else "Belum diisi oleh doctor"
-            }
+            "stage": "admission"
         }
-        
-        # Legacy analysis format for backward compatibility
-        if proc_detail:
-            result["analysis"] = {
-                "icd9_code": proc_detail.icd9_tindakan or "-",
-                "validitas": proc_detail.validitas_tindakan or "Belum diverifikasi",
-                "status_tindakan": proc_detail.status_tindakan or "Belum diisi oleh doctor",
-                "ina_cbg": proc_detail.ina_cbg_tindakan or "Belum diisi oleh doctor",
-                "faskes_tindakan": proc_detail.faskes_tindakan or "Belum diisi oleh doctor", 
-                "rawat_inap_tindakan": proc_detail.rawat_inap_tindakan or "Belum diisi oleh doctor",
-                "syarat_klinis": proc_detail.syarat_klinis_tindakan or "Belum diisi oleh doctor"
-            }
-        else:
-            result["analysis"] = {
-                "icd9_code": "-",
-                "validitas": "Belum diverifikasi",
-                "status_tindakan": "Belum diisi oleh doctor",
-                "ina_cbg": "Belum diisi oleh doctor",
-                "faskes_tindakan": "Belum diisi oleh doctor",
-                "rawat_inap_tindakan": "Belum diisi oleh doctor", 
-                "syarat_klinis": "Belum diisi oleh doctor"
-            }
-        
-        # Get related regulations for this procedure
-        related_regulations = db.query(models.ClaimRegulationDetail).filter(
-            models.ClaimRegulationDetail.claim_id == claim_id,
-            models.ClaimRegulationDetail.procedure_id == procedure.id
-        ).all()
-        
-        if related_regulations:
-            result["regulasi"] = []
-            for reg in related_regulations:
-                regulasi_item = {
-                    "judul": reg.judul_regulasi,
-                    "dasar_hukum": reg.dasar_hukum or "",
-                    "bab_pasal": reg.bab_pasal or "",
-                    "isi": reg.isi or ""
-                }
-                result["regulasi"].append(regulasi_item)
-        
-        result["read_only_mode"] = True
-        result["message"] = f"✅ Stored procedure data loaded successfully for '{procedure_name}'"
-        
-        print(f"[STORED_PROCEDURE_DETAIL] ✅ Successfully loaded stored data with {len(result.get('regulasi', []))} regulations")
-        
-        return result
-        
+        try:
+            ai_result = await claim_ai.proxy_core_engine("/analyze_procedure", payload)
+            print("[STORED_PROCEDURE_DETAIL] ✅ AI result type:", type(ai_result))
+
+            data = ai_result.get("data") if isinstance(ai_result, dict) and "data" in ai_result else ai_result
+            if not isinstance(data, dict):
+                print("[STORED_PROCEDURE_DETAIL] ⚠️ AI result invalid, using dummy fallback")
+                data = {}
+
+        except Exception as e:
+            print(f"[STORED_PROCEDURE_DETAIL] ❌ AI call failed: {e}")
+            data = {}
+
+        flat = {
+            "icd9_code": data.get("icd9_code", "-"),
+            "validitas": data.get("validitas", "Belum diverifikasi"),
+            "status_tindakan": data.get("status_tindakan", "Belum diisi oleh doctor"),
+            "ina_cbg": data.get("ina_cbg", "Belum diisi oleh doctor"),
+            "faskes_tindakan": data.get("faskes_tindakan", "Belum diisi oleh doctor"),
+            "rawat_inap_tindakan": data.get("rawat_inap_tindakan", "Belum diisi oleh doctor"),
+            "syarat_klinis": data.get("syarat_klinis", "Belum diisi oleh doctor"),
+        }
+
+        print("[STORED_PROCEDURE_DETAIL] ✅ Got AI fallback result")
+        print(json.dumps(flat, indent=2, ensure_ascii=False))
+
+        return {
+            **flat,
+            "status": "success",
+            "mode": "ai_fallback",
+            "claim_id": claim_id,
+            "procedure_name": procedure_name,
+            "read_only_mode": True,
+            "message": "🧠 Data kosong, diambil langsung dari AI (flattened for FE)"
+        }
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[STORED_PROCEDURE_DETAIL] ❌ Error loading stored data: {str(e)}")
+        print(f"[STORED_PROCEDURE_DETAIL] ❌ Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to load stored procedure detail: {str(e)}")
 
-
 @router.get("/{claim_id}/stored-regulation-detail/{field_name}", name="get_stored_regulation_detail")
-def get_stored_regulation_detail(
+async def get_stored_regulation_detail(
     claim_id: int,
     field_name: str,
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("verifikator", "coder", "admin_rs", "superadmin"))
 ):
     """
-    Read-only endpoint untuk verificator - mengambil detail regulasi yang sudah disimpan doctor.
-    Data berasal dari database, bukan hit core_engine.
+    Read-only endpoint regulasi: tampilkan data dari DB kalau ada,
+    kalau tidak → fallback ke AI (core_engine /rules/load).
     """
+    import json
+    from ..services import claim_ai
+
     try:
-        print(f"[STORED_REGULATION_DETAIL] Loading stored data for claim {claim_id}, field: {field_name}")
-        
-        # Find regulations in database related to this field/diagnosis/procedure
+        print(f"[STORED_REGULATION_DETAIL] Loading stored regulation for claim {claim_id}, field: {field_name}")
+
+        # Cari regulasi di DB
         regulations = db.query(models.ClaimRegulationDetail).filter(
             models.ClaimRegulationDetail.claim_id == claim_id
         ).all()
-        
-        # Filter by field name or related content
-        relevant_regulations = []
+
+        relevant_regs = []
         for reg in regulations:
-            if (field_name.lower() in reg.judul_regulasi.lower() if reg.judul_regulasi else False) or \
-               (field_name.lower() in reg.isi.lower() if reg.isi else False):
-                relevant_regulations.append(reg)
-        
-        if not relevant_regulations:
-            # If no specific match, return all regulations for this claim
-            relevant_regulations = regulations
-            
-        if not relevant_regulations:
-            raise HTTPException(status_code=404, detail=f"No stored regulations found for claim {claim_id} field '{field_name}'")
-        
-        # Build response structure
-        result = {
+            if (field_name.lower() in (reg.judul_regulasi or "").lower()) or \
+               (field_name.lower() in (reg.isi or "").lower()):
+                relevant_regs.append(reg)
+
+        # ✅ Kalau ketemu di DB → kirim langsung
+        if relevant_regs:
+            print(f"[STORED_REGULATION_DETAIL] ✅ Found {len(relevant_regs)} in DB")
+            return {
+                "status": "success",
+                "mode": "stored_data",
+                "claim_id": claim_id,
+                "field_name": field_name,
+                "regulations": [
+                    {
+                        "judul": reg.judul_regulasi,
+                        "dasar_hukum": reg.dasar_hukum or "",
+                        "bab_pasal": reg.bab_pasal or "",
+                        "isi": reg.isi or "",
+                        "layer": getattr(reg, "layer", "-"),
+                        "sumber": getattr(reg, "sumber", "-"),
+                    } for reg in relevant_regs
+                ],
+                "read_only_mode": True,
+                "message": f"✅ Found {len(relevant_regs)} stored regulations for '{field_name}'"
+            }
+
+        # ⚙️ Kalau DB kosong → fallback ke AI (rules multilayer)
+        print(f"[STORED_REGULATION_DETAIL] ⚠️ No stored regulation found → fallback ke AI multilayer")
+        payload = {
+            "claim_id": claim_id,
+            "field": field_name,
+            "diagnosis": field_name,  # fallback nama
+            "rs_id": "rs_default",
+            "region_id": "jatim"
+        }
+
+        ai_result = await claim_ai.proxy_core_engine("/rules/load", payload)
+        print("[STORED_REGULATION_DETAIL] ✅ Got AI fallback result")
+
+        # Pastikan hasilnya punya data
+        rules = ai_result.get("rules") if isinstance(ai_result, dict) else []
+        if not rules:
+            print("[STORED_REGULATION_DETAIL] ⚠️ Empty AI rules result, using dummy fallback")
+            rules = [{
+                "judul": f"Belum ada aturan khusus untuk '{field_name}'",
+                "isi": "-",
+                "layer": "-",
+                "sumber": "AI META"
+            }]
+
+        return {
             "status": "success",
-            "mode": "stored_data",
+            "mode": "ai_fallback",
             "claim_id": claim_id,
             "field_name": field_name,
-            "regulations": []
+            "regulations": rules,
+            "read_only_mode": True,
+            "message": "🧠 Data kosong, diambil langsung dari AI multilayer rules"
         }
-        
-        # Group regulations by type
-        for reg in relevant_regulations:
-            regulasi_item = {
-                "id": reg.id,
-                "judul": reg.judul_regulasi or "",
-                "dasar_hukum": reg.dasar_hukum or "",
-                "bab_pasal": reg.bab_pasal or "",
-                "isi": reg.isi or "",
-                "created_at": reg.created_at.isoformat() if reg.created_at else "",
-                "related_to": "diagnosis" if reg.diagnosis_id else ("procedure" if reg.procedure_id else "general")
-            }
-            result["regulations"].append(regulasi_item)
-        
-        # Sort by creation date (newest first)
-        result["regulations"].sort(key=lambda x: x["created_at"], reverse=True)
-        
-        result["read_only_mode"] = True
-        result["total_count"] = len(result["regulations"])
-        result["message"] = f"✅ Found {len(result['regulations'])} stored regulations for '{field_name}'"
-        
-        print(f"[STORED_REGULATION_DETAIL] ✅ Successfully loaded {len(result['regulations'])} regulations")
-        
-        return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[STORED_REGULATION_DETAIL] ❌ Error loading stored data: {str(e)}")
+        print(f"[STORED_REGULATION_DETAIL] ❌ Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to load stored regulation detail: {str(e)}")
-
 
 @router.get("/{claim_id}/stored-data-summary", name="get_stored_data_summary")
 def get_stored_data_summary(

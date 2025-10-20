@@ -167,19 +167,19 @@ window.alternatifDropdown = function ({ claimId }) {
           <th class="border px-4 py-2">Validitas Klinis Kombinasi</th>
           <td class="border px-4 py-2">
             ${validitasIcon} - <span class="cursor-pointer" title="PNPK Evaluasi Diagnosis 2020"
-               onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${validitasText}</span>
+               onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${validitasText}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Severity</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${severity}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${severity}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Kode INA-CBG</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${kodeInaCbg}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${kodeInaCbg}</span>
           </td>
         </tr>
         <tr>
@@ -189,19 +189,19 @@ window.alternatifDropdown = function ({ claimId }) {
         <tr>
           <th class="border px-4 py-2">Syarat Klinis (Kombinasi)</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${syarat}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${syarat}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Evaluasi Faskes</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${evaluasiFaskes}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${evaluasiFaskes}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Rawat Inap</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationModal(${data.id}, 'diagnosis_eval')">${rawatInap}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${rawatInap}</span>
           </td>
         </tr>
       </table>
@@ -239,13 +239,13 @@ window.alternatifDropdown = function ({ claimId }) {
       const status = String(p.status_tindakan || p.status || "").toLowerCase();
 
       if (status.includes("wajib") || status.includes("mandatory")) {
-        wajib.push(`${icon} - <span class="cursor-pointer" onclick="openRegulationModal(${p.id}, 'procedure_eval')">${tindakan}</span>`);
+        wajib.push(`${icon} - <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan}</span>`);
       } else {
         validasi.push(`${icon} - ${tindakan}`);
       }
 
       if (p.dampak || p.tarif_impact) {
-        dampak.push(`${icon} <span class="cursor-pointer" onclick="openRegulationModal(${p.id}, 'procedure_eval')">${tindakan} → ${p.dampak || p.tarif_impact}</span>`);
+        dampak.push(`${icon} <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan} → ${p.dampak || p.tarif_impact}</span>`);
       }
 
       if (p.konflik || p.syarat_klinis) {
@@ -288,21 +288,21 @@ window.alternatifDropdown = function ({ claimId }) {
           <div class="grid grid-cols-2">
             <div class="bg-gray-700 text-white px-3 py-2">Group i-DRG Kombinasi</div>
             <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-                 onclick="openRegulationModal('${claimId}', 'idrg_summary_group')">
+                 onclick="openRegulationDetailModal('${claimId}', 'idrg_summary_group')">
               ${data.group_idrg_kombinasi || "-"}
             </div>
           </div>
           <div class="grid grid-cols-2">
             <div class="bg-gray-700 text-white px-3 py-2">Severity Kombinasi</div>
             <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-                 onclick="openRegulationModal('${claimId}', 'idrg_summary_severity')">
+                 onclick="openRegulationDetailModal('${claimId}', 'idrg_summary_severity')">
               ${data.severity_kombinasi || "-"}
             </div>
           </div>
           <div class="grid grid-cols-2">
             <div class="bg-gray-700 text-white px-3 py-2">Checklist Kombinasi</div>
             <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-                 onclick="openRegulationModal('${claimId}', 'idrg_summary_checklist')">
+                 onclick="openRegulationDetailModal('${claimId}', 'idrg_summary_checklist')">
               ${data.checklist_kombinasi || "-"}
             </div>
           </div>
@@ -315,7 +315,7 @@ window.alternatifDropdown = function ({ claimId }) {
           <div class="grid grid-cols-2">
             <div class="bg-gray-700 text-white px-3 py-2">Risiko Ungroupable</div>
             <div class="bg-gray-200 dark:bg-gray-800 px-3 py-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-                 onclick="openRegulationModal('${claimId}', 'idrg_summary_ungroupable')">
+                 onclick="openRegulationDetailModal('${claimId}', 'idrg_summary_ungroupable')">
               ${data.risiko_ungroupable || "-"}
             </div>
           </div>
