@@ -215,6 +215,37 @@
     }
   }
 
+  // ======================================================
+  // 🔹 AI Loading Modal Handler (non-global)
+  // ======================================================
+
+  function showAiLoadingModal(steps = ["Mengambil data...", "Menganalisis hasil...", "Menyiapkan tampilan..."]) {
+    const modal = document.getElementById("aiLoadingModal");
+    const container = document.getElementById("aiLoadingMessages");
+    if (!modal || !container) return;
+
+    modal.classList.remove("hidden");
+    container.innerHTML = "";
+    let i = 0;
+    (function loop() {
+      if (i < steps.length) {
+        const p = document.createElement("p");
+        p.textContent = steps[i];
+        container.appendChild(p);
+        i++;
+        setTimeout(loop, 900);
+      }
+    })();
+  }
+
+  function hideAiLoadingModal() {
+    const modal = document.getElementById("aiLoadingModal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+
+  // Export kalau pakai module system
+  // export { showAiLoading, hideAiLoading };
   function renderRegulationDetailMultilayer(data, fieldName) {
     if (!data || data.length === 0) {
       return `<div class="p-4 text-center text-gray-400">Tidak ada regulasi untuk ditampilkan.</div>`;
@@ -354,7 +385,7 @@
   // =======================
   // Main function to open regulation modal
   // =======================
-  async function openRegulationDetailModal(fieldName, diagnosisId, procedureId = null) {
+  async function openRegulationDetailModal(fieldName, diagnosisId = null, procedureId = null) {
     try {
       const claimId =
         window.claimState?.selectedClaimId ||
@@ -362,29 +393,50 @@
         new URLSearchParams(window.location.search).get('claim_id') ||
         1;
 
-      console.log(`[REGULATION] Opening modal for field=${fieldName}, diagnosis=${diagnosisId}, claimId=${claimId}`);
-
-      let diagnosisFromUI =
+      // 🔹 Determine diagnosis name from multiple possible sources (ensure kategori always diagnosis)
+      const diagnosisName =
         window.claimState?.currentDiagnosis?.disease_name ||
         window.claimState?.currentDiagnosis?.diagnosis_text ||
         window.claimState?.currentDiagnosisTitle ||
+        document.querySelector('.diagnosis-name, .diagnosis-title, .selected-diagnosis')?.textContent?.trim() ||
         "";
 
-      if (!diagnosisFromUI) {
-        const el = document.querySelector('.diagnosis-name, .diagnosis-title, .selected-diagnosis');
-        if (el) diagnosisFromUI = el.dataset.diseaseName || el.textContent.trim();
-      }
+      // 🔹 Determine procedure name if this is a tindakan scope
+      const procedureName =
+        (procedureId && (window.claimState?.currentProcedure?.name ||
+          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()))
+        || window.claimState?.currentProcedure?.name
+        || document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()
+        || "";
+
+      // Decide scope
+      let scope = procedureId ? "tindakan" : "diagnosis";
 
       // payload utama
       const payload = {
         claim_id: claimId,
-        kategori: diagnosisFromUI || "Regulasi Umum",
+        // Always send kategori as the diagnosis name (backend expects diagnosis in 'kategori')
+        kategori: diagnosisName || "Regulasi Umum",
         field: fieldName,
-        rs_id: "rs_notopuro",
-        region_id: "jatim"
+        scope,
+        rs_id: window.claimState?.rs_id || "rs_notopuro",
+        region_id: window.claimState?.region_id || "jatim",
       };
-      if (diagnosisId) payload.item_id = diagnosisId;
-      if (procedureId) payload.item_id = procedureId;
+
+      // backward-compatible explicit fields for backend convenience
+      if (diagnosisName) {
+        payload.diagnosis_name = diagnosisName;
+      }
+
+      // jika tindakan, sertakan nama procedure di payload (key 'procedure' untuk konsistensi backend)
+      if (procedureId || procedureName) {
+        payload.procedure = procedureName || "";
+        // keep item_id for procedure context
+        if (procedureId) payload.item_id = procedureId;
+      }
+
+      // jika dipanggil dengan diagnosisId, sertakan item_id juga
+      if (diagnosisId && !payload.item_id) payload.item_id = diagnosisId;
 
       const currentField = document.querySelector(`[data-field="${fieldName}"] .col-value`);
       if (currentField) payload.current_value = currentField.textContent.trim();
@@ -394,14 +446,13 @@
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
       console.log("[REGULATION] Response:", result);
 
       if (result.status === "success") {
-        // langsung buka overlay tanpa nutup modal utama
         openOverlayModal(
           `${fieldName.replace('_', ' ').toUpperCase()}`,
           renderRegulationDetailMultilayer(result.data, fieldName),
@@ -562,6 +613,11 @@ function updateRingkasanFromRow(itemId, dx) {
       let dx = {};
       // 🔥 NEW: Jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis (core_engine)
       if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
+        showAiLoadingModal([
+          "Mengambil data detail diagnosis...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
         console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
         const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
           method: "POST",
@@ -569,10 +625,16 @@ function updateRingkasanFromRow(itemId, dx) {
           body: JSON.stringify({ 
             claim_id: parseInt(claimId), 
             disease_name: diseaseName,
-            rekam_medis: []
+            rekam_medis: [],
+            scope: "diagnosis"
           })
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        showAiLoadingModal([
+          "Mengambil data detail diagnosis...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
         const result = await res.json();
         console.log("[RESP] /analyze_diagnosis", result);
         
@@ -590,6 +652,8 @@ function updateRingkasanFromRow(itemId, dx) {
           modalContent,
           { hideDefaultClose: false } // ✅ pastikan default close muncul
         );
+
+        hideAiLoadingModal();
 
         // 🔥 CRITICAL: Call updateRingkasanFromRow setelah modal dibuka!
         console.log("🔥 Auto-filling table with data:", { uiId, dx });
@@ -621,6 +685,8 @@ function updateRingkasanFromRow(itemId, dx) {
         return;
       }
 
+      hideAiLoadingModal();
+
       let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
       rawText = rawText.replace(/^▶|^▼/, "").trim();
       rawText = rawText.replace(/\s+\d+$/, "");
@@ -635,6 +701,8 @@ function updateRingkasanFromRow(itemId, dx) {
       </div>`, modalContent, { hideDefaultClose: false });
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
+
+      hideAiLoadingModal();
 
       updateRingkasanFromRow(uiId, dx);
     } catch (err) {
@@ -1054,19 +1122,36 @@ window.getSeverityLabel = function(index) {
 
 window.renderChecklistHtml = function(checklist) {
   if (!checklist) return '-';
-  
-  // Check if array
-  if (Array.isArray(checklist)) {
-    // Look for existing bullet points in each item
-    return checklist.map(item => {
-      // Remove any existing bullet points (• or - or *)
-      const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
-      return `<li>• ${cleanItem}</li>`;
-    }).join('');
+
+  // Jika string, split menjadi array baris bila ada newline
+  let items = [];
+  if (typeof checklist === 'string') {
+    items = checklist.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  } else if (Array.isArray(checklist)) {
+    items = checklist.slice();
+  } else {
+    return checklist;
   }
-  
-  // If string - don't add bullet points, just return as-is
-  return checklist;
+
+  // Clean each item: remove leading bullets/markers and duplicate bullets
+  const cleaned = items.map(item => {
+    let s = String(item).trim();
+    // remove leading bullet characters or dash/star, optionally repeated
+    s = s.replace(/^[•\-\*\u2022]\s*/, '');
+    // remove duplicated inner bullets like "• • ..." or duplicated bracketed tags
+    s = s.replace(/\s*•\s*/g, ' • ').replace(/\s{2,}/g, ' ').trim();
+    return s;
+  }).filter(Boolean);
+
+  if (cleaned.length === 0) return '-';
+
+  // Render as list (no extra "• " added if item already starts with bullet)
+  const html = cleaned.map(it => {
+    const itemText = it.startsWith('•') ? it.replace(/^•\s*/, '') : it;
+    return `<li>${itemText}</li>`;
+  }).join('');
+
+  return `<ul class="list-disc pl-4">${html}</ul>`;
 };
 
   // Define helper functions at the module level
@@ -1081,6 +1166,19 @@ window.renderChecklistHtml = function(checklist) {
   }
 
   window.getPrediction = getPrediction;  // Make it globally available
+
+  function formatRupiah(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    
+    // Jika sudah ada “Rp” di depan, jangan ubah
+    if (typeof value === 'string' && value.trim().startsWith('Rp')) return value;
+
+    // Ambil hanya digit angka
+    const numeric = Number(String(value).replace(/[^\d]/g, ''));
+    if (isNaN(numeric) || numeric === 0) return '-';
+    
+    return 'Rp ' + numeric.toLocaleString('id-ID');
+  }
 
   function renderIdrgSection(idrg, claimId, diagnosisName = null) {
     // Get claim ID dan diagnosis name dari context jika tidak ada parameter
@@ -1213,8 +1311,8 @@ window.renderChecklistHtml = function(checklist) {
                 ${renderPredictionRow("Checklist Dokumentasi", "<span x-html='renderChecklistHtml(data.data.idrg_prediction.checklist_dokumentasi)'></span>")}
                 ${renderPredictionRow("Faktor Penentu Severity", "<span x-html='renderFaktorSeverityHtml(data.data.idrg_prediction.faktor_penentu_severity)'></span>")}
                 ${renderPredictionRow("Ungroupable Alert", "<span x-text='data.data.idrg_prediction.ungroupable_alert || \"-\"'></span>")}
-                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"data.data.idrg_prediction.estimasi_tarif_idrg !== '' ? 'Rp ' + parseInt(data.data.idrg_prediction.estimasi_tarif_idrg).toLocaleString('id-ID') : '-'\"></span>")}
-                ${renderPredictionRow("Gap Analysis", "<span x-text=\"data.data.idrg_prediction.gap_analysis ? 'Rp ' + parseInt(data.data.idrg_prediction.gap_analysis).toLocaleString('id-ID') : '-'\"></span>")}
+                ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"formatRupiah(data.data.idrg_prediction.estimasi_tarif_idrg)\"></span>")}
+                ${renderPredictionRow("Gap Analysis", "<span x-text=\"formatRupiah(data.data.idrg_prediction.gap_analysis)\"></span>")}
               </div>
             </template>
           </div>
@@ -1309,9 +1407,9 @@ window.renderChecklistHtml = function(checklist) {
         ${renderPredictionRow("Checklist Dokumentasi", checklistHtml)}
         ${renderPredictionRow("Faktor Penentu Severity", faktorSeverityHtml)}
         ${renderPredictionRow("Ungroupable Alert", prediction.ungroupable_alert || "")}
-        ${renderPredictionRow("Estimasi Tarif", prediction.estimasi_tarif_idrg ? `Rp ${parseInt(prediction.estimasi_tarif_idrg).toLocaleString('id-ID')}` : "")}
-        ${renderPredictionRow("Gap Analysis", prediction.gap_analysis !== undefined ? `${prediction.gap_analysis}` : "")}
-        
+        ${renderPredictionRow("Estimasi Tarif", "<span x-text=\"formatRupiah(data.data.idrg_prediction.estimasi_tarif_idrg)\"></span>")}
+        ${renderPredictionRow("Gap Analysis", "<span x-text=\"formatRupiah(data.data.idrg_prediction.gap_analysis)\"></span>")}
+
         <div class="text-xs text-blue-600 dark:text-blue-300 mt-3 p-2 bg-white dark:bg-gray-800 rounded">
           <strong>Engine:</strong> ${data.engine_version || 'OpenAI GPT-4'} • 
           <strong>Mode:</strong> Single Diagnosis • 
@@ -1459,6 +1557,11 @@ window.renderChecklistHtml = function(checklist) {
 
     try {
       // Request ke core_engine /analyze_procedure
+      showAiLoadingModal([
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
       const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
@@ -1466,11 +1569,17 @@ window.renderChecklistHtml = function(checklist) {
         body: JSON.stringify({
           claim_id: parseInt(claimId),
           procedure_name: procedureName,
-          rekam_medis: []
+          rekam_medis: [],
+          scope: "tindakan"
         })
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      showAiLoadingModal([
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       const result = await res.json();
       console.log("[RESP] /analyze_procedure", result);
 
@@ -1583,6 +1692,7 @@ window.renderChecklistHtml = function(checklist) {
 
     openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
+    hideAiLoadingModal();
 
     // 🔹 Simpan referensi supaya regulasi tahu asalnya
     window.claimState = window.claimState || {};
@@ -1605,6 +1715,7 @@ window.renderChecklistHtml = function(checklist) {
 
   async function openManualDetailModal(it, tab, idx) {
     try {
+      showAiLoadingModal(["Mengambil data...", "Menganalisis hasil...", "Menyiapkan tampilan..."]);
       const url = `/claims/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1639,6 +1750,7 @@ window.renderChecklistHtml = function(checklist) {
         hideDefaultClose: true
       });
 
+      hideAiLoadingModal();
       // simpan referensi supaya regulasi tahu asalnya
       detail.isManual = true; // tandai sebagai manual
       window.claimState.currentProcedure = detail;
@@ -2040,6 +2152,8 @@ window.showConfirmModal = showConfirmModal;
 window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
 window.openOverlayModal = openOverlayModal;
 window.closeOverlayModal = closeOverlayModal;
+window.showAiLoadingModal = showAiLoadingModal;
+window.hideAiLoadingModal = hideAiLoadingModal;
 
 // ==================================================
 // i-DRG PREDICTION HELPER FUNCTIONS
@@ -2094,7 +2208,6 @@ window.renderFaktorSeverityHtml = function(faktor) {
 // i-DRG PREDICTION
 // ==================================================
 
-// Function untuk prediksi i-DRG individual diagnosis
 window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
   console.log("🤖 Predicting i-DRG for diagnosis:", diagnosisName);
   
@@ -2125,17 +2238,47 @@ window.predictIdrgForDiagnosis = async function(claimId, diagnosisName) {
       throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
     }
     
-    const result = await response.json();
-    console.log("[RESP] /predict_idrg", result);
-    
-    if (result.error) {
-      throw new Error(result.error);
+    const json = await response.json();
+    console.log("[RESP] /predict_idrg (raw)", json);
+
+    // Normalize shape: always return { status:'success', data: { idrg_prediction: {...}, engine_version, diagnosis } }
+    let idrgPrediction = null;
+    if (json?.data?.idrg_prediction) {
+      idrgPrediction = json.data.idrg_prediction;
+    } else if (json?.data && (json.data.group_idrg || json.data.severity_index || json.data.checklist_dokumentasi)) {
+      // server returned prediction fields directly under data
+      idrgPrediction = json.data;
+    } else if (json?.idrg_prediction) {
+      idrgPrediction = json.idrg_prediction;
+    } else {
+      // fallback: use whole payload
+      idrgPrediction = json.data || json;
     }
-    
-    return {
+
+    const normalized = {
       status: 'success',
-      data: result
+      data: {
+        idrg_prediction: idrgPrediction,
+        engine_version: json.engine_version || json.data?.engine_version || 'predict_idrg@local',
+        diagnosis: json.diagnosis || diagnosisName || ''
+      }
     };
+    
+    // --- Normalisasi: terima beberapa nama field dari backend ---
+    // backend kadang mengirim "estimasi_tarif" atau "estimasi_tarif_idrg"
+    const p = normalized.data.idrg_prediction || {};
+    if (!p.estimasi_tarif_idrg && p.estimasi_tarif) p.estimasi_tarif_idrg = p.estimasi_tarif;
+    // juga map gap analysis
+    if (!p.gap_analysis && (p.gap_vs_cbg || p.gap)) p.gap_analysis = p.gap_vs_cbg || p.gap;
+    // pastikan checklist_dokumentasi adalah array atau cleaned string
+    if (p.checklist_dokumentasi && typeof p.checklist_dokumentasi === 'string') {
+      // jika string berisi newline, ubah ke array baris bersih
+      const lines = p.checklist_dokumentasi.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      p.checklist_dokumentasi = lines.length > 1 ? lines : p.checklist_dokumentasi;
+    }
+
+    console.log("[RESP] /predict_idrg (normalized)", normalized);
+    return normalized;
     
   } catch (error) {
     console.error("❌ Error predicting i-DRG:", error);
@@ -2252,6 +2395,7 @@ window.renderIdrgPredictionResult = function(data) {
   `;
 };
 
+
 // Function untuk refresh prediksi i-DRG
 window.refreshIdrgPrediction = async function(claimId, diagnosisName) {
   try {
@@ -2315,47 +2459,48 @@ function isTindakanFound(ctx, text) {
   );
 }
 
-// ========== REUSABLE UI KONFIRMASI (tidak pakai window.) ==========
-async function showConfirmModal(title, message) {
+// ===================== Confirm Modal =====================
+function showConfirmModal(title, message) {
   return new Promise((resolve) => {
-    const old = document.getElementById("confirmModal");
-    if (old) old.remove();
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/40 backdrop-blur-sm z-[9998] flex items-center justify-center";
 
     const modal = document.createElement("div");
-    modal.id = "confirmModal";
-    modal.className =
-      "fixed inset-0 flex items-center justify-center bg-black/60 z-50";
-
+    modal.className = "bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full text-center";
     modal.innerHTML = `
-      <div class="bg-gray-900 text-white rounded-xl shadow-xl p-6 w-[90%] max-w-md text-center border border-gray-700 animate-fade-in-up">
-        <h3 class="text-lg font-semibold mb-3">${title}</h3>
-        <p class="text-sm text-gray-300 mb-6">${message}</p>
-        <div class="flex justify-center space-x-4">
-          <button type="button"
-                  class="px-4 py-2 rounded bg-gray-600 hover:bg-gray-700 text-white"
-                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false">
-            Batal
-          </button>
-          <button type="button"
-                  class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white"
-                  onclick="Alpine.$data(document.getElementById('claimRoot')).modalOpen=false; true">
-            Tambahkan
-          </button>
-        </div>
+      <h2 class="text-lg font-bold mb-3 text-gray-800 dark:text-gray-100">${title}</h2>
+      <p class="text-gray-700 dark:text-gray-200 mb-6">${message}</p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmYes"
+          class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Tambahkan</button>
+        <button id="confirmNo"
+          class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500">Batal</button>
       </div>
     `;
-    document.body.appendChild(modal);
 
-    modal.querySelector("#confirmNo").onclick = () => {
-      modal.remove();
-      resolve(false);
-    };
-    modal.querySelector("#confirmYes").onclick = () => {
-      modal.remove();
-      resolve(true);
-    };
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    function cleanup(result) {
+      overlay.remove();
+      resolve(result);
+    }
+
+    modal.querySelector("#confirmYes").addEventListener("click", () => cleanup(true));
+    modal.querySelector("#confirmNo").addEventListener("click", () => cleanup(false));
+    overlay.addEventListener("keydown", (e) => e.key === "Escape" && cleanup(false));
   });
 }
+
+// 👉 export fungsi ini biar bisa dipakai di file lain
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { showConfirmModal };
+} else {
+  // kalau environment kamu belum pakai module bundler, simpan di namespace kecil
+  const ns = window.AIClaim = window.AIClaim || {};
+  ns.showConfirmModal = showConfirmModal;
+}
+
 
 // animasi lembut biar konsisten sama modal lain
 const style = document.createElement("style");
@@ -2370,8 +2515,6 @@ style.innerHTML = `
 `;
 
 document.head.appendChild(style);
-
-
 
   // 🔹 fungsi utama — dipanggil dari tombol + atau Enter
   async function addManualTindakanIfNotFound() {
@@ -2680,6 +2823,13 @@ function renderDiagnosisDetailReadOnly(data) {
   
   // Get diagnosis detail from the correct nested structure
   const detail = data.diagnosis_detail || {};
+
+  // ✅ PATCH: kalau diagnosis_detail kosong tapi field langsung di root, ambil dari root
+  if (Object.keys(detail).length === 0 && data.justifikasi) {
+    console.log("🩹 [PATCH] Flattened data detected, using root-level fields for read-only view");
+    Object.assign(detail, data);
+  }
+
   
   // Build the structure similar to doctor but from database
   const klinis = {
@@ -2813,6 +2963,13 @@ function renderProcedureDetailReadOnly(data) {
   const detail = data.procedure_detail || {};
   const analysis = data.analysis || {};
   const regulasi = data.regulasi || [];
+
+  // ✅ PATCH: kalau procedure_detail kosong tapi field langsung di root, ambil dari root
+  if (Object.keys(detail).length === 0 && (data.icd9_code || data.validitas || data.status_tindakan)) {
+    console.log("🩹 [PATCH] Flattened procedure data detected, using root-level fields for read-only view");
+    Object.assign(detail, data);
+  }
+
   
   console.log("🔧 [VERIFICATOR] renderProcedureDetailReadOnly received:", data);
   

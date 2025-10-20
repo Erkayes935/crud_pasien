@@ -1,516 +1,241 @@
-# services/idrg_service.py
-import os
-import re
-import json
+import os, json
 from datetime import date
-from dotenv import load_dotenv
 from openai import OpenAI
+from .rules_loader import load_rules_multilayer
+from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
 
-# Add imports for multilayer rule system
-from .rules_loader import load_rules_multilayer, LAYER_PRIORITIES
-from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias, FIELD_NAME_ALIAS
-
-# ============================
-# Setup
-# ============================
-load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ============================
-# Helper functions for rules
-# ============================
-def load_idrg_rules(diagnosis_name, rs_id=None, region_id=None):
-    """
-    Load i-DRG specific rules using the multilayer system
-    """
+
+# ============================================================
+# 🔹 HELPER
+# ============================================================
+def _sv(x, default="-"):
+    return x.strip() if isinstance(x, str) and x.strip() else default
+
+
+# ============================================================
+# 🔹 LOAD MULTILAYER RULE UNTUK IDRG
+# ============================================================
+def load_idrg_rules(diagnoses, rs_id=None, region_id=None):
+    """Ambil rule multilayer scope=idrg"""
     try:
-        # Load rules using the multilayer system
-        rules = load_rules_multilayer([diagnosis_name], rs_id, region_id)
-        
-        # Extract i-DRG related fields
-        idrg_fields = FIELD_RULE_MAP.get('idrg', {}).keys()
-        idrg_rules = {}
-        
-        # Process each field looking for matches in rules
-        for field_name in idrg_fields:
-            # Check all possible aliases for this field
-            aliases = FIELD_NAME_ALIAS.get(field_name, [field_name])
-            
-            # Look for this field in rules (using all possible aliases)
-            for db_field, rule_data in rules.items():
-                if any(db_field.endswith(alias) or db_field == alias for alias in aliases):
-                    # We found rules for this field
-                    if rule_data and isinstance(rule_data, list) and len(rule_data) > 0:
-                        # Get the highest priority rule (first one after sorting)
-                        idrg_rules[field_name] = rule_data[0].get('isi', None)
-                        idrg_rules[f"{field_name}_source"] = rule_data[0].get('sumber', 'Unknown')
-                        idrg_rules[f"{field_name}_layer"] = rule_data[0].get('layer', 'Unknown')
-                    break
-        
-        # Add metadata
-        if idrg_rules:
-            idrg_rules['diagnosis'] = diagnosis_name
-            idrg_rules['sources'] = list(set(value for key, value in idrg_rules.items() if key.endswith('_source')))
-            
-        return idrg_rules
+        return load_rules_multilayer(diagnoses, rs_id=rs_id, region_id=region_id, scope="idrg")
     except Exception as e:
-        print(f"Error loading i-DRG rules: {e}")
+        print(f"[IDRG] ⚠️ Error load multilayer rules: {e}")
         return {}
 
-def format_rule_data(rule_data, field_name):
-    """Format rule data to match expected frontend format"""
-    # Handle checklist_dokumentasi specifically (as array)
-    if field_name == 'checklist_dokumentasi' and isinstance(rule_data, str):
-        if '•' in rule_data or '- ' in rule_data:
-            # Split by line break and clean up items
-            return [line.strip().replace('• ', '').replace('- ', '') for line in rule_data.split('\n') if line.strip()]
-        return [rule_data]
-    
-    # Handle faktor_penentu_severity specifically (as array)
-    if field_name == 'faktor_penentu_severity' and isinstance(rule_data, str):
-        if '•' in rule_data or '- ' in rule_data:
-            # Split by line break and clean up items
-            return [line.strip().replace('• ', '').replace('- ', '') for line in rule_data.split('\n') if line.strip()]
-        return [rule_data]
-        
-    # Handle numeric fields (estimasi_tarif_idrg, gap_analysis)
-    if field_name in ['estimasi_tarif_idrg', 'gap_analysis'] and isinstance(rule_data, str):
-        # Extract numbers from strings like "Rp 5.000.000" -> 5000000
-        numeric_str = ''.join(c for c in rule_data if c.isdigit())
-        if numeric_str:
-            return int(numeric_str)
-    
-    return rule_data
 
-# ============================
-# Prompt builders
-# ============================
-def build_prompt_single(payload: dict) -> str:
+# ============================================================
+# 🔹 HYBRID REASONER (SINGLE DIAGNOSIS MODE)
+# ============================================================
+def hybrid_reasoner_single(payload: dict) -> dict:
     """
-    Membangun prompt untuk prediksi i-DRG diagnosis tunggal
-    Enhanced with rule context
+    Mode i-DRG tunggal (modal detail diagnosis).
+    Menggabungkan multilayer rules + data klinis klaim.
     """
-    claim_id = payload.get("claim_id")
-    diagnosis_name = payload.get("diagnosis_name", "")
-    diagnosis_data = payload.get("diagnosis_data", {})
+    diagnosis_name = payload.get("diagnosis_name", "-")
+    justifikasi = payload.get("justifikasi", "-")
+    bukti_klinis = payload.get("bukti_klinis", "-")
+    tindakan_names = payload.get("tindakan_names", [])
     rs_id = payload.get("rs_id")
     region_id = payload.get("region_id")
-    
-    # Extract relevant clinical data
-    justifikasi = diagnosis_data.get("justifikasi", "")
-    bukti_klinis = diagnosis_data.get("bukti_klinis", "")
-    tindakan = diagnosis_data.get("tindakan", [])
-    tindakan_names = [t.get("nama", "") for t in tindakan if isinstance(t, dict)]
-    
-    # Get rule data for context
-    idrg_rules = load_idrg_rules(diagnosis_name, rs_id, region_id)
-    
-    # Extract rule context for prompt
-    rule_context = ""
-    if idrg_rules:
-        rule_context = f"""
-Rule-based information from official sources ({', '.join(idrg_rules.get('sources', ['Unknown']))}):
-- i-DRG Code: {idrg_rules.get('kode_idrg', 'Not found in rules')}
-- Severity Index: {idrg_rules.get('severity_index', 'Not found in rules')}
-- Documentation Requirements: {idrg_rules.get('checklist_dokumentasi', 'Not found in rules')}
-- Severity Factors: {idrg_rules.get('faktor_penentu_severity', 'Not found in rules')}
-- Ungroupable Alert: {idrg_rules.get('ungroupable_alert', 'Not found in rules')}
-- Estimated Tariff: {idrg_rules.get('estimasi_tarif_idrg', 'Not found in rules')}
-- Gap Analysis: {idrg_rules.get('gap_analysis', 'Not found in rules')}
-"""
-    
-    return f"""
-Anda adalah sistem prediksi i-DRG Indonesia yang juga memberikan *notifikasi AI* kepada dokter/verifikator.
 
-Data klaim:
-- Claim ID: {claim_id}
-- Diagnosis utama: {diagnosis_name}
-- Justifikasi: {justifikasi}
-- Bukti klinis: {bukti_klinis}
-- Tindakan terkait: {', '.join(tindakan_names)}
+    multilayer_rules = load_idrg_rules([diagnosis_name], rs_id, region_id)
 
-{rule_context}
+    # Buat prompt lebih kontekstual & realistis
+    ai_prompt = f"""
+    Anda adalah verifikator medis BPJS yang bertugas menentukan grouping i-DRG untuk diagnosis {diagnosis_name}.
+    Gunakan Pedoman Nasional i-DRG 2025 dan multilayer rules di bawah ini:
 
-Tugas Anda:
-1. Prediksi i-DRG sesuai aturan resmi (kode, severity, estimasi tarif, dsb)
-2. Gunakan rule-based information jika tersedia 
-3. Tambahkan notifikasi AI klinis yang bersifat rekomendatif seperti contoh berikut:
-   - "Severity konsisten, gap tarif wajar" (🟢 success)
-   - "HbA1c tidak tercatat — dokumentasi perlu dilengkapi" (🟡 warning)
-   - "Durasi rawat < 3 hari — risiko ungroupable" (🔴 error)
+    RULE MULTILAYER:
+    {json.dumps(multilayer_rules, ensure_ascii=False)[:1500]}
 
-Jawab hanya JSON valid dengan struktur berikut:
+    Data klaim:
+    - Diagnosis utama: {diagnosis_name}
+    - Justifikasi: {justifikasi}
+    - Bukti klinis: {bukti_klinis}
+    - Tindakan terkait: {', '.join(tindakan_names) if tindakan_names else '-'}
 
-{{
-  "group_idrg": "Kode resmi i-DRG untuk diagnosis ini. Contoh: I-SEP-2",
-  "severity_index": "Angka 1–4 sesuai level severity (1=ringan, 4=sangat berat)",
-  "checklist_dokumentasi": [
-    "Daftar syarat dokumentasi medis/lab yang wajib dicatat agar klaim valid. Contoh: Kultur darah wajib, LOS ≥ 3 hari"
-  ],
-  "faktor_penentu_severity": [
-    "Faktor utama yang membuat severity = X. Maksimal 3 item. Contoh: LOS 4 hari, prosedur laparoskopi, komplikasi vaskular"
-  ],
-  "ungroupable_alert": "Alasan klaim bisa gagal grouping. Jika tidak ada, isi '-'",
-  "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
-  "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)",
-  "notification": {{
-    "status": "success/warning/error/info",
-    "message": "Pesan singkat rekomendasi seperti contoh di atas"
-  }}
-}}
-
-Aturan tambahan:
-- Semua angka harus integer murni.
-- Jangan naratif panjang.
-- Jika tidak ada data → isi dengan "-".
-- Status notifikasi berdasarkan kondisi:
-  - success → gap wajar dan severity sesuai
-  - warning → data sebagian belum lengkap
-  - error → risiko ungroupable atau gap terlalu tinggi
-  - info → rekomendasi tambahan umum
-"""
-
-def build_prompt_combo(payload: dict) -> str:
+    Berikan hasil JSON valid dengan struktur:
+    {{
+      "group_idrg": "Kode & nama grup (mis. E-4-10-I Pneumonia w/o comp.)",
+      "severity_index": "Minor / Moderate / Severe (angka 1-4)",
+      "checklist_dokumentasi": ["Daftar butir dokumentasi wajib..."],
+      "faktor_penentu_severity": ["Faktor severity: komorbid, ventilator, LOS..."],
+      "ungroupable_alert": "Alasan jika risiko ungroupable, atau '-' jika aman",
+      "estimasi_tarif": "Rp ... (estimasi tarif nasional)",
+      "gap_analysis": "Selisih tarif vs INA-CBG (Rp)",
+      "notification": {{
+        "status": "success / warning / error / info",
+        "message": "Kalimat singkat hasil evaluasi, misal:
+          - Semua dokumentasi lengkap sesuai CP.
+          - Hasil kultur sputum belum dilampirkan.
+          - Rawat inap <3 hari, risiko ungroupable."
+      }}
+    }}
     """
-    Membangun prompt untuk prediksi i-DRG kombinasi
-    Enhanced with rule context
-    """
-    claim_id = payload.get("claim_id")
-    primary_dx = payload.get("primary_diagnosis") or payload.get("primary_claim")
-    secondary_dx = payload.get("secondary_diagnosis") or payload.get("secondary_claims", [])
-    primary_tx = payload.get("primary_action")
-    secondary_tx = payload.get("secondary_actions", [])
-    rs_id = payload.get("rs_id")
-    region_id = payload.get("region_id")
-    
-    # Create a unique combo key for rule lookup
-    diagnoses = [primary_dx] + (secondary_dx if isinstance(secondary_dx, list) else [])
-    combo_key = "+".join([d for d in diagnoses if d])
-    
-    # Get rule data for both combo key and primary diagnosis
-    combo_rules = load_idrg_rules(combo_key, rs_id, region_id)
-    primary_rules = {}
-    if not combo_rules and primary_dx:
-        primary_rules = load_idrg_rules(primary_dx, rs_id, region_id)
-    
-    # Use best available rules
-    idrg_rules = combo_rules or primary_rules
-    
-    # Extract rule context for prompt
-    rule_context = ""
-    if idrg_rules:
-        rule_context = f"""
-Rule-based information from official sources ({', '.join(idrg_rules.get('sources', ['Unknown']))}):
-- i-DRG Code: {idrg_rules.get('kode_idrg', 'Not found in rules')}
-- Severity Index: {idrg_rules.get('severity_index', 'Not found in rules')}
-- Documentation Requirements: {idrg_rules.get('checklist_dokumentasi', 'Not found in rules')}
-- Severity Factors: {idrg_rules.get('faktor_penentu_severity', 'Not found in rules')}
-- Ungroupable Alert: {idrg_rules.get('ungroupable_alert', 'Not found in rules')}
-- Estimated Tariff: {idrg_rules.get('estimasi_tarif_idrg', 'Not found in rules')}
-- Gap Analysis: {idrg_rules.get('gap_analysis', 'Not found in rules')}
-- Recommendations: {idrg_rules.get('rekomendasi_ai', 'Not found in rules')}
-"""
-    
-    return f"""
-Anda adalah sistem prediksi i-DRG Indonesia.
 
-Data kombinasi klaim:
-- Claim ID: {claim_id}
-- Primary Diagnosis: {primary_dx}
-- Secondary Diagnoses: {', '.join(secondary_dx) if secondary_dx else 'None'}
-- Primary Procedure: {primary_tx or 'None'}
-- Secondary Procedures: {', '.join(secondary_tx) if secondary_tx else 'None'}
-
-{rule_context}
-
-Tugas Anda:
-1. Berikan prediksi i-DRG kombinasi sesuai struktur resmi.
-2. Gunakan rule-based information jika tersedia untuk prediksi yang akurat.
-3. Tambahkan notifikasi AI klinis yang kontekstual seperti:
-   - "Severity konsisten, gap tarif wajar" (success)
-   - "HbA1c tidak tercatat di rekam medis" (warning)
-   - "Gap INA-CBG terlalu tinggi, verifikasi kelengkapan data" (error)
-
-Jawab hanya JSON valid dengan struktur berikut:
-
-{{
-  "group_idrg": "Kode resmi i-DRG untuk kombinasi klaim. Contoh: I-SEP-DM-3",
-  "severity_index": "Level keparahan kasus 1-4 (1=ringan, 4=sangat berat)",
-  "checklist_dokumentasi": [
-    "Daftar syarat dokumentasi medis/lab yang wajib dicatat agar klaim valid. Contoh: HbA1c wajib, kultur darah wajib"
-  ],
-  "faktor_penentu_severity": [
-    "Faktor utama yang membuat severity naik/turun. Maksimal 3 item. Contoh: Sepsis + DM, ventilasi mekanik, ICU"
-  ],
-  "ungroupable_alert": "Alasan klaim bisa gagal grouping. Jika tidak ada, isi '-'",
-  "estimasi_tarif_idrg": "Angka rupiah estimasi tarif i-DRG (integer, tanpa Rp atau titik)",
-  "gap_analysis": "Selisih tarif i-DRG dengan tarif INA-CBG (angka integer saja)",
-  "rekomendasi_ai": "Saran singkat dokumentasi tambahan. Contoh: Tambahkan HbA1c di rekam medis",
-  "notification": {{
-    "status": "success/warning/error/info",
-    "message": "Pesan singkat rekomendasi seperti contoh di atas"
-  }}
-}}
-
-Aturan tambahan:
-- Semua angka harus integer murni.
-- Jangan naratif panjang.
-- Jika tidak ada data → isi dengan "-".
-- Status notifikasi:
-  - success → gap wajar dan severity sesuai kombinasi
-  - warning → data sebagian belum lengkap
-  - error → risiko ungroupable atau selisih besar
-  - info → rekomendasi umum tambahan
-"""
-
-# ============================
-# OpenAI caller
-# ============================
-def ask_openai(prompt: str) -> dict:
-    """
-    Fungsi untuk memanggil OpenAI API dan mendapatkan respons
-    """
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Anda adalah sistem prediksi i-DRG resmi. Jawab hanya JSON valid."},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": "Anda AI medis verifikator BPJS. Jawab hanya JSON valid."},
+                {"role": "user", "content": ai_prompt}
             ],
-            temperature=0.0,  # konsistensi hasil
+            temperature=0.3,
             response_format={"type": "json_object"}
         )
-        content = response.choices[0].message.content
-        return json.loads(content)
+        ai_result = json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"Error calling OpenAI: {str(e)}")
-        raise e
+        print(f"[IDRG_SINGLE] ⚠️ OpenAI error: {e}")
+        ai_result = {}
 
-# ============================
-# Main functions
-# ============================
-def predict_idrg(mode: str, payload: dict):
-    """
-    Prediksi i-DRG berdasarkan mode:
-    - mode="single": untuk detail diagnosis individual
-    - mode="combo": untuk kombinasi klaim (multiple diagnosis + procedures)
-    """
-    try:
-        if mode == "single":
-            return predict_single_idrg(payload)
-        elif mode == "combo":
-            return predict_combo_idrg(payload)
-        else:
-            return {"error": f"Invalid mode: {mode}"}
-    except Exception as e:
-        return {
-            "claim_id": payload.get("claim_id", 0),
-            "mode": mode,
-            "error": str(e),
-            "engine_version": f"idrg_service@{date.today().isoformat()}"
-        }
+    # Fallback multilayer
+    for field in ["kode_idrg", "severity_index", "checklist_dokumentasi", "faktor_penentu_severity",
+                  "ungroupable_alert", "estimasi_tarif", "gap_analysis"]:
+        if field not in ai_result:
+            # ambil rule pertama sesuai field
+            for rule_field, ruleset in multilayer_rules.items():
+                if match_field_alias(field, rule_field):
+                    ai_result[field] = ruleset[0].get("isi", "-")
 
-def predict_single_idrg(payload: dict):
-    """
-    Prediksi i-DRG untuk diagnosis tunggal (mode single).
-    Enhanced with multilayer rule system.
-    """
-    claim_id = payload.get("claim_id")
-    diagnosis_name = payload.get("diagnosis_name", "")
-    rs_id = payload.get("rs_id")
-    region_id = payload.get("region_id")
-    
-    try:
-        # First try to get rules from multilayer system
-        idrg_rules = load_idrg_rules(diagnosis_name, rs_id, region_id)
-        print(f"✅ Found i-DRG rules for {diagnosis_name}: {bool(idrg_rules)}")
-        
-        # If we have comprehensive rule data, use it directly
-        if idrg_rules and all(k in idrg_rules for k in ['kode_idrg', 'severity_index', 'estimasi_tarif_idrg']):
-            print(f"✅ Using complete rule data for {diagnosis_name}")
-            
-            # Format rule data to match expected frontend structure
-            formatted_result = {
-                "group_idrg": format_rule_data(idrg_rules.get('kode_idrg'), 'kode_idrg') or "-",
-                "severity_index": format_rule_data(idrg_rules.get('severity_index'), 'severity_index') or "-",
-                "checklist_dokumentasi": format_rule_data(idrg_rules.get('checklist_dokumentasi'), 'checklist_dokumentasi') or [],
-                "faktor_penentu_severity": format_rule_data(idrg_rules.get('faktor_penentu_severity'), 'faktor_penentu_severity') or [],
-                "ungroupable_alert": format_rule_data(idrg_rules.get('ungroupable_alert'), 'ungroupable_alert') or "-",
-                "estimasi_tarif_idrg": format_rule_data(idrg_rules.get('estimasi_tarif_idrg'), 'estimasi_tarif_idrg') or 0,
-                "gap_analysis": format_rule_data(idrg_rules.get('gap_analysis'), 'gap_analysis') or 0,
-                "rule_sources": idrg_rules.get('sources', []),
-                "notifications": {
-                    "idrg": {
-                        "status": "success",
-                        "message": f"Prediksi berdasarkan aturan resmi i-DRG dari {idrg_rules.get('sources', ['database'])[0]}."
-                    }
-                }
-            }
-        else:
-            # Fall back to AI with rule context
-            print(f"⚠️ Incomplete rule data for {diagnosis_name}, using AI with rule context")
-            prompt = build_prompt_single(payload)
-            result = ask_openai(prompt)
-            
-            # Integrate any available rule data with AI predictions
-            formatted_result = {
-                "group_idrg": idrg_rules.get('kode_idrg') or result.get('group_idrg') or "-",
-                "severity_index": idrg_rules.get('severity_index') or result.get('severity_index') or "-",
-                "checklist_dokumentasi": (
-                    format_rule_data(idrg_rules.get('checklist_dokumentasi'), 'checklist_dokumentasi') or 
-                    result.get('checklist_dokumentasi') or []
-                ),
-                "faktor_penentu_severity": (
-                    format_rule_data(idrg_rules.get('faktor_penentu_severity'), 'faktor_penentu_severity') or 
-                    result.get('faktor_penentu_severity') or []
-                ),
-                "ungroupable_alert": result.get('ungroupable_alert') or "-",
-                "estimasi_tarif_idrg": (
-                    format_rule_data(idrg_rules.get('estimasi_tarif_idrg'), 'estimasi_tarif_idrg') or 
-                    result.get('estimasi_tarif_idrg') or 0
-                ),
-                "gap_analysis": (
-                    format_rule_data(idrg_rules.get('gap_analysis'), 'gap_analysis') or 
-                    result.get('gap_analysis') or 0
-                ),
-                "notifications": {
-                    "idrg": result.get('notification') or {
-                        "status": "info",
-                        "message": "Prediksi berdasarkan model AI i-DRG."
-                    }
-                },
-                "rule_sources": idrg_rules.get('sources', []),
-                "ai_enhanced": True  # Flag indicating AI was used for enhancement
-            }
-            
-        # Return final response
-        return {
-            "status": "success",
-            "mode": "single",
-            "claim_id": claim_id,
-            "diagnosis": diagnosis_name,
-            "idrg_prediction": formatted_result,
-            "engine_version": f"idrg_service@{date.today().isoformat()}",
-        }
-    except Exception as e:
-        print(f"❌ Error in predict_single_idrg: {e}")
-        return {
-            "status": "error",
-            "message": str(e),
-            "mode": "single",
-            "claim_id": claim_id,
-            "diagnosis": diagnosis_name,
-        }
+    ai_result.setdefault("notification", {
+        "status": "info",
+        "message": "Berdasarkan multilayer i-DRG (fallback rule)."
+    })
 
-def predict_combo_idrg(payload: dict):
+    ai_result["engine_version"] = f"idrg_single@{date.today().isoformat()}"
+    return ai_result
+
+
+# ============================================================
+# 🔹 HYBRID REASONER (COMBO MODE)
+# ============================================================
+def hybrid_reasoner_combo(payload: dict) -> dict:
     """
-    Prediksi i-DRG untuk kombinasi diagnosis & tindakan (mode combo).
-    Enhanced with multilayer rule system.
+    Mode i-DRG kombinasi (panel evaluasi kombinasi).
     """
-    claim_id = payload.get("claim_id")
-    primary_dx = payload.get("primary_diagnosis") or payload.get("primary_claim")
-    secondary_dx = payload.get("secondary_diagnosis") or payload.get("secondary_claims", [])
-    primary_tx = payload.get("primary_action")
-    secondary_tx = payload.get("secondary_actions", [])
+    primary_diagnosis = payload.get("primary_diagnosis", "-")
+    secondary_diagnoses = payload.get("secondary_diagnoses", [])
+    primary_action = payload.get("primary_action", "-")
+    secondary_actions = payload.get("secondary_actions", [])
     rs_id = payload.get("rs_id")
     region_id = payload.get("region_id")
 
+    diagnoses = [primary_diagnosis] + secondary_diagnoses
+    multilayer_rules = load_idrg_rules(diagnoses, rs_id, region_id)
+
+    ai_prompt = f"""
+    Anda adalah konsultan medis BPJS yang menilai grouping i-DRG kombinasi kasus.
+    Gunakan Pedoman Nasional i-DRG 2025 dan multilayer rules berikut.
+
+    RULE MULTILAYER:
+    {json.dumps(multilayer_rules, ensure_ascii=False)[:1800]}
+
+    Data kombinasi klaim:
+    - Diagnosis utama: {primary_diagnosis}
+    - Diagnosis sekunder: {', '.join(secondary_diagnoses) if secondary_diagnoses else '-'}
+    - Tindakan utama: {primary_action}
+    - Tindakan sekunder: {', '.join(secondary_actions) if secondary_actions else '-'}
+
+    Hasilkan JSON valid dengan struktur:
+    {{
+      "group_idrg_kombinasi": "Kode & nama grup (mis. E-4-10-II Pneumonia + DM)",
+      "severity_kombinasi": "Minor / Moderate / Severe (angka 1-4)",
+      "checklist_kombinasi": ["Checklist dokumen wajib kombinasi"],
+      "faktor_severity_kombinasi": ["Faktor severity tambahan (komorbid, ventilasi, LOS)"],
+      "risiko_ungroupable": "Deskripsi risiko grouping gagal, atau '-' jika aman.",
+      "estimasi_tarif": "Rp ...",
+      "gap_vs_cbg": "Selisih tarif INA-CBG vs i-DRG (Rp)",
+      "rekomendasi_ai": "Kalimat ringkas rekomendasi medis/verifikasi."
+    }}
+    """
+
     try:
-        # Create a unique combo key for rule lookup
-        diagnoses = [primary_dx] + (secondary_dx if isinstance(secondary_dx, list) else [])
-        combo_key = "+".join([d for d in diagnoses if d])
-        
-        # Try to get rules for combo first, then fall back to primary diagnosis
-        combo_rules = load_idrg_rules(combo_key, rs_id, region_id)
-        primary_rules = {}
-        if not combo_rules and primary_dx:
-            primary_rules = load_idrg_rules(primary_dx, rs_id, region_id)
-        
-        # Use best available rules
-        idrg_rules = combo_rules or primary_rules
-        
-        print(f"✅ Found combo rules: {bool(idrg_rules)}")
-        
-        # If we have comprehensive rule data, use it directly
-        if idrg_rules and all(k in idrg_rules for k in ['kode_idrg', 'severity_index', 'estimasi_tarif_idrg']):
-            print(f"✅ Using complete rule data for combo")
-            
-            # Format rule data for frontend
-            formatted_result = {
-                "group_idrg": format_rule_data(idrg_rules.get('kode_idrg'), 'kode_idrg') or "-",
-                "severity_index": format_rule_data(idrg_rules.get('severity_index'), 'severity_index') or "-",
-                "checklist_dokumentasi": format_rule_data(idrg_rules.get('checklist_dokumentasi'), 'checklist_dokumentasi') or [],
-                "faktor_penentu_severity": format_rule_data(idrg_rules.get('faktor_penentu_severity'), 'faktor_penentu_severity') or [],
-                "ungroupable_alert": format_rule_data(idrg_rules.get('ungroupable_alert'), 'ungroupable_alert') or "-",
-                "estimasi_tarif_idrg": format_rule_data(idrg_rules.get('estimasi_tarif_idrg'), 'estimasi_tarif_idrg') or 0,
-                "gap_analysis": format_rule_data(idrg_rules.get('gap_analysis'), 'gap_analysis') or 0,
-                "rekomendasi_ai": format_rule_data(idrg_rules.get('rekomendasi_ai'), 'rekomendasi_ai') or "Tidak ada rekomendasi khusus dari AI untuk kombinasi ini.",
-                "rule_sources": idrg_rules.get('sources', []),
-                "notifications": {
-                    "idrg": {
-                        "status": "success",
-                        "message": f"Prediksi berdasarkan aturan resmi i-DRG dari {idrg_rules.get('sources', ['database'])[0]}."
-                    }
-                }
-            }
-        else:
-            # Fall back to AI with rule context
-            print(f"⚠️ Incomplete rule data for combo, using AI with rule context")
-            prompt = build_prompt_combo(payload)
-            result = ask_openai(prompt)
-            
-            # Integrate any available rule data with AI predictions
-            formatted_result = {
-                "group_idrg": idrg_rules.get('kode_idrg') or result.get('group_idrg') or "-",
-                "severity_index": idrg_rules.get('severity_index') or result.get('severity_index') or "-",
-                "checklist_dokumentasi": (
-                    format_rule_data(idrg_rules.get('checklist_dokumentasi'), 'checklist_dokumentasi') or 
-                    result.get('checklist_dokumentasi') or []
-                ),
-                "faktor_penentu_severity": (
-                    format_rule_data(idrg_rules.get('faktor_penentu_severity'), 'faktor_penentu_severity') or 
-                    result.get('faktor_penentu_severity') or []
-                ),
-                "ungroupable_alert": result.get('ungroupable_alert') or "-",
-                "estimasi_tarif_idrg": (
-                    format_rule_data(idrg_rules.get('estimasi_tarif_idrg'), 'estimasi_tarif_idrg') or 
-                    result.get('estimasi_tarif_idrg') or 0
-                ),
-                "gap_analysis": (
-                    format_rule_data(idrg_rules.get('gap_analysis'), 'gap_analysis') or 
-                    result.get('gap_analysis') or 0
-                ),
-                "rekomendasi_ai": result.get('rekomendasi_ai') or "Tidak ada rekomendasi khusus dari AI untuk kombinasi ini.",
-                "notifications": {
-                    "idrg": result.get('notification') or {
-                        "status": "info",
-                        "message": "Prediksi berdasarkan model AI i-DRG."
-                    }
-                },
-                "rule_sources": idrg_rules.get('sources', []),
-                "ai_enhanced": True  # Flag indicating AI was used for enhancement
-            }
-
-        # Return final response
-        return {
-            "status": "success",
-            "mode": "combo",
-            "claim_id": claim_id,
-            "primary_diagnosis": primary_dx,
-            "secondary_diagnoses": secondary_dx,
-            "primary_action": primary_tx,
-            "secondary_actions": secondary_tx,
-            "idrg_prediction": formatted_result,
-            "engine_version": f"idrg_service@{date.today().isoformat()}",
-        }
-
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Anda AI medis verifikator BPJS. Jawab hanya JSON valid."},
+                {"role": "user", "content": ai_prompt}
+            ],
+            temperature=0.35,
+            response_format={"type": "json_object"}
+        )
+        ai_result = json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"❌ Error in predict_combo_idrg: {e}")
+        print(f"[IDRG_COMBO] ⚠️ OpenAI error: {e}")
+        ai_result = {}
+
+    # Fallback multilayer rules
+    for field in ["kode_idrg", "severity_index", "checklist_dokumentasi",
+                  "faktor_penentu_severity", "ungroupable_alert", "estimasi_tarif"]:
+        for rule_field, ruleset in multilayer_rules.items():
+            if match_field_alias(field, rule_field) and field not in ai_result:
+                ai_result[field] = ruleset[0].get("isi", "-")
+
+    ai_result.setdefault("rekomendasi_ai", "Evaluasi kombinasi berdasarkan multilayer i-DRG (fallback).")
+    ai_result["engine_version"] = f"idrg_combo@{date.today().isoformat()}"
+    return ai_result
+
+# ============================================================
+# 🔹 ENTRYPOINT UNTUK ROUTER / UI
+# ============================================================
+def predict_single_idrg(payload: dict) -> dict:
+    """
+    Endpoint untuk prediksi i-DRG tunggal (modal detail diagnosis).
+    """
+    try:
+        print(f"[PREDICT_SINGLE_IDRG] Running for diagnosis: {payload.get('diagnosis_name')}")
+        result = hybrid_reasoner_single(payload)
         return {
-            "status": "error",
-            "message": str(e),
-            "mode": "combo",
-            "claim_id": claim_id,
-            "primary_diagnosis": primary_dx,
-            "secondary_diagnoses": secondary_dx,
+            "mode": "single",
+            "diagnosis": payload.get("diagnosis_name", "-"),
+            "data": result,
+            "engine_version": result.get("engine_version", "idrg_single@local")
         }
+    except Exception as e:
+        print(f"[PREDICT_SINGLE_IDRG] ⚠️ Error: {e}")
+        return {
+            "mode": "single",
+            "diagnosis": payload.get("diagnosis_name", "-"),
+            "error": str(e)
+        }
+
+
+def predict_combo_idrg(payload: dict) -> dict:
+    """
+    Endpoint untuk prediksi i-DRG kombinasi (panel evaluasi kombinasi).
+    """
+    try:
+        print(f"[PREDICT_COMBO_IDRG] Running for combo: {payload.get('primary_diagnosis')} + {payload.get('primary_action')}")
+        result = hybrid_reasoner_combo(payload)
+        return {
+            "mode": "combo",
+            "diagnosis_combo": [
+                payload.get("primary_diagnosis"),
+                *(payload.get("secondary_diagnoses") or [])
+            ],
+            "action_combo": [
+                payload.get("primary_action"),
+                *(payload.get("secondary_actions") or [])
+            ],
+            "data": result,
+            "engine_version": result.get("engine_version", "idrg_combo@local")
+        }
+    except Exception as e:
+        print(f"[PREDICT_COMBO_IDRG] ⚠️ Error: {e}")
+        return {
+            "mode": "combo",
+            "error": str(e)
+        }
+
+def predict_idrg(payload: dict) -> dict:
+    """
+    Compatibility wrapper expected by endpoints.py.
+    If payload['mode'] == 'combo' -> use combo predictor, else single predictor.
+    """
+    mode = (payload or {}).get("mode", "single")
+    if mode == "combo":
+        return predict_combo_idrg(payload)
+    return predict_single_idrg(payload)

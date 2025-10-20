@@ -57,6 +57,14 @@ def update_medical_record_fields(mr, payload: dict, user_id: int, db: Session, a
         "doctor_name": payload.get("doctor_name"),
     }
 
+    record_type = (
+        payload.get("record_type")
+        or payload.get("stage")
+        or getattr(mr, "record_type", None)
+        or "claim"
+    )
+    mr.record_type = record_type
+
     for field, value in field_map.items():
         if value is not None:
             setattr(mr, field, value)

@@ -1,41 +1,42 @@
-# services/generate_claim_combos_service.py
-import os
-import json
-import random
+import os, json
+from datetime import date
 from openai import OpenAI
-
-# 🔹 Integrasi tambahan
 from .rules_loader import load_rules_multilayer
-from .field_rule_mapping import FIELD_RULE_MAP
+from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+# ============================================================
+# 🔹 UTILITY HELPER
+# ============================================================
+def _sv(x, default="-"):
+    return x.strip() if isinstance(x, str) and x.strip() else default
+
 
 # ============================================================
 # 🔹 FUNGSI UTAMA KOMBINASI KLAIM
 # ============================================================
 def process_generate_claim_combos(payload: dict) -> dict:
     """
-    Evaluasi kombinasi klaim berdasarkan mapping diagnosis & tindakan.
+    Evaluasi kombinasi klaim berdasarkan diagnosis & tindakan (hybrid multilayer).
     """
     evaluation_result = process_generate_evaluations(payload)
 
-    # Tetap jaga struktur lama
-    result = {
+    return {
         "evaluasi_diagnosis": evaluation_result["evaluasi_diagnosis"],
         "evaluasi_tindakan": evaluation_result["evaluasi_tindakan"],
         "alternatif": [],  # akan diisi lewat request terpisah
         "engine_version": evaluation_result["engine_version"]
     }
-    return result
 
 
 # ============================================================
-# 🔹 EVALUASI KOMBINASI (RULE-BASED + AI REPHRASER)
+# 🔹 EVALUASI KOMBINASI (RULE + AI PHRASED)
 # ============================================================
 def process_generate_evaluations(payload: dict) -> dict:
     """
-    Evaluasi diagnosis dan tindakan kombinasi + notifikasi AI.
-    Sekarang sudah berbasis multilayer rule DB + JSON.
+    Evaluasi kombinasi diagnosis & tindakan menggunakan multilayer rules.
     """
     primary_claim = payload.get("primary_claim", "")
     secondary_claims = payload.get("secondary_claims", [])
@@ -44,130 +45,158 @@ def process_generate_evaluations(payload: dict) -> dict:
     rs_id = payload.get("rs_id")
     region_id = payload.get("region_id")
 
-    # ==========================================
-    # 1️⃣ Ambil multilayer rules
-    # ==========================================
+    # Gabungkan semua diagnosis untuk pencarian rule multilayer
     diagnoses = [primary_claim] + secondary_claims
-    try:
-        multilayer_rules = load_rules_multilayer(diagnoses, rs_id, region_id)
-    except Exception as e:
-        multilayer_rules = {}
-        print(f"[WARN] Gagal load multilayer rules: {e}")
 
-    def get_rule_text(field_key: str) -> str:
-        """Ambil isi rule aktif dari multilayer hasil merge DB"""
-        for rule_field, rule_list in multilayer_rules.items():
-            if rule_field.endswith(field_key):
-                isi = rule_list[0].get("isi")
-                sumber = rule_list[0].get("sumber", "")
-                if isi:
-                    return f"{isi} ({sumber})"
+    # ============================================================
+    # 1️⃣ Ambil multilayer rules dari DB (dua scope: diagnosis & tindakan)
+    # ============================================================
+    try:
+        rules_diag = load_rules_multilayer(diagnoses, rs_id, region_id, scope="diagnosis")
+        rules_tdk  = load_rules_multilayer(diagnoses, rs_id, region_id, scope="tindakan")
+    except Exception as e:
+        rules_diag, rules_tdk = {}, {}
+        print(f"[COMBO] ⚠️ Gagal load multilayer rules: {e}")
+
+    def get_rule_text(rules: dict, field_key: str) -> str:
+        """Cari isi rule dari hasil multilayer sesuai field."""
+        for rule_field, rule_list in rules.items():
+            if match_field_alias(field_key, rule_field):
+                if isinstance(rule_list, list) and rule_list:
+                    isi = rule_list[0].get("isi")
+                    sumber = rule_list[0].get("sumber", "")
+                    if isi:
+                        return f"{isi} ({sumber})"
         return ""
 
-    # ==========================================
-    # 2️⃣ Bentuk hasil rule-based mentah
-    # ==========================================
-    raw_eval_diagnosis = {
-        "validitas": get_rule_text("validitas") or "Valid kombinasi diagnosis berdasarkan aturan RS.",
-        "severity": get_rule_text("severity") or "Moderate (default rule).",
-        "kode_cbg": get_rule_text("kode_icd") or "E-4-10",
-        "estimasi_tarif": get_rule_text("tarif") or "Rp 4.800.000",
-        "syarat_klinis": get_rule_text("syarat_klinis") or "SpO₂ < 90%, Rontgen infiltrat.",
-        "evaluasi_faskes": get_rule_text("faskes.kewenangan") or "RS C – sesuai kewenangan.",
-        "rawat_inap": get_rule_text("rawat_inap.lama_rawat") or "LOS ≥ 3 hari (valid)."
+    # ============================================================
+    # 2️⃣ Bangun struktur rule dasar untuk evaluasi diagnosis
+    # ============================================================
+    eval_diagnosis = {
+        "validitas": get_rule_text(rules_diag, "validitas") or "✅ Valid kombinasi diagnosis berdasarkan aturan RS.",
+        "severity": get_rule_text(rules_diag, "severity") or "Moderate (default rule).",
+        "kode_cbg": get_rule_text(rules_diag, "kode_icd") or "Kode INA-CBG: E-4-10 (Pneumonia & Respiratory Infections)",
+        "estimasi_tarif": get_rule_text(rules_diag, "tarif") or "Rp 4.800.000",
+        "syarat_klinis": get_rule_text(rules_diag, "syarat_klinis") or "Gejala mayor: demam, batuk, sesak. Minor: ronki basah.",
+        "evaluasi_faskes": get_rule_text(rules_diag, "faskes.kewenangan") or "RS C – sesuai kewenangan.",
+        "rawat_inap": get_rule_text(rules_diag, "rawat_inap.lama_rawat") or "LOS ≥ 3 hari (valid)."
     }
 
-    raw_eval_tindakan = {
-        "wajib": get_rule_text("tindakan.status") or "Ventilasi Mekanik wajib untuk pneumonia berat.",
-        "validasi": get_rule_text("tindakan.validasi") or "Disetujui menurut CP/PNPK.",
-        "dampak": get_rule_text("tarif") or "Meningkatkan severity (naik 15%).",
-        "konflik": get_rule_text("fraud") or "Tidak ada konflik atau duplikasi tindakan."
+    # ============================================================
+    # 3️⃣ Bangun struktur rule dasar untuk evaluasi tindakan
+    # ============================================================
+    eval_tindakan = {
+        "wajib": get_rule_text(rules_tdk, "tindakan.status") or "Tindakan wajib: Radiologi / Antibiotik sesuai CP.",
+        "validasi": get_rule_text(rules_tdk, "tindakan.validasi") or "Disetujui menurut CP/PNPK.",
+        "dampak": get_rule_text(rules_tdk, "tarif") or "Dampak terhadap tarif sesuai INA-CBG (naik 10–15%).",
+        "konflik": get_rule_text(rules_tdk, "fraud") or "Tidak ada konflik atau duplikasi tindakan."
     }
 
-    # ==========================================
-    # 3️⃣ Compose dengan AI agar bahasanya rapi
-    # ==========================================
+    # ============================================================
+    # 4️⃣ Minta AI phrasing untuk merapikan hasil (natural & faktual)
+    # ============================================================
     try:
-        rules_context = json.dumps(multilayer_rules, ensure_ascii=False)[:1500]
+        rules_context = {
+            "diagnosis_rules": list(rules_diag.keys())[:15],
+            "tindakan_rules": list(rules_tdk.keys())[:15],
+        }
+
         ai_prompt = f"""
-        Kamu adalah AI medis yang bertugas menyusun ringkasan evaluasi kombinasi klaim BPJS/INA-CBG.
-        Gunakan aturan multilayer berikut sebagai dasar penyusunan hasil (CP/PNPK/RS/Regional):
-        {rules_context}
+        Kamu adalah AI medis konsultan verifikator BPJS.
+        Tugasmu adalah menyusun hasil evaluasi kombinasi klaim (diagnosis + tindakan)
+        dengan bahasa medis formal namun ringkas, berbasis multilayer rules (CP, PNPK, RS, Regional).
 
-        Input:
-        - Primary Claim: {primary_claim}
-        - Secondary Claims: {secondary_claims}
-        - Primary Action: {primary_action}
-        - Secondary Actions: {secondary_actions}
+        Data kontekstual:
+        - Diagnosis Utama: {primary_claim}
+        - Diagnosis Sekunder: {secondary_claims}
+        - Tindakan Utama: {primary_action}
+        - Tindakan Sekunder: {secondary_actions}
+        - Context RS: {rs_id or '-'}, Region: {region_id or '-'}
 
-        Tulis ulang hasil rule berikut menjadi kalimat yang rapi tapi tetap faktual:
-        Diagnosis: {json.dumps(raw_eval_diagnosis, ensure_ascii=False)}
-        Tindakan: {json.dumps(raw_eval_tindakan, ensure_ascii=False)}
+        Rule multilayer yang tersedia: {json.dumps(rules_context, ensure_ascii=False)}
 
-        Keluaran berupa JSON:
+        Diagnosis Combination Raw Data:
+        {json.dumps(eval_diagnosis, ensure_ascii=False)}
+
+        Tindakan Combination Raw Data:
+        {json.dumps(eval_tindakan, ensure_ascii=False)}
+
+        Keluarkan hasil dalam JSON valid:
         {{
-          "evaluasi_diagnosis": {{"message": "..."}},
-          "evaluasi_tindakan": {{"message": "..."}}
+          "evaluasi_diagnosis": {{"message": "Kalimat evaluasi diagnosis."}},
+          "evaluasi_tindakan": {{"message": "Kalimat evaluasi tindakan."}}
         }}
+
+        Format bahasa seperti laporan medis, contoh:
+        - "Kombinasi diagnosis valid berdasarkan CP Nasional dan aturan RS lokal."
+        - "Semua tindakan sesuai standar CP dan tidak menimbulkan konflik tarif."
         """
         ai_resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Kamu AI medis verifikator, jaga format JSON valid."},
+                {"role": "system", "content": "Kamu AI medis verifikator. Jawab JSON valid tanpa penjelasan tambahan."},
                 {"role": "user", "content": ai_prompt}
             ],
-            temperature=0.2
+            temperature=0.3
         )
-        ai_json = ai_resp.choices[0].message.content.strip()
-        ai_summary = json.loads(ai_json)
-        dx_note = ai_summary.get("evaluasi_diagnosis", {}).get("message", "")
-        tdk_note = ai_summary.get("evaluasi_tindakan", {}).get("message", "")
+        ai_result = json.loads(ai_resp.choices[0].message.content)
+        dx_msg = ai_result.get("evaluasi_diagnosis", {}).get("message", "")
+        tdk_msg = ai_result.get("evaluasi_tindakan", {}).get("message", "")
     except Exception as e:
-        dx_note = f"AI phrasing gagal: {e}"
-        tdk_note = dx_note
+        dx_msg = f"AI phrasing gagal: {e}"
+        tdk_msg = dx_msg
 
-    # ==========================================
-    # 4️⃣ Bentuk struktur final (kompatibel dengan UI lama)
-    # ==========================================
-    evaluasi_diagnosis = raw_eval_diagnosis.copy()
-    evaluasi_tindakan = raw_eval_tindakan.copy()
-
-    evaluasi_diagnosis["notification"] = {
-        "status": "info",
-        "message": dx_note or "Hasil berdasarkan multilayer rule (AI phrasing)."
-    }
-    evaluasi_tindakan["notification"] = {
-        "status": "info",
-        "message": tdk_note or "Hasil berdasarkan multilayer rule (AI phrasing)."
-    }
+    # ============================================================
+    # 5️⃣ Kembalikan format siap pakai UI
+    # ============================================================
+    eval_diagnosis["notification"] = {"status": "info", "message": dx_msg or "Hasil evaluasi multilayer (AI phrased)."}
+    eval_tindakan["notification"] = {"status": "info", "message": tdk_msg or "Hasil evaluasi multilayer (AI phrased)."}
 
     return {
-        "evaluasi_diagnosis": evaluasi_diagnosis,
-        "evaluasi_tindakan": evaluasi_tindakan,
-        "engine_version": "generate_claim_combos@2025-10-14"
+        "evaluasi_diagnosis": eval_diagnosis,
+        "evaluasi_tindakan": eval_tindakan,
+        "engine_version": f"generate_claim_combos@{date.today().isoformat()}"
     }
 
 
 # ============================================================
-# 🔹 ALTERNATIF KOMBINASI (MASIH AI-BASED)
+# 🔹 FUNGSI ALTERNATIF KOMBINASI (AI SIMULATION)
 # ============================================================
 def process_generate_alternatives(payload: dict) -> dict:
     """
-    Fungsi terpisah untuk menghasilkan alternatif kombinasi saja.
-    Tetap berbasis AI (simulasi what-if).
+    Menghasilkan alternatif kombinasi klaim (on-demand, untuk dropdown UI).
     """
     primary_claim = payload.get("primary_claim", "")
     secondary_claims = payload.get("secondary_claims", [])
     primary_action = payload.get("primary_action", "")
     secondary_actions = payload.get("secondary_actions", [])
+    rs_id = payload.get("rs_id")
+    region_id = payload.get("region_id")
 
+    try:
+        rules_diag = load_rules_multilayer([primary_claim] + secondary_claims, rs_id, region_id, scope="diagnosis")
+        rules_tdk = load_rules_multilayer([primary_claim] + secondary_claims, rs_id, region_id, scope="tindakan")
+    except Exception as e:
+        rules_diag, rules_tdk = {}, {}
+        print(f"[ALTERNATIF] Gagal load multilayer rules: {e}")
+
+    # 🔹 Gabungkan kedua rules menjadi satu konteks AI
+    combined_rules_context = {
+        "diagnosis_rules": rules_diag,
+        "tindakan_rules": rules_tdk
+    }
+
+    # 🔹 AI prompt utama
     prompt = f"""
-    Kamu adalah AI medis yang bertugas menghasilkan alternatif kombinasi klaim BPJS/INA-CBG.
-    Input:
-    - Primary Claim: {primary_claim}
-    - Secondary Claims: {secondary_claims}
-    - Primary Action: {primary_action}
-    - Secondary Actions: {secondary_actions}
+    Kamu adalah AI medis yang bertugas menyusun alternatif kombinasi klaim BPJS/INA-CBG.
+    Berdasarkan aturan multilayer berikut (diagnosis + tindakan):
+    {json.dumps(combined_rules_context, ensure_ascii=False)[:1500]}
+
+    Data Klaim:
+    - Diagnosis utama: {primary_claim}
+    - Diagnosis sekunder: {secondary_claims}
+    - Tindakan utama: {primary_action}
+    - Tindakan tambahan: {secondary_actions}
 
     Buat minimal 2 alternatif kombinasi valid (berdasarkan CP/PNPK/RS/Regional)
     dengan struktur JSON:
@@ -206,84 +235,42 @@ def process_generate_alternatives(payload: dict) -> dict:
     """
 
     try:
-        response = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Kamu AI medis. Jawab hanya JSON valid."},
+                {"role": "system", "content": "Kamu AI medis verifikator BPJS. Jawab JSON valid."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.4
+            temperature=0.3
         )
-        raw_output = response.choices[0].message.content.strip()
+        output = json.loads(resp.choices[0].message.content)
+        result = output.get("alternatif", [])
     except Exception as e:
-        print(f"[ERROR] Gagal generate alternatif: {e}")
-        raw_output = "{}"
+        print(f"[ALTERNATIF] ⚠️ OpenAI error: {e}")
+        result = []
 
-    print("==== RAW OUTPUT GENERATE_CLAIM_ALTERNATIVES ====")
-    print(raw_output)
-    print("===============================================")
-
-    try:
-        ai_result = json.loads(raw_output)
-    except json.JSONDecodeError:
-        ai_result = {"alternatif": []}
-
-    ai_result.setdefault("alternatif", [])
-
-    def safe_val(val, default="-"):
-        return val if isinstance(val, str) and val.strip() else default
-
-    alts = ai_result["alternatif"]
-    fixed_alts = []
-    if isinstance(alts, list):
-        for alt in alts[:3]:
-            fixed_alts.append({
-                "judul": safe_val(alt.get("judul", "")),
-                "catatan": safe_val(alt.get("catatan", "")),
-                "severity": safe_val(alt.get("severity", "")),
-                "ina_cbg": safe_val(alt.get("ina_cbg", "")),
-                "tarif": alt.get("tarif") if isinstance(alt.get("tarif"), (int, float)) else 0,
-                "syarat": safe_val(alt.get("syarat", "")),
-                "faskes": safe_val(alt.get("faskes", "")),
-                "rawat_inap": safe_val(alt.get("rawat_inap", "")),
-                "tindakan": alt.get("tindakan", []) if isinstance(alt.get("tindakan"), list) else [],
-                "notification": alt.get("notification", {
+    # fallback default
+    if not result:
+        result = [
+            {
+                "judul": "Pneumonia + DM",
+                "catatan": "Komorbid DM meningkatkan severity & tarif.",
+                "severity": "Moderate (2)",
+                "ina_cbg": "E-4-10-II",
+                "tarif": 8900000,
+                "syarat": "HbA1c ≥7%, LOS ≥5 hari",
+                "faskes": "RS Tipe B",
+                "rawat_inap": "≥5 hari",
+                "tindakan": ["Ventilasi Mekanik", "Nebulizer"],
+                "notification": {
                     "status": "info",
-                    "message": "AI suggestion (simulasi alternatif klaim)."
-                })
-            })
-    
-    if not fixed_alts:
-        # fallback default tetap ada
-        fixed_alts = [
-            {
-                "judul": "Kombinasi Klaim Apendektomi dengan CT Scan",
-                "catatan": "Kombinasi ini mencakup tindakan operasi dan pemeriksaan penunjang.",
-                "severity": "Medium",
-                "ina_cbg": "D-04-13",
-                "tarif": 12500000,
-                "syarat": "Diagnosis utama harus terkonfirmasi.",
-                "faskes": "RS Type B",
-                "rawat_inap": "≥ 3 hari",
-                "tindakan": ["Operasi Apendektomi", "CT Scan Abdomen"],
-                "notification": {"status": "info", "message": "Contoh fallback default."}
-            },
-            {
-                "judul": "Kombinasi Klaim Apendektomi dengan Komorbid",
-                "catatan": "Mempertimbangkan adanya komorbiditas pasca operasi.",
-                "severity": "Medium",
-                "ina_cbg": "D-04-13",
-                "tarif": 13500000,
-                "syarat": "Pasien memiliki diagnosis komorbid relevan.",
-                "faskes": "RS Type B/C",
-                "rawat_inap": "≥ 3 hari",
-                "tindakan": ["Operasi Apendektomi"],
-                "notification": {"status": "info", "message": "Contoh fallback default."}
+                    "message": "Kombinasi valid berdasarkan CP Pneumonia + DM."
+                }
             }
         ]
 
-    result = {
-        "alternatif": fixed_alts,
-        "engine_version": "generate_claim_alternatives@2025-10-14"
+    return {
+        "alternatif": result,
+        "engine_version": "generate_claim_alternatives@2025-10-19",
+        "scope": "kombinasi"
     }
-    return result
