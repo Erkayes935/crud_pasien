@@ -456,50 +456,53 @@
     <!-- Table -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div class="overflow-x-auto">
-        <table class="w-full">
+        <table class="w-full min-w-[1200px]">
           <thead>
             <tr class="border-b border-gray-200 dark:border-gray-700">
-              <th data-column="id" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">ID</th>
+              <th data-column="id" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">ID</th>
               <th data-column="patient" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Pasien</th>
-              <!-- 🔹 Tambahan kolom Episode -->
               <th data-column="episode" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Episode</th>
-              <th data-column="rm" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. RM</th>
-              <th data-column="tanggal" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tanggal</th>
+              <th data-column="rm" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">No. RM</th>
+              <th data-column="tanggal" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tanggal</th>
               <th data-column="workflow" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Workflow</th>
               <th data-column="dokter" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
               <th data-column="coder" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Coder</th>
-              <!-- ✅ NEW: Medical Data Columns -->
+              <!-- ✅ Medical Data Columns -->
               <th data-column="diagnosis" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Diagnosis</th>
               <th data-column="tindakan" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tindakan</th>
-              <th data-column="tarif_cbg" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tarif CBG</th>
-              <th data-column="tarif_rs" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tarif RS</th>
-              <th data-column="los" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">LOS</th>
-              <!-- ✅ NEW: AI Status Column -->
-              <th data-column="ai_status" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">AI Status</th>
-              <th data-column="aksi" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Aksi</th>
+              <th data-column="tarif_cbg" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tarif CBG</th>
+              <th data-column="tarif_rs" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tarif RS</th>
+              <th data-column="los" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">LOS</th>
+              <th data-column="ai_status" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">AI Status</th>
+              <th data-column="aksi" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {% for claim in claims %}
             {% set ws = claim.workflow_status or 'draft' %}
             <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-              <td data-column="id" class="py-3 px-3 text-sm font-medium text-gray-800 dark:text-gray-200">#{{ claim.id }}</td>
-              <td data-column="patient" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">{{ claim.patient_name }}</td>
+              <td data-column="id" class="py-3 px-2 text-sm font-medium text-gray-800 dark:text-gray-200">#{{ claim.id }}</td>
+              <td data-column="patient" class="py-3 px-2 text-sm text-gray-700 dark:text-gray-300">
+                <div class="truncate" title="{{ claim.patient_name }}">{{ claim.patient_name }}</div>
+              </td>
               
               <!-- 🔹 Kolom Episode (Group) -->
-              <td data-column="episode" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">
-                {% if claim.group %}
-                  <a href="/claims/group/{{ claim.group.id }}" 
-                     class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                    {{ claim.group.nama_group }}
-                  </a>
-                {% else %}
-                  <span class="text-gray-400">-</span>
-                {% endif %}
+              <td data-column="episode" class="py-3 px-2 text-sm text-gray-700 dark:text-gray-300">
+                <div class="truncate">
+                  {% if claim.group %}
+                    <a href="/claims/group/{{ claim.group.id }}" 
+                       class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                       title="{{ claim.group.nama_group }}">
+                      {{ claim.group.nama_group }}
+                    </a>
+                  {% else %}
+                    <span class="text-gray-400">-</span>
+                  {% endif %}
+                </div>
               </td>
 
-              <td data-column="rm" class="py-3 px-3 text-sm text-gray-600 dark:text-gray-400">{{ claim.patient_rm or '-' }}</td>
-              <td data-column="tanggal" class="py-3 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+              <td data-column="rm" class="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">{{ claim.patient_rm or '-' }}</td>
+              <td data-column="tanggal" class="py-3 px-2 text-sm text-gray-600 dark:text-gray-400 text-center">
                 {{ claim.tanggal_kunjungan.strftime('%d/%m/%Y') if claim.tanggal_kunjungan else '-' }}
               </td>
               <td data-column="workflow" class="py-3 px-3 text-center">
@@ -537,7 +540,7 @@
                 <div class="max-w-xs truncate" title="{{ claim.diagnosis_utama }}">
                   {{ claim.diagnosis_utama }}
                 </div>
-                {% if claim.diagnosis_sekunder > 0 %}
+                {% if claim.diagnosis_sekunder and claim.diagnosis_sekunder|int > 0 %}
                   <small class="text-gray-500 dark:text-gray-400">+{{ claim.diagnosis_sekunder }} sekunder</small>
                 {% endif %}
               </td>

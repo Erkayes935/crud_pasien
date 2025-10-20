@@ -59,7 +59,6 @@
     if (summInput) summInput.value = JSON.stringify(state.summary || {});
   }
 
-
   // Tambahan utility functions untuk normalisasi data
 
   // Function untuk normalisasi data array

@@ -106,8 +106,13 @@
         return state.role_names;
       }
       
-      if (state.role) {
-        return [state.role];
+      else if (state.role) {
+        // ✅ FIX: Pisahkan string multi-role seperti "doctor,coder,verifikator"
+        if (typeof state.role === "string" && state.role.includes(",")) {
+          userRoles = state.role.split(",").map(r => r.trim().toLowerCase());
+        } else {
+          userRoles = [String(state.role).toLowerCase()];
+        }
       }
       
       if (Array.isArray(window.roles) && window.roles.length > 0) {
@@ -360,8 +365,8 @@
   // ================= Render Mapping Select =================
   function renderMappingSelect(item, tab, type, index = null) {
     // ✅ Cek multi-role: doctor atau multi memiliki akses edit
-    const canEdit = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
-    const disabled = canEdit ? '' : 'disabled';
+    const canEdit = true; // semua role bisa edit
+    const disabled = '';  // tidak pernah disabled
     
     // Debug log
     if (window.DEBUG_ROLES) {
@@ -619,8 +624,7 @@
       thead.className = "bg-gray-100 dark:bg-gray-800";
       
       // ✅ Cek apakah user memiliki akses mapping (doctor atau multi-role)
-      const showMapping = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
-      
+      const showMapping = true; // tampil untuk semua role      
       thead.innerHTML = `
         <tr>
           <th class="border px-3 py-2 w-[20%]">Kategori</th>
@@ -663,8 +667,7 @@
       const titleKlinis = klinisText;
 
       // ✅ Cek apakah user memiliki akses mapping
-      const showMapping = hasAnyRole(['doctor', 'multi']) || hasRole('doctor');
-
+      const showMapping = true; // tampil untuk semua role
       tbody.insertAdjacentHTML("beforeend", `
         <tr class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm"
           data-id="${dayId || tab}-${type}-${idx}"
@@ -690,7 +693,7 @@
             <td class="border px-3 py-2 w-[10%] text-center">
               <span class="block w-full truncate">${renderValue(parent.score)}</span>
             </td>
-            ${showMapping ? `<td class="border px-3 py-2 text-center">${renderMappingSelect(parent, tab, type, idx)}</td>` : ``}
+            <td class="border px-3 py-2 text-center">${renderMappingSelect(parent, tab, type, idx)}</td>
           </tr>
       `);
 
@@ -721,7 +724,7 @@
             <td class="border px-3 py-2 text-center w-[10%]">
               <span class="block w-full truncate">${renderValue(child.score)}</span>
             </td>
-            ${hasRole('doctor') ? `<td class="border px-3 py-2 text-center">${renderMappingSelect(child, tab, type, `${idx}-child-${cIdx}`)}</td>` : ``}
+            <td class="border px-3 py-2 text-center">${renderMappingSelect(child, tab, type, `${idx}-child-${cIdx}`)}</td>
           </tr>
         `);
       });
@@ -796,7 +799,7 @@
     }
 
     // === Manual input row untuk doctor ===
-    if (!skipManualRow && hasAnyRole(['doctor', 'coder'])) {
+    if (!skipManualRow) {
       if (
         tab === "admission" ||
         tab === "discharge" ||
@@ -876,6 +879,11 @@
   if (typeof window.DEBUG_ROLES === 'undefined') {
     window.DEBUG_ROLES = false;
   }
+  // 🩵 Debug: tampilkan semua role user di console saat file dimuat
+  if (window.DEBUG_ROLES) {
+    console.log("🎭 [DEBUG_ROLES] Active user roles detected:", getUserRoles());
+  }
+
 
   // Log initialization
   console.log("✅ claim.render.js loaded - Multi-role support enabled");

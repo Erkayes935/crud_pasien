@@ -215,6 +215,37 @@
     }
   }
 
+  // ======================================================
+  // 🔹 AI Loading Modal Handler (non-global)
+  // ======================================================
+
+  function showAiLoadingModal(steps = ["Mengambil data...", "Menganalisis hasil...", "Menyiapkan tampilan..."]) {
+    const modal = document.getElementById("aiLoadingModal");
+    const container = document.getElementById("aiLoadingMessages");
+    if (!modal || !container) return;
+
+    modal.classList.remove("hidden");
+    container.innerHTML = "";
+    let i = 0;
+    (function loop() {
+      if (i < steps.length) {
+        const p = document.createElement("p");
+        p.textContent = steps[i];
+        container.appendChild(p);
+        i++;
+        setTimeout(loop, 900);
+      }
+    })();
+  }
+
+  function hideAiLoadingModal() {
+    const modal = document.getElementById("aiLoadingModal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+
+  // Export kalau pakai module system
+  // export { showAiLoading, hideAiLoading };
   function renderRegulationDetailMultilayer(data, fieldName) {
     if (!data || data.length === 0) {
       return `<div class="p-4 text-center text-gray-400">Tidak ada regulasi untuk ditampilkan.</div>`;
@@ -582,6 +613,11 @@ function updateRingkasanFromRow(itemId, dx) {
       let dx = {};
       // 🔥 NEW: Jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis (core_engine)
       if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
+        showAiLoadingModal([
+          "Mengambil data detail diagnosis...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
         console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
         const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
           method: "POST",
@@ -594,6 +630,11 @@ function updateRingkasanFromRow(itemId, dx) {
           })
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        showAiLoadingModal([
+          "Mengambil data detail diagnosis...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
         const result = await res.json();
         console.log("[RESP] /analyze_diagnosis", result);
         
@@ -611,6 +652,8 @@ function updateRingkasanFromRow(itemId, dx) {
           modalContent,
           { hideDefaultClose: false } // ✅ pastikan default close muncul
         );
+
+        hideAiLoadingModal();
 
         // 🔥 CRITICAL: Call updateRingkasanFromRow setelah modal dibuka!
         console.log("🔥 Auto-filling table with data:", { uiId, dx });
@@ -642,6 +685,8 @@ function updateRingkasanFromRow(itemId, dx) {
         return;
       }
 
+      hideAiLoadingModal();
+
       let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
       rawText = rawText.replace(/^▶|^▼/, "").trim();
       rawText = rawText.replace(/\s+\d+$/, "");
@@ -656,6 +701,8 @@ function updateRingkasanFromRow(itemId, dx) {
       </div>`, modalContent, { hideDefaultClose: false });
       window.claimState.currentDiagnosis = dx;
       window.claimState.currentDiagnosisTitle = namaPenyakit;
+
+      hideAiLoadingModal();
 
       updateRingkasanFromRow(uiId, dx);
     } catch (err) {
@@ -1388,7 +1435,7 @@ window.renderChecklistHtml = function(checklist) {
                 <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
                       title="${description}">${"&nbsp;"}</span>
               </div>
-              ${window.claimState?.role === "doctor" ? `
+
                 <div class="flex space-x-2 justify-end">
                   <button type="button"
                           onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
@@ -1396,7 +1443,7 @@ window.renderChecklistHtml = function(checklist) {
                   <button type="button"
                           onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
                           class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">Pilih Sekunder</button>
-                </div>` : ``}
+                </div>
             </div>
           `;
         }).join("")
@@ -1510,6 +1557,11 @@ window.renderChecklistHtml = function(checklist) {
 
     try {
       // Request ke core_engine /analyze_procedure
+      showAiLoadingModal([
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_name: procedureName });
       const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
@@ -1523,6 +1575,11 @@ window.renderChecklistHtml = function(checklist) {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      showAiLoadingModal([
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       const result = await res.json();
       console.log("[RESP] /analyze_procedure", result);
 
@@ -1635,6 +1692,7 @@ window.renderChecklistHtml = function(checklist) {
 
     openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
+    hideAiLoadingModal();
 
     // 🔹 Simpan referensi supaya regulasi tahu asalnya
     window.claimState = window.claimState || {};
@@ -1657,6 +1715,7 @@ window.renderChecklistHtml = function(checklist) {
 
   async function openManualDetailModal(it, tab, idx) {
     try {
+      showAiLoadingModal(["Mengambil data...", "Menganalisis hasil...", "Menyiapkan tampilan..."]);
       const url = `/claims/search/tindakan/detail/${encodeURIComponent(it.procedure_text)}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1691,6 +1750,7 @@ window.renderChecklistHtml = function(checklist) {
         hideDefaultClose: true
       });
 
+      hideAiLoadingModal();
       // simpan referensi supaya regulasi tahu asalnya
       detail.isManual = true; // tandai sebagai manual
       window.claimState.currentProcedure = detail;
@@ -2092,6 +2152,8 @@ window.showConfirmModal = showConfirmModal;
 window.addManualTindakanIfNotFound = addManualTindakanIfNotFound;
 window.openOverlayModal = openOverlayModal;
 window.closeOverlayModal = closeOverlayModal;
+window.showAiLoadingModal = showAiLoadingModal;
+window.hideAiLoadingModal = hideAiLoadingModal;
 
 // ==================================================
 // i-DRG PREDICTION HELPER FUNCTIONS

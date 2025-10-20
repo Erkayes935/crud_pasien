@@ -14,27 +14,24 @@ def _sv(x: Any, default: str = "-") -> str:
 
 def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    HYBRID Procedure Analysis:
-    1. Muat multilayer rules dari DB
-    2. Gabungkan semua aturan relevan per field (bisa list)
-    3. Jalankan OpenAI reasoning pakai prompt lengkap
-    4. Kembalikan JSON sesuai struktur UI
+    HYBRID Procedure Analysis (AI + Multilayer Rules)
+    Hasil akhir: ringkasan AI yang sudah mempertimbangkan rules multilayer.
+    Rules DB dipakai sebagai konteks reasoning, bukan ditampilkan mentah.
     """
     claim_id = payload.get("claim_id")
     procedure = payload.get("procedure_name") or payload.get("procedure") or ""
     stage = (payload.get("stage") or "admission").strip()
-
-    print(f"[ANALYZE_PROCEDURE] Processing: {procedure}")
-
-    # ================================================================
-    # 1️⃣ LOAD MULTILAYER RULES (DARI DB)
-    # ================================================================
     ctx = payload.get("context") or {}
     dx_pri = ctx.get("primary_claim", "")
     rs_id = ctx.get("rs_id")
     region_id = ctx.get("region_id")
     hospital_level = ctx.get("hospital_level", "")
 
+    print(f"[ANALYZE_PROCEDURE] Processing: {procedure}")
+
+    # ================================================================
+    # 1️⃣ LOAD MULTILAYER RULES (DARI DB)
+    # ================================================================
     multilayer = load_rules_for_diagnosis(dx_pri, rs_id=rs_id, region_id=region_id, scope="tindakan", procedure=procedure)
     all_rules = multilayer.get("rules", {})
     tindakan_map = FIELD_RULE_MAP.get("tindakan", {})
@@ -69,33 +66,17 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
                 ],
                 "combined_label": combined_layers,
             }
-
-    def merge_ai_with_rules(ai_value: str, field_name: str, multilayer_output: dict) -> str:
-        """
-        Gabungkan hasil AI dengan multilayer rules dari DB.
-        - AI tetap ditampilkan
-        - Jika ada multilayer rule, tampilkan di bawahnya dalam bullet list
-        """
-        if not multilayer_output or not multilayer_output.get(field_name):
-            return ai_value or "-"
-
-        rules = multilayer_output[field_name].get("items", [])
-        if not rules:
-            return ai_value or "-"
-
-        rule_lines = [f"- {r['isi']} ({r['sumber']})" for r in rules]
-        rule_text = "\n".join(rule_lines)
-
-        combined_label = multilayer_output[field_name].get("combined_label")
-        combined_label_text = (
-            f"\nGabungan aturan: {combined_label}" if combined_label else ""
+    # ================================================================
+    # 2️⃣ BENTUK RULES CONTEXT UNTUK PROMPT AI
+    # ================================================================
+    rule_contexts = []
+    for field, group in multilayer_output.items():
+        rule_text = "\n".join(
+            [f"- [{r['layer']}] {r['isi']} (Sumber: {r['sumber']})" for r in group["items"]]
         )
+        rule_contexts.append(f"📘 {field.upper()}:\n{rule_text}\n")
 
-        if ai_value:
-            return f"{ai_value}\n{rule_text}{combined_label_text}"
-        else:
-            return f"{rule_text}{combined_label_text}"
-
+    rules_summary = "\n".join(rule_contexts) if rule_contexts else "Tidak ada aturan multilayer."
 
     # ================================================================
     # 2️⃣ REQUEST OPENAI (PROMPT LENGKAP)
@@ -108,21 +89,32 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     patient_context = ctx.get("patient_context", "")
 
     prompt = f"""
-    Anda adalah spesialis coding medis dan konsultan BPJS Indonesia.
+    Anda adalah konsultan coding medis dan spesialis klaim BPJS Indonesia.
 
-    Tugas Anda: Berikan analisis tindakan medis {procedure} berdasarkan konteks klaim berikut:
-    
-    ANALISIS TINDAKAN: {procedure}
-    DIAGNOSIS PRIMER: {dx_pri}
-    KONTEKS: Claim {claim_id}, Stage: {stage}, RS: {hospital_level}
-    INFORMASI KLAIM: {json.dumps(ctx, ensure_ascii=False)}
+    Langkah Anda:
+    1. Baca dan pahami semua aturan multilayer di bawah ini.
+    2. Untuk setiap field (Validitas, Status, INA-CBG, dst), simpulkan hasil akhir
+       berdasarkan isi aturan tersebut.
+    3. Jika suatu field tidak punya aturan, gunakan pengetahuan medis umum.
+    4. Hasilkan ringkasan singkat berbahasa medis yang mudah dipahami dokter/verifikator.
+
+    ====== KUMPULAN ATURAN MULTILAYER ======
+    {rules_summary}
+
+    ====== KONTEKS KLAIM ======
+    Diagnosis: {dx_pri}
+    Tindakan: {procedure}
+    RS level: {hospital_level}
+    Stage: {stage}
+    Context JSON: {json.dumps(ctx, ensure_ascii=False)}
     
     Tentukan apakah tindakan ini:
     - Sesuai dengan Clinical Pathway (CP) dan Panduan Nasional (PNPK)
     - Sudah didukung oleh data rekam medis (hasil lab, radiologi, durasi rawat, indikasi klinis)
     - Memerlukan tambahan pemeriksaan atau lama rawat tertentu
     - Perlu penyesuaian tarif atau kelayakan level RS
-    
+
+    Keluarkan hasil akhir ringkas seperti contoh berikut:
     {{
       "procedure": "{procedure}",
       "icd9_code": "Kode ICD-9-CM yang akurat sesuai WHO/BPJS",
@@ -185,7 +177,7 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         print(f"[ANALYZE_PROCEDURE] ⚠️ OpenAI API error: {e}")
         ai_data = {}
-
+    
     # ================================================================
     # 3️⃣ BUILD RESPONSE (tetap sama + tambahan multilayer)
     # ================================================================
@@ -220,31 +212,24 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
         "icd9_code": icd9_code,
         "icd9": icd9_code,
         "icd9_desc": _sv(ai_data.get("icd9_desc", "")),
-        "deskripsi": formatted_description if is_explicit_procedure_request else "",  # Keep empty until explicitly viewed
-        "validitas": merge_ai_with_rules(_sv(ai_data.get("validitas", "")), "validitas", multilayer_output),
-        "status_tindakan": merge_ai_with_rules(_sv(ai_data.get("status_tindakan", "")), "status_tindakan", multilayer_output),
+        "deskripsi": formatted_description if is_explicit_procedure_request else "",
+        "validitas": _sv(ai_data.get("validitas", "")),
+        "status_tindakan": _sv(ai_data.get("status_tindakan", "")),
         "status": _sv(ai_data.get("status", ai_data.get("status_tindakan", ""))),
         "ina_cbg_tarif": _sv(ai_data.get("ina_cbg_tarif", "")),
         "ina_cbg": _sv(ai_data.get("ina_cbg", ai_data.get("ina_cbg_tarif", ""))),
-        "faskes": merge_ai_with_rules(_sv(ai_data.get("faskes", "")), "faskes", multilayer_output),
-        "rawat_inap": merge_ai_with_rules(_sv(ai_data.get("rawat_inap", "")), "rawat_inap", multilayer_output),
-        "syarat_klinis": merge_ai_with_rules(_sv(ai_data.get("syarat_klinis", "")), "syarat_klinis_tindakan", multilayer_output),
-        "source": "AI+Rules",
+        "faskes": _sv(ai_data.get("faskes", "")),
+        "rawat_inap": _sv(ai_data.get("rawat_inap", "")),
+        "syarat_klinis": _sv(ai_data.get("syarat_klinis", "")),
+        "source": "AI reasoning (rule-based)",
         "data_completeness": "100%" if ai_data else "0%",
-        "engine_version": f"hybrid_analyze_procedure@{date.today().isoformat()}",
-    }
-
-    # notification tetap dipertahankan
-    if ai_data.get("notification"):
-        result["notification"] = ai_data["notification"]
-    else:
-        result["notification"] = {
+        "engine_version": f"rule_based_analyze_procedure@{date.today().isoformat()}",
+        "notification": ai_data.get("notification", {
             "status": "info",
             "message": "Belum ada notifikasi untuk bagian TINDAKAN."
-        }
-
-    # multilayer result tambahan
-    result["multilayer_rules"] = multilayer_output
+        }),
+        "multilayer_rules": multilayer_output,
+    }
 
     print(f"[ANALYZE_PROCEDURE] ✅ Response built successfully for: {procedure}")
     print(f"[ANALYZE_PROCEDURE] Diagnosis: {dx_pri}")

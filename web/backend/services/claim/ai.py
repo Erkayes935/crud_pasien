@@ -25,7 +25,7 @@ def store_ai_recommendations(
 ) -> None:
     """
     Enhanced storage function for AI recommendations with validation and logging.
-    
+
     Args:
         db: Database session
         claim_id: ID of the claim
@@ -36,25 +36,28 @@ def store_ai_recommendations(
     try:
         print(f"[AI STORAGE] Starting storage for claim {claim_id}, mode: {mode}, stage: {stage}")
         print(f"[AI STORAGE] Data received: {ai_data}")
-        
-        # Validate inputs
+
+        # ✅ Validation
         if not claim_id:
             raise ValueError("claim_id is required")
         if not isinstance(ai_data, dict):
             raise ValueError("ai_data must be a dictionary")
         if mode not in ["predict", "diagnosis", "procedure", "combos", "regulation"]:
             raise ValueError(f"Invalid mode: {mode}")
-            
-        # Validate claim exists
+
+        # ✅ Validate claim exists
         claim = db.query(models.Claim).filter_by(id=claim_id).first()
         if not claim:
             raise ValueError(f"Claim {claim_id} not found")
 
+        # ============================================================
+        # MODE: PREDICT
+        # ============================================================
         if mode == "predict":
-            # pastikan ClaimSimulation ada
             sim = db.query(models.ClaimSimulation).filter_by(
                 claim_id=claim_id, stage=stage, is_deleted=False
             ).first()
+
             if not sim:
                 sim = models.ClaimSimulation(
                     claim_id=claim_id,
@@ -68,15 +71,14 @@ def store_ai_recommendations(
 
             for category in ["diagnosis", "komorbid", "komplikasi"]:
                 for item in ai_data.get(category, []):
-                    # Store parent item
                     diag = models.ClaimDiagnosis(
                         claim_id=claim_id,
                         diagnosis_type=category,
                         diagnosis_text=item.get("kategori"),
                         is_deleted=False,
+                        is_dummy=False,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
-                        is_dummy=False
                     )
                     db.add(diag)
                     db.flush()
@@ -86,16 +88,16 @@ def store_ai_recommendations(
                         stage=stage,
                         category=category,
                         diagnosis_id=diag.id,
-                        child=False,
                         confidence_score=item.get("score"),
+                        child=False,
                         is_deleted=False,
                         is_dummy=False,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
                     )
                     db.add(rec)
-                    
-                    # Store children items
+
+                    # simpan children (sub-diagnosis)
                     for child in item.get("children", []):
                         child_diag = models.ClaimDiagnosis(
                             claim_id=claim_id,
@@ -114,8 +116,8 @@ def store_ai_recommendations(
                             stage=stage,
                             category=category,
                             diagnosis_id=child_diag.id,
-                            child=True,
                             confidence_score=child.get("score"),
+                            child=True,
                             is_deleted=False,
                             is_dummy=False,
                             created_at=datetime.utcnow(),
@@ -123,10 +125,16 @@ def store_ai_recommendations(
                         )
                         db.add(child_rec)
 
+        # ============================================================
+        # MODE: DIAGNOSIS
+        # ============================================================
         elif mode == "diagnosis":
+            # ambil category dari AI response atau fallback default
+            category = ai_data.get("category", "diagnosis")
+
             diag = models.ClaimDiagnosis(
                 claim_id=claim_id,
-                diagnosis_type="analysis",
+                diagnosis_type=category,  # ✅ bukan hardcode "analysis"
                 diagnosis_text=ai_data.get("diagnosis_text"),
                 icd10_code=ai_data.get("icd10_code"),
                 klinis=ai_data.get("justifikasi"),
@@ -141,7 +149,7 @@ def store_ai_recommendations(
             rec = models.ClaimAIRecommendation(
                 claim_id=claim_id,
                 stage=stage,
-                category=category,
+                category=category,  # ✅ dinamis
                 diagnosis_id=diag.id,
                 confidence_score=ai_data.get("score"),
                 is_deleted=False,
@@ -151,11 +159,16 @@ def store_ai_recommendations(
             )
             db.add(rec)
 
+        # ============================================================
+        # MODE: PROCEDURE
+        # ============================================================
         elif mode == "procedure":
+            category = ai_data.get("category", "procedure")
+
             proc = models.ClaimProcedure(
                 claim_id=claim_id,
                 procedure_text=ai_data.get("procedure_text"),
-                procedure_type="analysis",  
+                procedure_source=ai_data.get("procedure_source"),
                 requirement_flag=False,
                 stage=stage,
                 is_deleted=False,
@@ -166,48 +179,18 @@ def store_ai_recommendations(
             db.add(proc)
             db.flush()
 
-            # ℹ️ ClaimAIRecommendation hanya untuk diagnosis, bukan procedure
-
-        elif mode == "combos":
-            # biasanya combos disimpan via store_ai_evaluations / bulk_store_ai_results_from_core
-            for ev in ai_data.get("evaluasi_diagnosis", []):
-                db.add(models.ClaimDiagnosisEvaluation(
-                    claim_id=claim_id,
-                    validitas=ev.get("valid"),
-                    validitas_detail=ev.get("catatan"),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                ))
-
-            for ev in ai_data.get("evaluasi_procedure", []):
-                db.add(models.ClaimProcedureEvaluation(
-                    claim_id=claim_id,
-                    validitas=ev.get("valid"),
-                    validitas_detail=ev.get("catatan"),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                ))
-
-            for alt in ai_data.get("alternatif", []):
-                db.add(models.ClaimCombinationAlternative(
-                    claim_id=claim_id,
-                    kombinasi_nama="; ".join(alt.get("kombinasi", [])),
-                    notes=alt.get("catatan"),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                ))
-
+        # ============================================================
+        # MODE: REGULATION
+        # ============================================================
         elif mode == "regulation":
-            # Extract data from regulation service response format
             regulation_data = ai_data
             if "data" in ai_data and isinstance(ai_data["data"], list) and len(ai_data["data"]) > 0:
-                regulation_data = ai_data["data"][0]  # Get first regulation item
-            
-            # Convert isi list to JSON string if needed
+                regulation_data = ai_data["data"][0]
+
             isi = regulation_data.get("isi", [])
             if isinstance(isi, list):
                 isi = "\n".join(isi) if isi else ""
-            
+
             reg = models.ClaimRegulationDetail(
                 claim_id=claim_id,
                 dasar_hukum=regulation_data.get("dasar_hukum", ""),
@@ -220,12 +203,17 @@ def store_ai_recommendations(
             )
             db.add(reg)
 
+        # ============================================================
+        # COMMIT & LOG
+        # ============================================================
         db.commit()
-        print(f"[AI STORAGE] Successfully stored recommendations for {mode}")
+        print(f"[AI STORAGE] ✅ Successfully stored recommendations for mode={mode}, stage={stage}")
+
     except Exception as e:
-        print(f"[AI STORAGE] Error storing recommendations: {str(e)}")
         db.rollback()
+        print(f"[AI STORAGE] ❌ Error storing recommendations: {str(e)}")
         raise
+
     
 # ==================================================
 # AI EVALUATIONS (hasil generate_claim_combos / summary)
