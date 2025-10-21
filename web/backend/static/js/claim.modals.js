@@ -162,8 +162,8 @@
     // render title hanya jika disableAutoTitle = false
     if (!options.disableAutoTitle) {
       modalTitle.innerHTML = `
-        <div class="relative w-full">
-          <h2 class="text-xl font-bold text-center text-white">${title || "(Untitled Modal)"}</h2>
+        <div class="relative w-full bg-blue-600/90 dark:bg-blue-700 text-white rounded-t-xl py-2">
+          <h2 class="text-xl font-bold text-center">${title || "(Untitled Modal)"}</h2>
           ${closeButton}
         </div>
       `;
@@ -174,7 +174,7 @@
       ? (content || "<p>Tidak ada konten.</p>")
       : `
         ${modalTitle.outerHTML}
-        <div class="modal-body">${content || "<p>Tidak ada konten.</p>"}</div>
+        <div class="modal-body pt-3">${content || "<p>Tidak ada konten.</p>"}</div>
       `;
 
     // animasi fade-in
@@ -821,6 +821,9 @@ function updateRingkasanFromRow(itemId, dx) {
     const rujukan = it.rujukan || {};
     const inaCbg = it.inaCbg || it.ina_cbg || {};
     const notifications = it.notifications || {}; // 🔔 notifikasi per section dari core_engine
+    const safeRender = (cb) => {
+      try { return cb(); } catch (e) { console.warn("render skip:", e); return ""; }
+    };
     console.log("📋 Parsed notifications:", notifications);
     
     console.log("📋 Parsed klinis:", klinis);
@@ -1059,43 +1062,24 @@ window.renderChecklistHtml = function(checklist) {
           `;
         }
     
-        // Helper function for rendering existing rows in i-DRG section
-        function renderExistingRow(label, value, fieldName = null) {
-          let content = value || "-";
-    
-        // Add link to regulation if this field has one and value exists
-        if (fieldName && value && checkFieldHasRegulation(fieldName)) {
-          content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
-                        title="📋 Klik untuk melihat regulasi ${fieldName}"
-                        data-field="${fieldName}"
-                        onclick="openRegulationDetailModal('${fieldName}', null, 'idrg')">${value}</span>`;
-        }
-    
-        return `
-          <div class="grid grid-cols-2">
-            <div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
-            <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2">${content}</div>
-          </div>
-        `;
-        } // <-- close the function to avoid syntax error
     
         // --- Helper untuk data tersimpan ---
         const renderExistingRow = (label, value, fieldName = null) => {
           let content = value || "-";
-      if (fieldName && value && checkFieldHasRegulation(fieldName)) {
-        content = `
-          <span class="cursor-pointer hover:underline hover:text-blue-600 border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
-                title="📋 Klik untuk melihat regulasi ${fieldName}"
-                data-field="${fieldName}"
-                onclick="openRegulationDetailModal('${fieldName}', null, 'idrg')">${value}</span>`;
-      }
-      return `
-        <div class="grid grid-cols-2">
-          <div class="bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white px-3 py-2 font-medium">${label}</div>
-          <div class="bg-white text-gray-900 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${content}</div>
-        </div>
-      `;
-    };
+          if (fieldName && value && checkFieldHasRegulation(fieldName)) {
+            content = `
+              <span class="cursor-pointer hover:underline hover:text-blue-600 border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+                    title="📋 Klik untuk melihat regulasi ${fieldName}"
+                    data-field="${fieldName}"
+                    onclick="openRegulationDetailModal('${fieldName}', null, 'idrg')">${value}</span>`;
+          }
+          return `
+            <div class="grid grid-cols-2">
+              <div class="bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white px-3 py-2 font-medium">${label}</div>
+              <div class="bg-white text-gray-900 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${content}</div>
+            </div>
+          `;
+        };
 
     // --- Template utama ---
     return `
@@ -1971,7 +1955,6 @@ window.saveNote = async function(fieldKey, stage, itemId) {
 window.openModal = openModal;
 window.openModalFromAttr = openModalFromAttr;
 window.buildModalContent = buildModalContent;
-window.renderBox = renderBox;
 window.renderDiagnosisDetail = renderDiagnosisDetail;
 window.renderIdrgSection = renderIdrgSection;
 window.renderIdrgPredictionResult = renderIdrgPredictionResult;
