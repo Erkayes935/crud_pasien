@@ -38,7 +38,6 @@ from backend.services.claim.simulation import load_sim_and_summary, load_existin
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
-
 # ==================================================
 # EXPORT
 # ==================================================
@@ -3785,3 +3784,121 @@ def get_claim_visits(
             })
     
     return {"visits": visits}
+# ----------------- Helpers -----------------
+def _map_diag_for_coder(d: models.ClaimDiagnosis, sim_by_diag_id: dict) -> dict:
+    """
+    Template edit_coder.html mengharapkan:
+    type, text, icd_doctor, icd_final, item_id, field, verified_by, verified_at
+    """
+    # Cari info verifikasi dari ClaimSimulation (kalau kamu memang menggunakannya)
+    sim = sim_by_diag_id.get(d.id)
+    icd_final = None
+    verified_by = None
+    verified_at = None
+    if sim:
+        icd_final = sim.verified_icd10 or d.icd10_code
+        verified_by = sim.coder_verified_by
+        verified_at = sim.coder_verified_at
+
+    return {
+        "type": d.diagnosis_type or "-",
+        "text": d.diagnosis_text or "-",
+        "icd_doctor": d.icd10_code or "-",
+        "icd_final": icd_final,
+        "item_id": d.id,
+        "field": "diagnosis",
+        "verified_by": verified_by,
+        "verified_at": verified_at,
+    }
+
+
+def _map_proc_for_coder(p: models.ClaimProcedure) -> dict:
+    """
+    Template edit_coder.html mengharapkan:
+    type, text, icd_doctor, icd_final, item_id, field, verified_by, verified_at
+    """
+    return {
+        "type": (p.procedure_source or "manual"),
+        "text": p.procedure_text or "-",
+        "icd_doctor": getattr(p, "icd9_code", None) or "-",     # property di model akan tarik dari detail pertama
+        "icd_final": p.icd9_final_by_coder or None,
+        "item_id": p.id,
+        "field": "procedure",
+        "verified_by": p.verified_by,
+        "verified_at": p.verified_at,
+        # stage p.stage sudah ada kalau perlu dipakai di FE
+    }
+
+
+def _empty_stages():
+    # Struktur “aman” sesuai yang dipakai template
+    return {
+        "admission": {"diagnosis": [], "procedure": []},
+        "daily-0":  {"diagnosis": [], "procedure": []},
+        "discharge":{"diagnosis": [], "procedure": []},
+    }
+
+
+@router.get("/{claim_id}/edit", name="edit_coder_view")
+def edit_coder_view(
+    claim_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user = Depends(require_roles_session("coder", "verifikator", "doctor", "admin_rs", "superadmin")),
+):
+    """
+    View halaman verifikasi ICD untuk coder.
+    Mengirim: claim, stages (dict of {stage: {diagnosis:[], procedure:[]}}).
+    """
+    claim = db.query(models.Claim).filter(models.Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim tidak ditemukan")
+
+    # Ambil semua diagnosis & procedure klaim
+    diags = db.query(models.ClaimDiagnosis).filter(
+        models.ClaimDiagnosis.claim_id == claim_id,
+        models.ClaimDiagnosis.is_deleted == False
+    ).all()
+
+    procs = db.query(models.ClaimProcedure).filter(
+        models.ClaimProcedure.claim_id == claim_id,
+        models.ClaimProcedure.is_deleted == False
+    ).all()
+
+    # (Opsional) Ambil simulation untuk status verifikasi per item diagnosis
+    # Catatan: desainmu menyimpan verifikasi coder di ClaimSimulation
+    sims = db.query(models.ClaimSimulation).filter(
+        models.ClaimSimulation.claim_id == claim_id,
+        models.ClaimSimulation.is_deleted == False
+    ).all()
+    # Index dengan preferensi diagnosis_utama / diagnosis_sekunder
+    sim_by_diag_id = {}
+    for s in sims:
+        if s.diagnosis_utama_id:
+            sim_by_diag_id[s.diagnosis_utama_id] = s
+        if s.diagnosis_sekunder_id:
+            sim_by_diag_id[s.diagnosis_sekunder_id] = s
+
+    # Siapkan stages aman
+    stages = _empty_stages()
+
+    # ⚠️ ClaimDiagnosis tidak punya field “stage”.
+    # Untuk mencegah 500, masukkan ke "admission" by default (atau sesuaikan kalau kamu sudah punya mapping lain).
+    for d in diags:
+        stages["admission"]["diagnosis"].append(_map_diag_for_coder(d, sim_by_diag_id))
+
+    # ClaimProcedure punya field stage -> gunakan itu
+    for p in procs:
+        stage_key = p.stage if p.stage in stages else "admission"
+        stages[stage_key]["procedure"].append(_map_proc_for_coder(p))
+
+    # Render template dengan context lengkap
+    return templates.TemplateResponse(
+        "edit_coder.html",
+        {
+            "request": request,
+            "claim": claim,
+            "stages": stages,
+            # kamu bisa kirim tambahan context lain kalau perlu di head / header
+        }
+    )
