@@ -111,20 +111,36 @@ def get_dashboard_data(db: Session, current_user):
         .filter(
             models.Claim.is_final == True,
             models.Claim.is_deleted == False,
-            models.Claim.workflow_status == "finalized"
+            (
+                (models.Claim.workflow_status == None) |
+                (models.Claim.workflow_status == "") |
+                (models.Claim.workflow_status == "finalized") |
+                (models.Claim.workflow_status == "approved")
+            )
         )
         .count()
     )
+
 
     # === List final (tetap untuk tabel bawah) ===
     data["final_claims_list"] = (
         db.query(models.Claim)
         .options(joinedload(models.Claim.patient))
-        .filter(models.Claim.is_final == True, models.Claim.is_deleted == False)
+        .filter(
+            models.Claim.is_final == True,
+            models.Claim.is_deleted == False,
+            (
+                (models.Claim.workflow_status == None) |
+                (models.Claim.workflow_status == "") |
+                (models.Claim.workflow_status == "finalized") |
+                (models.Claim.workflow_status == "approved")
+            )
+        )
         .order_by(models.Claim.id.desc())
         .limit(10)
         .all()
     )
+
 
     # =========================
     # TOTAL USERS & PASIEN LIST

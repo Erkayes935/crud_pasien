@@ -219,7 +219,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                         diagnosis_type=mapping,
                         diagnosis_text=item.get("name") or item.get("kategori") or item.get("nama_kategori"),
                         icd10_code=item.get("icd10_code") or item.get("icd"),
-                        justifikasi=item.get("klinis"),
+                        justifikasi_klinis=item.get("klinis"),
                         is_deleted=False,
                         is_dummy=False,
                         created_at=datetime.utcnow(),

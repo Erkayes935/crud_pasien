@@ -1377,9 +1377,9 @@ async def predict_ddx(claim_id: int, payload: dict = Body(...), db: Session = De
         
         deleted_procs = db.query(models.ClaimProcedure).filter(
             models.ClaimProcedure.claim_id == cid,
-            models.ClaimProcedure.procedure_source.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
+            models.ClaimProcedure.procedure_source == "ai"   # hanya hapus hasil AI
         ).delete(synchronize_session=False)
-        
+
         print(f"[PREDICT_DDX] ✅ Cleared existing mappings: {deleted_sims} simulations, {deleted_diags} diagnoses, {deleted_procs} procedures")
         
         ai.store_ai_recommendations(db, cid, normalized, "predict", stage)
@@ -1467,20 +1467,26 @@ async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Sessio
         # 🔥 NEW: Store regulasi detail jika ada di response
         if "regulasi" in result and isinstance(result["regulasi"], list):
             print(f"[ANALYZE_DIAGNOSIS] Found {len(result['regulasi'])} regulation details, storing to database")
+            ai.store_ai_recommendations(db, claim_id, result, "regulation", stage)
             
             for reg_item in result["regulasi"]:
-                if not reg_item or not reg_item.get("judul"):
+                judul = reg_item.get("judul") or reg_item.get("judul_regulasi")
+                if not reg_item or not judul:
                     continue
+
                     
                 regulation_detail = models.ClaimRegulationDetail(
                     claim_id=claim_id,
-                    judul_regulasi=reg_item.get("judul", ""),
+                    procedure_id=existing_procedure.id if mode == "procedure" else None,
+                    diagnosis_id=diag.id if mode == "diagnosis" else None,
+                    judul_regulasi=judul,
                     dasar_hukum=reg_item.get("dasar_hukum", ""),
                     bab_pasal=reg_item.get("bab_pasal", ""),
                     isi=reg_item.get("isi", ""),
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
                 )
+
                 db.add(regulation_detail)
                 print(f"[ANALYZE_DIAGNOSIS] Stored regulation: {reg_item.get('judul', 'Unknown')}")
         
@@ -1552,11 +1558,12 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
         
         # 🔥 NEW: Store detailed procedure analysis to claim_procedure_details
         if result and isinstance(result, dict):
+            source = result.get("procedure_source") or "ai"
             # Find or create ClaimProcedure for this analysis
             existing_procedure = db.query(models.ClaimProcedure).filter_by(
                 claim_id=cid,
                 procedure_text=procedure_name,
-                procedure_source="manual",  # Mark as procedure from modal
+                procedure_source=source,  # Mark as procedure from modal
                 is_deleted=False
             ).first()
             
@@ -1564,7 +1571,11 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
                 # Create new ClaimProcedure
                 existing_procedure = models.ClaimProcedure(
                     claim_id=cid,
-                    procedure_source="manual",
+                    procedure_source=source,
+                    procedure_text=procedure_name,
+                    requirement_flag=False,  # Add required field
+                    stage=stage,
+                    is_deleted=False,
                     is_dummy=False,  # Add required field
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
@@ -1603,11 +1614,29 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
                 existing_detail.validitas_tindakan = result.get("validitas", existing_detail.validitas_tindakan or "")
                 existing_detail.status_tindakan = result.get("status_tindakan", existing_detail.status_tindakan or "")
                 existing_detail.ina_cbg_tindakan = result.get("ina_cbg", existing_detail.ina_cbg_tindakan or "")
+                existing_detail.faskes_tindakan = result.get("faskes_tindakan") or result.get("faskes", existing_detail.faskes_tindakan or "")
+                existing_detail.rawat_inap_tindakan = result.get("rawat_inap_tindakan") or result.get("rawat_inap", existing_detail.rawat_inap_tindakan or "")
                 existing_detail.syarat_klinis_tindakan = result.get("syarat_klinis", existing_detail.syarat_klinis_tindakan or "")
+                existing_detail.deskripsi_tindakan = ", ".join([
+                    f"ICD-9: {result.get('icd9_code')}" if result.get("icd9_code") else "",
+                    f"Status: {result.get('status_tindakan')}" if result.get("status_tindakan") else "",
+                    f"INA-CBG: {result.get('ina_cbg')}" if result.get("ina_cbg") else "",
+                ]).strip(", ")
+
                 existing_detail.updated_at = datetime.utcnow()
                 print(f"[ANALYZE_PROCEDURE] Updated existing procedure detail for: {procedure_name}")
             else:
                 # Create new detail
+                # 🔧 generate gabungan deskripsi dari 3 field utama
+                desc_parts = []
+                if result.get("icd9_code"):
+                    desc_parts.append(f"ICD-9: {result.get('icd9_code')}")
+                if result.get("status_tindakan"):
+                    desc_parts.append(f"Status: {result.get('status_tindakan')}")
+                if result.get("ina_cbg"):
+                    desc_parts.append(f"INA-CBG: {result.get('ina_cbg')}")
+                deskripsi_gabungan = ", ".join(desc_parts)
+
                 procedure_detail = models.ClaimProcedureDetail(
                     claim_simulation_id=simulation.id,
                     procedure_id=existing_procedure.id,
@@ -1615,7 +1644,10 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
                     validitas_tindakan=result.get("validitas", ""),
                     status_tindakan=result.get("status_tindakan", ""),
                     ina_cbg_tindakan=result.get("ina_cbg", ""),
+                    faskes_tindakan=result.get("faskes_tindakan") or result.get("faskes", ""),         # ✅ tambahkan fallback
+                    rawat_inap_tindakan=result.get("rawat_inap_tindakan") or result.get("rawat_inap", ""),  # ✅ tambahkan fallback
                     syarat_klinis_tindakan=result.get("syarat_klinis", ""),
+                    deskripsi_tindakan=deskripsi_gabungan,
                     is_deleted=False,
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
@@ -1626,9 +1658,11 @@ async def analyze_procedure(claim_id: int, payload: dict = Body(...), db: Sessio
             # 🔥 NEW: Store regulasi detail jika ada di response
             if "regulasi" in result and isinstance(result["regulasi"], list):
                 print(f"[ANALYZE_PROCEDURE] Found {len(result['regulasi'])} regulation details, storing to database")
-                
+                ai.store_ai_recommendations(db, claim_id, result, "regulation", stage)
+            
                 for reg_item in result["regulasi"]:
-                    if not reg_item or not reg_item.get("judul"):
+                    judul = reg_item.get("judul") or reg_item.get("judul_regulasi")
+                    if not reg_item or not judul:
                         continue
                         
                     # Check if regulation already exists to avoid duplicates

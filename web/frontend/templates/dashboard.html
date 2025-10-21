@@ -149,8 +149,32 @@
       </div>
 
     {% else %}
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      
+      <!-- Statistik Klaim -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
+      <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+        <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+        Statistik Klaim
+      </h3>
+
+      <!-- 3 Card Utama -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-6 border border-emerald-200/50 dark:border-emerald-700/50">
+          <p class="text-sm text-emerald-700 dark:text-emerald-300 mb-2 font-medium">Total Klaim</p>
+          <p class="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{{ total_claims }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-6 border border-blue-200/50 dark:border-blue-700/50">
+          <p class="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">Klaim Final</p>
+          <p class="text-4xl font-bold text-blue-900 dark:text-blue-100">{{ final_claims }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-6 border border-amber-200/50 dark:border-amber-700/50">
+          <p class="text-sm text-amber-700 dark:text-amber-300 mb-2 font-medium">Klaim Draft</p>
+          <p class="text-4xl font-bold text-amber-900 dark:text-amber-100">{{ draft_claims }}</p>
+        </div>
+      </div>
+
+      <!-- Stats Cards Tambahan -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-blue-700/50">
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Total klaim bulan ini</p>
           <p class="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-1">{{ total_claims_bulan_ini or "1,250" }}</p>
@@ -178,7 +202,7 @@
           <p class="text-3xl font-bold text-rose-900 dark:text-rose-100 mb-1">{{ mismatch or "18%" }}</p>
         </div>
       </div>
-
+    </div>
       <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
         <div class="lg:col-span-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
@@ -201,29 +225,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Statistik Klaim -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
-        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
-          <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
-          Statistik Klaim
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-6 border border-emerald-200/50 dark:border-emerald-700/50">
-            <p class="text-sm text-emerald-700 dark:text-emerald-300 mb-2 font-medium">Total Klaim</p>
-            <p class="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{{ total_claims }}</p>
-          </div>
-          <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-6 border border-blue-200/50 dark:border-blue-700/50">
-            <p class="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">Klaim Final</p>
-            <p class="text-4xl font-bold text-blue-900 dark:text-blue-100">{{ final_claims }}</p>
-          </div>
-          <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-6 border border-amber-200/50 dark:border-amber-700/50">
-            <p class="text-sm text-amber-700 dark:text-amber-300 mb-2 font-medium">Klaim Draft</p>
-            <p class="text-4xl font-bold text-amber-900 dark:text-amber-100">{{ draft_claims }}</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Klaim Draft Table -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
         <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
@@ -234,9 +235,12 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-gray-200 dark:border-gray-700">
-                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-20">ID</th>
                 <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Pasien</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
+                <th class="text-left py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Dibuat</th>
                 <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-32">Status</th>
+                <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Terakhir Update</th>
                 <th class="text-center py-4 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 w-32">Aksi</th>
               </tr>
             </thead>
@@ -251,12 +255,28 @@
                         {{ claim.patient.nama if claim.patient else '-' }}
                       </td>
 
+                      <!-- Kolom dokter dipendekkan -->
+                      <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium max-w-[180px] truncate" title="{{ claim.doctor.nama if claim.doctor else '-' }}">
+                        {{ claim.doctor_name if claim.doctor else '-' }}
+                      </td>
+
+                      <!-- Kolom dibuat oleh dipendekkan -->
+                      <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium max-w-[180px] truncate" title="{{ claim.created_by.nama if claim.created_by else '-' }}">
+                        {{ claim.created_at.strftime("%Y-%m-%d") }}
+                      </td>
+
                       <!-- Status -->
                       <td class="py-4 px-4 text-center w-28">
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                           Draft
                         </span>
                       </td>
+
+                      <!-- Last Update -->
+                      <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400 text-center">
+                        {{ claim.updated_at.strftime("%Y-%m-%d") }}
+                      </td>
+
                       <!-- Kolom aksi -->
                       <td class="py-4 px-4 text-center w-[280px]">
                         <div class="flex items-center justify-center gap-3 flex-wrap text-sm">
@@ -330,41 +350,53 @@
               </tr>
             </thead>
             <tbody>
-              {% for claim in claims %}
-                {% if claim and claim.status == 'final' %}
+              {% if final_claims_list and final_claims_list|length > 0 %}
+                {% for claim in final_claims_list %}
                   <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">{{ claim.id }}</td>
-                    <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ claim.patient.nama if claim.patient else '-' }}</td>
-                    <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">{{ claim.doctor_name or '-' }}</td>
+                    <td class="py-4 px-4 text-sm text-gray-800 dark:text-gray-200 font-medium">
+                      {{ claim.patient.nama if claim.patient else '-' }}
+                    </td>
+                    <td class="py-4 px-4 text-sm text-gray-700 dark:text-gray-300">
+                      {{ claim.doctor_name or '-' }}
+                    </td>
                     <td class="py-4 px-4 text-center">
                       <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                         Final
                       </span>
                     </td>
-                    <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400 text-center">{{ claim.created_at.strftime("%Y-%m-%d") }}</td>
+                    <td class="py-4 px-4 text-sm text-gray-600 dark:text-gray-400 text-center">
+                      {{ claim.created_at.strftime("%Y-%m-%d") if claim.created_at else '-' }}
+                    </td>
                     <td class="py-4 px-4 text-center">
                       <a href="/claims/{{ claim.id }}" 
-                         class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
+                        class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium group">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         <span class="group-hover:underline">Detail</span>
                       </a>
                     </td>
                   </tr>
-                {% endif %}
-              {% endfor %}
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="6" class="py-12 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                      <svg class="w-12 h-12 mb-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p class="text-sm">Tidak ada klaim final.</p>
+                    </div>
+                  </td>
+                </tr>
+              {% endif %}
             </tbody>
           </table>
-          {% if not claims or (claims and claims|selectattr("status", "equalto", "final")|list|length == 0) %}
-            <div class="text-center py-12">
-              <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              <p class="text-gray-500 dark:text-gray-400 text-sm">Tidak ada klaim final.</p>
-            </div>
-          {% endif %}
         </div>
       </div>
     {% endif %}

@@ -127,6 +127,8 @@ def parse_number(val):
     if isinstance(val, (int, float)):
         return val
     cleaned = str(val).replace("Rp", "").replace(",", "").replace(".", "").strip()
+    if cleaned in ["", "-", "None", "nan"]:
+        return None
     try:
         return int(cleaned)
     except ValueError:
