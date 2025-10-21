@@ -1445,7 +1445,7 @@ window.renderChecklistHtml = function(checklist) {
   async function openProcedureModal(procId, procedureName) {
     const isDark = document.documentElement.classList.contains("dark");
     const modalBg = isDark ? "bg-slate-800 text-white" : "bg-gray-50 text-gray-900";
-    const titleColor = isDark ? "text-yellow-400" : "text-amber-600";
+    const titleColor = isDark ? "text-yellow-400" : "text-amber-600"; // 🟡 biar tetap kontras di light mode
 
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
@@ -1457,26 +1457,26 @@ window.renderChecklistHtml = function(checklist) {
 
     console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
 
-    // Check if this is a manual procedure - if so, use openManualDetailModal instead
-    const state = Alpine.$data(document.getElementById('claimRoot'));
-    const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
-    const manualTindakan = allTindakan.find(t =>
-      t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
-    );
-
-    if (manualTindakan) {
-      console.log("🔧 Detected manual procedure, using openManualDetailModal");
-      openManualDetailModal(manualTindakan);
-      return;
-    }
+      // Check if this is a manual procedure - if so, use openManualDetailModal instead
+      const state = Alpine.$data(document.getElementById('claimRoot'));
+      const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
+      const manualTindakan = allTindakan.find(t => 
+        t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
+      );
+      
+      if (manualTindakan) {
+        console.log("🔧 Detected manual procedure, using openManualDetailModal");
+        openManualDetailModal(manualTindakan);
+        return;
+      }
 
     try {
       // Request ke core_engine /analyze_procedure
       showAiLoadingModal([
-        "Mengambil data detail tindakan...",
-        "Memuat regulasi multilayer terkait...",
-        "Menyiapkan tampilan modal..."
-      ]);
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_text: procedureName });
       const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
         method: "POST",
@@ -1491,12 +1491,11 @@ window.renderChecklistHtml = function(checklist) {
 
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       showAiLoadingModal([
-        "Mengambil data detail tindakan...",
-        "Memuat regulasi multilayer terkait...",
-        "Menyiapkan tampilan modal..."
-      ]);
+          "Mengambil data detail tindakan...",
+          "Memuat regulasi multilayer terkait...",
+          "Menyiapkan tampilan modal..."
+        ]);
       const result = await res.json();
-
       // 🧩 Simpan ID DB hasil analyze_procedure
       if (result && result.procedure_id) {
         window.claimState.currentProcedure = window.claimState.currentProcedure || {};
@@ -1511,17 +1510,20 @@ window.renderChecklistHtml = function(checklist) {
         }
       }
 
+
       console.log("[RESP] /analyze_procedure", result);
+
       const d = result.data || result;
-      console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
+        console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
       const renderProcBox = (label, value, fieldName = null) => {
         const multilayer = d.multilayer_rules?.[fieldName] || null;
         const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
         let safeValue = value || "";
-
-        // 💰 Format tarif INA-CBG
+        
+        // Special handling untuk tarif INA-CBG
         if (fieldName === "ina_cbg" && value && value !== "") {
+          console.log("💰 Formatting tarif:", value, typeof value);
           const numericValue = parseInt(value);
           if (!isNaN(numericValue)) {
             safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
@@ -1532,29 +1534,34 @@ window.renderChecklistHtml = function(checklist) {
 
         const hasRegulation = checkFieldHasRegulation(fieldName);
         let content = `<span class="text-gray-900 dark:text-white">${safeValue}</span>`;
-
+        
         if (hasRules) {
           const listItems = multilayer.items
-            .map((r) => `
+            .map((r) =>`
               <li class="ml-5 list-disc marker:text-blue-400 dark:marker:text-blue-300 text-sm leading-snug">
                 ${r.isi} <span class="text-gray-400 dark:text-gray-500">(${r.sumber})</span>
-              </li>`
+            </li>`
             )
             .join("");
+
           const combinedLabel = multilayer.combined_label
             ? `<div class="text-xs italic text-blue-400 mt-1">Gabungan aturan: ${multilayer.combined_label}</div>`
             : "";
-          content = `<ul class="space-y-1 list-outside">${listItems}</ul>${combinedLabel}`;
+
+          content = `
+            <ul class="space-y-1 list-outside">${listItems}</ul>
+            ${combinedLabel}
+          `;
         } else {
           content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
         }
 
         if (hasRegulation && fieldName && safeValue !== "") {
           content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
-                      title="📋 Klik untuk melihat regulasi ${fieldName}"
-                      data-field="${fieldName}"
-                      data-procedure-id="${procId}"
-                      onclick="window.openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+                          title="📋 Klik untuk melihat regulasi ${fieldName}"
+                          data-field="${fieldName}"
+                          data-procedure-id="${procId}"
+                          onclick="window.openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
         }
 
         return `
@@ -1569,93 +1576,99 @@ window.renderChecklistHtml = function(checklist) {
       const notifications = d.notifications || {
         tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
       };
+
       console.log("📋 Notifications (procedure):", notifications);
 
-      // 🔹 Konten modal utama
+      // 🔹 Tambahkan notifikasi di atas semua detail tindakan
       const content = `
         <div class="${modalBg} flex flex-col items-center animate-fade-in">
-          <h2 class="text-center text-xl font-bold ${titleColor} mb-4">Detail Tindakan</h2>
+          <h2 class="text-center text-xl font-bold ${titleColor} mb-4">
+            Detail Tindakan
+          </h2>
           <h3 class="text-center text-2xl font-extrabold text-${isDark ? "yellow-300" : "amber-500"} mb-6">
             ${procedureName}
           </h3>
           <button type="button"
                   onclick="closeNestedModal()"
-                  class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">✕</button>
+                  class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">
+            ✕
+          </button>
         </div>
 
         ${renderNotificationBox("tindakan", notifications)}
 
-        <div class="grid grid-cols-2 gap-2 mt-3">
-          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
-          ${renderProcBox("Deskripsi", `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`, "deskripsi")}
-          ${renderProcBox("Validitas", d.validitas, "validitas")}
-          ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
-          ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
-          ${renderProcBox("Faskes", d.faskes, "faskes")}
-          ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
-          ${renderProcBox(
-            "Syarat Klinis",
-            d.multilayer_rules?.syarat_klinis
-              ? mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
-              : d.syarat_klinis,
-            "syarat_klinis"
-          )}
-        </div>
-      `;
-
-      // 🩺 Update kolom deskripsi di daftar tindakan utama
-      const procRow = document.querySelector(`[data-procid="${procId}"]`);
-      if (procRow) {
-        const descCell = procRow.querySelector("span[title], span.block");
-        if (descCell) {
-          const newDesc = `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`;
-          descCell.textContent = newDesc;
-          descCell.setAttribute("title", newDesc);
-        }
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
+        ${renderProcBox("Deskripsi", d.deskripsi, "deskripsi")}
+        ${renderProcBox("Validitas", d.validitas, "validitas")}
+        ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
+        ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+        ${renderProcBox("Faskes", d.faskes, "faskes")}
+        ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
+        ${renderProcBox(
+          "Syarat Klinis",
+          d.multilayer_rules?.syarat_klinis
+            ? mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
+            : d.syarat_klinis,
+          "syarat_klinis"
+        )}
+      </div>
+    `;
+  
+    // 🩺 Auto-update kolom deskripsi di daftar tindakan utama
+    const procRow = document.querySelector(`[data-procid="${procId}"]`);
+    if (procRow) {
+      const descCell = procRow.querySelector("span[title], span.block");
+      if (descCell) {
+        const newDesc = d.deskripsi || d.icd9_code || d.validitas || "-";
+        descCell.textContent = newDesc;
+        descCell.setAttribute("title", newDesc);
       }
+    }
 
-      openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
-      hideAiLoadingModal();
+    openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
 
-      // 🩹 Pastikan ID DB valid
-      let numericProcId = parseInt(procId);
-      if (numericProcId > 9999999999) {
-        console.warn("⚠️ Detected temporary timestamp ID, trying to resolve from DB...");
-        const foundProc = Object.values(window.claimState.simulasi || {})
-          .flatMap(s => s.tindakan || [])
-          .find(t =>
-            (t.nama === procedureName ||
-            t.procedure_text === procedureName ||
-            t.tindakan === procedureName) &&
-            t.procedure_id && t.procedure_id < 9999999999
-          );
-        if (foundProc) {
-          numericProcId = foundProc.procedure_id;
-          console.log("✅ Resolved procedure_id from simulation data:", numericProcId);
-        } else {
-          console.warn("❌ No valid procedure_id found, fallback to null");
-          numericProcId = null;
-        }
+    hideAiLoadingModal();
+
+    // 🩹 Pastikan yang disimpan ke claimState adalah ID DB, bukan timestamp
+    let numericProcId = parseInt(procId);
+    if (numericProcId > 9999999999) {
+      console.warn("⚠️ Detected temporary timestamp ID, trying to resolve from DB...");
+      
+      // Cari procedure di daftar tindakan (list simulasi) yang punya nama sama dan sudah punya ID DB
+      const foundProc = Object.values(window.claimState.simulasi || {})
+        .flatMap(s => s.tindakan || [])
+        .find(t => 
+          (t.nama === procedureName || 
+          t.procedure_text === procedureName || 
+          t.tindakan === procedureName) &&
+          t.procedure_id && t.procedure_id < 9999999999
+        );
+
+      if (foundProc) {
+        numericProcId = foundProc.procedure_id;
+        console.log("✅ Resolved procedure_id from simulation data:", numericProcId);
+      } else {
+        console.warn("❌ No valid procedure_id found, fallback to null");
+        numericProcId = null;
       }
+    }
 
-      // 🔹 Sinkronkan hasil analisis ke simulasi (agar deskripsi muncul tanpa reload)
-      if (window.claimState?.simulasi) {
-        Object.values(window.claimState.simulasi).forEach(stage => {
-          const tindakan = stage.tindakan || [];
-          tindakan.forEach(t => {
-            if (t.procedure_text === procedureName) {
-              t.deskripsi = d.deskripsi || d.icd9_desc || d.icd9_description || d.icd9_code || "-";
-              t.analyzed = true;
-            }
-          });
-        });
-      }
+
+    // 🔹 Update deskripsi list tindakan (instan)
+    const itemEl = document.querySelector(
+      `[data-procid='${procId}'] span[title], [data-procid='${procId}'] span.block, [data-procid='${procId}'] .text-xs`
+    );
+    if (itemEl) {
+      const deskripsiGabungan = d.deskripsi || "";
+      itemEl.textContent = deskripsiGabungan;
+      itemEl.setAttribute("title", deskripsiGabungan);
+    }
 
     } catch (err) {
       console.error("❌ Gagal load detail tindakan:", err);
     }
   }
-
 
   async function openManualDetailModal(it, tab, idx) {
     try {

@@ -393,7 +393,7 @@ class ClaimRegulationDetail(Base):
     procedure_evaluation_id = Column(Integer, ForeignKey("claim_procedure_evaluations.id"), nullable=True)
     idrg_diagnosis_id = Column(Integer, ForeignKey("claim_idrg_diagnosis.id"), nullable=True)
     idrg_summary_id   = Column(Integer, ForeignKey("claim_idrg_summary.id"), nullable=True)
-
+    entry_field = Column(String(100), nullable=True)  # contoh: "syarat_klinis", "justifikasi", "icd10_code"
 
     judul_regulasi = Column(String(255), nullable=False)   # contoh: PNPK Sepsis 2020
     dasar_hukum    = Column(String(255), nullable=True)    # contoh: Permenkes, PNPK, ICD-10, INA-CBG

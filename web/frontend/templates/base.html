@@ -106,6 +106,17 @@
     html:not(.dark) .modal-content .text-gray-800 {
       color: #1f2937 !important;
     }
+    /* ✅ Tambahan fix scroll regulasi */
+    #overlayRegulasi {
+      opacity: 0;
+      transition: opacity 0.25s ease-in-out;
+    }
+    #overlayRegulasi.visible {
+      opacity: 1;
+    }
+    body.modal-open {
+      overflow: hidden;
+    }
   </style>
 
 </head>
