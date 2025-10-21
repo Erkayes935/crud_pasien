@@ -97,89 +97,122 @@
   window.__suppressModalStack = false;
 
   function openModal(title, content, options = {}) {
-  window.claimState = window.claimState || {};
-  window.claimState.modalStack = window.claimState.modalStack || [];
+    // pastikan claimState tersedia
+    window.claimState = window.claimState || {};
+    window.claimState.modalStack = window.claimState.modalStack || [];
 
-  let modalContainer = document.getElementById("modalContainer");
-  let modalContent = document.querySelector(".modal-content");
-  let modalTitle = document.querySelector(".modal-title");
+    // pastikan elemen dasar modal tersedia
+    let modalContainer = document.getElementById("modalContainer");
+    let modalContent = document.querySelector(".modal-content");
+    let modalTitle = document.querySelector(".modal-title");
 
-  if (!modalContainer) {
-    modalContainer = document.createElement("div");
-    modalContainer.id = "modalContainer";
-    modalContainer.className =
-      "fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden";
-    document.body.appendChild(modalContainer);
-  }
-
-  if (!modalContent) {
-    modalContent = document.createElement("div");
-    modalContent.className =
-      "modal-content relative bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 p-6 rounded-2xl max-h-[90vh] overflow-y-auto shadow-2xl w-[90%] max-w-4xl border border-slate-200 dark:border-slate-700 transition-colors duration-300";
-    modalContainer.appendChild(modalContent);
-  }
-
-  if (!modalTitle) {
-    modalTitle = document.createElement("div");
-    modalTitle.className =
-      "modal-title mb-4 text-center text-xl font-bold text-slate-800 dark:text-white";
-    modalContent.prepend(modalTitle);
-  }
-
-  if (!window.__suppressModalStack) {
-    const oldTitle = modalTitle.innerHTML?.trim();
-    const oldHTML = modalContent.innerHTML?.trim();
-    if (oldHTML && oldTitle) {
-      window.claimState.modalStack.push({ title: oldTitle, content: oldHTML });
-      if (window.claimState.modalStack.length > 10)
-        window.claimState.modalStack.shift();
+    if (!modalContainer) {
+      modalContainer = document.createElement("div");
+      modalContainer.id = "modalContainer";
+      modalContainer.className =
+        "fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden";
+      document.body.appendChild(modalContainer);
     }
-  }
 
-  modalContent.innerHTML = "";
-  modalContainer.classList.remove("hidden");
-  modalContainer.classList.add("flex");
+    if (!modalContent) {
+      modalContent = document.createElement("div");
+      modalContent.className =
+        "modal-content relative bg-white dark:bg-slate-800 text-slate-800 dark:text-white p-6 rounded-2xl max-h-[90vh] overflow-y-auto shadow-2xl w-[90%] max-w-4xl border border-slate-200 dark:border-slate-700";
+      modalContainer.appendChild(modalContent);
+    }
 
-  const closeButton = options.hideDefaultClose
-    ? ""
-    : `<button type="button"
-          class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
-          onclick="closeNestedModal()">✕</button>`;
+    if (!modalTitle) {
+      modalTitle = document.createElement("div");
+      modalTitle.className =
+        "modal-title mb-4 text-center text-xl font-bold text-slate-800 dark:text-white";
+      modalContent.prepend(modalTitle);
+    }
 
-  if (!options.disableAutoTitle) {
-    modalTitle.innerHTML = `
-      <div class="relative w-full">
-        <h2 class="text-xl font-bold text-center text-yellow-500">${title || "(Untitled Modal)"}</h2>
-        ${closeButton}
-      </div>
-    `;
-  }
+    // simpan modal lama ke stack (restore system)
+    // 🚫 tapi jangan push kalau sedang restore dari overlay regulasi
+    if (!window.__suppressModalStack) {
+      const oldTitle = modalTitle.innerHTML?.trim();
+      const oldHTML = modalContent.innerHTML?.trim();
+      if (oldHTML && oldTitle) {
+        window.claimState.modalStack.push({ title: oldTitle, content: oldHTML });
+        if (window.claimState.modalStack.length > 10)
+          window.claimState.modalStack.shift();
+      }
+    }
 
-  modalContent.innerHTML = options.disableAutoTitle
-    ? (content || "<p>Tidak ada konten.</p>")
-    : `${modalTitle.outerHTML}
-       <div class="modal-body">${content || "<p>Tidak ada konten.</p>"}</div>`;
 
-  modalContent.classList.add("modal-fade-enter");
-  setTimeout(() => {
-    modalContent.classList.add("modal-fade-enter-active");
-    modalContent.classList.remove("modal-fade-enter");
-  }, 10);
+    // Log that we're opening the modal
+    console.log("🔍 Opening modal with title:", title);
+    console.log("🔍 Modal content length:", content?.length || 0);
 
-  window.claimState.modalOpen = true;
-  // 🩶 Force sync theme agar Tailwind dark/light diterapkan pada modal dinamis
-  const root = document.documentElement;
-  const isDark = root.classList.contains('dark');
+    // Clear existing content first
+    modalContent.innerHTML = "";
+    
+    // tampilkan modal container
+    modalContainer.classList.remove("hidden");
+    modalContainer.classList.add("flex");
 
-  if (isDark) {
-    modalContainer.classList.add('dark');
-    modalContent.classList.add('dark');
-  } else {
-    modalContainer.classList.remove('dark');
-    modalContent.classList.remove('dark');
-  }
+    // default close button
+    const closeButton = options.hideDefaultClose
+      ? ""
+      : `<button type="button"
+                  class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                  onclick="closeNestedModal()">✕</button>`;
 
-  setTimeout(() => Alpine.initTree(modalContent), 50);
+    // render title hanya jika disableAutoTitle = false
+    if (!options.disableAutoTitle) {
+      modalTitle.innerHTML = `
+        <div class="relative w-full">
+          <h2 class="text-xl font-bold text-center text-white">${title || "(Untitled Modal)"}</h2>
+          ${closeButton}
+        </div>
+      `;
+    }
+
+    // isi konten utama — kalau disableAutoTitle true, langsung pakai content-nya aja
+    modalContent.innerHTML = options.disableAutoTitle
+      ? (content || "<p>Tidak ada konten.</p>")
+      : `
+        ${modalTitle.outerHTML}
+        <div class="modal-body">${content || "<p>Tidak ada konten.</p>"}</div>
+      `;
+
+    // animasi fade-in
+    modalContent.classList.add("modal-fade-enter");
+    setTimeout(() => {
+      modalContent.classList.add("modal-fade-enter-active");
+      modalContent.classList.remove("modal-fade-enter");
+    }, 10);
+
+    window.claimState.modalOpen = true;
+
+    // Add the following to debug modal visibility
+    console.log("🔍 Modal container display:", getComputedStyle(modalContainer).display);
+    
+    // Initialize Alpine and attach event handlers
+    setTimeout(() => {
+      Alpine.initTree(modalContent);
+      
+      // Attach event handlers to regulation fields
+      document.querySelectorAll('.regulation-field').forEach(el => {
+        el.addEventListener('click', function() {
+          const field = this.getAttribute('data-field');
+          const diagnosisId = this.getAttribute('data-diagnosis-id');
+          const procedureId = this.getAttribute('data-procedure-id');
+          
+          console.log("🔍 Regulation field clicked:", field, diagnosisId, procedureId);
+          window.openRegulationDetailModal(field, diagnosisId, procedureId);
+        });
+      });
+      
+      console.log("🔍 Event handlers attached to regulation fields");
+    }, 50);
+
+    // ✅ Auto-reset flag setelah modal sukses terbuka (hindari duplikasi restore)
+    if (window.__suppressModalStack) {
+      console.log("🔧 Reset suppress flag setelah modal dibuka");
+      window.__suppressModalStack = false;
+    }
   }
 
   // ======================================================
@@ -271,29 +304,32 @@
   }
 
   function openOverlayModal(title, htmlContent, sourceType = null, sourceId = null) {
-  document.body.classList.remove("text-xl", "text-yellow-500", "font-bold");
+    // 🩵 reset global font biar modal lain gak ikut besar
+    document.body.classList.remove("text-xl", "text-yellow-500", "font-bold");
 
-  window.claimState = window.claimState || {};
-  window.claimState.regulationSource = { type: sourceType, id: sourceId };
+    // simpan context biar tau nanti harus balik ke mana
+    window.claimState = window.claimState || {};
+    window.claimState.regulationSource = { type: sourceType, id: sourceId };
 
-  let overlay = document.getElementById("overlayRegulasi");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "overlayRegulasi";
-    overlay.className = "fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center z-[999]";
-    document.body.appendChild(overlay);
+    let overlay = document.getElementById("overlayRegulasi");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "overlayRegulasi";
+      overlay.className = "fixed inset-0 bg-black/40 dark:bg-black/70 flex items-center justify-center z-[999]";
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="bg-white dark:bg-white text-gray-900 dark:bg-slate-800 dark:text-white text-slate-800 dark:text-white p-6 rounded-2xl max-w-4xl w-[90%] shadow-2xl relative animate-fade-in border border-slate-200 dark:border-slate-700">
+        <button type="button"
+                class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                onclick="closeOverlayModal()">✕</button>
+        <h2 class="text-lg font-semibold mb-4 text-center text-slate-800 dark:text-white">${title}</h2>
+        ${htmlContent}
+      </div>
+    `;
   }
 
-  overlay.innerHTML = `
-    <div class="relative bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 p-6 rounded-2xl max-w-4xl w-[90%] shadow-2xl animate-fade-in border border-slate-200 dark:border-slate-700 transition-colors duration-300">
-      <button type="button"
-              class="absolute top-3 right-4 text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
-              onclick="closeOverlayModal()">✕</button>
-      <h2 class="text-lg font-semibold mb-4 text-center text-yellow-500">${title}</h2>
-      ${htmlContent}
-    </div>
-  `;
-  }
 
   // =======================
   // Close overlay regulasi
@@ -702,14 +738,17 @@ function updateRingkasanFromRow(itemId, dx) {
   function renderFieldMultilayer(fieldData, label, fieldName = "syarat_klinis", diagnosisId = null) {
   if (!fieldData) {
     return `
-      <div class="grid grid-cols-2">
-        <div class="bg-slate-100 text-gray-900 dark:bg-slate-800 dark:text-gray-100 px-3 py-2 font-medium border-b border-slate-200 dark:border-slate-700">${label}</div>
-        <div class="bg-slate-50 text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 border-b border-slate-200 dark:border-slate-600">-</div>
+      <div class="grid grid-cols-2 align-top">
+        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
+        <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 align-top">-</div>
       </div>
     `;
   }
 
-  const isi = typeof fieldData === 'string' ? fieldData : (fieldData?.isi ?? "-");
+  const isi = typeof fieldData === 'string' 
+    ? fieldData 
+    : (fieldData?.isi !== undefined ? fieldData.isi : "-");
+
   const isMultiline = typeof isi === "string" && (isi.includes("•") || isi.includes("["));
 
   if (isMultiline) {
@@ -727,7 +766,7 @@ function updateRingkasanFromRow(itemId, dx) {
           .replace(/dark\:bg\-\w+\-\d+\s?/g, '');
 
         return `
-          <li class="leading-snug">
+          <li class="mb-2 leading-snug">
             <span class="font-semibold ${colorClass} cursor-pointer hover:underline regulation-field"
                   title="📋 Klik untuk melihat regulasi ${label}"
                   data-field="${fieldName}"
@@ -741,14 +780,14 @@ function updateRingkasanFromRow(itemId, dx) {
           </li>
         `;
       } else {
-        return `<li class="leading-snug">${line.trim().replace(/^•\s*/, '')}</li>`;
+        return `<li class="mb-2 leading-snug">${line.trim().replace(/^•\s*/, '')}</li>`;
       }
     }).join("");
 
     return `
       <div class="grid grid-cols-2 align-top">
-        <div class="bg-slate-100 text-gray-900 dark:bg-slate-800 dark:text-gray-100 px-3 py-2 font-medium border-b border-slate-200 dark:border-slate-700">${label}</div>
-        <div class="bg-slate-50 text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 border-b border-slate-200 dark:border-slate-600">
+        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
+        <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 align-top">
           <ul class="list-disc pl-4 space-y-1">${itemsHtml}</ul>
           ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>` : ""}
         </div>
@@ -756,18 +795,17 @@ function updateRingkasanFromRow(itemId, dx) {
     `;
   }
 
-  // fallback single-line
+  // fallback jika bukan multilayer
   return `
     <div class="grid grid-cols-2 align-top">
-      <div class="bg-slate-100 text-gray-900 dark:bg-slate-800 dark:text-gray-100 px-3 py-2 font-medium border-b border-slate-200 dark:border-slate-700">${label}</div>
-      <div class="bg-slate-50 text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 border-b border-slate-200 dark:border-slate-600 text-sm whitespace-pre-line">
+      <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
+      <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 text-sm align-top whitespace-pre-line">
         ${isi}
         ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>` : ""}
       </div>
     </div>
   `;
   }
-
   // 🔹 Fungsi render utama modal detail diagnosis
   function renderDiagnosisDetail(it) {
     console.log("📋 renderDiagnosisDetail received data:", it);
@@ -793,7 +831,7 @@ function updateRingkasanFromRow(itemId, dx) {
       kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "",
       z_code: it.icd10?.z_code || it.z_code || "",
       kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "",
-      status_icd: it.icd10?.status_icd || it.status_icd || "default"
+    status_icd: it.icd10?.status_icd || it.status_icd || "default"
     };
 
     const tindakan = it.tindakan || [];
@@ -810,6 +848,7 @@ function updateRingkasanFromRow(itemId, dx) {
     console.log("📋 Parsed tindakan count:", tindakan.length);
     console.log("🧩 [DEBUG] Simulasi tindakan saat render ulang:", 
     window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan);
+
     
     // 🔥 Debug specific field values
     console.log("📋 klinis.justifikasi:", klinis.justifikasi);
@@ -818,53 +857,34 @@ function updateRingkasanFromRow(itemId, dx) {
     console.log("📋 rawat.indikasi:", rawat.indikasi);
 
     const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
-      const isDark = document.documentElement.classList.contains("dark");
-
-      // 🌗 Base style: adaptif light/dark
-      let colorClass = isDark
-        ? "bg-gray-800 text-gray-100 border border-gray-700"
-        : "bg-gray-50 text-gray-900 border border-gray-200";
-
-      // 🎨 Status color scheme
-      if (status === "valid") {
-        colorClass = isDark
-          ? "bg-green-700 text-white border border-green-800"
-          : "bg-green-50 text-green-800 border border-green-200";
-      }
-      if (status === "invalid") {
-        colorClass = isDark
-          ? "bg-red-700 text-white border border-red-800"
-          : "bg-red-50 text-red-800 border border-red-200";
-      }
+    let colorClass = "bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100";
+    if (status === "valid") colorClass = "bg-green-50 text-green-800 dark:bg-green-600 dark:text-white";
+    if (status === "invalid") colorClass = "bg-red-600 text-white";
 
       const safeValue = value || "-";
+      console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
+
       const hasRegulation = checkFieldHasRegulation(fieldName);
 
       let content = safeValue;
       if (hasRegulation && diagnosisId && safeValue !== "") {
-        content = `
-          <span class="cursor-pointer hover:underline hover:text-blue-600 border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
-            title="📋 Klik untuk melihat regulasi ${fieldName}" 
-            data-field="${fieldName}"
-            data-diagnosis-id="${diagnosisId}"
-            onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">
-            ${safeValue}
-          </span>`;
+        // Changed @click Alpine directive to onclick standard DOM event
+        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+                    title="📋 Klik untuk melihat regulasi ${fieldName}"
+                    data-field="${fieldName}"
+                    data-diagnosis-id="${diagnosisId}"
+                    onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
       }
 
-      // 🩺 Label selalu tegas (biru tua untuk light, abu gelap untuk dark)
-      const labelClass = isDark
-        ? "bg-gray-900 text-white"
-        : "bg-blue-700 text-white";
-
-      return `
-        <div class="grid grid-cols-2">
-          <div class="${labelClass} px-3 py-2 font-semibold">${label}</div>
-          <div class="${colorClass} px-3 py-2">${content}</div>
-        </div>
-      `;
+       const boxHtml = `
+      <div class="grid grid-cols-2">
+        <!-- ✅ UBAH INI: Tambahkan bg-gray-100 untuk light mode -->
+        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
+        <div class="${colorClass} px-3 py-2">${content}</div>
+      </div>
+    `;
+    return boxHtml;
     };
-
 
     // === 3️⃣ Render keseluruhan modal ===
     return `
@@ -872,7 +892,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 🩺 KLINIS -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">KLINIS</div>
-          <div class="space-y-2 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("klinis", notifications)}
             ${(console.log("📋 KLINIS - justifikasi:", klinis.justifikasi, "status:", klinis.status), renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
             ${(console.log("📋 KLINIS - bukti_klinis:", klinis.bukti_klinis), renderBox("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis"))}
@@ -899,7 +919,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 🧾 ICD-10 -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">ICD-10</div>
-          <div class="space-y-2 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("icd", notifications)}
             ${(console.log("📋 ICD10 - kode_icd:", icd10.kode_icd), renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
             ${
@@ -956,7 +976,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- ⚙️ TINDAKAN -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">TINDAKAN</div>
-          <div class="p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("tindakan", notifications)}
             ${renderTindakan(tindakan)}
           </div>
@@ -965,7 +985,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 🏥 RAWAT INAP -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-teal-500 to-teal-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RAWAT INAP</div>
-          <div class="space-y-3 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-3 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rawat", notifications)}
             ${
               (function() {
@@ -1007,7 +1027,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 🏢 FASKES -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">FASKES</div>
-          <div class="space-y-2 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("faskes", notifications)}
             ${
               (typeof faskes.tingkat === "object" && faskes.tingkat !== null) &&
@@ -1024,7 +1044,7 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 🔁 RUJUKAN -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RUJUKAN</div>
-          <div class="space-y-2 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rujukan", notifications)}
             ${
               (function() {
@@ -1049,18 +1069,11 @@ function updateRingkasanFromRow(itemId, dx) {
         <!-- 💰 INA-CBG -->
         <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
           <div class="bg-gradient-to-r from-rose-500 to-rose-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">INA-CBG</div>
-          <div class="space-y-2 p-3 bg-white text-gray-900 dark:bg-slate-700 dark:text-white dark:text-white">
+          <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("inacbg", notifications)}
             ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
             ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
-            ${renderBox("Tarif",inaCbg.tarif
-                ? `Rp ${Number(String(inaCbg.tarif).replace(/[^\d]/g, '')).toLocaleString('id-ID')}`
-                : "-",
-              inaCbg.status_tarif,
-              diagnosisId,
-              "tarif"
-            )}
-
+            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${Number(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
           </div>
         </section>
 
@@ -1170,7 +1183,7 @@ window.renderChecklistHtml = function(checklist) {
       return `
         <div class="grid grid-cols-2">
           <div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
-          <div class="bg-white text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${valueHtml}</div>
+          <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2">${valueHtml}</div>
         </div>
       `;
     }
@@ -1190,7 +1203,7 @@ window.renderChecklistHtml = function(checklist) {
     return `
       <div class="grid grid-cols-2">
         <div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
-        <div class="bg-white text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${content}</div>
+        <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2">${content}</div>
       </div>
     `;
   }
@@ -1247,42 +1260,27 @@ window.renderChecklistHtml = function(checklist) {
           <!-- AI Notification (Added here) -->
           <div x-show="!loading && data && data.status === 'success'" class="p-3 bg-white dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
             <template x-if="data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
-            <template x-if="data && data.data && data.data.idrg_prediction && 
-              ((data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg) ||
-                data.data.idrg_prediction.notification)">
-              <div 
-              :class="{
-                'bg-green-100 border-green-500 text-green-800': data.data.idrg_prediction.notifications.idrg.status === 'success',
-                ...
-              }"
-              :class="{
-                'bg-green-100 border-green-500 text-green-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'success',
-                'bg-yellow-100 border-yellow-500 text-yellow-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'warning',
-                'bg-red-100 border-red-500 text-red-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'error',
-                'bg-blue-100 border-blue-500 text-blue-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'info'
-              }"
-                class="notification-box border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
-                <span class="text-lg"
-                  x-text="{
-                    'success': '✅',
-                    'warning': '⚠️',
-                    'error': '❌',
-                    'info': 'ℹ️'
-                  }[data.data.idrg_prediction.notifications.idrg.status] || '🔔'"></span>
-                  x-text="{
-                    'success': '✅',
-                    'warning': '⚠️',
-                    'error': '❌',
-                    'info': 'ℹ️'
-                  }[(data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) || 'info'] || '🔔'"></span>
+              <div
+                :class="{
+                  'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:text-green-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'success',
+                  'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'warning',
+                  'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:text-red-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'error',
+                  'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'info'
+                }"
+                class="notification-box border-l-4 p-3 rounded-lg mb-2 text-sm shadow-sm">
                 <div>
-                  <strong>Notifikasi AI (IDRG)</strong>
-                  <div class="text-xs leading-snug mt-0.5" x-text="data.data.idrg_prediction.notifications.idrg.message"></div>
-                  <div class="text-xs leading-snug mt-0.5" 
-                        x-text="data.data.idrg_prediction.notifications?.idrg?.message || data.data.idrg_prediction.notification?.message || 'Loading...'"></div>
+                  <strong class="font-semibold">Notifikasi AI (IDRG)</strong>
+                  <div class="text-xs leading-snug mt-1" x-text="(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.message) || 'Loading...'"></div>
                 </div>
               </div>
             </template>
+            <div x-show="!(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-slate-50 border-slate-400 text-slate-700 dark:bg-white text-gray-900 dark:bg-slate-800 dark:text-white/50 dark:text-slate-300 border-l-4 p-3 rounded-lg mb-2 text-sm shadow-sm">
+              <div>
+                <strong class="font-semibold">Notifikasi AI (IDRG)</strong>
+                <div class="text-xs leading-snug mt-1">Belum ada notifikasi untuk bagian IDRG.</div>
+              </div>
+            </div>
+          </div>
           
           <!-- Prediction Results -->
           <div x-show="!loading && data && data.status === 'success'">
@@ -1570,7 +1568,7 @@ window.renderChecklistHtml = function(checklist) {
         console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
       const renderProcBox = (label, value, fieldName = null) => {
-        const multilayer = d.multilayer_rules?.[fieldName] || null; // 🔹 ambil multilayer untuk field ini
+        const multilayer = d.multilayer_rules?.[fieldName] || null;
         const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
         let safeValue = value || "";
         
@@ -1581,17 +1579,16 @@ window.renderChecklistHtml = function(checklist) {
           if (!isNaN(numericValue)) {
             safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
           } else {
-            safeValue = value; // keep original if not numeric
+            safeValue = value;
           }
         }
 
         const hasRegulation = checkFieldHasRegulation(fieldName);
         let content = `<span class="text-gray-900 dark:text-white">${safeValue}</span>`;
+        
         if (hasRules) {
-          // --- versi multilayer (seperti contohmu) ---
           const listItems = multilayer.items
-            .map(
-            (r) =>`
+            .map((r) =>`
               <li class="ml-5 list-disc marker:text-blue-400 dark:marker:text-blue-300 text-sm leading-snug">
                 ${r.isi} <span class="text-gray-400 dark:text-gray-500">(${r.sumber})</span>
             </li>`
@@ -1607,20 +1604,23 @@ window.renderChecklistHtml = function(checklist) {
             ${combinedLabel}
           `;
         } else {
-          // --- fallback: isi dari AI biasa ---
           content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
         }
 
         if (hasRegulation && fieldName && safeValue !== "") {
-          content = `<span class="cursor-pointer hover:underline hover:text-yellow-300 regulation-field text-white border-b border-dashed border-gray-500 hover:border-yellow-300 transition-all duration-200"
+          content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
                           title="📋 Klik untuk melihat regulasi ${fieldName}"
                           data-field="${fieldName}"
                           data-procedure-id="${procId}"
-                          @click="openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+                          onclick="window.openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
         }
 
-        return `<div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 rounded-lg font-semibold text-white"><b>${label}:</b></div>
-                <div class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white px-3 py-2 rounded text-white">${content}</div>`;
+        return `
+          <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 rounded-lg font-semibold">
+            <b>${label}:</b>
+          </div>
+          <div class="bg-white text-gray-800 dark:bg-gray-800 dark:text-white px-3 py-2 rounded">${content}</div>
+        `;
       };
 
       // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
@@ -3105,18 +3105,24 @@ function renderTindakanReadOnly(list) {
     const type = td.procedure_type || td.type || "";
     
     return `
-      <div class="grid grid-cols-3 gap-4 items-center bg-white dark:bg-white text-gray-900 dark:bg-gray-800 dark:text-white p-3 rounded shadow mb-2">
-        <div class="font-semibold text-green-600 underline cursor-pointer truncate"
-             title="Klik untuk detail tindakan (Read-Only)"
-             onclick="window.showStoredProcedureModalVerificator('${nama}')">${nama}</div>
-        <div>
-          <span class="block px-3 py-1 text-sm font-medium bg-gray-200 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white text-gray-900 dark:text-gray-100 rounded shadow-sm">${stage}</span>
-        </div>
-        <div>
-          <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">${type}</span>
-        </div>
+    <div class="grid grid-cols-3 gap-4 items-center bg-white text-gray-900 dark:bg-slate-800 dark:text-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-700 mb-3"
+        data-procid="${procId}">
+      <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+          onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
+      <div>
+        <span class="block px-3 py-1 text-sm font-medium bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
+              title="${description}">${"&nbsp;"}</span>
       </div>
-    `;
+      <div class="flex space-x-2 justify-end">
+        <button type="button"
+                onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
+                class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">Pilih Utama</button>
+        <button type="button"
+                onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
+                class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">Pilih Sekunder</button>
+      </div>
+    </div>
+  `;
   }).join("");
 }
 
