@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import Claim, Patient, Visit, MedicalRecord, ClaimDiagnosis, ClaimProcedure
+from backend.models import Claim, Patient, Visit, MedicalRecord, ClaimDiagnosis, ClaimProcedure, ClaimTariff
 from backend.auth import require_roles_session
 from pydantic import BaseModel
 import os
@@ -36,9 +36,11 @@ async def export_claim_txt(
     # Generate 12 lines BPJS format sesuai request atasan
     lines = []
     
-    # Line 1: Header - format sesuai request atasan
+    # Line 1: Header - try DB first, fallback dummy  
     hospital_name = claim.hospital.nama if claim.hospital else "RS HAJI SURABAYA"
-    lines.append(f"1|KLAIM|{sep_number}|{hospital_name}|BPJS")
+    claim_type = getattr(claim, 'claim_type', None) or "KLAIM"  # Try DB first!
+    insurance_type = getattr(claim, 'insurance_type', None) or "BPJS"  # Try DB first!
+    lines.append(f"1|{claim_type}|{sep_number}|{hospital_name}|{insurance_type}")
     
     # Line 2: Patient info - format sesuai request atasan  
     patient_name = claim.patient.nama if claim.patient else "PASIEN_UNKNOWN"
@@ -48,9 +50,12 @@ async def export_claim_txt(
     bpjs_number = claim.patient.no_bpjs if claim.patient and claim.patient.no_bpjs else "000000000000"
     lines.append(f"2|{patient_name}|{patient_gender}|{patient_birth}|{patient_address}|{bpjs_number}")
     
-    # Line 3: Service info - format sesuai request atasan
-    today = datetime.now().strftime("%Y-%m-%d")
-    lines.append(f"3|{today}|{today}|Rawat Inap|Penyakit Dalam")
+    # Line 3: Service info - try DB first, fallback dummy
+    date_in = claim.created_at.strftime("%Y-%m-%d") if claim.created_at else datetime.now().strftime("%Y-%m-%d")
+    date_out = claim.updated_at.strftime("%Y-%m-%d") if claim.updated_at else datetime.now().strftime("%Y-%m-%d")
+    service_type = getattr(claim, 'service_type', None) or "Rawat Inap"
+    department = getattr(claim, 'department', None) or "Penyakit Dalam"
+    lines.append(f"3|{date_in}|{date_out}|{service_type}|{department}")
     
     # Line 4-5: Diagnosis (real data from claim) - try multiple diagnosis types
     primary_diag = db.query(ClaimDiagnosis).filter(
@@ -87,31 +92,47 @@ async def export_claim_txt(
         ClaimProcedure.is_deleted == False
     ).limit(2).all()
     
-    # Line 6: Primary procedure
+    # Line 6: Primary procedure - try DB first (NEW FIELDS!)
     if procedures and len(procedures) > 0:
-        proc_code = "88.72"  # X-ray thorax code
+        # Try new field icd9_final_by_coder first, then fallback
+        proc_code = procedures[0].icd9_final_by_coder or "88.72"  # DB first!
         proc_name = procedures[0].procedure_text or "Tindakan Tidak Diketahui"
         lines.append(f"6|{proc_code}|{proc_name}|ICD-9-CM")
     else:
         lines.append(f"6|||ICD-9-CM")
         
-    # Line 7: Doctor info - format sesuai request atasan
-    doctor_code = "001"
+    # Line 7: Doctor info - try DB first, fallback dummy
+    doctor_code = getattr(claim, 'doctor_code', None) or "001"  # Try DB first!
     doctor_name = claim.doctor_name if claim.doctor_name else "Dr. Unknown"
     lines.append(f"7|{doctor_code}|{doctor_name}|DPJP")
     
-    # Line 8-12: Format sesuai request atasan
-    tarif_bpjs = "15000000"
-    ina_cbg = "G-4-12-I"
-    service_type = "Rawat Inap" 
-    room_class = "3"
+    # Line 8: Financial info - try ClaimTariff DB first! (NEW!)
+    claim_tariff = db.query(ClaimTariff).filter(
+        ClaimTariff.claim_id == claim_id,
+        ClaimTariff.is_deleted == False
+    ).first()
     
-    lines.append(f"8|{tarif_bpjs}|{ina_cbg}|{service_type}|Kelas {room_class}")
+    if claim_tariff:
+        tarif_bpjs = str(claim_tariff.tariff_amount) or "15000000"  # DB first!
+        ina_cbg = claim_tariff.cbg_code or "G-4-12-I"  # DB first!
+    else:
+        tarif_bpjs = "15000000"  # Fallback
+        ina_cbg = "G-4-12-I"  # Fallback
+    
+    service_type_line8 = service_type  # Reuse from line 3
+    room_class = getattr(claim, 'room_class', None) or "3"  # Try DB first!
+    
+    lines.append(f"8|{tarif_bpjs}|{ina_cbg}|{service_type_line8}|Kelas {room_class}")
     lines.append(f"9|{sep_number}|V-Claim|Valid")
-    lines.append(f"10|Resume medis pneumonia|Terapi antibiotik|Membaik")
     
-    # Line 11: Files (jika ada)
-    file_names = "Hasil Lab, X-ray Thorax, Resume"
+    # Line 10: Resume info - try DB first, fallback dummy
+    resume_medis = getattr(claim, 'resume_medis', None) or "Resume medis tidak tersedia"
+    terapi = getattr(claim, 'terapi', None) or "Terapi standar"  
+    kondisi_pulang = getattr(claim, 'kondisi_pulang', None) or "Membaik"
+    lines.append(f"10|{resume_medis}|{terapi}|{kondisi_pulang}")
+    
+    # Line 11: Files - try DB first, fallback dummy
+    file_names = getattr(claim, 'file_names', None) or "Hasil Lab, X-ray Thorax, Resume"
     lines.append(f"11|{file_names}")
     
     # Line 12: End
