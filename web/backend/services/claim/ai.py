@@ -54,10 +54,10 @@ def store_ai_recommendations(
         # MODE: PREDICT
         # ============================================================
         if mode == "predict":
+            # cari simulasi
             sim = db.query(models.ClaimSimulation).filter_by(
                 claim_id=claim_id, stage=stage, is_deleted=False
             ).first()
-
             if not sim:
                 sim = models.ClaimSimulation(
                     claim_id=claim_id,
@@ -69,12 +69,26 @@ def store_ai_recommendations(
                 db.add(sim)
                 db.flush()
 
+            # 🔥 Hapus data lama: rekomendasi & diagnosis hasil AI sebelumnya
+            db.query(models.ClaimAIRecommendation).filter_by(
+                claim_id=claim_id, stage=stage, is_deleted=False
+            ).delete()
+
+            db.query(models.ClaimDiagnosis).filter_by(
+                claim_id=claim_id, diagnosis_source="ai", is_deleted=False
+            ).delete()
+
+            db.commit()
+
+            # Simpan hasil baru
             for category in ["diagnosis", "komorbid", "komplikasi"]:
                 for item in ai_data.get(category, []):
+                    # --- parent diagnosis ---
                     diag = models.ClaimDiagnosis(
                         claim_id=claim_id,
                         diagnosis_type=category,
-                        diagnosis_text=item.get("kategori"),
+                        diagnosis_text=item.get("name") or item.get("kategori"),
+                        diagnosis_source="ai",
                         is_deleted=False,
                         is_dummy=False,
                         created_at=datetime.utcnow(),
@@ -88,7 +102,7 @@ def store_ai_recommendations(
                         stage=stage,
                         category=category,
                         diagnosis_id=diag.id,
-                        confidence_score=item.get("score"),
+                        confidence_score=item.get("score") or item.get("confidence_score") or 0,
                         child=False,
                         is_deleted=False,
                         is_dummy=False,
@@ -97,14 +111,15 @@ def store_ai_recommendations(
                     )
                     db.add(rec)
 
-                    # simpan children (sub-diagnosis)
+                    # --- child diagnosis ---
                     for child in item.get("children", []):
                         child_diag = models.ClaimDiagnosis(
                             claim_id=claim_id,
                             diagnosis_type=category,
-                            diagnosis_text=child.get("kategori"),
-                            is_dummy=False,
+                            diagnosis_text=child.get("name") or child.get("kategori"),
+                            diagnosis_source="ai",
                             is_deleted=False,
+                            is_dummy=False,
                             created_at=datetime.utcnow(),
                             updated_at=datetime.utcnow(),
                         )
@@ -116,7 +131,7 @@ def store_ai_recommendations(
                             stage=stage,
                             category=category,
                             diagnosis_id=child_diag.id,
-                            confidence_score=child.get("score"),
+                            confidence_score=child.get("score") or child.get("confidence_score") or 0,
                             child=True,
                             is_deleted=False,
                             is_dummy=False,
@@ -125,39 +140,170 @@ def store_ai_recommendations(
                         )
                         db.add(child_rec)
 
+            db.commit()
+
         # ============================================================
         # MODE: DIAGNOSIS
         # ============================================================
         elif mode == "diagnosis":
-            # ambil category dari AI response atau fallback default
+            # --- deteksi apakah ini child ---
+            is_child = ai_data.get("child", False)
             category = ai_data.get("category", "diagnosis")
+            diagnosis_text = ai_data.get("diagnosis_text") or ai_data.get("diagnosis") or "-"
+            diagnosis_source = ai_data.get("diagnosis_source", "ai")
 
-            diag = models.ClaimDiagnosis(
-                claim_id=claim_id,
-                diagnosis_type=category,  # ✅ bukan hardcode "analysis"
-                diagnosis_text=ai_data.get("diagnosis_text"),
-                icd10_code=ai_data.get("icd10_code"),
-                klinis=ai_data.get("justifikasi"),
-                is_deleted=False,
-                is_dummy=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+            # --- nested JSON dari payload core_engine ---
+            klinis_data = ai_data.get("klinis", {})
+            icd10_data = ai_data.get("icd10", {})
+            rawat_data = ai_data.get("rawat_inap", {})
+            faskes_data = ai_data.get("faskes", {})
+            rujukan_data = ai_data.get("rujukan", {})
+            ina_cbg_data = ai_data.get("inaCbg", {})
+
+            # --- confidence ---
+            confidence_str = klinis_data.get("confidence_ai", "0%").replace("%", "")
+            confidence = int(confidence_str) if confidence_str.isdigit() else 0
+
+            # --- field klinis utama ---
+            justifikasi_klinis = klinis_data.get("justifikasi")
+            bukti_klinis = klinis_data.get("bukti_klinis")
+            syarat_klinis = klinis_data.get("syarat_klinis")
+            klinis_value = " | ".join([p for p in [justifikasi_klinis, bukti_klinis, syarat_klinis] if p])
+
+            # --- field tambahan ---
+            icd10_code = (
+                ai_data.get("icd10_code")
+                or ai_data.get("kode_icd10")
+                or icd10_data.get("kode_icd")
             )
-            db.add(diag)
-            db.flush()
+            kode_ganda_icd10 = icd10_data.get("kode_ganda")
+            z_code_icd10 = icd10_data.get("z_code")
+            kode_bpjs_khusus_icd10 = icd10_data.get("kode_bpjs_khusus")
 
-            rec = models.ClaimAIRecommendation(
+            lama_rawat_inap = rawat_data.get("lama_rawat")
+            kriteria_rawat_inap = rawat_data.get("kriteria")
+            indikasi_rawat_inap = rawat_data.get("indikasi")
+
+            tingkat_faskes = faskes_data.get("tingkat")
+            justifikasi_faskes = faskes_data.get("justifikasi")
+            kompetensi_faskes = faskes_data.get("kompetensi")
+
+            indikasi_rujukan = rujukan_data.get("indikasi")
+            kriteria_rujukan = rujukan_data.get("kriteria")
+            tujuan_rujukan = rujukan_data.get("tujuan")
+
+            # --- cek apakah diagnosis sudah ada ---
+            existing_diag = db.query(models.ClaimDiagnosis).filter_by(
                 claim_id=claim_id,
-                stage=stage,
-                category=category,  # ✅ dinamis
+                diagnosis_text=diagnosis_text,
+                diagnosis_source="ai",
+                is_deleted=False
+            ).first()
+
+            if existing_diag:
+                print(f"[AI STORAGE] Updating existing diagnosis: {diagnosis_text}")
+                existing_diag.icd10_code = icd10_code
+                existing_diag.justifikasi_klinis = justifikasi_klinis
+                existing_diag.bukti_klinis = bukti_klinis
+                existing_diag.syarat_klinis = syarat_klinis
+                existing_diag.klinis = klinis_value
+                existing_diag.tingkat_faskes = tingkat_faskes
+                existing_diag.justifikasi_faskes = justifikasi_faskes
+                existing_diag.kompetensi_faskes = kompetensi_faskes
+                existing_diag.kode_ganda_icd10 = kode_ganda_icd10
+                existing_diag.z_code_icd10 = z_code_icd10
+                existing_diag.kode_bpjs_khusus_icd10 = kode_bpjs_khusus_icd10
+                existing_diag.lama_rawat_inap = lama_rawat_inap
+                existing_diag.kriteria_rawat_inap = kriteria_rawat_inap
+                existing_diag.indikasi_rawat_inap = indikasi_rawat_inap
+                existing_diag.indikasi_rujukan = indikasi_rujukan
+                existing_diag.kriteria_rujukan = kriteria_rujukan
+                existing_diag.tujuan_rujukan = tujuan_rujukan
+                existing_diag.updated_at = datetime.utcnow()
+                diag = existing_diag
+            else:
+                print(f"[AI STORAGE] Inserting new diagnosis: {diagnosis_text}")
+                diag = models.ClaimDiagnosis(
+                    claim_id=claim_id,
+                    diagnosis_type=category,
+                    diagnosis_text=diagnosis_text,
+                    diagnosis_source=diagnosis_source,
+                    icd10_code=icd10_code,
+                    justifikasi_klinis=justifikasi_klinis,
+                    bukti_klinis=bukti_klinis,
+                    syarat_klinis=syarat_klinis,
+                    klinis=klinis_value,
+                    tingkat_faskes=tingkat_faskes,
+                    justifikasi_faskes=justifikasi_faskes,
+                    kompetensi_faskes=kompetensi_faskes,
+                    kode_ganda_icd10=kode_ganda_icd10,
+                    z_code_icd10=z_code_icd10,
+                    kode_bpjs_khusus_icd10=kode_bpjs_khusus_icd10,
+                    lama_rawat_inap=lama_rawat_inap,
+                    kriteria_rawat_inap=kriteria_rawat_inap,
+                    indikasi_rawat_inap=indikasi_rawat_inap,
+                    indikasi_rujukan=indikasi_rujukan,
+                    kriteria_rujukan=kriteria_rujukan,
+                    tujuan_rujukan=tujuan_rujukan,
+                    is_deleted=False,
+                    is_dummy=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(diag)
+                db.flush()
+
+            # --- simpan informasi INA-CBG (kode, deskripsi, tarif) ---
+            if ina_cbg_data:
+                kode_inacbg = ina_cbg_data.get("kode")
+                deskripsi_inacbg = ina_cbg_data.get("deskripsi")
+                tarif_inacbg = ina_cbg_data.get("tarif")
+                parsed_tarif = parse_number(tarif_inacbg)
+
+                if kode_inacbg or tarif_inacbg:
+                    cbg_entry = models.ClaimTariff(
+                        claim_id=claim_id,
+                        cbg_code=kode_inacbg,
+                        description=deskripsi_inacbg,
+                        tariff_amount=parsed_tarif,
+                        status="draft",
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=False,
+                    )
+                    db.add(cbg_entry)
+                    db.flush()
+
+            # --- buat rekomendasi AI ---
+            existing_rec = db.query(models.ClaimAIRecommendation).filter_by(
+                claim_id=claim_id,
                 diagnosis_id=diag.id,
-                confidence_score=ai_data.get("score"),
-                is_deleted=False,
-                is_dummy=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(rec)
+                stage=stage,
+                is_deleted=False
+            ).first()
+
+            if existing_rec:
+                print(f"[AI STORAGE] Updating existing recommendation: {diagnosis_text}")
+                existing_rec.confidence_score = confidence
+                existing_rec.updated_at = datetime.utcnow()
+            else:
+                print(f"[AI STORAGE] Inserting new recommendation: {diagnosis_text}")
+                rec = models.ClaimAIRecommendation(
+                    claim_id=claim_id,
+                    stage=stage,
+                    category=category,
+                    diagnosis_id=diag.id,
+                    confidence_score=confidence,
+                    child=is_child,
+                    is_deleted=False,
+                    is_dummy=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(rec)
+
+
 
         # ============================================================
         # MODE: PROCEDURE

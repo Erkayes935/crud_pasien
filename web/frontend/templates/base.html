@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Sistem Klaim Pasien{% endblock %}</title>
 
-  <!-- ✅ Fix: jalankan script ini PALING AWAL sebelum Tailwind -->
   <script>
-    // Setel tema berdasarkan localStorage SEBELUM Tailwind dijalankan
     if (localStorage.getItem('theme') === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -20,14 +18,12 @@
     tailwind.config = { darkMode: 'class' };
   </script>
 
-  <!-- Tooltip System CSS -->
   <link rel="stylesheet" href="{{ url_for('static', path='css/tooltip.rules.css') }}">
   <style>
     .flash { opacity: 1; transition: opacity 0.5s ease-out; }
     .flash.hide { opacity: 0; }
     [x-cloak] { display: none !important; }
 
-    /* 🔹 Tambahkan animasi modal fade */
     .modal-fade-enter {
       opacity: 0;
       transform: scale(0.98);
@@ -48,24 +44,75 @@
       transition: opacity 0.25s ease-in, transform 0.25s ease-in;
     }
 
-    /* Tambahan opsional: efek background overlay */
     #modalContainer {
       transition: background-color 0.25s ease;
+    }
+
+    /* Sidebar styles */
+    #sidebar {
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+    }
+
+    #sidebar.sidebar-open {
+      transform: translateX(0);
+    }
+
+    #sidebar.sidebar-closed {
+      transform: translateX(-100%);
+    }
+
+    /* Desktop: sidebar selalu visible */
+    @media (min-width: 768px) {
+      #sidebar {
+        transform: translateX(0) !important;
+      }
+    }
+
+    /* Overlay transition */
+    #sidebarOverlay {
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+
+    #sidebarOverlay.overlay-show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #sidebarOverlay.overlay-hide {
+      opacity: 0;
+      visibility: hidden;
     }
   </style>
 
 </head>
 
-<body x-data="{ modalOpen: false }"
-      class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-
+<body x-data="{ 
+    modalOpen: false, 
+    sidebarOpen: window.innerWidth >= 768,
+    isMobile: window.innerWidth < 768
+  }"
+  @resize.window="
+    isMobile = window.innerWidth < 768;
+    if (!isMobile) sidebarOpen = true;
+  "
+  class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+  {% if request.url.path not in ["/welcome", "/", "/login"] %}
   <!-- Navbar -->
   <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-slate-200/60 dark:border-gray-700/60 sticky top-0 z-50 shadow-sm">
-    <div class="max-w-7xl mx-auto px-6 py-4">
+    <div class="max-w-full mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
 
-        <!-- Left: Logo -->
+        <!-- Left: Menu Toggle + Logo -->
         <div class="flex items-center space-x-4">
+          <!-- Hamburger Menu Toggle -->
+          <button @click="sidebarOpen = !sidebarOpen" 
+                  class="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <svg class="w-6 h-6 text-slate-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+
           <a href="/dashboard" class="group">
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,7 +133,6 @@
 
         <!-- Right: Theme Toggle & Profile -->
         <div class="flex items-center space-x-6">
-
           <!-- Theme Toggle -->
           <button id="themeToggle" class="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <svg id="themeIconMoon" class="w-5 h-5 text-slate-600 dark:text-gray-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +155,6 @@
                   {{ (user.name or user.email)|truncate(25) }}
                 </p>
 
-                <!-- ✅ Multi-role badges -->
                 <div class="flex flex-wrap justify-end gap-1.5 mt-0.5">
                   {% if user.role_names %}
                     {% for role in user.role_names %}
@@ -137,7 +182,6 @@
                 </div>
               </div>
 
-              <!-- Avatar -->
               <div class="flex items-center gap-2">
                 <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
                   {{ (user.name or user.email)[0].upper() }}
@@ -149,7 +193,6 @@
               </div>
             </button>
 
-            <!-- Dropdown -->
             <div x-show="open" x-transition @click.away="open = false"
                  class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden z-50"
                  x-cloak>
@@ -181,40 +224,207 @@
       </div>
     </div>
   </nav>
+  {% endif %} 
 
-  <!-- Content -->
-  <main class="container mx-auto px-4 pb-8 flex-grow">
-    {% set flashes = get_flashed_messages(request) %}
-    {% if flashes %}
-      {% for f in flashes %}
-        <div class="flash mb-4 px-4 py-3 rounded-xl shadow-sm flex items-center justify-between
-                    {{ 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800/30' if f.category=='success'
-                       else 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/30' }}">
-          <div class="flex items-center gap-3">
-            {% if f.category == 'success' %}
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            {% else %}
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            {% endif %}
-            <span class="font-medium">{{ f.message }}</span>
+  <!-- Layout Container -->
+  <div class="flex flex-1 relative">
+    
+    <!-- Sidebar Overlay (Mobile) -->
+    <div x-show="sidebarOpen && isMobile" 
+         @click="sidebarOpen = false"
+         x-transition:enter="transition-opacity ease-linear duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-300"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+         x-cloak>
+    </div>
+
+    <!-- Sidebar -->
+    {% if user %}
+    <aside 
+      x-show="sidebarOpen"
+      :class="isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''"
+      class="sidebar-transition fixed md:sticky top-[73px] left-0 h-[calc(100vh-73px)] bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-r border-slate-200 dark:border-gray-700 z-40 w-64 overflow-y-auto"
+      x-cloak>
+      
+      <div class="p-4">
+        {% set roles = user.role_names if user.role_names else [user.role] %}
+        
+        <!-- Dashboard Link -->
+        <a href="/dashboard" 
+           class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                  {% if request.url.path == '/dashboard' %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          <span class="font-medium">Dashboard</span>
+        </a>
+
+        <div class="my-3 border-t border-slate-200 dark:border-gray-700"></div>
+
+        <!-- SUPERADMIN MENU -->
+        {% if 'superadmin' in roles %}
+          <div class="space-y-1">
+            <p class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Superadmin</p>
+            
+            <a href="/hospitals" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/hospitals' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">🏥</span>
+              <span class="font-medium">List Semua RS</span>
+            </a>
+
+            <a href="/users" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/users' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">👥</span>
+              <span class="font-medium">List Semua Users</span>
+            </a>
+
+            <a href="/ai-meta/dashboard" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors
+                      {% if '/ai-meta' in request.url.path %}bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">🤖</span>
+              <span class="font-medium">AI META Dashboard</span>
+            </a>
           </div>
-          <button onclick="this.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.remove(), 500)"
-                  class="hover:bg-black/5 dark:hover:bg-white/5 rounded p-1 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      {% endfor %}
+
+        <!-- ADMIN RS MENU -->
+        {% elif 'admin_rs' in roles %}
+          <div class="space-y-1">
+            <p class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Admin RS</p>
+            
+            <a href="/users" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/users' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">👥</span>
+              <span class="font-medium">List Semua Users</span>
+            </a>
+
+            <a href="/admin-rs/dashboard" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/admin-rs' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">🏥</span>
+              <span class="font-medium">Admin RS Dashboard</span>
+            </a>
+          </div>
+
+        <!-- DOCTOR MENU -->
+        {% elif 'doctor' in roles %}
+          <div class="space-y-1">
+            <p class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dokter</p>
+            
+            <a href="/patients?flow=claim" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-colors shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span class="font-medium">Klaim Baru</span>
+            </a>
+
+            <a href="/patients" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/patients' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+              <span class="font-medium">Pasien</span>
+            </a>
+
+            <a href="/medical-records" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/medical-records' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="font-medium">Rekam Medis</span>
+            </a>
+
+            <a href="/visits" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/visits' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              <span class="font-medium">Kunjungan</span>
+            </a>
+
+            <a href="/claims" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/claims' in request.url.path and '/export' not in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="font-medium">Klaim</span>
+            </a>
+
+            <a href="/claims/export" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/claims/export' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span class="font-medium">Ekspor Klaim</span>
+            </a>
+          </div>
+
+        <!-- CODER / VERIFIKATOR / VALIDATOR MENU -->
+        {% elif 'coder' in roles or 'verifikator' in roles or 'validator' in roles %}
+          <div class="space-y-1">
+            <p class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              {% if 'coder' in roles %}Coder{% elif 'verifikator' in roles %}Verifikator{% else %}Validator{% endif %}
+            </p>
+            
+            <a href="/claims" 
+               class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
+                      {% if '/claims' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="font-medium">Klaim</span>
+            </a>
+          </div>
+        {% endif %}
+
+      </div>
+    </aside>
     {% endif %}
 
-    {% block content %}{% endblock %}
-  </main>
+    <!-- Main Content Area -->
+    <main class="flex-1 px-4 pb-8 overflow-x-hidden" :class="sidebarOpen && !isMobile ? 'md:ml-0' : ''">
+      {% set flashes = get_flashed_messages(request) %}
+      {% if flashes %}
+        {% for f in flashes %}
+          <div class="flash mb-4 px-4 py-3 rounded-xl shadow-sm flex items-center justify-between
+                      {{ 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800/30' if f.category=='success'
+                         else 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/30' }}">
+            <div class="flex items-center gap-3">
+              {% if f.category == 'success' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              {% else %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              {% endif %}
+              <span class="font-medium">{{ f.message }}</span>
+            </div>
+            <button onclick="this.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.remove(), 500)"
+                    class="hover:bg-black/5 dark:hover:bg-white/5 rounded p-1 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 
   {% if user %}
   <footer class="mt-16 pb-8 text-center text-sm text-slate-500 dark:text-gray-400">
-    <p class="mb-2">© <span id="year"></span> Aplikasi Klaim Pasien</p>
-    <p>Dibuat dengan ❤️ untuk mendukung efisiensi klaim rumah sakit</p>
   </footer>
   {% endif %}
 
@@ -225,7 +435,7 @@
     const moonIcon = document.getElementById("themeIconMoon");
     const sunIcon = document.getElementById("themeIconSun");
 
-    if (!btn) return; // kalau belum render, skip
+    if (!btn) return;
 
     const updateThemeIcon = () => {
       const dark = htmlEl.classList.contains("dark");
@@ -233,20 +443,17 @@
       sunIcon.classList.toggle("hidden", !dark);
     };
 
-    // init state
     if (localStorage.getItem("theme") === "dark") {
       htmlEl.classList.add("dark");
     }
     updateThemeIcon();
 
-    // toggle handler
     btn.addEventListener("click", () => {
       htmlEl.classList.toggle("dark");
       localStorage.setItem("theme", htmlEl.classList.contains("dark") ? "dark" : "light");
       updateThemeIcon();
     });
 
-    // posisi khusus halaman welcome
     const path = window.location.pathname;
     if (path === "/" || path === "/welcome") {
       btn.classList.add(
@@ -255,10 +462,13 @@
         "shadow", "border", "border-gray-300", "dark:border-gray-700"
       );
     }
+
+    // Set year
+    document.getElementById("year").textContent = new Date().getFullYear();
   });
   </script>
 
-  <!-- 🔹 GLOBAL AI LOADING MODAL -->
+  <!-- GLOBAL AI LOADING MODAL -->
   <div id="aiLoadingModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] hidden">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg px-8 py-6 text-center w-[340px]">
       <h2 class="text-lg font-bold mb-4 text-gray-800 dark:text-gray-100">🔄 Memproses...</h2>
