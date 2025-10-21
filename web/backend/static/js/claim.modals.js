@@ -844,7 +844,7 @@ function updateRingkasanFromRow(itemId, dx) {
       kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "",
       z_code: it.icd10?.z_code || it.z_code || "",
       kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "",
-    status_icd: it.icd10?.status_icd || it.status_icd || "default"
+      status_icd: it.icd10?.status_icd || it.status_icd || "default"
     };
 
     const tindakan = it.tindakan || [];
@@ -870,34 +870,41 @@ function updateRingkasanFromRow(itemId, dx) {
     console.log("📋 rawat.indikasi:", rawat.indikasi);
 
     const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
-      let colorClass = "bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100";
-      if (status === "valid") colorClass = "bg-green-600 text-white";
-      if (status === "invalid") colorClass = "bg-red-600 text-white";
+    const isDark = document.documentElement.classList.contains("dark");
+    
+    let baseBg = isDark ? "bg-gray-700 text-gray-100" : "bg-gray-50 text-gray-800";
+    let colorClass = baseBg;
 
-      const safeValue = value || "-";
-      console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
+    if (status === "valid") {
+      colorClass = isDark ? "bg-green-600 text-white" : "bg-green-100 text-green-800";
+    }
+    if (status === "invalid") {
+      colorClass = isDark ? "bg-red-600 text-white" : "bg-red-100 text-red-800";
+    }
 
-      const hasRegulation = checkFieldHasRegulation(fieldName);
+    const safeValue = value || "-";
+    const hasRegulation = checkFieldHasRegulation(fieldName);
 
-      let content = safeValue;
-      if (hasRegulation && diagnosisId && safeValue !== "") {
-        // Changed @click Alpine directive to onclick standard DOM event
-        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
-                    title="📋 Klik untuk melihat regulasi ${fieldName}" 
-                    data-field="${fieldName}"
-                    data-diagnosis-id="${diagnosisId}"
-                    onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
-      }
-      
-      const boxHtml = `
-        <div class="grid grid-cols-2">
-          <div class="bg-gray-700 text-white px-3 py-2">${label}</div>
-          <div class="${colorClass} px-3 py-2">${content}</div>
-        </div>
-      `;
-      console.log(`📋 renderBox(${label}) HTML:`, boxHtml);
-      return boxHtml;
-    };
+    let content = safeValue;
+    if (hasRegulation && diagnosisId && safeValue !== "") {
+      content = `
+        <span class="cursor-pointer hover:underline hover:text-blue-600 border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
+          title="📋 Klik untuk melihat regulasi ${fieldName}" 
+          data-field="${fieldName}"
+          data-diagnosis-id="${diagnosisId}"
+          onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">
+          ${safeValue}
+        </span>`;
+    }
+
+    return `
+      <div class="grid grid-cols-2">
+        <div class="${isDark ? "bg-gray-800 text-white" : "bg-gray-700 text-white"} px-3 py-2">${label}</div>
+        <div class="${colorClass} px-3 py-2">${content}</div>
+      </div>
+    `;
+  };
+
 
     // === 3️⃣ Render keseluruhan modal ===
     return `
@@ -1086,7 +1093,14 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("inacbg", notifications)}
             ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
             ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
-            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${Number(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
+            ${renderBox("Tarif",inaCbg.tarif
+                ? `Rp ${Number(String(inaCbg.tarif).replace(/[^\d]/g, '')).toLocaleString('id-ID')}`
+                : "-",
+              inaCbg.status_tarif,
+              diagnosisId,
+              "tarif"
+            )}
+
           </div>
         </section>
 
