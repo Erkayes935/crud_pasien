@@ -793,7 +793,7 @@ function updateRingkasanFromRow(itemId, dx) {
       kode_ganda: it.icd10?.kode_ganda || it.kode_ganda || "",
       z_code: it.icd10?.z_code || it.z_code || "",
       kode_bpjs_khusus: it.icd10?.kode_bpjs_khusus || it.kode_bpjs_khusus || "",
-    status_icd: it.icd10?.status_icd || it.status_icd || "default"
+      status_icd: it.icd10?.status_icd || it.status_icd || "default"
     };
 
     const tindakan = it.tindakan || [];
@@ -818,44 +818,52 @@ function updateRingkasanFromRow(itemId, dx) {
     console.log("📋 rawat.indikasi:", rawat.indikasi);
 
     const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
-    // deteksi theme aktif
-    const isDark = document.documentElement.classList.contains('dark');
+      const isDark = document.documentElement.classList.contains("dark");
 
-    // warna dasar menyesuaikan theme aktif
-    let bgColor = isDark ? "bg-slate-700 text-gray-100 border-slate-600" : "bg-slate-50 text-gray-800 border-slate-200";
+      // 🌗 Base style: adaptif light/dark
+      let colorClass = isDark
+        ? "bg-gray-800 text-gray-100 border border-gray-700"
+        : "bg-gray-50 text-gray-900 border border-gray-200";
 
-    if (status === "valid") {
-      bgColor = isDark
-        ? "bg-green-700 text-green-100 border-green-600"
-        : "bg-green-50 text-green-800 border-green-300";
-    } else if (status === "invalid") {
-      bgColor = isDark
-        ? "bg-rose-700 text-white border-rose-600"
-        : "bg-rose-50 text-rose-800 border-rose-300";
-    }
+      // 🎨 Status color scheme
+      if (status === "valid") {
+        colorClass = isDark
+          ? "bg-green-700 text-white border border-green-800"
+          : "bg-green-50 text-green-800 border border-green-200";
+      }
+      if (status === "invalid") {
+        colorClass = isDark
+          ? "bg-red-700 text-white border border-red-800"
+          : "bg-red-50 text-red-800 border border-red-200";
+      }
 
-    const safeValue = value || "-";
-    const hasRegulation = checkFieldHasRegulation(fieldName);
+      const safeValue = value || "-";
+      const hasRegulation = checkFieldHasRegulation(fieldName);
 
-    let content = safeValue;
-    if (hasRegulation && diagnosisId && safeValue !== "-") {
-      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 dark:hover:text-blue-300 border-b border-dashed border-gray-400 dark:border-gray-500 hover:border-blue-500 dark:hover:border-blue-300 transition-all duration-200"
-                  title="📋 Klik untuk melihat regulasi ${fieldName}"
-                  data-field="${fieldName}"
-                  data-diagnosis-id="${diagnosisId}"
-                  onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
-    }
+      let content = safeValue;
+      if (hasRegulation && diagnosisId && safeValue !== "") {
+        content = `
+          <span class="cursor-pointer hover:underline hover:text-blue-600 border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
+            title="📋 Klik untuk melihat regulasi ${fieldName}" 
+            data-field="${fieldName}"
+            data-diagnosis-id="${diagnosisId}"
+            onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">
+            ${safeValue}
+          </span>`;
+      }
 
-    // generate html grid box
-    return `
-      <div class="grid grid-cols-2">
-        <div class="${isDark ? "bg-slate-800 text-gray-100 border-slate-700" : "bg-slate-100 text-gray-900 border-slate-200"} px-3 py-2 font-medium border-b">${label}</div>
-        <div class="${bgColor} px-3 py-2 border-b">${content}</div>
-      </div>
-    `;
+      // 🩺 Label selalu tegas (biru tua untuk light, abu gelap untuk dark)
+      const labelClass = isDark
+        ? "bg-gray-900 text-white"
+        : "bg-blue-700 text-white";
+
+      return `
+        <div class="grid grid-cols-2">
+          <div class="${labelClass} px-3 py-2 font-semibold">${label}</div>
+          <div class="${colorClass} px-3 py-2">${content}</div>
+        </div>
+      `;
     };
-
-
 
 
     // === 3️⃣ Render keseluruhan modal ===
@@ -1045,7 +1053,14 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("inacbg", notifications)}
             ${renderBox("Kode INA-CBG", inaCbg.kode, inaCbg.status_kode, diagnosisId, "kode")}
             ${renderBox("Deskripsi", inaCbg.deskripsi, inaCbg.status_deskripsi, diagnosisId, "deskripsi")}
-            ${renderBox("Tarif", inaCbg.tarif ? `Rp ${Number(inaCbg.tarif).toLocaleString('id-ID')}` : "-", inaCbg.status_tarif, diagnosisId, "tarif")}
+            ${renderBox("Tarif",inaCbg.tarif
+                ? `Rp ${Number(String(inaCbg.tarif).replace(/[^\d]/g, '')).toLocaleString('id-ID')}`
+                : "-",
+              inaCbg.status_tarif,
+              diagnosisId,
+              "tarif"
+            )}
+
           </div>
         </section>
 
@@ -1232,27 +1247,42 @@ window.renderChecklistHtml = function(checklist) {
           <!-- AI Notification (Added here) -->
           <div x-show="!loading && data && data.status === 'success'" class="p-3 bg-white dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
             <template x-if="data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg">
-              <div
-                :class="{
-                  'bg-green-50 border-green-500 text-green-800 dark:bg-green-900/20 dark:text-green-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'success',
-                  'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'warning',
-                  'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:text-red-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'error',
-                  'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200': data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.status === 'info'
-                }"
-                class="notification-box border-l-4 p-3 rounded-lg mb-2 text-sm shadow-sm">
+            <template x-if="data && data.data && data.data.idrg_prediction && 
+              ((data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg) ||
+                data.data.idrg_prediction.notification)">
+              <div 
+              :class="{
+                'bg-green-100 border-green-500 text-green-800': data.data.idrg_prediction.notifications.idrg.status === 'success',
+                ...
+              }"
+              :class="{
+                'bg-green-100 border-green-500 text-green-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'success',
+                'bg-yellow-100 border-yellow-500 text-yellow-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'warning',
+                'bg-red-100 border-red-500 text-red-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'error',
+                'bg-blue-100 border-blue-500 text-blue-800': (data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) === 'info'
+              }"
+                class="notification-box border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
+                <span class="text-lg"
+                  x-text="{
+                    'success': '✅',
+                    'warning': '⚠️',
+                    'error': '❌',
+                    'info': 'ℹ️'
+                  }[data.data.idrg_prediction.notifications.idrg.status] || '🔔'"></span>
+                  x-text="{
+                    'success': '✅',
+                    'warning': '⚠️',
+                    'error': '❌',
+                    'info': 'ℹ️'
+                  }[(data.data.idrg_prediction.notifications?.idrg?.status || data.data.idrg_prediction.notification?.status) || 'info'] || '🔔'"></span>
                 <div>
-                  <strong class="font-semibold">Notifikasi AI (IDRG)</strong>
-                  <div class="text-xs leading-snug mt-1" x-text="(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg && data.data.idrg_prediction.notifications.idrg.message) || 'Loading...'"></div>
+                  <strong>Notifikasi AI (IDRG)</strong>
+                  <div class="text-xs leading-snug mt-0.5" x-text="data.data.idrg_prediction.notifications.idrg.message"></div>
+                  <div class="text-xs leading-snug mt-0.5" 
+                        x-text="data.data.idrg_prediction.notifications?.idrg?.message || data.data.idrg_prediction.notification?.message || 'Loading...'"></div>
                 </div>
               </div>
             </template>
-            <div x-show="!(data && data.data && data.data.idrg_prediction && data.data.idrg_prediction.notifications && data.data.idrg_prediction.notifications.idrg)" class="notification-box bg-slate-50 border-slate-400 text-slate-700 dark:bg-white text-gray-900 dark:bg-slate-800 dark:text-white/50 dark:text-slate-300 border-l-4 p-3 rounded-lg mb-2 text-sm shadow-sm">
-              <div>
-                <strong class="font-semibold">Notifikasi AI (IDRG)</strong>
-                <div class="text-xs leading-snug mt-1">Belum ada notifikasi untuk bagian IDRG.</div>
-              </div>
-            </div>
-          </div>
           
           <!-- Prediction Results -->
           <div x-show="!loading && data && data.status === 'success'">
