@@ -254,7 +254,7 @@ class ClaimAIRecommendation(Base):
     @property
     def klinis(self):
         if self.diagnosis:
-            parts = [self.diagnosis.justifikasi, self.diagnosis.bukti_klinis, self.diagnosis.syarat_klinis]
+            parts = [self.diagnosis.justifikasi_klinis, self.diagnosis.bukti_klinis, self.diagnosis.syarat_klinis]
             return " | ".join([p for p in parts if p])
         return None
 

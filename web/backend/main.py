@@ -12,7 +12,7 @@ from . import config
 from .database import engine, Base
 from .routers import (
     dashboard_router, auth_router, patient_router, user_router,
-    hospital_router, medical_record_router, claim_router, visit_router, resume_router, regulation_router, claim_note_router, ai_meta_router
+    hospital_router, medical_record_router, claim_router, visit_router, resume_router, regulation_router, claim_note_router, ai_meta_router, export_router
 )
 
 # Init DB
@@ -44,3 +44,6 @@ app.include_router(regulation_router.router, tags=["regulations"])
 
 # 🔹 AI META Router untuk superadmin
 app.include_router(ai_meta_router.router, tags=["ai-meta"])
+
+# 🔹 Export Router untuk verifikator
+app.include_router(export_router.router, tags=["export"])

@@ -587,7 +587,7 @@ def load_existing_mappings(db: Session, claim_id: int) -> Dict[str, Any]:
                     "nama_kategori": diag.diagnosis_text,
                     "mapping": mapping_type,  # Keep original mapping type
                     "icd10_code": diag.icd10_code or "",
-                    "klinis": diag.justifikasi or "",
+                    "klinis": diag.justifikasi_klinis or "",
                     "confidence": 0.9,
                     "child": False,
                     "stage": stage,
