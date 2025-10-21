@@ -149,8 +149,32 @@
       </div>
 
     {% else %}
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      
+      <!-- Statistik Klaim -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
+      <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+        <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
+        Statistik Klaim
+      </h3>
+
+      <!-- 3 Card Utama -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-6 border border-emerald-200/50 dark:border-emerald-700/50">
+          <p class="text-sm text-emerald-700 dark:text-emerald-300 mb-2 font-medium">Total Klaim</p>
+          <p class="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{{ total_claims }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-6 border border-blue-200/50 dark:border-blue-700/50">
+          <p class="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">Klaim Final</p>
+          <p class="text-4xl font-bold text-blue-900 dark:text-blue-100">{{ final_claims }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-6 border border-amber-200/50 dark:border-amber-700/50">
+          <p class="text-sm text-amber-700 dark:text-amber-300 mb-2 font-medium">Klaim Draft</p>
+          <p class="text-4xl font-bold text-amber-900 dark:text-amber-100">{{ draft_claims }}</p>
+        </div>
+      </div>
+
+      <!-- Stats Cards Tambahan -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 border border-white/50 dark:border-blue-700/50">
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Total klaim bulan ini</p>
           <p class="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-1">{{ total_claims_bulan_ini or "1,250" }}</p>
@@ -178,7 +202,7 @@
           <p class="text-3xl font-bold text-rose-900 dark:text-rose-100 mb-1">{{ mismatch or "18%" }}</p>
         </div>
       </div>
-
+    </div>
       <!-- Charts Row -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
         <div class="lg:col-span-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
@@ -201,29 +225,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Statistik Klaim -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
-        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
-          <div class="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
-          Statistik Klaim
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 rounded-xl p-6 border border-emerald-200/50 dark:border-emerald-700/50">
-            <p class="text-sm text-emerald-700 dark:text-emerald-300 mb-2 font-medium">Total Klaim</p>
-            <p class="text-4xl font-bold text-emerald-900 dark:text-emerald-100">{{ total_claims }}</p>
-          </div>
-          <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-6 border border-blue-200/50 dark:border-blue-700/50">
-            <p class="text-sm text-blue-700 dark:text-blue-300 mb-2 font-medium">Klaim Final</p>
-            <p class="text-4xl font-bold text-blue-900 dark:text-blue-100">{{ final_claims }}</p>
-          </div>
-          <div class="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-xl p-6 border border-amber-200/50 dark:border-amber-700/50">
-            <p class="text-sm text-amber-700 dark:text-amber-300 mb-2 font-medium">Klaim Draft</p>
-            <p class="text-4xl font-bold text-amber-900 dark:text-amber-100">{{ draft_claims }}</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Klaim Draft Table -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 hover:shadow-md transition-shadow">
         <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
