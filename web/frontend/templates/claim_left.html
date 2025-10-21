@@ -580,8 +580,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const layersCount = Object.keys(rulesByLayer).length;
     
     // Update summary
-    document.getElementById('rulesSummary').textContent = 
-      `Ditemukan ${fieldsCount} kategori field dengan ${layersCount} layer aturan aktif`;
+    const summaryEl = document.getElementById('rulesSummary');
+    if (summaryEl) {
+      summaryEl.textContent = 
+        `Ditemukan ${fieldsCount} kategori field dengan ${layersCount} layer aturan aktif`;
+    }
 
     // Generate tabs
     const sortedLayers = Object.keys(rulesByLayer).sort((a, b) => 

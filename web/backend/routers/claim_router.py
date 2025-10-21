@@ -3174,7 +3174,7 @@ async def get_stored_diagnosis_detail(
             raise HTTPException(status_code=404, detail=f"Stored diagnosis '{diagnosis_name}' not found")
 
         # ==== kalau data klinis kosong, auto fallback ke AI ====
-        is_empty = not (diagnosis.justifikasi or diagnosis.syarat_klinis or diagnosis.bukti_klinis)
+        is_empty = not (diagnosis.justifikasi_klinis or diagnosis.syarat_klinis or diagnosis.bukti_klinis)
         if is_empty:
             try:
                 print("[STORED_DIAGNOSIS_DETAIL] ⚠️ Empty record, requesting AI fallback...")
@@ -3224,7 +3224,7 @@ async def get_stored_diagnosis_detail(
             "diagnosis_detail": {
                 "diagnosis_text": diagnosis.diagnosis_text,
                 "icd10_code": diagnosis.icd10_code or "-",
-                "justifikasi": diagnosis.justifikasi or "Belum diisi oleh doctor",
+                "justifikasi": diagnosis.justifikasi_klinis or "Belum diisi oleh doctor",
                 "syarat_klinis": diagnosis.syarat_klinis or "Belum diisi oleh doctor",
                 "bukti_klinis": diagnosis.bukti_klinis or "Belum diisi oleh doctor",
                 "struktur_icd10": diagnosis.struktur_icd10 or "-",
@@ -3493,7 +3493,7 @@ def get_stored_data_summary(
                 "name": diag.diagnosis_text,
                 "type": diag.diagnosis_type,
                 "icd10_code": diag.icd10_code or "",
-                "has_details": bool(diag.justifikasi or diag.syarat_klinis or diag.bukti_klinis),
+                "has_details": bool(diag.justifikasi_klinis or diag.syarat_klinis or diag.bukti_klinis),
                 "clickable": True  # Can open modal
             }
             result["summary"]["diagnoses"].append(diag_summary)
