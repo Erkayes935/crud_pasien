@@ -10,6 +10,7 @@ from database_connection import SessionLocal
 from models import RulesMaster
 from .rules_loader import load_rules_multilayer, load_rules_for_diagnosis, get_active_rule_for_field
 from .field_rule_mapping import FIELD_NAME_ALIAS, match_field_alias
+from sqlalchemy import and_, or_
 
 
 load_dotenv()
@@ -258,11 +259,24 @@ def collect_regulations_for_field(payload: dict, field: str):
                 ).all()
         else:
             # 🔹 Mode diagnosis-only
+            field_aliases = get_field_aliases(field)
+            field_conditions = [RulesMaster.field == alias for alias in field_aliases]
+
             rules = db.query(RulesMaster).filter(
                 RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
-                RulesMaster.field.ilike(f"%{field}%"),
+                or_(*field_conditions),
+                RulesMaster.scope == scope,  # ⬅️ penting: filter sesuai scope
                 RulesMaster.status.in_(["official", "active"])
             ).all()
+
+            if not rules and field.startswith("syarat_klinis"):
+                # Fallback hanya untuk diagnosis
+                rules = db.query(RulesMaster).filter(
+                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                    RulesMaster.field == "syarat_klinis",
+                    RulesMaster.scope == "diagnosis",
+                    RulesMaster.status.in_(["official", "active"])
+                ).all()
 
         db.close()
 
