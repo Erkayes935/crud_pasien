@@ -11,7 +11,7 @@ import json
 def _update_diag_fields(diag, data: dict):
     """Helper update field diagnosis"""
     diag.icd10_code = data.get("icd") or diag.icd10_code
-    diag.justifikasi = data.get("label") or diag.justifikasi
+    diag.justifikasi_klinis = data.get("label") or diag.justifikasi_klinis
     diag.bukti_klinis = data.get("bukti_klinis") or diag.bukti_klinis
     diag.syarat_klinis = data.get("syarat_klinis") or diag.syarat_klinis
     diag.kode_ganda = data.get("kode_ganda") or diag.kode_ganda

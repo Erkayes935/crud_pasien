@@ -50,7 +50,7 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
             "nama_kategori": rec.diagnosis.diagnosis_text if rec.diagnosis else "",
             "mapping": rec.diagnosis.diagnosis_type if rec.diagnosis else "",
             "icd10_code": rec.diagnosis.icd10_code if rec.diagnosis else "",
-            "klinis": rec.diagnosis.justifikasi if rec.diagnosis else "",
+            "klinis": rec.diagnosis.justifikasi_klinis if rec.diagnosis else "",
             "confidence": rec.confidence_score or 0,
             "score": rec.confidence_score or 0,
             "child": rec.child or False
@@ -552,7 +552,7 @@ def load_existing_mappings(db: Session, claim_id: int) -> Dict[str, Any]:
                     "nama_kategori": diag.diagnosis_text,
                     "mapping": "Diagnosis Utama",  # Use frontend format
                     "icd10_code": diag.icd10_code or "",
-                    "klinis": diag.justifikasi or "",
+                    "klinis": diag.justifikasi_klinis or "",
                     "confidence": 1.0,
                     "child": False,
                     "stage": stage,
@@ -587,7 +587,7 @@ def load_existing_mappings(db: Session, claim_id: int) -> Dict[str, Any]:
                     "nama_kategori": diag.diagnosis_text,
                     "mapping": mapping_type,  # Keep original mapping type
                     "icd10_code": diag.icd10_code or "",
-                    "klinis": diag.justifikasi or "",
+                    "klinis": diag.justifikasi_klinis or "",
                     "confidence": 0.9,
                     "child": False,
                     "stage": stage,

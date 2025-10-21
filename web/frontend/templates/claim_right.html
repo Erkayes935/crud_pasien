@@ -246,6 +246,62 @@
                         Save Final
                         </button>
                     </div>
+
+                    <!-- ================= EXPORT TXT SECTION (Verifikator Only) ================= -->
+                    {% if current_user.role == 'verifikator' or 'verifikator' in current_user.role_names %}
+                    <div class="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <h4 class="font-bold text-lg text-blue-900 dark:text-blue-300 mb-4 flex items-center gap-2">
+                            📄 Export TXT BPJS e-Claim
+                        </h4>
+                        
+                        <div class="space-y-4">
+                            <!-- SEP Input -->
+                            <div>
+                                <label for="sepNumber" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Nomor SEP <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" 
+                                           id="sepNumber" 
+                                           placeholder="Contoh: 0123R0011023A000123"
+                                           class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                    <button type="button" 
+                                            onclick="checkSimrsSep()"
+                                            class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">
+                                        Cek SIMRS
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Nomor SEP diperlukan untuk generate file TXT BPJS
+                                </p>
+                            </div>
+                            
+                            <!-- Export Actions -->
+                            <div class="flex gap-3">
+                                <button type="button" 
+                                        onclick="exportClaimTxt()"
+                                        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold flex items-center gap-2">
+                                    💾 Export TXT
+                                </button>
+                                <button type="button" 
+                                        onclick="previewExportData()"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm">
+                                    👁️ Preview
+                                </button>
+                            </div>
+                            
+                            <!-- Status Display -->
+                            <div id="exportStatus" class="hidden mt-4 p-3 rounded-md">
+                                <div class="flex items-center gap-2">
+                                    <div id="exportSpinner" class="hidden animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span id="exportMessage"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <!-- ================= END EXPORT TXT SECTION ================= -->
+
                     <!-- Modal -->
                     <div x-show="modalOpen" x-cloak
                         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -824,6 +880,145 @@ function renderRulesContent(rulesData) {
     document.getElementById('rulesModal').style.display = 'none';
     window.rulesModalData = { open: false, diagnosis: null, loading: false, rulesData: null };
   };
+
+// ================= TXT EXPORT FUNCTIONS =================
+window.exportClaimTxt = async function() {
+    const sepNumber = document.getElementById('sepNumber').value.trim();
+    const claimId = document.querySelector('[data-claim-id]').getAttribute('data-claim-id');
+    
+    if (!sepNumber) {
+        showExportStatus('error', '❌ Nomor SEP harus diisi!');
+        return;
+    }
+    
+    showExportStatus('loading', '🔄 Sedang generate file TXT...');
+    
+    try {
+        const response = await fetch(`/api/export/claims/${claimId}/txt`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sep_number: sepNumber })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.detail || `HTTP ${response.status}`);
+        }
+        
+        showExportStatus('success', `✅ File TXT berhasil dibuat: ${result.filename}`);
+        
+        // Show download link if available
+        if (result.download_url) {
+            setTimeout(() => {
+                const downloadLink = `<br><a href="${result.download_url}" 
+                                        download="${result.filename}"
+                                        class="inline-flex items-center px-3 py-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm">
+                                        📥 Download File TXT
+                                      </a>`;
+                document.getElementById('exportMessage').innerHTML += downloadLink;
+            }, 1000);
+        }
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        showExportStatus('error', `❌ Gagal export: ${error.message}`);
+    }
+};
+
+window.checkSimrsSep = async function() {
+    const sepNumber = document.getElementById('sepNumber').value.trim();
+    const claimId = document.querySelector('[data-claim-id]').getAttribute('data-claim-id');
+    
+    if (!sepNumber) {
+        alert('❌ Masukkan nomor SEP terlebih dahulu');
+        return;
+    }
+    
+    showExportStatus('loading', '🔍 Mengecek SEP di SIMRS...');
+    
+    try {
+        const response = await fetch(`/api/export/claims/${claimId}/check-sep?sep_number=${encodeURIComponent(sepNumber)}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.detail || `HTTP ${response.status}`);
+        }
+        
+        if (result.found) {
+            showExportStatus('success', `✅ SEP ditemukan di SIMRS: ${result.patient_name || 'Data valid'}`);
+        } else {
+            showExportStatus('warning', '⚠️ SEP tidak ditemukan di SIMRS, akan menggunakan data fallback');
+        }
+        
+    } catch (error) {
+        console.error('SEP check error:', error);
+        showExportStatus('error', `❌ Gagal cek SEP: ${error.message}`);
+    }
+};
+
+window.previewExportData = async function() {
+    const claimId = document.querySelector('[data-claim-id]').getAttribute('data-claim-id');
+    
+    showExportStatus('loading', '🔍 Memuat preview data...');
+    
+    try {
+        const response = await fetch(`/api/export/claims/${claimId}/preview`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.detail || `HTTP ${response.status}`);
+        }
+        
+        // Show preview in modal or alert
+        const previewText = result.lines.map((line, index) => 
+            `Line ${index + 1}: ${line}`
+        ).join('\\n');
+        
+        alert(`📄 Preview Format BPJS (12 Lines):\\n\\n${previewText}`);
+        showExportStatus('success', '✅ Preview data berhasil dimuat');
+        
+    } catch (error) {
+        console.error('Preview error:', error);
+        showExportStatus('error', `❌ Gagal load preview: ${error.message}`);
+    }
+};
+
+function showExportStatus(type, message) {
+    const statusDiv = document.getElementById('exportStatus');
+    const messageSpan = document.getElementById('exportMessage');
+    const spinner = document.getElementById('exportSpinner');
+    
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-yellow-100', 'bg-blue-100',
+                             'text-green-800', 'text-red-800', 'text-yellow-800', 'text-blue-800');
+    
+    if (type === 'success') {
+        statusDiv.classList.add('bg-green-100', 'text-green-800');
+        spinner.classList.add('hidden');
+    } else if (type === 'error') {
+        statusDiv.classList.add('bg-red-100', 'text-red-800');
+        spinner.classList.add('hidden');
+    } else if (type === 'warning') {
+        statusDiv.classList.add('bg-yellow-100', 'text-yellow-800');
+        spinner.classList.add('hidden');
+    } else if (type === 'loading') {
+        statusDiv.classList.add('bg-blue-100', 'text-blue-800');
+        spinner.classList.remove('hidden');
+    }
+    
+    messageSpan.textContent = message;
+    statusDiv.classList.remove('hidden');
+    
+    // Auto hide after 10 seconds for non-loading states
+    if (type !== 'loading') {
+        setTimeout(() => {
+            if (!spinner.classList.contains('hidden')) return; // Don't hide if still loading
+            statusDiv.classList.add('hidden');
+        }, 10000);
+    }
+}
 
 
 </script>
