@@ -36,37 +36,37 @@
         
         <!-- Basic Filters (Always Visible) -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Workflow Status</label>
-          <select name="workflow_status"
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Workflow Status</label>
+            <select name="workflow_status"
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+              <option value="">Semua Status</option>
+              <option value="draft" {% if workflow_status == 'draft' %}selected{% endif %}>Draft</option>
+              <option value="doctor_submitted" {% if workflow_status == 'doctor_submitted' %}selected{% endif %}>Submitted to Coder</option>
+              <option value="coder_review" {% if workflow_status == 'coder_review' %}selected{% endif %}>Coder Review</option>
+              <option value="coder_verified" {% if workflow_status == 'coder_verified' %}selected{% endif %}>Coder Verified</option>
+              <option value="verifikator_review" {% if workflow_status == 'verifikator_review' %}selected{% endif %}>Verifikator Review</option>
+              <option value="finalized" {% if workflow_status == 'finalized' %}selected{% endif %}>Finalized</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Pasien</label>
+            <input type="text" name="patient_name" value="{{ patient_name or '' }}" placeholder="Cari nama pasien..."
                   class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-            <option value="">Semua Status</option>
-            <option value="draft" {% if workflow_status == 'draft' %}selected{% endif %}>Draft</option>
-            <option value="doctor_submitted" {% if workflow_status == 'doctor_submitted' %}selected{% endif %}>Submitted to Coder</option>
-            <option value="coder_review" {% if workflow_status == 'coder_review' %}selected{% endif %}>Coder Review</option>
-            <option value="coder_verified" {% if workflow_status == 'coder_verified' %}selected{% endif %}>Coder Verified</option>
-            <option value="verifikator_review" {% if workflow_status == 'verifikator_review' %}selected{% endif %}>Verifikator Review</option>
-            <option value="finalized" {% if workflow_status == 'finalized' %}selected{% endif %}>Finalized</option>
-          </select>
-        </div>
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Pasien</label>
-          <input type="text" name="patient_name" value="{{ patient_name or '' }}" placeholder="Cari nama pasien..."
-                 class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Klaim</label>
+            <input type="number" name="claim_id" value="{{ claim_id or '' }}" placeholder="ID Klaim"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Klaim</label>
-          <input type="number" name="claim_id" value="{{ claim_id or '' }}" placeholder="ID Klaim"
-                 class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Kunjungan</label>
-          <input type="date" name="tanggal_kunjungan" value="{{ tanggal_kunjungan or '' }}"
-                 class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Kunjungan</label>
+            <input type="date" name="tanggal_kunjungan" value="{{ tanggal_kunjungan or '' }}"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+          </div>
         </div>
         
         <!-- Advanced Filters (Collapsible) -->
@@ -78,19 +78,19 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🩺 Diagnosis</label>
                 <input type="text" name="diagnosis" value="{{ diagnosis or '' }}" placeholder="Cari diagnosis atau ICD-10..."
-                       class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">⚙️ Tindakan</label>
                 <input type="text" name="tindakan" value="{{ tindakan or '' }}" placeholder="Cari tindakan atau ICD-9..."
-                       class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🏥 Dokter (DPJP)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🥼 Dokter (DPJP)</label>
                 <input type="text" name="doctor_name" value="{{ doctor_name or '' }}" placeholder="Nama dokter..."
-                       class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
               </div>
 
               <!-- AI Status Filter -->
@@ -112,9 +112,9 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">💰 Rentang Tarif CBG</label>
                 <div class="grid grid-cols-2 gap-2">
                   <input type="number" name="tarif_cbg_min" value="{{ tarif_cbg_min or '' }}" placeholder="Min"
-                         class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
                   <input type="number" name="tarif_cbg_max" value="{{ tarif_cbg_max or '' }}" placeholder="Max"
-                         class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
                 </div>
               </div>
 
@@ -123,9 +123,9 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">📅 Lama Rawat (Hari)</label>
                 <div class="grid grid-cols-2 gap-2">
                   <input type="number" name="los_min" value="{{ los_min or '' }}" placeholder="Min hari"
-                         class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
                   <input type="number" name="los_max" value="{{ los_max or '' }}" placeholder="Max hari"
-                         class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
                 </div>
               </div>
               
@@ -133,7 +133,7 @@
           </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- ✅ PERBAIKAN: Action Buttons -->
         <div class="flex justify-between items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
           <!-- Export Buttons (Left) -->
           <div class="flex gap-2">
@@ -155,20 +155,19 @@
           
           <!-- Filter Buttons (Right) -->
           <div class="flex gap-2">
-
-        <div class="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end gap-2 mt-2">
-          <button type="submit"
-                  class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            Filter
-          </button>
-          <a href="/claims"
-             class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
-            Reset
-          </a>
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              Filter
+            </button>
+            <a href="/claims"
+              class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">
+              Reset
+            </a>
+          </div>
         </div>
       </form>
     </div>
@@ -691,9 +690,10 @@ function exportToExcel() {
     const params = new URLSearchParams(formData);
     
     // Show loading
-    const button = event.target;
+    const button = event.target.closest('button');
     const originalText = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.disabled = true;
     
     // Create download link
     const url = `/claims/export/excel?${params.toString()}`;
@@ -702,6 +702,7 @@ function exportToExcel() {
     // Restore button after delay
     setTimeout(() => {
         button.innerHTML = originalText;
+        button.disabled = false;
     }, 2000);
 }
 
@@ -711,9 +712,10 @@ function exportToPDF() {
     const params = new URLSearchParams(formData);
     
     // Show loading
-    const button = event.target;
+    const button = event.target.closest('button');
     const originalText = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.disabled = true;
     
     // Create download link
     const url = `/claims/export/pdf?${params.toString()}`;
@@ -722,6 +724,7 @@ function exportToPDF() {
     // Restore button after delay
     setTimeout(() => {
         button.innerHTML = originalText;
+        button.disabled = false;
     }, 2000);
 }
 
@@ -741,6 +744,8 @@ function toggleColumnControls() {
 
 function toggleColumn(columnName) {
     const checkbox = document.getElementById(`col_${columnName}`);
+    if (!checkbox) return;
+    
     const isVisible = checkbox.checked;
     
     // Toggle column visibility in table
@@ -772,8 +777,9 @@ function applyColumnPreset(preset) {
     // Update checkboxes and apply visibility
     allColumns.forEach(column => {
         const checkbox = document.getElementById(`col_${column}`);
-        const shouldShow = columnsToShow.includes(column);
+        if (!checkbox) return;
         
+        const shouldShow = columnsToShow.includes(column);
         checkbox.checked = shouldShow;
         
         // Apply visibility
@@ -799,6 +805,8 @@ function resetColumnSettings() {
     
     allColumns.forEach(column => {
         const checkbox = document.getElementById(`col_${column}`);
+        if (!checkbox) return;
+        
         checkbox.checked = true;
         
         // Show all columns
@@ -824,7 +832,9 @@ function saveColumnSettings() {
     
     allColumns.forEach(column => {
         const checkbox = document.getElementById(`col_${column}`);
-        settings[column] = checkbox.checked;
+        if (checkbox) {
+            settings[column] = checkbox.checked;
+        }
     });
     
     localStorage.setItem('claimTableColumns', JSON.stringify(settings));
@@ -848,12 +858,13 @@ function loadColumnSettings() {
                     const headers = document.querySelectorAll(`th[data-column="${column}"]`);
                     const cells = document.querySelectorAll(`td[data-column="${column}"]`);
                     
+                    const display = settings[column] ? '' : 'none';
                     headers.forEach(header => {
-                        header.style.display = settings[column] ? '' : 'none';
+                        header.style.display = display;
                     });
                     
                     cells.forEach(cell => {
-                        cell.style.display = settings[column] ? '' : 'none';
+                        cell.style.display = display;
                     });
                 }
             });
@@ -863,19 +874,26 @@ function loadColumnSettings() {
     }
 }
 
-// ✅ Auto-show advanced filters if any advanced parameters are set
+// ✅ Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Load column settings first
     loadColumnSettings();
     
-    // Auto-show advanced filters
+    // Auto-show advanced filters if any parameters are set
     const urlParams = new URLSearchParams(window.location.search);
     const advancedParams = ['diagnosis', 'tindakan', 'doctor_name', 'ai_status', 'tarif_cbg_min', 'tarif_cbg_max', 'los_min', 'los_max'];
     
     const hasAdvancedFilters = advancedParams.some(param => urlParams.get(param));
     
     if (hasAdvancedFilters) {
-        toggleAdvancedFilters();
+        const advancedSection = document.getElementById('advanced-filters');
+        const toggleText = document.getElementById('filter-toggle-text');
+        if (advancedSection && advancedSection.classList.contains('hidden')) {
+            advancedSection.classList.remove('hidden');
+            if (toggleText) {
+                toggleText.textContent = 'Sembunyikan Filter Lanjutan';
+            }
+        }
     }
 });
 </script>

@@ -83,6 +83,29 @@
       opacity: 0;
       visibility: hidden;
     }
+    html:not(.dark) .modal-content .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+    }
+    
+    html:not(.dark) .modal-content .bg-white {
+      background-color: #ffffff !important;
+      color: #1f2937 !important;
+    }
+    
+    html:not(.dark) .modal-content .bg-gray-50 {
+      background-color: #f9fafb !important;
+      color: #111827 !important;
+    }
+    
+    /* Ensure modal text is readable in light mode */
+    html:not(.dark) .modal-content .text-gray-900 {
+      color: #111827 !important;
+    }
+    
+    html:not(.dark) .modal-content .text-gray-800 {
+      color: #1f2937 !important;
+    }
   </style>
 
 </head>
