@@ -953,7 +953,19 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("klinis", notifications)}
             ${safeRender(() => renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
             ${safeRender(() => renderBox("Bukti Klinis", klinis.bukti_klinis, null, diagnosisId, "bukti_klinis"))}
-            ${safeRender(() => renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
+            ${safeRender(() => {console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis);
+              const hasMultilayers = typeof klinis.syarat_klinis === "string" && (
+                klinis.syarat_klinis.includes("[Nasional]") ||
+                klinis.syarat_klinis.includes("[PNPK]") ||
+                klinis.syarat_klinis.includes("•")
+              );
+              if (hasMultilayers) {
+                return renderFieldMultilayer(
+                  { isi: klinis.syarat_klinis },"Syarat Klinis","syarat_klinis",diagnosisId);
+              } else {
+                return renderBox("Syarat Klinis",klinis.syarat_klinis,klinis.status,diagnosisId,"syarat_klinis");
+              }
+            })}
           </div>
         </section>
 
@@ -963,10 +975,23 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("icd", notifications)}
             ${safeRender(() => renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
-            ${safeRender(() => renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda"))}
-            ${safeRender(() => renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code"))}
-            ${safeRender(() => renderBox("Kode BPJS Khusus", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus"))}
-          </div>
+            ${safeRender(() => {console.log("📋 ICD10 - kode_ganda:", icd10.kode_ganda);
+              const hasMultilayers = typeof icd10.kode_ganda === "string" && (icd10.kode_ganda.includes("[Nasional]") || icd10.kode_ganda.includes("[PNPK]") || icd10.kode_ganda.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: icd10.kode_ganda}, "Kode Ganda", "kode_ganda", diagnosisId)
+                                    : renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda");
+            })}
+
+            ${safeRender(() => {console.log("📋 ICD10 - z_code:", icd10.z_code);
+              const hasMultilayers = typeof icd10.z_code === "string" && (icd10.z_code.includes("[Nasional]") || icd10.z_code.includes("[PNPK]") || icd10.z_code.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: icd10.z_code}, "Z-Code", "z_code", diagnosisId)
+                                    : renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code");
+            })}
+
+            ${safeRender(() => {console.log("📋 ICD10 - kode_bpjs_khusus:", icd10.kode_bpjs_khusus);
+              const hasMultilayers = typeof icd10.kode_bpjs_khusus === "string" && (icd10.kode_bpjs_khusus.includes("[Nasional]") || icd10.kode_bpjs_khusus.includes("[PNPK]") || icd10.kode_bpjs_khusus.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: icd10.kode_bpjs_khusus}, "Kode BPJS Khusus", "kode_bpjs_khusus", diagnosisId)
+                                    : renderBox("Kode BPJS Khusus", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus");
+            })}
         </section>
 
         <!-- 📊 i-DRG -->
@@ -986,9 +1011,19 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-teal-500 to-teal-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RAWAT INAP</div>
           <div class="space-y-3 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rawat", notifications)}
-            ${safeRender(() => renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi"))}
+            ${safeRender(() => {console.log("📋 RAWAT - indikasi:", rawat.indikasi);
+              const hasMultilayers = typeof rawat.indikasi === "string" && (rawat.indikasi.includes("[Nasional]") || rawat.indikasi.includes("[PNPK]") || rawat.indikasi.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: rawat.indikasi}, "Indikasi", "indikasi", diagnosisId)
+                                    : renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi");
+            })}
+
             ${safeRender(() => renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria"))}
-            ${safeRender(() => renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat"))}
+            ${safeRender(() => {console.log("📋 RAWAT - lama_rawat:", rawat.lama_rawat);
+              const hasMultilayers = typeof rawat.lama_rawat === "string" && (rawat.lama_rawat.includes("[Nasional]") || rawat.lama_rawat.includes("[PNPK]") || rawat.lama_rawat.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: rawat.lama_rawat}, "Lama Rawat", "lama_rawat", diagnosisId)
+                                    : renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat");
+            })}
+
           </div>
         </section>
 
@@ -997,7 +1032,11 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">FASKES</div>
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("faskes", notifications)}
-            ${safeRender(() => renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat"))}
+            ${safeRender(() => {console.log("📋 FASKES - tingkat:", faskes.tingkat);
+              const hasMultilayers = typeof faskes.tingkat === "string" && (faskes.tingkat.includes("[Nasional]") || faskes.tingkat.includes("[PNPK]") || faskes.tingkat.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: faskes.tingkat}, "Tingkat", "tingkat", diagnosisId)
+                                    : renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat");
+            })}
             ${safeRender(() => renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi_faskes"))}
             ${safeRender(() => renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi"))}
           </div>
@@ -1008,7 +1047,11 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rujukan", notifications)}
-            ${safeRender(() => renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan"))}
+            ${safeRender(() => {console.log("📋 RUJUKAN - indikasi:", rujukan.indikasi);
+              const hasMultilayers = typeof rujukan.indikasi === "string" && (rujukan.indikasi.includes("[Nasional]") || rujukan.indikasi.includes("[PNPK]") || rujukan.indikasi.includes("•"));
+              return hasMultilayers ? renderFieldMultilayer({isi: rujukan.indikasi}, "Indikasi", "indikasi_rujukan", diagnosisId)
+                                    : renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan");
+            })}
             ${safeRender(() => renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan"))}
             ${safeRender(() => renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan"))}
           </div>

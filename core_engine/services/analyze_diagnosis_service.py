@@ -164,6 +164,45 @@ def ensure_default_gpt_structure(gpt_result, disease_name):
 
     return gpt_result
 
+def summarize_multilayer_text(text: str) -> str:
+    """
+    Ringkas isi regulasi menjadi kalimat medis pendek (maks 180 karakter).
+    Fokus ke inti diagnosis, indikasi, atau syarat penting.
+    """
+    if not text or not isinstance(text, str):
+        return "-"
+
+    t = text.strip().replace("\n", " ").replace("•", "-")
+    t = t.replace("Diagnosis pasti", "Diagnosis").replace("ditegakkan jika", "bila")
+    t = t.replace("pemeriksaan radiologi", "rontgen toraks").replace("infiltrat/opasitas/konsolidasi/air bronchogram", "infiltrat paru")
+    t = t.replace("pada pemeriksaan fisis dapat ditemukan", "temuan fisik").strip()
+
+    # potong biar ringkas
+    if len(t) > 180:
+        t = t[:180].rsplit(" ", 1)[0] + "…"
+    return t
+
+
+def summarize_multilayer_rules(rule_list):
+    """
+    Bentuk bullet point ringkas untuk tiap layer regulasi.
+    Label depan diambil dari kolom 'layer', bukan 'sumber'.
+    """
+    if not rule_list or not isinstance(rule_list, list):
+        return "-"
+
+    points = []
+    for r in rule_list:
+        layer = r.get("layer", "-").capitalize()  # ← pakai layer
+        src = r.get("sumber", "-")
+        isi = summarize_multilayer_text(r.get("isi", "-"))
+
+        # Format: [Layer] Isi (Sumber)
+        points.append(f"• [{layer}] {isi} ({src})")
+
+    return "\n".join(points)
+
+
 # ==============================
 # INTEGRATOR GPT + RULES (HYBRID APPROACH)
 # ==============================
@@ -287,10 +326,7 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
                                 })
 
                 if multilayer_rules:
-                    formatted = "\n".join([
-                        f"• [{r['layer'].capitalize()}] {r['isi']} ({r['sumber']})"
-                        for r in multilayer_rules
-                    ])
+                    formatted = summarize_multilayer_rules(multilayer_rules)
                     merged[field_name] = formatted
                 else:
                     merged[field_name] = val_ai or "-"
@@ -355,7 +391,7 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     for field_key, rule_list in rule_data_db.items():
         if len(rule_list) > 1:  # hanya kalau punya lebih dari satu layer
             section, subfield = extract_field_path(field_key)
-            formatted_text = format_multilayer_points(rule_list)
+            formatted_text = summarize_multilayer_rules(rule_list)
 
             if section not in rule_data:
                 rule_data[section] = {}
