@@ -36,6 +36,8 @@ from ..services.claim import core, simulation, ai
 from ..services import claim_ai, claim_helper
 from backend.services.claim.simulation import load_sim_and_summary, load_existing_mappings, apply_mappings_to_simulasi
 from ..services.claim_ai import regulation_detail as ai_regulation_detail
+from backend.services.claim.save_simulation_refactor import save_simulasi
+
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 

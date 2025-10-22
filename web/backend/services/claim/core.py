@@ -14,7 +14,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ... import models
-from .simulation import save_simulasi
+from .save_simulation_refactor import save_simulasi
 from .ai import store_ai_evaluations
 from .helper import _update_medical_record_from_form
 from .. import claim_helper
