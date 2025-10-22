@@ -672,6 +672,25 @@ window.renderComboIdrgResult = function(data) {
 };
 
 // =============== UI fix agar identik dengan referensi (auto adapt light/dark) ===============
+window.parseRupiah = function (val) {
+  if (!val || val === '-') return '-';
+  try {
+    if (typeof val === 'string') {
+      const match = val.match(/\d+/g);
+      if (match) {
+        const num = parseInt(match.join(''));
+        return `Rp ${num.toLocaleString('id-ID')}`;
+      }
+    }
+    if (typeof val === 'number') {
+      return `Rp ${val.toLocaleString('id-ID')}`;
+    }
+    return val;
+  } catch (e) {
+    console.warn('parseRupiah error:', e);
+    return val;
+  }
+};
 
 window.renderEvaluasiIDRGSummary = function (data, claimId) {
   const target = document.getElementById("evaluasi-idrg");
@@ -752,13 +771,11 @@ window.renderEvaluasiIDRGSummary = function (data, claimId) {
           </div>
           <div class="grid grid-cols-2">
             <div class="bg-gray-50 dark:bg-gray-800 px-4 py-2 font-medium">Estimasi Tarif</div>
-            <div class="px-4 py-2"
-                 x-text="idrgData.estimasi_tarif_idrg ? 'Rp ' + parseInt(idrgData.estimasi_tarif_idrg).toLocaleString('id-ID') : (idrgData.estimasi_tarif ? 'Rp ' + parseInt(idrgData.estimasi_tarif).toLocaleString('id-ID') : '-')"></div>
+            <div class="px-4 py-2" x-text="window.parseRupiah(idrgData.estimasi_tarif_idrg || idrgData.estimasi_tarif)"></div>
           </div>
           <div class="grid grid-cols-2">
             <div class="bg-gray-50 dark:bg-gray-800 px-4 py-2 font-medium">Gap INA-CBG vs i-DRG</div>
-            <div class="px-4 py-2"
-                 x-text="idrgData.gap_inacbg_vs_idrg ? 'Rp ' + parseInt(idrgData.gap_inacbg_vs_idrg).toLocaleString('id-ID') : '-'"></div>
+            <div class="px-4 py-2" x-text="window.parseRupiah(idrgData.gap_inacbg_vs_idrg || idrgData.gap_analysis)"></div>
           </div>
           <div class="grid grid-cols-2">
             <div class="bg-gray-50 dark:bg-gray-800 px-4 py-2 font-medium">Rekomendasi AI</div>

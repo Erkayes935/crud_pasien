@@ -310,10 +310,14 @@ def store_ai_recommendations(
         # ============================================================
         elif mode == "procedure":
             category = ai_data.get("category", "procedure")
+            procedure_text = ai_data.get("procedure_text") or ai_data.get("procedure_name") or "-"
+            if not procedure_text or procedure_text.strip() == "":
+                print(f"[AI STORAGE] ⚠️ Skipped storing procedure because text is empty")
+                return  # jangan insert kalau kosong
 
             proc = models.ClaimProcedure(
                 claim_id=claim_id,
-                procedure_text=ai_data.get("procedure_text"),
+                procedure_text=procedure_text.strip(),
                 procedure_source=ai_data.get("procedure_source"),
                 requirement_flag=False,
                 stage=stage,
@@ -324,6 +328,11 @@ def store_ai_recommendations(
             )
             db.add(proc)
             db.flush()
+
+            # 🔁 Inject procedure_id ke ai_data agar bisa dipakai saat simpan regulasi
+            ai_data["procedure_id"] = proc.id
+            print(f"[AI STORAGE] Injected procedure_id={proc.id} into ai_data for later use")
+
 
         # ============================================================
         # MODE: REGULATION
@@ -337,17 +346,34 @@ def store_ai_recommendations(
             if isinstance(isi, list):
                 isi = "\n".join(isi) if isi else ""
 
+            # ✅ Ambil diagnosis_id / procedure_id dari payload utama juga (kalau dikirim lewat router)
+            diagnosis_id = (
+                regulation_data.get("diagnosis_id")
+                or ai_data.get("diagnosis_id")
+                or ai_data.get("item_id")
+            )
+            procedure_id = (
+                regulation_data.get("procedure_id")
+                or ai_data.get("procedure_id")
+                or ai_data.get("item_id")
+            )
+
             reg = models.ClaimRegulationDetail(
                 claim_id=claim_id,
+                diagnosis_id=diagnosis_id,
+                procedure_id=procedure_id,
+                entry_field=regulation_data.get("entry_field") or ai_data.get("field"),
                 dasar_hukum=regulation_data.get("dasar_hukum", ""),
-                judul_regulasi=regulation_data.get("judul_regulasi", ""),
-                bab_pasal=regulation_data.get("bab_pasal", ""),
+                judul_regulasi=regulation_data.get("judul_regulasi", "") or regulation_data.get("judul", ""),
+                bab_pasal=regulation_data.get("bab_pasal", "") or regulation_data.get("sumber", ""),
                 isi=isi,
                 is_deleted=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
             db.add(reg)
+
+
 
         # ============================================================
         # COMMIT & LOG
