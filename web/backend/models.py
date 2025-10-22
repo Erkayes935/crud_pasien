@@ -625,7 +625,7 @@ class ClaimLog(Base):
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
 
     record_type = Column(String(50), nullable=False)  # admission / daily / discharge

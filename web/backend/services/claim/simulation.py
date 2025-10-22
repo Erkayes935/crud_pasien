@@ -180,7 +180,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
     # Clear related ClaimProcedure records (dari mapping sebelumnya) 
     deleted_procs = db.query(models.ClaimProcedure).filter(
         models.ClaimProcedure.claim_id == claim_id,
-        models.ClaimProcedure.procedure_type.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
+        models.ClaimProcedure.procedure_source.in_(["Primary", "Secondary", "Primary Action", "Secondary Actions"])
     ).delete(synchronize_session=False)
     
     print(f"[SAVE_SIMULASI] ✅ Cleared: {deleted_sims} simulations, {deleted_diags} diagnoses, {deleted_procs} procedures")
@@ -253,7 +253,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                     # Create ClaimProcedure record
                     proc = models.ClaimProcedure(
                         claim_id=claim_id,
-                        procedure_type=mapping,
+                        procedure_source=mapping,
                         procedure_text=item.get("name") or item.get("kategori") or item.get("nama_kategori"),
                         requirement_flag=False,  # ✅ Fix: Set required field
                         is_deleted=False,
@@ -294,7 +294,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                 if tindakan_name and tindakan_name.strip() and not primary_procedure:
                     proc = models.ClaimProcedure(
                         claim_id=claim_id,
-                        procedure_type="Primary",
+                        procedure_source="Primary",
                         procedure_text=tindakan_name,
                         requirement_flag=False,
                         is_deleted=False,
@@ -316,7 +316,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                         if tindakan_name and tindakan_name.strip():
                             proc = models.ClaimProcedure(
                                 claim_id=claim_id,
-                                procedure_type="Secondary",
+                                procedure_source="Secondary",
                                 procedure_text=tindakan_name,
                                 requirement_flag=False,
                                 is_deleted=False,
@@ -349,7 +349,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                                 if tindakan_utama_name and tindakan_utama_name.strip() and not primary_procedure:
                                     proc = models.ClaimProcedure(
                                         claim_id=claim_id,
-                                        procedure_type="Primary",
+                                        procedure_source="Primary",
                                         procedure_text=tindakan_utama_name,
                                         requirement_flag=False,
                                         is_deleted=False,
@@ -370,7 +370,7 @@ def save_simulasi(db: Session, claim_id: int, sim_data: Dict[str, Any], form_dat
                                         if tindakan_name and tindakan_name.strip():
                                             proc = models.ClaimProcedure(
                                                 claim_id=claim_id,
-                                                procedure_type="Secondary",
+                                                procedure_source="Secondary",
                                                 procedure_text=tindakan_name,
                                                 requirement_flag=False,
                                                 is_deleted=False,
