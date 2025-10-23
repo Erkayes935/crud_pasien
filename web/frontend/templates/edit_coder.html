@@ -12,6 +12,7 @@
   <div id="claimRoot"
        x-data="claimData({ role: 'coder' })"
        data-claim-id="{{ claim.id }}"
+       data-stages='{{ stages | tojson | safe }}'
        class="space-y-4">
 
     <!-- Header -->

@@ -4036,23 +4036,47 @@ def _map_diag_for_coder(d: models.ClaimDiagnosis, sim_by_diag_id: dict) -> dict:
     }
 
 
-def _map_proc_for_coder(p: models.ClaimProcedure) -> dict:
+def _map_proc_for_coder(p: models.ClaimProcedure, db: Session) -> dict:
     """
-    Template edit_coder.html mengharapkan:
-    type, text, icd_doctor, icd_final, item_id, field, verified_by, verified_at
+    Map procedure ke format yang dibutuhkan template coder.
+    Prioritas ICD-9:
+    1. Dari ClaimProcedureDetail (hasil AI)
+    2. Dari ClaimProcedure.icd9_final_by_coder (jika sudah pernah diverifikasi)
+    3. "-" jika tidak ada
     """
+    icd9_doctor = None
+    
+    # 🔹 PRIORITAS 1: Ambil dari ClaimProcedureDetail (hasil AI)
+    proc_detail = db.query(models.ClaimProcedureDetail).filter(
+        models.ClaimProcedureDetail.procedure_id == p.id,
+        models.ClaimProcedureDetail.is_deleted == False
+    ).first()
+    
+    if proc_detail and proc_detail.icd9_tindakan:
+        icd9_doctor = proc_detail.icd9_tindakan
+        print(f"✅ [CODER] Found ICD-9 from detail: {icd9_doctor}")
+    
+    # 🔹 PRIORITAS 2: Fallback ke icd9_final_by_coder jika tidak ada detail
+    elif p.icd9_final_by_coder:
+        icd9_doctor = p.icd9_final_by_coder
+        print(f"✅ [CODER] Found ICD-9 from coder final: {icd9_doctor}")
+    
+    # 🔹 PRIORITAS 3: Log warning jika tidak ada sama sekali
+    else:
+        print(f"⚠️ [CODER] No ICD-9 found for procedure {p.id}: {p.procedure_text}")
+    
     return {
-        "type": (p.procedure_source or "manual"),
+        "type": p.procedure_source or "manual",
         "text": p.procedure_text or "-",
-        "icd_doctor": getattr(p, "icd9_code", None) or "-",     # property di model akan tarik dari detail pertama
-        "icd_final": p.icd9_final_by_coder or None,
+        "icd_doctor": icd9_doctor or "-",              # ← ICD-9 untuk ditampilkan
+        "icd_final": p.icd9_final_by_coder or None,   # ← ICD-9 yang sudah diverifikasi
         "item_id": p.id,
+        "procedure_id": p.id,
         "field": "procedure",
         "verified_by": p.verified_by,
         "verified_at": p.verified_at,
-        # stage p.stage sudah ada kalau perlu dipakai di FE
+        "stage": p.stage or "admission"
     }
-
 
 def _empty_stages():
     # Struktur “aman” sesuai yang dipakai template
@@ -4090,12 +4114,11 @@ def edit_coder_view(
     ).all()
 
     # (Opsional) Ambil simulation untuk status verifikasi per item diagnosis
-    # Catatan: desainmu menyimpan verifikasi coder di ClaimSimulation
     sims = db.query(models.ClaimSimulation).filter(
         models.ClaimSimulation.claim_id == claim_id,
         models.ClaimSimulation.is_deleted == False
     ).all()
-    # Index dengan preferensi diagnosis_utama / diagnosis_sekunder
+    
     sim_by_diag_id = {}
     for s in sims:
         if s.diagnosis_utama_id:
@@ -4106,23 +4129,25 @@ def edit_coder_view(
     # Siapkan stages aman
     stages = _empty_stages()
 
-    # ⚠️ ClaimDiagnosis tidak punya field “stage”.
-    # Untuk mencegah 500, masukkan ke "admission" by default (atau sesuaikan kalau kamu sudah punya mapping lain).
+    # ✅ Diagnosis (ada ICD-10 langsung dari ClaimDiagnosis)
     for d in diags:
         stages["admission"]["diagnosis"].append(_map_diag_for_coder(d, sim_by_diag_id))
 
-    # ClaimProcedure punya field stage -> gunakan itu
+    # ✅ Procedure (ICD-9 dari ClaimProcedureDetail via helper)
     for p in procs:
         stage_key = p.stage if p.stage in stages else "admission"
-        stages[stage_key]["procedure"].append(_map_proc_for_coder(p))
+        stages[stage_key]["procedure"].append(_map_proc_for_coder(p, db))  # ← PASS db!
 
-    # Render template dengan context lengkap
+    # Render template
     return templates.TemplateResponse(
         "edit_coder.html",
         {
             "request": request,
             "claim": claim,
             "stages": stages,
-            # kamu bisa kirim tambahan context lain kalau perlu di head / header
+            "csrf_token": issue_csrf_token(request),
+            "user": user,
+            "current_user": user,
         }
+    
     )
