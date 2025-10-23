@@ -314,6 +314,7 @@ class ClaimProcedure(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
     procedure_source = Column(String(50), default="manual")
     procedure_text = Column(Text, nullable=False)
+    icd9_code = Column(String(20), nullable=True)
     requirement_flag = Column(Boolean, nullable=False, server_default=text("false"))
 
     created_at = Column(DateTime, nullable=False, server_default=text("now()"))

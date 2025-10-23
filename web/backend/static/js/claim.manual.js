@@ -242,25 +242,30 @@
   }
 
   function rehydrateManualTindakan(tab) {
-    try {
-      const state = claimState || {};
-      const sim = state.simulasi?.[tab];
-      if (!sim) return;
+    const safeTab = tab || window.claimState?.tab || "admission";
+    const sim = window.claimState?.simulasi?.[safeTab];
+    const container = document.querySelector(".tindakan-list");
 
-      // hanya jalan kalau belum dirender atau masih kosong
-      const container = document.querySelector(".tindakan-list");
-      const hasList = container && container.children.length > 0;
-      if (hasList) return;
+    if (!sim) {
+      console.log("[REHYDRATE] ⚠️ No simulation data for tab:", safeTab);
+      return;
+    }
 
-      const existingManuals = (sim.tindakan || []).filter(td => td?.isManual);
-      if (existingManuals.length > 0) {
-        console.log("🧩 Rehydrate tindakan manual lama:", existingManuals.length);
-        renderManualTindakanList(tab);
-      }
-    } catch (e) {
-      console.warn("⚠️ Gagal rehydrate manual:", e);
+    if (!container) {
+      console.log("[REHYDRATE] ⚠️ No container found (.tindakan-list)");
+      return;
+    }
+
+    const manualList = sim.tindakan?.filter(t => t.isManual);
+    if (manualList?.length) {
+      console.log(`[REHYDRATE] ✅ Found ${manualList.length} manual tindakan`);
+      renderManualTindakanList(safeTab);
+    } else {
+      console.log("[REHYDRATE] ℹ️ No manual tindakan to show yet.");
     }
   }
+
+
 
 
   // ====================== Tambah Tindakan Manual ======================

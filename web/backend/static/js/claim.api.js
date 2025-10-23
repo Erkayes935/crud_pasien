@@ -73,12 +73,14 @@
       if (tindakans.length) manualBackup[tab] = tindakans;
     }
 
-    const loadingMsg = document.createElement("div");
-    loadingMsg.id = "ai-loading";
-    loadingMsg.style.cssText =
-      "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;";
-    loadingMsg.innerHTML = "Generating AI recommendations...";
-    document.body.appendChild(loadingMsg);
+    // ✅ Ganti loading lama dengan modal loading baru
+    if (typeof window.showAiLoadingModal === "function") {
+      window.showAiLoadingModal([
+        "Mengambil data dari core engine...",
+        "Menganalisis hasil diagnosis dan tindakan...",
+        "Menyiapkan rekomendasi AI..."
+      ]);
+    }
 
     try {
       const res = await fetch(`/claims/${claimId}/predict_ddx`, {
@@ -146,7 +148,10 @@
       console.error("❌ Error generate AI:", err);
       showToast("Gagal generate AI", true);
     } finally {
-      document.getElementById("ai-loading")?.remove();
+      // ✅ Tutup modal loading AI
+      if (typeof window.hideAiLoadingModal === "function") {
+        window.hideAiLoadingModal();
+      }
     }
   }
 
@@ -203,7 +208,9 @@
       console.error("❌ Error generate evaluasi:", err);
       showToast(`❌ Gagal generate evaluasi: ${err.message}`, true);
     } finally {
-      window.syncHiddenInputs && window.syncHiddenInputs();
+      if (typeof window.hideAiLoadingModal === "function") {
+        window.hideAiLoadingModal();
+      }
     }
   }
 
@@ -605,17 +612,6 @@ window.submitCoderVerification = submitCoderVerification;
         });
       }
       
-      // 🎯 LEGACY: Also include arrays from original structure if they exist
-      ['diagnosis', 'komorbid', 'komplikasi', 'tindakan'].forEach(category => {
-        if (Array.isArray(stageData[category])) {
-          stageData[category].forEach(item => {
-            if (item && typeof item === 'object' && !transformed[stage][category].some(existing => existing.name === item.name)) {
-              transformed[stage][category].push(item);
-              console.log(`🔄 [TRANSFORM] Added legacy ${category}: ${item.name}`);
-            }
-          });
-        }
-      });
     }
     
     console.log(`🎉 [TRANSFORM] Transformation complete for ${Object.keys(transformed).length} stages`);

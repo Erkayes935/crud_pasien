@@ -1447,27 +1447,42 @@ window.renderChecklistHtml = function(checklist) {
             : "border-slate-200 bg-gray-50 text-gray-900"
         } rounded-xl shadow-sm">
           <div class="font-semibold mb-3">Tambah Tindakan Manual</div>
-          <div class="relative flex gap-2 mt-2" x-data="tindakanAutocomplete()" x-ref="acWrap">
-            <input type="text"
-                  x-model="query"
-                  x-ref="acInput"
-                  @focus="rehydrateManualTindakan(tab)"
-                  @input.debounce.300ms="search"
-                  @keydown.enter.prevent="results.length ? select(results[0]) : addManualTindakanIfNotFound()"
-                  placeholder="Nama Tindakan"
-                  class="flex-1 px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all
-                        ${
-                          isDark
-                            ? "bg-slate-900 text-slate-100 border-slate-600"
-                            : "bg-white text-slate-900 border-slate-300"
-                        }">
-            <button type="button"
-                    class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
-                    @click="handleAddManualTindakan(window.claimState.tab)">+</button>
+
+          <div class="relative flex flex-col gap-2 mt-2" x-data="tindakanAutocomplete()" x-ref="acWrap">
+            <div class="flex gap-2">
+              <input type="text"
+                    x-model="query"
+                    x-ref="acInput"
+                    @focus="setTimeout(() => rehydrateManualTindakan(window.claimState.tab), 50)"
+                    @input.debounce.300ms="search"
+                    @keydown.enter.prevent="results.length ? select(results[0]) : addManualTindakanIfNotFound()"
+                    placeholder="Nama Tindakan"
+                    class="flex-1 px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all
+                          ${
+                            isDark
+                              ? "bg-slate-900 text-slate-100 border-slate-600"
+                              : "bg-white text-slate-900 border-slate-300"
+                          }">
+              <button type="button"
+                      class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all"
+                      @click="handleAddManualTindakan(window.claimState.tab)">+</button>
+            </div>
+
+            <!-- ✅ Dropdown hasil pencarian tindakan -->
+            <ul class="absolute z-50 bg-white dark:bg-slate-800 border dark:border-slate-600 rounded-lg shadow w-full mt-1"
+                x-show="results && results.length"
+                x-transition>
+              <template x-for="r in results" :key="r.procedure_text">
+                <li @click="select(r)"
+                    class="px-3 py-2 text-sm hover:bg-blue-100 dark:hover:bg-slate-700 cursor-pointer"
+                    x-text="r.procedure_text"></li>
+              </template>
+            </ul>
           </div>
         </div>
       `
         : "";
+
 
     setTimeout(
       () => window.renderManualTindakanList && window.renderManualTindakanList(),
@@ -1615,6 +1630,13 @@ window.renderChecklistHtml = function(checklist) {
       };
       console.log("📋 Notifications (procedure):", notifications);
 
+      // hanya simpan 1 kode ICD-9 utama
+      if (Array.isArray(d.icd9_code)) {
+        d.icd9_code = d.icd9_code[0];
+      } else if (typeof d.icd9_code === "string" && d.icd9_code.includes(",")) {
+        d.icd9_code = d.icd9_code.split(",")[0].trim();
+      }
+
       // 🔹 Konten modal utama
       const content = `
         <div class="${modalBg} flex flex-col items-center animate-fade-in">
@@ -1630,7 +1652,7 @@ window.renderChecklistHtml = function(checklist) {
         ${renderNotificationBox("tindakan", notifications)}
 
         <div class="grid grid-cols-2 gap-2 mt-3">
-          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9, "icd9_code")}
+          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9 || "-", "icd9_code")}
           ${renderProcBox("Deskripsi", `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`, "deskripsi")}
           ${renderProcBox("Validitas", d.validitas, "validitas")}
           ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
