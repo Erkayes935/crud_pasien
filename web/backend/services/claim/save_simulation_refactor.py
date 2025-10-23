@@ -5,29 +5,53 @@ from .ai import store_ai_recommendations, store_ai_evaluations
 
 
 # ==========================================================
-# 🧩 HELPER 1: Simpan Diagnosis & Tindakan dasar
+# 🧩 HELPER 1: Simpan Diagnosis & Tindakan dasar (fix final)
 # ==========================================================
 def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
     """
     Simpan data diagnosis & tindakan hasil mapping dokter ke DB.
-    Tidak menghapus data lama, hanya tambah yang baru untuk simulasi aktif.
+    Tidak menghapus data lama, hanya menambah untuk simulasi aktif.
+
+    🔹 Perbaikan minor:
+        - Bersihkan ICD9 code (ambil 1 kode utama saja)
+        - Pastikan source prosedur hanya 'ai' atau 'manual'
+        - Mapping kategori diagnosis tetap sesuai accordion FE
+        - Hindari double insert data kosong
+        - Tambahkan log debug yang informatif
     """
     primary_diagnosis, secondary_diagnoses = None, []
     primary_procedure, secondary_procedures = None, []
 
     # === Diagnosis Section ===
     for category in ["diagnosis", "komorbid", "komplikasi"]:
-        for item in stage_data.get(category, []):
+        items = stage_data.get(category, [])
+        if not isinstance(items, list):
+            continue
+
+        for item in items:
+            diag_name = (
+                item.get("name")
+                or item.get("kategori")
+                or item.get("nama_kategori")
+            )
+            if not diag_name:
+                continue
+
             mapping = (item.get("mapping") or "").lower()
-            diag_name = item.get("name") or item.get("kategori") or item.get("nama_kategori")
+            icd10_code = item.get("icd10_code") or item.get("icd")
+
+            # ⚙️ diagnosis_source = 'ai' kalau dari analisis, 'manual' kalau dari input dokter
+            source = (item.get("source") or item.get("diagnosis_source") or "manual").lower()
+            if source not in ["ai", "manual"]:
+                source = "manual"
 
             diag = models.ClaimDiagnosis(
                 claim_id=claim_id,
                 diagnosis_type=category,
-                diagnosis_text=diag_name,
-                icd10_code=item.get("icd10_code") or item.get("icd"),
-                diagnosis_source="doctor",
-                justifikasi_klinis=item.get("klinis"),
+                diagnosis_text=diag_name.strip(),
+                icd10_code=icd10_code.strip() if isinstance(icd10_code, str) else icd10_code,
+                diagnosis_source=source,   # ✅ hanya 'ai' atau 'manual'
+                justifikasi_klinis=item.get("klinis") or None,
                 is_deleted=False,
                 is_dummy=False,
                 created_at=datetime.utcnow(),
@@ -44,17 +68,35 @@ def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
                 print(f"[SAVE_SIMULASI] ➕ Secondary diagnosis: {diag_name} (ID {diag.id})")
 
     # === Procedure Section ===
-    for item in stage_data.get("tindakan", []):
+    tindakan_items = stage_data.get("tindakan", [])
+    if not isinstance(tindakan_items, list):
+        tindakan_items = []
+
+    for item in tindakan_items:
+        proc_name = (
+            item.get("name")
+            or item.get("kategori")
+            or item.get("nama_kategori")
+        )
+        if not proc_name:
+            continue
+
         mapping = (item.get("mapping") or "").lower()
-        proc_name = item.get("name") or item.get("kategori") or item.get("nama_kategori")
-        source = item.get("source") or item.get("procedure_source") or "manual"
-        if source not in ["ai", "manual", "doctor"]:
-            source = "manual"  # fallback aman
+        source = (item.get("source") or item.get("procedure_source") or "manual").lower()
+        if source not in ["ai", "manual"]:
+            source = "manual"  # ✅ tidak ada lagi "doctor"
+        # 🔹 Bersihkan kode ICD9
+        icd9_val = item.get("icd9_code") or item.get("icd")
+        if isinstance(icd9_val, str) and "," in icd9_val:
+            icd9_val = icd9_val.split(",")[0].strip()
+        elif isinstance(icd9_val, list) and icd9_val:
+            icd9_val = icd9_val[0]
 
         proc = models.ClaimProcedure(
             claim_id=claim_id,
-            procedure_text=proc_name,
+            procedure_text=proc_name.strip(),
             procedure_source=source,
+            icd9_code=icd9_val,
             stage=stage,
             requirement_flag=False,
             is_deleted=False,
@@ -65,14 +107,15 @@ def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
         db.add(proc)
         db.flush()
 
-        if item.get("icd9_code") or item.get("icd"):
+        if icd9_val:
             db.add(models.ClaimProcedureDetail(
                 procedure_id=proc.id,
-                icd9_tindakan=item.get("icd9_code") or item.get("icd"),
-                nama_tindakan=proc_name,
+                icd9_tindakan=icd9_val,
+                nama_tindakan=proc_name.strip(),
                 is_deleted=False,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             ))
+            print(f"[SAVE_SIMULASI] 💾 ICD9 stored for {proc_name}: {icd9_val}")
 
         if "utama" in mapping or "primary" in mapping:
             primary_procedure = proc.id
@@ -82,13 +125,14 @@ def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
             print(f"[SAVE_SIMULASI] ➕ Secondary procedure: {proc_name} (ID {proc.id})")
 
     db.commit()
+    print(f"[SAVE_SIMULASI] ✅ Stage {stage} saved (Diag: {primary_diagnosis}, Proc: {primary_procedure})")
+
     return {
         "primary_diagnosis": primary_diagnosis,
         "secondary_diagnoses": secondary_diagnoses,
         "primary_procedure": primary_procedure,
         "secondary_procedures": secondary_procedures,
     }
-
 
 # ==========================================================
 # 🧩 HELPER 2: Simpan relasi ClaimSimulation

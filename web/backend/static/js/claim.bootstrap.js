@@ -865,12 +865,14 @@ window.generateSummary = async function() {
   if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
 
   try {
-    // Show loading message
-    const loadingMsg = document.createElement('div');
-    loadingMsg.id = 'summary-loading';
-    loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
-    loadingMsg.innerHTML = 'Generating claim summary...';
-    document.body.appendChild(loadingMsg);
+    // ✅ Ganti loading lama dengan modal loading baru
+    if (typeof window.showAiLoadingModal === "function") {
+      window.showAiLoadingModal([
+        "Mengambil data dari core engine...",
+        "Menganalisis hasil diagnosis dan tindakan...",
+        "Menyiapkan rekomendasi AI..."
+      ]);
+    }
 
     const state = Alpine.$data(document.getElementById("claimRoot"));
     
@@ -958,9 +960,8 @@ window.generateSummary = async function() {
     alert(`❌ Gagal generate summary: ${err.message}`);
   } finally {
     // Remove loading message
-    const loadingMsg = document.getElementById('summary-loading');
-    if (loadingMsg) {
-      loadingMsg.remove();
+    if (typeof window.hideAiLoadingModal === "function") {
+      window.hideAiLoadingModal();
     }
     window.syncHiddenInputs && window.syncHiddenInputs();
   }
