@@ -2961,18 +2961,15 @@ function renderProcedureDetailReadOnly(data) {
     }
 
     return `
-      <div class="grid grid-cols-2">
-        <!-- Label -->
-        <div class="bg-gray-50 text-gray-800 dark:bg-gray-800 dark:text-gray-200 px-3 py-2 font-medium border border-gray-200 dark:border-gray-700 rounded-md">
-          ${label}
-        </div>
-
-        <!-- Value -->
-        <div class="bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md">
-          ${content}
-        </div>
+      <div class="flex flex-col bg-white rounded-lg shadow-sm ring-1 ring-gray-100 overflow-hidden">
+        <div class="px-3 py-2 text-gray-700 font-medium bg-gray-50">${label}</div>
+        <div class="px-3 py-2 text-gray-900">${content}</div>
       </div>
     `;
+
+
+
+
 
   };
 
@@ -2990,7 +2987,7 @@ function renderProcedureDetailReadOnly(data) {
       </div>
 
       <!-- Basic Info -->
-      <div class="grid grid-cols-2 gap-3 text-sm">
+      <div class="grid grid-cols-2 gap-3 text-sm bg-white">
         ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code || detail.icd9_code, "icd9_code")}
         ${renderProcBoxReadOnly("Deskripsi", procedureName, "icd9_desc")}
         ${renderProcBoxReadOnly("Validitas", analysis.validitas || detail.validitas, "validitas")}
