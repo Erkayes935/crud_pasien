@@ -244,6 +244,209 @@
       {% endif %}
     </div>
 
+    <!-- ============================================ -->
+    <!-- ORPHANED CLAIMS SECTION (Klaim Tanpa Episode) -->
+    <!-- ============================================ -->
+    {% if orphaned_claims %}
+    <div class="bg-amber-50 dark:bg-amber-900/20 rounded-2xl shadow-sm border-2 border-amber-300 dark:border-amber-700 p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              ⚠️ Klaim Tanpa Episode
+              <span class="px-2 py-1 bg-amber-600 text-white text-sm font-semibold rounded-full">
+                {{ orphaned_claims|length }}
+              </span>
+            </h3>
+            <p class="text-sm text-amber-700 dark:text-amber-400 mt-1">
+              Klaim ini belum dimasukkan ke episode manapun. Silakan pindahkan ke episode yang sesuai.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orphaned Claims List -->
+      <div class="divide-y divide-amber-200 dark:divide-amber-800">
+        {% for claim in orphaned_claims %}
+        <div class="py-3 hover:bg-amber-100 dark:hover:bg-amber-800/30 transition-colors rounded-lg px-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4 flex-1">
+              <!-- Claim ID -->
+              <span class="text-sm font-semibold text-amber-800 dark:text-amber-200 w-24 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Klaim {{ '%02d' % claim.id }}
+              </span>
+              
+              <!-- Workflow Status Badge -->
+              {% if claim.workflow_status == 'finalized' %}
+              <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
+                ✅ Selesai
+              </span>
+              {% elif claim.workflow_status in ['coder_verified', 'verifikator_review'] %}
+              <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-full">
+                🔍 Verifikasi
+              </span>
+              {% elif claim.workflow_status == 'doctor_submitted' %}
+              <span class="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium rounded-full">
+                ⏳ Menunggu Coder
+              </span>
+              {% else %}
+              <span class="px-3 py-1 bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400 text-xs font-medium rounded-full">
+                📝 Draft
+              </span>
+              {% endif %}
+
+              <!-- Claim Date -->
+              <span class="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                {{ claim.claim_date.strftime('%d %b %Y') if claim.claim_date else '-' }}
+              </span>
+
+              <!-- Hospital -->
+              {% if claim.visit and claim.visit.hospital %}
+              <span class="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                {{ claim.visit.hospital.nama }}
+              </span>
+              {% endif %}
+
+              <!-- Doctor -->
+              {% if claim.doctor_name %}
+              <span class="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                {{ claim.doctor_name }}
+              </span>
+              {% endif %}
+
+              <!-- Visit Count -->
+              <span class="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                {{ claim.visit_links|length + 1 }} visit
+              </span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+              <!-- Move to Episode Button -->
+              <button onclick="showMoveOrphanToEpisode({{ claim.id }})" 
+                      class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                </svg>
+                Pindah ke Episode
+              </button>
+
+              <!-- Manage Visits Button -->
+              <button onclick="showManageVisitsModal({{ claim.id }})" 
+                      class="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Kelola Visit
+              </button>
+
+              <!-- View Detail Button -->
+              <a href="/claims/{{ claim.id }}" 
+                class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                Detail
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Help Text -->
+      <div class="mt-4 p-3 bg-amber-100 dark:bg-amber-800/30 rounded-lg border border-amber-300 dark:border-amber-700">
+        <p class="text-sm text-amber-800 dark:text-amber-300">
+          <strong>💡 Tips:</strong> Klaim tanpa episode tidak akan muncul dalam laporan. 
+          Pastikan untuk memindahkan semua klaim ke episode yang sesuai untuk memudahkan tracking dan pelaporan.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ============================================ -->
+    <!-- UPDATED: Modal Move Orphan to Episode -->
+    <!-- ============================================ -->
+    <div id="modalMoveOrphanToEpisode" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Pindah Klaim ke Episode</h3>
+          <button onclick="closeModal('modalMoveOrphanToEpisode')" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <form method="post" action="/claims/{claim_id}/move-to-group" id="formMoveOrphanToEpisode">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="claim_id" id="moveOrphanClaimId">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pilih Episode Tujuan</label>
+              <select name="target_group_id" required
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-gray-200">
+                <option value="">-- Pilih Episode --</option>
+                {% for group in groups %}
+                <option value="{{ group.id }}">{{ group.kode_group }} - {{ group.nama_group }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Option to create new episode -->
+            <div class="border-t pt-4">
+              <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" id="createNewEpisodeCheckbox" class="rounded">
+                <span>Atau buat episode baru</span>
+              </label>
+              <input type="text" 
+                    id="newEpisodeName" 
+                    name="new_episode_name"
+                    placeholder="Nama episode baru (opsional)"
+                    disabled
+                    class="mt-2 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:text-gray-200 disabled:bg-gray-100 dark:disabled:bg-gray-800">
+            </div>
+
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p class="text-sm text-amber-800 dark:text-amber-300">
+                <strong>⚠️ Perhatian:</strong> Klaim akan dipindahkan ke episode yang dipilih. Semua visit yang terkait akan ikut pindah.
+              </p>
+            </div>
+            
+            <div class="flex gap-3 justify-end pt-4">
+              <button type="button" onclick="closeModal('modalMoveOrphanToEpisode')"
+                      class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Batal
+              </button>
+              <button type="submit"
+                      class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors">
+                Pindahkan
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
     <!-- Available Visits Section -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div class="flex items-center justify-between mb-4">
@@ -470,6 +673,8 @@
 </div>
 
 <script>
+
+  
 // Modal Functions
 function showCreateEpisodeModal() {
   document.getElementById('modalCreateEpisode').classList.remove('hidden');
@@ -493,9 +698,13 @@ function showMoveClaimModal(claimId, currentGroupId) {
   document.getElementById('modalMoveClaim').classList.remove('hidden');
 }
 
+// ✅ FIXED: showManageVisitsModal dengan CSRF token
 function showManageVisitsModal(claimId) {
   const modal = document.getElementById('modalManageVisits');
   const container = document.getElementById('visitListContainer');
+  
+  // Get CSRF token from page
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token }}';
   
   // Show loading
   container.innerHTML = `
@@ -509,32 +718,69 @@ function showManageVisitsModal(claimId) {
   
   modal.classList.remove('hidden');
   
-  // Fetch visits for this claim (you'll need to implement this endpoint)
+  // Fetch visits for this claim
   fetch(`/claims/${claimId}/visits`)
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to fetch visits');
+      return r.json();
+    })
     .then(data => {
       if (data.visits && data.visits.length > 0) {
         container.innerHTML = data.visits.map(visit => `
-          <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-            <div>
-              <div class="font-semibold text-gray-800 dark:text-gray-200">Visit #${visit.id}</div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">${visit.tanggal_kunjungan} • ${visit.poli || '-'}</div>
+          <div class="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="font-semibold text-gray-800 dark:text-gray-200">
+                  Visit #${visit.id}
+                </span>
+                ${visit.is_primary ? `
+                  <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-full">
+                    Primary
+                  </span>
+                ` : `
+                  <span class="px-2 py-1 bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400 text-xs font-medium rounded-full">
+                    Linked
+                  </span>
+                `}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  ${visit.tanggal_kunjungan}
+                </div>
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                  </svg>
+                  ${visit.poli || '-'} • ${visit.jenis_kunjungan || 'Rawat Jalan'}
+                </div>
+              </div>
             </div>
-            <form method="post" action="/claims/move-visit" class="inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <input type="hidden" name="visit_id" value="${visit.id}">
-              <select name="target_claim_id" onchange="this.form.submit()"
-                      class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-gray-200">
-                <option value="">Pindah ke...</option>
-                {% for group in groups %}
-                {% for claim in group.claims %}
-                <option value="{{ claim.id }}" ${visit.claim_id == {{ claim.id }} ? 'selected' : ''}>
-                  Klaim {{ '%02d' % claim.id }}
-                </option>
-                {% endfor %}
-                {% endfor %}
-              </select>
-            </form>
+            
+            ${!visit.is_primary ? `
+              <form method="post" action="/claims/move-visit" onsubmit="return confirmMoveVisit(${visit.id})" class="ml-4">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
+                <input type="hidden" name="visit_id" value="${visit.id}">
+                <select name="target_claim_id" 
+                        class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500"
+                        onchange="if(this.value) this.form.submit()">
+                  <option value="">Pindah ke...</option>
+                  {% for group in groups %}
+                    {% for claim in group.claims %}
+                      <option value="{{ claim.id }}" ${visit.claim_id == {{ claim.id }} ? 'selected' : ''}>
+                        ${visit.claim_id == '{{ claim.id }}' ? '✓ ' : ''}Klaim {{ '%02d' % claim.id }} - {{ group.kode_group }}
+                      </option>
+                    {% endfor %}
+                  {% endfor %}
+                </select>
+              </form>
+            ` : `
+              <div class="ml-4 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                Visit Utama
+              </div>
+            `}
           </div>
         `).join('');
       } else {
@@ -543,21 +789,112 @@ function showManageVisitsModal(claimId) {
             <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
-            Tidak ada visit dalam klaim ini
+            <p class="text-sm">Tidak ada visit dalam klaim ini</p>
           </div>
         `;
       }
     })
     .catch(err => {
+      console.error('Error loading visits:', err);
       container.innerHTML = `
         <div class="text-center py-8 text-red-500">
           <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          Gagal memuat data visit
+          <p class="text-sm">Gagal memuat data visit</p>
+          <button onclick="showManageVisitsModal(${claimId})" class="mt-2 text-sm text-blue-500 hover:text-blue-600">
+            Coba Lagi
+          </button>
         </div>
       `;
     });
+}
+
+// Confirmation before moving visit
+function confirmMoveVisit(visitId) {
+  return confirm(`Apakah Anda yakin ingin memindahkan Visit #${visitId} ke klaim lain?`);
+}
+
+// ✅ FIXED: showAssignVisitModal dengan CSRF token
+function showAssignVisitModal(visitId) {
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token }}';
+  
+  document.getElementById('assignVisitId').value = visitId;
+  
+  // Ensure CSRF token in form
+  const form = document.getElementById('formAssignVisit');
+  let csrfInput = form.querySelector('input[name="csrf_token"]');
+  if (!csrfInput) {
+    csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    form.insertBefore(csrfInput, form.firstChild);
+  }
+  csrfInput.value = csrfToken;
+  
+  document.getElementById('modalAssignVisit').classList.remove('hidden');
+}
+
+// ✅ FIXED: showMoveClaimModal dengan CSRF token validation
+function showMoveClaimModal(claimId, currentGroupId) {
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token }}';
+  
+  if (!csrfToken) {
+    alert('⚠️ CSRF token tidak ditemukan. Silakan refresh halaman.');
+    return;
+  }
+  
+  document.getElementById('moveClaimId').value = claimId;
+  const form = document.getElementById('formMoveClaim');
+  form.action = `/claims/${claimId}/move-to-group`;
+  
+  // Ensure CSRF token in form
+  let csrfInput = form.querySelector('input[name="csrf_token"]');
+  if (!csrfInput) {
+    csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    form.insertBefore(csrfInput, form.firstChild);
+  }
+  csrfInput.value = csrfToken;
+  
+  // Hide current group from options
+  const options = document.querySelectorAll('#formMoveClaim select option[data-group-id]');
+  options.forEach(option => {
+    if (option.getAttribute('data-group-id') == currentGroupId) {
+      option.style.display = 'none';
+    } else {
+      option.style.display = 'block';
+    }
+  });
+  
+  document.getElementById('modalMoveClaim').classList.remove('hidden');
+}
+
+// ✅ FIXED: showMoveOrphanToEpisode dengan CSRF token
+function showMoveOrphanToEpisode(claimId) {
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '{{ csrf_token }}';
+  
+  if (!csrfToken) {
+    alert('⚠️ CSRF token tidak ditemukan. Silakan refresh halaman.');
+    return;
+  }
+  
+  document.getElementById('moveOrphanClaimId').value = claimId;
+  const form = document.getElementById('formMoveOrphanToEpisode');
+  form.action = `/claims/${claimId}/move-to-group`;
+  
+  // Ensure CSRF token in form
+  let csrfInput = form.querySelector('input[name="csrf_token"]');
+  if (!csrfInput) {
+    csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    form.insertBefore(csrfInput, form.firstChild);
+  }
+  csrfInput.value = csrfToken;
+  
+  document.getElementById('modalMoveOrphanToEpisode').classList.remove('hidden');
 }
 
 function showAssignVisitModal(visitId) {
@@ -593,4 +930,31 @@ document.querySelectorAll('[id^="modal"]').forEach(modal => {
 });
 </script>
 
+<script>
+// Enhanced: Move orphan claim to episode function
+function showMoveOrphanToEpisode(claimId) {
+  document.getElementById('moveOrphanClaimId').value = claimId;
+  const form = document.getElementById('formMoveOrphanToEpisode');
+  form.action = `/claims/${claimId}/move-to-group`;
+  document.getElementById('modalMoveOrphanToEpisode').classList.remove('hidden');
+}
+
+// Toggle new episode name input
+document.getElementById('createNewEpisodeCheckbox')?.addEventListener('change', function(e) {
+  const newEpisodeInput = document.getElementById('newEpisodeName');
+  const episodeSelect = document.querySelector('#formMoveOrphanToEpisode select[name="target_group_id"]');
+  
+  if (e.target.checked) {
+    newEpisodeInput.disabled = false;
+    episodeSelect.disabled = true;
+    episodeSelect.required = false;
+    newEpisodeInput.required = true;
+  } else {
+    newEpisodeInput.disabled = true;
+    episodeSelect.disabled = false;
+    episodeSelect.required = true;
+    newEpisodeInput.required = false;
+  }
+});
+</script>
 {% endblock %}

@@ -533,10 +533,7 @@ def manage_claims_page(
     user=Depends(require_roles_session("admin_rs", "superadmin", "doctor", "manajemen")),
 ):
     """
-    Halaman manajemen klaim pasien:
-    - Tampilkan semua episode (ClaimGroup) 
-    - Tampilkan semua klaim dalam setiap episode
-    - Tampilkan visit yang belum masuk episode
+    Halaman manajemen klaim pasien - DENGAN HANDLING ORPHANED CLAIMS
     """
     # Get patient data
     patient = db.query(models.Patient).filter_by(id=patient_id).first()
@@ -558,8 +555,15 @@ def manage_claims_page(
         .all()
     )
 
-    # Count total claims
-    total_claims = sum(len(group.claims) for group in groups)
+    # ✅ GET ORPHANED CLAIMS (claims tanpa group)
+    orphaned_claims = db.query(models.Claim).filter(
+        models.Claim.patient_id == patient_id,
+        models.Claim.group_id == None,  # Claims without group
+        models.Claim.is_deleted == False
+    ).all()
+
+    # Count total claims (including orphaned)
+    total_claims = sum(len(group.claims) for group in groups) + len(orphaned_claims)
 
     # Get all visits untuk patient ini
     all_visits = (
@@ -575,16 +579,23 @@ def manage_claims_page(
     
     for group in groups:
         for claim in group.claims:
-            # Main visit
             if claim.visit_id:
                 claimed_visit_ids.add(claim.visit_id)
-            
-            # Linked visits
             for link in claim.visit_links:
                 try:
                     claimed_visit_ids.add(int(link.external_visit_id))
                 except (ValueError, TypeError):
                     continue
+    
+    # ✅ INCLUDE ORPHANED CLAIMS' VISITS
+    for claim in orphaned_claims:
+        if claim.visit_id:
+            claimed_visit_ids.add(claim.visit_id)
+        for link in claim.visit_links:
+            try:
+                claimed_visit_ids.add(int(link.external_visit_id))
+            except (ValueError, TypeError):
+                continue
 
     # Filter visits yang belum masuk ke episode manapun
     available_visits = [v for v in all_visits if v.id not in claimed_visit_ids]
@@ -592,13 +603,9 @@ def manage_claims_page(
     # Debug log
     print(f"[MANAGE] Patient: {patient.nama}")
     print(f"[MANAGE] Groups found: {len(groups)}")
-    print(f"[MANAGE] Total claims: {total_claims}")
+    print(f"[MANAGE] Total claims in groups: {sum(len(g.claims) for g in groups)}")
+    print(f"[MANAGE] Orphaned claims: {len(orphaned_claims)}")
     print(f"[MANAGE] Available visits: {len(available_visits)}")
-    
-    for group in groups:
-        print(f"[MANAGE] - Group {group.kode_group}: {len(group.claims)} claims")
-        for claim in group.claims:
-            print(f"[MANAGE]   - Claim #{claim.id}: workflow={claim.workflow_status}, visits={len(claim.visit_links) + 1}")
 
     return templates.TemplateResponse(
         "claim_manage.html",
@@ -606,6 +613,7 @@ def manage_claims_page(
             "request": request,
             "patient": patient,
             "groups": groups,
+            "orphaned_claims": orphaned_claims,  # ✅ TAMBAHKAN INI
             "total_claims": total_claims,
             "visits": available_visits,
             "user": user,
@@ -613,7 +621,6 @@ def manage_claims_page(
             "csrf_token": issue_csrf_token(request),
         },
     )
-
 
 @router.get("/{claim_id}/visits")
 def get_claim_visits(
@@ -760,23 +767,47 @@ def select_visit_page(
     user=Depends(require_roles_session("doctor")),
 ):
     """Halaman memilih kunjungan (visit) untuk klaim baru di episode tertentu"""
-    visits = (
+    # 🔹 Ambil semua visit milik pasien
+    all_visits = (
         db.query(models.Visit)
         .filter(models.Visit.patient_id == patient_id)
         .order_by(models.Visit.tanggal_kunjungan.desc())
         .all()
     )
+
+    # 🔹 Ambil semua klaim pasien ini (termasuk orphaned) untuk tahu visit mana yang sudah digunakan
+    existing_claims = db.query(models.Claim).filter(
+        models.Claim.patient_id == patient_id,
+        models.Claim.is_deleted == False
+    ).all()
+
+    claimed_visit_ids = set()
+    for claim in existing_claims:
+        if claim.visit_id:
+            claimed_visit_ids.add(claim.visit_id)
+        for link in claim.visit_links:
+            try:
+                claimed_visit_ids.add(int(link.external_visit_id))
+            except (ValueError, TypeError):
+                continue
+
+    # 🔹 Filter hanya visit yang belum masuk ke klaim manapun
+    available_visits = [v for v in all_visits if v.id not in claimed_visit_ids]
+
     group = db.query(models.ClaimGroup).get(group_id)
     csrf_token = issue_csrf_token(request)
+
+    # Debug log opsional
+    print(f"[SELECT_VISIT] total_visits={len(all_visits)}, available={len(available_visits)}, claimed={len(claimed_visit_ids)}")
 
     return templates.TemplateResponse("claim_visit_select.html", {
         "request": request,
         "group": group,
-        "visits": visits,
+        "visits": available_visits,   # ✅ gunakan hasil filter
         "csrf_token": csrf_token,
         "patient_id": patient_id,
-        "flow": "claim",            # 🧩 inilah kunci yang hilang
-        "current_user": user,       # opsional tapi aman untuk template
+        "flow": "claim",
+        "current_user": user,
         "user": user,
     })
 
@@ -935,9 +966,15 @@ def add_claim(
     if not claim:
         raise HTTPException(status_code=400, detail="Visit ID tidak valid atau tidak ditemukan.")
 
+    # ✅ SET GROUP_ID dan WORKFLOW STATUS
     claim.group_id = group.id
     claim.workflow_status = "draft"
+    claim.created_by = current_user.name  # ✅ Pastikan created_by terisi
+    
     db.commit()
+    db.refresh(claim)  # ✅ Refresh untuk memastikan perubahan tersimpan
+
+    print(f"✅ [ADD_CLAIM] Created claim {claim.id} in group {group.id} ({group.kode_group})")
 
     flash(request, f"✅ Klaim berhasil ditambahkan ke Group {group.kode_group}", "success")
     return RedirectResponse(url=f"/claims/{claim.id}", status_code=303)
@@ -1066,7 +1103,7 @@ async def update_claim_draft(
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
 ):
-    """Update draft klaim oleh dokter"""
+    """Update draft klaim oleh dokter - DENGAN MEMPERTAHANKAN GROUP_ID"""
     try:
         # Parse JSON payload
         payload_dict = json.loads(payload)
@@ -1080,23 +1117,44 @@ async def update_claim_draft(
                 db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
             )
 
+        # ✅ AMBIL CLAIM DULU SEBELUM UPDATE
+        claim = db.query(models.Claim).filter_by(id=claim_id).first()
+        if not claim:
+            raise HTTPException(status_code=404, detail="Claim not found")
+        
+        # ✅ SIMPAN GROUP_ID YANG SUDAH ADA
+        original_group_id = claim.group_id
+        
+        print(f"[UPDATE_DRAFT] Claim {claim_id} current group_id: {original_group_id}")
+
         # simpan draft isi form & simulasi
         core.update_claim_draft_service(db, claim_id, user, payload_dict)
 
+        # ✅ REFRESH CLAIM SETELAH UPDATE
+        db.refresh(claim)
+        
+        # ✅ PASTIKAN GROUP_ID TIDAK HILANG
+        if claim.group_id != original_group_id:
+            print(f"⚠️ [UPDATE_DRAFT] Group ID changed from {original_group_id} to {claim.group_id}, restoring...")
+            claim.group_id = original_group_id
+        
         # ✅ otomatis ubah workflow ke doctor_submitted agar coder bisa review
-        claim = db.query(models.Claim).filter_by(id=claim_id).first()
-        if claim:
-            if claim.workflow_status in [None, "", "draft"]:
-                claim.workflow_status = "doctor_submitted"
-                claim.doctor_submitted_by = user.name
-                claim.doctor_submitted_at = datetime.now()
-                db.commit()
+        if claim.workflow_status in [None, "", "draft"]:
+            claim.workflow_status = "doctor_submitted"
+            claim.doctor_submitted_by = user.name
+            claim.doctor_submitted_at = datetime.now()
+        
+        db.commit()
+        db.refresh(claim)
+        
+        print(f"✅ [UPDATE_DRAFT] Claim {claim_id} saved with group_id: {claim.group_id}")
 
-        return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+        return {"status": "success", "message": "Draft klaim berhasil diperbarui", "group_id": claim.group_id}
 
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
     except Exception as e:
+        print(f"❌ [UPDATE_DRAFT] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
 
 
@@ -4149,5 +4207,56 @@ def edit_coder_view(
             "user": user,
             "current_user": user,
         }
-    
     )
+
+
+@router.get("/{claim_id}/verify-group", name="verify_claim_group")
+def verify_claim_group(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin"))
+):
+    """
+    Debugging endpoint untuk verifikasi apakah klaim masuk ke group dengan benar
+    """
+    claim = db.query(models.Claim).filter_by(id=claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    group = None
+    if claim.group_id:
+        group = db.query(models.ClaimGroup).filter_by(id=claim.group_id).first()
+    
+    patient = db.query(models.Patient).filter_by(id=claim.patient_id).first()
+    
+    # Get all groups for this patient
+    all_groups = db.query(models.ClaimGroup).filter_by(
+        patient_id=claim.patient_id
+    ).all()
+    
+    return {
+        "claim_id": claim.id,
+        "claim_group_id": claim.group_id,
+        "claim_workflow_status": claim.workflow_status,
+        "claim_created_by": claim.created_by,
+        "group_info": {
+            "id": group.id if group else None,
+            "kode_group": group.kode_group if group else None,
+            "nama_group": group.nama_group if group else None,
+            "patient_id": group.patient_id if group else None,
+        } if group else None,
+        "patient_info": {
+            "id": patient.id if patient else None,
+            "nama": patient.nama if patient else None,
+            "no_rm": patient.no_rm if patient else None,
+        } if patient else None,
+        "all_patient_groups": [
+            {
+                "id": g.id,
+                "kode_group": g.kode_group,
+                "nama_group": g.nama_group,
+                "claim_count": len(g.claims) if g.claims else 0
+            } for g in all_groups
+        ],
+        "status": "✅ OK" if claim.group_id else "⚠️ NO GROUP ASSIGNED"
+    }
