@@ -524,6 +524,7 @@ def list_claims(
 # MANAGERIAL: EPISODE & KLAIM (ADMIN/MANAJEMEN)
 # ==================================================
 from sqlalchemy.orm import joinedload
+from ..services.claim_stage_helper import determine_stages_from_visits
 
 @router.get("/manage")
 def manage_claims_page(
@@ -533,10 +534,7 @@ def manage_claims_page(
     user=Depends(require_roles_session("admin_rs", "superadmin", "doctor", "manajemen")),
 ):
     """
-    Halaman manajemen klaim pasien:
-    - Tampilkan semua episode (ClaimGroup) 
-    - Tampilkan semua klaim dalam setiap episode
-    - Tampilkan visit yang belum masuk episode
+    Halaman manajemen klaim pasien - DENGAN HANDLING ORPHANED CLAIMS
     """
     # Get patient data
     patient = db.query(models.Patient).filter_by(id=patient_id).first()
@@ -558,8 +556,15 @@ def manage_claims_page(
         .all()
     )
 
-    # Count total claims
-    total_claims = sum(len(group.claims) for group in groups)
+    # ✅ GET ORPHANED CLAIMS (claims tanpa group)
+    orphaned_claims = db.query(models.Claim).filter(
+        models.Claim.patient_id == patient_id,
+        models.Claim.group_id == None,  # Claims without group
+        models.Claim.is_deleted == False
+    ).all()
+
+    # Count total claims (including orphaned)
+    total_claims = sum(len(group.claims) for group in groups) + len(orphaned_claims)
 
     # Get all visits untuk patient ini
     all_visits = (
@@ -575,16 +580,23 @@ def manage_claims_page(
     
     for group in groups:
         for claim in group.claims:
-            # Main visit
             if claim.visit_id:
                 claimed_visit_ids.add(claim.visit_id)
-            
-            # Linked visits
             for link in claim.visit_links:
                 try:
                     claimed_visit_ids.add(int(link.external_visit_id))
                 except (ValueError, TypeError):
                     continue
+    
+    # ✅ INCLUDE ORPHANED CLAIMS' VISITS
+    for claim in orphaned_claims:
+        if claim.visit_id:
+            claimed_visit_ids.add(claim.visit_id)
+        for link in claim.visit_links:
+            try:
+                claimed_visit_ids.add(int(link.external_visit_id))
+            except (ValueError, TypeError):
+                continue
 
     # Filter visits yang belum masuk ke episode manapun
     available_visits = [v for v in all_visits if v.id not in claimed_visit_ids]
@@ -592,13 +604,9 @@ def manage_claims_page(
     # Debug log
     print(f"[MANAGE] Patient: {patient.nama}")
     print(f"[MANAGE] Groups found: {len(groups)}")
-    print(f"[MANAGE] Total claims: {total_claims}")
+    print(f"[MANAGE] Total claims in groups: {sum(len(g.claims) for g in groups)}")
+    print(f"[MANAGE] Orphaned claims: {len(orphaned_claims)}")
     print(f"[MANAGE] Available visits: {len(available_visits)}")
-    
-    for group in groups:
-        print(f"[MANAGE] - Group {group.kode_group}: {len(group.claims)} claims")
-        for claim in group.claims:
-            print(f"[MANAGE]   - Claim #{claim.id}: workflow={claim.workflow_status}, visits={len(claim.visit_links) + 1}")
 
     return templates.TemplateResponse(
         "claim_manage.html",
@@ -606,6 +614,7 @@ def manage_claims_page(
             "request": request,
             "patient": patient,
             "groups": groups,
+            "orphaned_claims": orphaned_claims,  # ✅ TAMBAHKAN INI
             "total_claims": total_claims,
             "visits": available_visits,
             "user": user,
@@ -613,7 +622,6 @@ def manage_claims_page(
             "csrf_token": issue_csrf_token(request),
         },
     )
-
 
 @router.get("/{claim_id}/visits")
 def get_claim_visits(
@@ -760,23 +768,47 @@ def select_visit_page(
     user=Depends(require_roles_session("doctor")),
 ):
     """Halaman memilih kunjungan (visit) untuk klaim baru di episode tertentu"""
-    visits = (
+    # 🔹 Ambil semua visit milik pasien
+    all_visits = (
         db.query(models.Visit)
         .filter(models.Visit.patient_id == patient_id)
         .order_by(models.Visit.tanggal_kunjungan.desc())
         .all()
     )
+
+    # 🔹 Ambil semua klaim pasien ini (termasuk orphaned) untuk tahu visit mana yang sudah digunakan
+    existing_claims = db.query(models.Claim).filter(
+        models.Claim.patient_id == patient_id,
+        models.Claim.is_deleted == False
+    ).all()
+
+    claimed_visit_ids = set()
+    for claim in existing_claims:
+        if claim.visit_id:
+            claimed_visit_ids.add(claim.visit_id)
+        for link in claim.visit_links:
+            try:
+                claimed_visit_ids.add(int(link.external_visit_id))
+            except (ValueError, TypeError):
+                continue
+
+    # 🔹 Filter hanya visit yang belum masuk ke klaim manapun
+    available_visits = [v for v in all_visits if v.id not in claimed_visit_ids]
+
     group = db.query(models.ClaimGroup).get(group_id)
     csrf_token = issue_csrf_token(request)
+
+    # Debug log opsional
+    print(f"[SELECT_VISIT] total_visits={len(all_visits)}, available={len(available_visits)}, claimed={len(claimed_visit_ids)}")
 
     return templates.TemplateResponse("claim_visit_select.html", {
         "request": request,
         "group": group,
-        "visits": visits,
+        "visits": available_visits,   # ✅ gunakan hasil filter
         "csrf_token": csrf_token,
         "patient_id": patient_id,
-        "flow": "claim",            # 🧩 inilah kunci yang hilang
-        "current_user": user,       # opsional tapi aman untuk template
+        "flow": "claim",
+        "current_user": user,
         "user": user,
     })
 
@@ -935,9 +967,15 @@ def add_claim(
     if not claim:
         raise HTTPException(status_code=400, detail="Visit ID tidak valid atau tidak ditemukan.")
 
+    # ✅ SET GROUP_ID dan WORKFLOW STATUS
     claim.group_id = group.id
     claim.workflow_status = "draft"
+    claim.created_by = current_user.name  # ✅ Pastikan created_by terisi
+    
     db.commit()
+    db.refresh(claim)  # ✅ Refresh untuk memastikan perubahan tersimpan
+
+    print(f"✅ [ADD_CLAIM] Created claim {claim.id} in group {group.id} ({group.kode_group})")
 
     flash(request, f"✅ Klaim berhasil ditambahkan ke Group {group.kode_group}", "success")
     return RedirectResponse(url=f"/claims/{claim.id}", status_code=303)
@@ -958,38 +996,36 @@ def edit_claim_form(
 
     csrf_token = issue_csrf_token(request)
 
-    # Get user roles
+    # ==========================================================
+    # Role detection
+    # ==========================================================
     roles = user.role_names or []
     has_doctor = "doctor" in roles
     has_coder = "coder" in roles
     has_verifikator = "verifikator" in roles
-
-    # Count total roles
     total_roles = sum([has_doctor, has_coder, has_verifikator])
-    
-    # WORKFLOW VALIDATION (skip for multi-role users)
+
+    # ==========================================================
+    # Workflow restriction (skip for multi-role)
+    # ==========================================================
     current_workflow = claim.workflow_status or "draft"
-    
-    # Multi-role users can bypass workflow checks
-    if total_roles == 1:  # Single role user
+    if total_roles == 1:
         if has_doctor and current_workflow not in ["draft", "doctor_submitted"]:
             flash(request, "⚠️ Klaim sudah masuk ke tahap coder/verifikator", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-        
         if has_coder and current_workflow not in ["doctor_submitted", "coder_review", "coder_verified"]:
             flash(request, "⚠️ Klaim belum siap untuk review coder atau sudah selesai", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-        
         if has_verifikator and current_workflow not in ["coder_verified", "verifikator_review"]:
             flash(request, "⚠️ Klaim belum diverifikasi coder", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
     else:
-        # Multi-role: No workflow restriction
         print(f"✅ Multi-role user {user.name} - bypassing workflow checks")
 
-    # TEMPLATE SELECTION
+    # ==========================================================
+    # Template selection
+    # ==========================================================
     if total_roles > 1:
-        # Multi-role: Combine view (doctor left + verifikator right)
         template_name = "claim_combine.html"
         print(f"🎯 Using combined template for multi-role user")
     elif has_verifikator:
@@ -1001,10 +1037,14 @@ def edit_claim_form(
     else:
         template_name = "claim_right.html"  # fallback
 
+    # ==========================================================
     # Load simulation & summary
+    # ==========================================================
     sim, summ = load_sim_and_summary(db, claim_id, include_summary=not has_doctor or total_roles > 1)
 
-    # Load medical record data
+    # ==========================================================
+    # Load existing medical record data
+    # ==========================================================
     existing_medical_data = {}
     if claim.medical_record_id:
         medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
@@ -1014,12 +1054,16 @@ def edit_claim_form(
                 if fname and hasattr(medical_record, fname):
                     existing_medical_data[fname] = getattr(medical_record, fname)
 
+    # ==========================================================
     # Apply existing mappings to simulation
+    # ==========================================================
     existing_mappings = load_existing_mappings(db, claim_id)
     if existing_mappings and sim and "simulasi" in sim:
         sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
 
-    # Load coder results for verifikator
+    # ==========================================================
+    # Load coder results (for verifikator or multi-role)
+    # ==========================================================
     coder_results = None
     if has_verifikator or total_roles > 1:
         coder_results = db.query(models.ClaimSimulation).filter(
@@ -1027,7 +1071,44 @@ def edit_claim_form(
             models.ClaimSimulation.coder_verified == True
         ).all()
 
-    # Base context
+    # ==========================================================
+    # NEW 🔥 Ambil visit yang relevan saja untuk deteksi stage
+    # ==========================================================
+    from ..services.claim_stage_helper import determine_stages_from_visits
+
+    patient_visits = []
+
+    # Jika klaim punya visit spesifik
+    if claim.visit_id:
+        visit = db.query(models.Visit).filter(
+            models.Visit.id == claim.visit_id,
+            models.Visit.is_deleted == False
+        ).first()
+        if visit:
+            patient_visits = [visit]
+    else:
+        # Fallback: ambil visit terakhir pasien
+        visit = (
+            db.query(models.Visit)
+            .filter(models.Visit.patient_id == claim.patient_id, models.Visit.is_deleted == False)
+            .order_by(models.Visit.tanggal_kunjungan.desc())
+            .first()
+        )
+        if visit:
+            patient_visits = [visit]
+
+    # Jalankan helper deteksi stage
+    stages = determine_stages_from_visits(patient_visits)
+
+    print(
+        f"🧭 [AUTO-STAGE] Claim {claim_id} | Patient {claim.patient_id} | "
+        f"visit_types={[v.jenis_kunjungan for v in patient_visits]} | "
+        f"poli={[v.poli for v in patient_visits]} → {stages}"
+    )
+
+    # ==========================================================
+    # Template context
+    # ==========================================================
     context = {
         "request": request,
         "mode": "edit",
@@ -1039,21 +1120,24 @@ def edit_claim_form(
         "isDoctor": has_doctor,
         "isVerifikator": has_verifikator,
         "isCoder": has_coder,
-        "isMultiRole": total_roles > 1,  # New flag for multi-role
+        "isMultiRole": total_roles > 1,
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
         "existing_medical_data": existing_medical_data,
         "coder_results": coder_results,
         "workflow_status": current_workflow,
+        "stages": stages,  # 🔥 dikirim ke template
     }
 
-    # Special handling for coder template
+    # ==========================================================
+    # Special case for coder template
+    # ==========================================================
     if template_name == "edit_coder.html":
         from ..services.claim import simulation as sim_service
-        stages = sim_service.get_simulations_for_coder(db, claim_id)
+        stages_for_coder = sim_service.get_simulations_for_coder(db, claim_id)
         context["claim"] = claim
-        context["stages"] = stages
+        context["stages"] = stages_for_coder
 
     return templates.TemplateResponse(template_name, context)
 
@@ -1066,7 +1150,7 @@ async def update_claim_draft(
     user=Depends(require_roles_session("doctor")),
     _=Depends(require_csrf_dep),
 ):
-    """Update draft klaim oleh dokter"""
+    """Update draft klaim oleh dokter - DENGAN MEMPERTAHANKAN GROUP_ID"""
     try:
         # Parse JSON payload
         print(f"[UPDATE_DRAFT] Raw payload type: {type(payload)}")
@@ -1086,23 +1170,44 @@ async def update_claim_draft(
                 db=db, claim_id=claim_id, ai_data=ai_recommendations, mode="predict", stage=stage
             )
 
+        # ✅ AMBIL CLAIM DULU SEBELUM UPDATE
+        claim = db.query(models.Claim).filter_by(id=claim_id).first()
+        if not claim:
+            raise HTTPException(status_code=404, detail="Claim not found")
+        
+        # ✅ SIMPAN GROUP_ID YANG SUDAH ADA
+        original_group_id = claim.group_id
+        
+        print(f"[UPDATE_DRAFT] Claim {claim_id} current group_id: {original_group_id}")
+
         # simpan draft isi form & simulasi
         core.update_claim_draft_service(db, claim_id, user, payload_dict)
 
+        # ✅ REFRESH CLAIM SETELAH UPDATE
+        db.refresh(claim)
+        
+        # ✅ PASTIKAN GROUP_ID TIDAK HILANG
+        if claim.group_id != original_group_id:
+            print(f"⚠️ [UPDATE_DRAFT] Group ID changed from {original_group_id} to {claim.group_id}, restoring...")
+            claim.group_id = original_group_id
+        
         # ✅ otomatis ubah workflow ke doctor_submitted agar coder bisa review
-        claim = db.query(models.Claim).filter_by(id=claim_id).first()
-        if claim:
-            if claim.workflow_status in [None, "", "draft"]:
-                claim.workflow_status = "doctor_submitted"
-                claim.doctor_submitted_by = user.name
-                claim.doctor_submitted_at = datetime.now()
-                db.commit()
+        if claim.workflow_status in [None, "", "draft"]:
+            claim.workflow_status = "doctor_submitted"
+            claim.doctor_submitted_by = user.name
+            claim.doctor_submitted_at = datetime.now()
+        
+        db.commit()
+        db.refresh(claim)
+        
+        print(f"✅ [UPDATE_DRAFT] Claim {claim_id} saved with group_id: {claim.group_id}")
 
-        return {"status": "success", "message": "Draft klaim berhasil diperbarui"}
+        return {"status": "success", "message": "Draft klaim berhasil diperbarui", "group_id": claim.group_id}
 
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
     except Exception as e:
+        print(f"❌ [UPDATE_DRAFT] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save draft: {str(e)}")
 
 
@@ -4186,5 +4291,56 @@ def edit_coder_view(
             "user": user,
             "current_user": user,
         }
-    
     )
+
+
+@router.get("/{claim_id}/verify-group", name="verify_claim_group")
+def verify_claim_group(
+    claim_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles_session("doctor", "admin_rs", "superadmin"))
+):
+    """
+    Debugging endpoint untuk verifikasi apakah klaim masuk ke group dengan benar
+    """
+    claim = db.query(models.Claim).filter_by(id=claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    group = None
+    if claim.group_id:
+        group = db.query(models.ClaimGroup).filter_by(id=claim.group_id).first()
+    
+    patient = db.query(models.Patient).filter_by(id=claim.patient_id).first()
+    
+    # Get all groups for this patient
+    all_groups = db.query(models.ClaimGroup).filter_by(
+        patient_id=claim.patient_id
+    ).all()
+    
+    return {
+        "claim_id": claim.id,
+        "claim_group_id": claim.group_id,
+        "claim_workflow_status": claim.workflow_status,
+        "claim_created_by": claim.created_by,
+        "group_info": {
+            "id": group.id if group else None,
+            "kode_group": group.kode_group if group else None,
+            "nama_group": group.nama_group if group else None,
+            "patient_id": group.patient_id if group else None,
+        } if group else None,
+        "patient_info": {
+            "id": patient.id if patient else None,
+            "nama": patient.nama if patient else None,
+            "no_rm": patient.no_rm if patient else None,
+        } if patient else None,
+        "all_patient_groups": [
+            {
+                "id": g.id,
+                "kode_group": g.kode_group,
+                "nama_group": g.nama_group,
+                "claim_count": len(g.claims) if g.claims else 0
+            } for g in all_groups
+        ],
+        "status": "✅ OK" if claim.group_id else "⚠️ NO GROUP ASSIGNED"
+    }
