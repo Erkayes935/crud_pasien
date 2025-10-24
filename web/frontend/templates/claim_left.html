@@ -25,19 +25,34 @@
             </button>
             </div>
           </div>
-
-
-            <!-- Tabs -->
+          <!-- ================= Dynamic Tabs (auto from backend stages) ================= -->
           <div class="tabs flex space-x-6 border-b mb-4">
-            <button type="button" class="px-4 py-2" 
-                    :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
-                      @click="tab='admission'">Admission</button>
-            <button type="button" class="px-4 py-2" 
-                    :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
-                    @click="tab='daily-0'">Daily</button>
-            <button type="button" class="px-4 py-2" 
-                    :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
-                    @click="tab='discharge'">Discharge</button>
+            {% if 'admission' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='admission'">
+                Admission
+              </button>
+            {% endif %}
+
+            {% if 'daily' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='daily-0'">
+                Daily
+              </button>
+            {% endif %}
+
+            {% if 'discharge' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='discharge'">
+                Discharge
+              </button>
+            {% endif %}
           </div>
           <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
           <!-- ================= ADMISSION TAB ================= -->

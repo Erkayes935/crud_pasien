@@ -687,8 +687,7 @@ async function openModalFromAttr(el, type) {
   const dbId = tr?.dataset.dbId;
   const uiId = tr?.dataset.id;
   const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-  
-  // Ambil nama penyakit dari cell yang diklik
+
   let diseaseName = "";
   if (el.textContent) {
     diseaseName = el.textContent.replace(/^â†'+\s*/, "").trim();
@@ -696,76 +695,98 @@ async function openModalFromAttr(el, type) {
     diseaseName = tr?.querySelector(".kategori-cell")?.textContent?.trim() || tr?.dataset.nama || "";
   }
 
+  async function fetchDiagnosisDetail() {
+    const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        claim_id: parseInt(claimId),
+        disease_name: diseaseName,
+        rekam_medis: [],
+        scope: "diagnosis"
+      })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return await res.json();
+  }
+
   try {
     let dx = {};
-    // 🔥 NEW: Jika type diagnosis/komorbid/komplikasi, POST ke /analyze_diagnosis (core_engine)
-    if (["diagnosis","komorbid","komplikasi"].includes(type) && claimId && diseaseName) {
+
+    if (["diagnosis", "komorbid", "komplikasi"].includes(type) && claimId && diseaseName) {
       showAiLoadingModal([
         "Mengambil data detail diagnosis...",
         "Memuat regulasi multilayer terkait...",
         "Menyiapkan tampilan modal..."
       ]);
+
       console.log("[REQ] POST /analyze_diagnosis", { claim_id: claimId, disease_name: diseaseName });
-      const res = await fetch(`/claims/${claimId}/analyze_diagnosis`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          claim_id: parseInt(claimId), 
-          disease_name: diseaseName,
-          rekam_medis: [],
-          scope: "diagnosis"
-        })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      showAiLoadingModal([
-        "Mengambil data detail diagnosis...",
-        "Memuat regulasi multilayer terkait...",
-        "Menyiapkan tampilan modal..."
-      ]);
-      const result = await res.json();
+
+      let result;
+      try {
+        result = await fetchDiagnosisDetail();
+      } catch (err) {
+        console.warn("⚠️ Gagal fetch pertama, mencoba ulang...", err);
+        showAiLoadingModal([
+          "Mengakuratkan jawaban AI...",
+          "Mengambil ulang data dari core engine...",
+          "Mohon tunggu sebentar..."
+        ]);
+
+        try {
+          result = await fetchDiagnosisDetail();
+        } catch (err2) {
+          console.error("❌ Gagal load modal detail (retry gagal):", err2);
+          hideAiLoadingModal();
+          openModal(
+            `<div class="flex flex-col items-center text-center p-6">
+              <span class="text-lg font-bold text-red-500 mb-2">Gagal Memuat Detail Diagnosis</span>
+              <p class="text-gray-600 dark:text-gray-300 mb-4">
+                Terjadi gangguan saat mengambil data dari core engine.<br>
+                Silakan coba lagi beberapa saat.
+              </p>
+              <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                onclick="openModalFromAttr(document.querySelector('[data-id=\'${uiId}\']'), '${type}')">
+                🔄 Coba Lagi
+              </button>
+            </div>`
+          );
+          return;
+        }
+      }
+
       console.log("[RESP] /analyze_diagnosis", result);
-      
-      // 🔥 Process core_engine response untuk modal
-      dx = result; // Set dx untuk updateRingkasanFromRow
-      
-      // 🩹 PATCH: Extract ICD-10 code dari nested structure
+
+      dx = result;
       const icd10Code = result.icd10?.kode_icd || result.icd10_code || "";
       const justifikasi = result.klinis?.justifikasi || result.justifikasi || "";
       const buktiKlinis = result.klinis?.bukti_klinis || result.bukti_klinis || "";
-      
-      // ✅ Ensure dx has flattened ICD-10 code for updateRingkasanFromRow
+
       dx.icd10_code = icd10Code;
       dx.justifikasi = justifikasi;
       dx.bukti_klinis = buktiKlinis;
       dx.kategori = diseaseName;
-      
-      console.log("🩹 [PATCH] Extracted ICD-10 from analyze_diagnosis:", { 
-        icd10Code, 
-        fullResult: result 
-      });
-      
+
       window.claimState.currentDiagnosis = result;
       window.claimState.currentDiagnosisTitle = diseaseName;
-      
+
       const modalContent = renderDiagnosisDetail(result);
-      openModal(`
-        <div class="flex flex-col items-start items-center animate-fade-in">
+      openModal(
+        `<div class="flex flex-col items-start items-center animate-fade-in">
           <span class="text-lg font-bold">Detail Diagnosis</span>
           <span class="font-bold text-2xl mb-2 text-yellow-500">${diseaseName}</span>
         </div>`,
         modalContent,
-        { hideDefaultClose: false } // ✅ pastikan default close muncul
+        { hideDefaultClose: false }
       );
 
       hideAiLoadingModal();
-
-      // 🔥 CRITICAL: Call updateRingkasanFromRow setelah modal dibuka!
-      console.log("🔥 Auto-filling table with data:", { uiId, dx });
       updateRingkasanFromRow(uiId, dx);
       return;
+    }
 
-    } else if (dbId && !isNaN(Number(dbId))) {
-      // fallback legacy detail
+    // fallback legacy
+    if (dbId && !isNaN(Number(dbId))) {
       const url = `/claims/ai/recommendation/detail?claim_id=${claimId}&rec_type=${type}&item_id=${dbId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -775,44 +796,40 @@ async function openModalFromAttr(el, type) {
       dx = tr?.dataset.row ? JSON.parse(tr.dataset.row) : {};
     }
 
-    if ((!dbId || isNaN(Number(dbId))) && tr?.dataset.row) {
-      dx = JSON.parse(tr.dataset.row);
-      window.claimState.currentDiagnosis = dx;
-      window.claimState.currentDiagnosisTitle = dx.kategori || dx.name || "-";
-      
-      // 🔥 Use new renderDiagnosisDetail for consistent parsing
-      const modalContent = renderDiagnosisDetail(dx);
-      openModal(`<div class="flex flex-col items-start items-center animate-fade-in">
-        <span class="text-lg font-bold">Detail Diagnosis</span>
-        <span class="font-bold text-2xl mb-2 text-yellow-500">${window.claimState.currentDiagnosisTitle}</span>
-      </div>`, modalContent, { hideDefaultClose: false });
-      return;
-    }
-
     hideAiLoadingModal();
-
-    let rawText = tr?.querySelector("td")?.innerText.trim() || "-";
-    rawText = rawText.replace(/^â–¶|^â–¼/, "").trim();
-    rawText = rawText.replace(/\s+\d+$/, "");
     const namaPenyakit =
-      dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || rawText || "";
-
-    // 🔥 Use new renderDiagnosisDetail for consistent parsing
+      dx?.kategori || dx?.nama_kategori || dx?.diagnosis || dx?.komorbid || dx?.komplikasi || "-";
     const modalContent = renderDiagnosisDetail(dx);
-    openModal(`<div class="flex flex-col items-start items-center animate-fade-in">
-      <span class="text-lg font-bold">Detail Diagnosis</span>
-      <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
-    </div>`, modalContent, { hideDefaultClose: false });
+    openModal(
+      `<div class="flex flex-col items-start items-center animate-fade-in">
+        <span class="text-lg font-bold">Detail Diagnosis</span>
+        <span class="font-bold text-2xl mb-2 text-yellow-500">${namaPenyakit}</span>
+      </div>`,
+      modalContent,
+      { hideDefaultClose: false }
+    );
+
     window.claimState.currentDiagnosis = dx;
     window.claimState.currentDiagnosisTitle = namaPenyakit;
-
-    hideAiLoadingModal();
-
     updateRingkasanFromRow(uiId, dx);
   } catch (err) {
     console.error("❌ Gagal load modal detail:", err);
+    hideAiLoadingModal();
+    openModal(
+      `<div class="flex flex-col items-center text-center p-6">
+        <span class="text-lg font-bold text-red-500 mb-2">Gagal Memuat Data</span>
+        <p class="text-gray-600 dark:text-gray-300 mb-4">
+          Terjadi kesalahan tak terduga saat memproses permintaan Anda.
+        </p>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          onclick="openModalFromAttr(document.querySelector('[data-id=\'${uiId}\']'), '${type}')">
+          🔄 Coba Lagi
+        </button>
+      </div>`
+    );
   }
 }
+
 
   function renderNotificationBox(section, notifications = {}) {
     const colorMap = {

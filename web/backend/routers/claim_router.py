@@ -524,6 +524,7 @@ def list_claims(
 # MANAGERIAL: EPISODE & KLAIM (ADMIN/MANAJEMEN)
 # ==================================================
 from sqlalchemy.orm import joinedload
+from ..services.claim_stage_helper import determine_stages_from_visits
 
 @router.get("/manage")
 def manage_claims_page(
@@ -995,38 +996,36 @@ def edit_claim_form(
 
     csrf_token = issue_csrf_token(request)
 
-    # Get user roles
+    # ==========================================================
+    # Role detection
+    # ==========================================================
     roles = user.role_names or []
     has_doctor = "doctor" in roles
     has_coder = "coder" in roles
     has_verifikator = "verifikator" in roles
-
-    # Count total roles
     total_roles = sum([has_doctor, has_coder, has_verifikator])
-    
-    # WORKFLOW VALIDATION (skip for multi-role users)
+
+    # ==========================================================
+    # Workflow restriction (skip for multi-role)
+    # ==========================================================
     current_workflow = claim.workflow_status or "draft"
-    
-    # Multi-role users can bypass workflow checks
-    if total_roles == 1:  # Single role user
+    if total_roles == 1:
         if has_doctor and current_workflow not in ["draft", "doctor_submitted"]:
             flash(request, "⚠️ Klaim sudah masuk ke tahap coder/verifikator", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-        
         if has_coder and current_workflow not in ["doctor_submitted", "coder_review", "coder_verified"]:
             flash(request, "⚠️ Klaim belum siap untuk review coder atau sudah selesai", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
-        
         if has_verifikator and current_workflow not in ["coder_verified", "verifikator_review"]:
             flash(request, "⚠️ Klaim belum diverifikasi coder", "warning")
             return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
     else:
-        # Multi-role: No workflow restriction
         print(f"✅ Multi-role user {user.name} - bypassing workflow checks")
 
-    # TEMPLATE SELECTION
+    # ==========================================================
+    # Template selection
+    # ==========================================================
     if total_roles > 1:
-        # Multi-role: Combine view (doctor left + verifikator right)
         template_name = "claim_combine.html"
         print(f"🎯 Using combined template for multi-role user")
     elif has_verifikator:
@@ -1038,10 +1037,14 @@ def edit_claim_form(
     else:
         template_name = "claim_right.html"  # fallback
 
+    # ==========================================================
     # Load simulation & summary
+    # ==========================================================
     sim, summ = load_sim_and_summary(db, claim_id, include_summary=not has_doctor or total_roles > 1)
 
-    # Load medical record data
+    # ==========================================================
+    # Load existing medical record data
+    # ==========================================================
     existing_medical_data = {}
     if claim.medical_record_id:
         medical_record = db.query(models.MedicalRecord).get(claim.medical_record_id)
@@ -1051,12 +1054,16 @@ def edit_claim_form(
                 if fname and hasattr(medical_record, fname):
                     existing_medical_data[fname] = getattr(medical_record, fname)
 
+    # ==========================================================
     # Apply existing mappings to simulation
+    # ==========================================================
     existing_mappings = load_existing_mappings(db, claim_id)
     if existing_mappings and sim and "simulasi" in sim:
         sim["simulasi"] = apply_mappings_to_simulasi(sim["simulasi"], existing_mappings)
 
-    # Load coder results for verifikator
+    # ==========================================================
+    # Load coder results (for verifikator or multi-role)
+    # ==========================================================
     coder_results = None
     if has_verifikator or total_roles > 1:
         coder_results = db.query(models.ClaimSimulation).filter(
@@ -1064,7 +1071,44 @@ def edit_claim_form(
             models.ClaimSimulation.coder_verified == True
         ).all()
 
-    # Base context
+    # ==========================================================
+    # NEW 🔥 Ambil visit yang relevan saja untuk deteksi stage
+    # ==========================================================
+    from ..services.claim_stage_helper import determine_stages_from_visits
+
+    patient_visits = []
+
+    # Jika klaim punya visit spesifik
+    if claim.visit_id:
+        visit = db.query(models.Visit).filter(
+            models.Visit.id == claim.visit_id,
+            models.Visit.is_deleted == False
+        ).first()
+        if visit:
+            patient_visits = [visit]
+    else:
+        # Fallback: ambil visit terakhir pasien
+        visit = (
+            db.query(models.Visit)
+            .filter(models.Visit.patient_id == claim.patient_id, models.Visit.is_deleted == False)
+            .order_by(models.Visit.tanggal_kunjungan.desc())
+            .first()
+        )
+        if visit:
+            patient_visits = [visit]
+
+    # Jalankan helper deteksi stage
+    stages = determine_stages_from_visits(patient_visits)
+
+    print(
+        f"🧭 [AUTO-STAGE] Claim {claim_id} | Patient {claim.patient_id} | "
+        f"visit_types={[v.jenis_kunjungan for v in patient_visits]} | "
+        f"poli={[v.poli for v in patient_visits]} → {stages}"
+    )
+
+    # ==========================================================
+    # Template context
+    # ==========================================================
     context = {
         "request": request,
         "mode": "edit",
@@ -1076,21 +1120,24 @@ def edit_claim_form(
         "isDoctor": has_doctor,
         "isVerifikator": has_verifikator,
         "isCoder": has_coder,
-        "isMultiRole": total_roles > 1,  # New flag for multi-role
+        "isMultiRole": total_roles > 1,
         "sim": sim,
         "summ": summ,
         "claim_medical_record_fields": form_configs.form_configs["claim_medical_record"],
         "existing_medical_data": existing_medical_data,
         "coder_results": coder_results,
         "workflow_status": current_workflow,
+        "stages": stages,  # 🔥 dikirim ke template
     }
 
-    # Special handling for coder template
+    # ==========================================================
+    # Special case for coder template
+    # ==========================================================
     if template_name == "edit_coder.html":
         from ..services.claim import simulation as sim_service
-        stages = sim_service.get_simulations_for_coder(db, claim_id)
+        stages_for_coder = sim_service.get_simulations_for_coder(db, claim_id)
         context["claim"] = claim
-        context["stages"] = stages
+        context["stages"] = stages_for_coder
 
     return templates.TemplateResponse(template_name, context)
 
