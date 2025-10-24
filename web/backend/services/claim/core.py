@@ -103,53 +103,59 @@ def add_claim_service(db: Session, visit_id: int, user, hospital_id: int | None 
     return claim
 
 
-# ==================================================
-# UPDATE DRAFT
-# ==================================================
 def update_claim_draft_service(db: Session, claim_id: int, user, form_data: dict):
-    """
-    Update klaim dalam status draft:
-    - update simulasi
-    - update evaluasi (summary) dari core_engine
-    - update rekam medis
-    """
-    claim = db.query(models.Claim).get(claim_id)
+    """Update klaim dalam status draft."""
+    claim = db.get(models.Claim, claim_id)
     if not claim:
         return None
 
-    # Parsing simulasi & summary
+    # --- Parse simulasi & summary ---
     sim_data = form_data.get("simulasi")
     summ_data = form_data.get("summary")
 
-    if isinstance(sim_data, str):
-        try:
-            sim_data = json.loads(sim_data)
-        except Exception:
-            sim_data = {}
-    if isinstance(summ_data, str):
-        try:
-            summ_data = json.loads(summ_data)
-        except Exception:
-            summ_data = {}
+    def safe_parse(data):
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+                if isinstance(data, str):
+                    data = json.loads(data)
+            except Exception:
+                data = {}
+        return data or {}
 
-    # Simpan simulasi
+    sim_data = safe_parse(sim_data)
+    summ_data = safe_parse(summ_data)
+
+    # --- Simpan simulasi ---
     if sim_data:
-        save_simulasi(db, claim.id, sim_data, form_data)
+        try:
+            save_simulasi(db, claim.id, sim_data, form_data)
+        except Exception as e:
+            db.rollback()
+            print(f"[UPDATE_DRAFT] ❌ Error in save_simulasi: {e}")
+            raise
 
-    # Simpan evaluasi
+    # --- Simpan evaluasi ---
     if summ_data:
-        store_ai_evaluations(db, claim.id, summ_data)
+        try:
+            store_ai_evaluations(db, claim.id, summ_data)
+        except Exception as e:
+            db.rollback()
+            print(f"[UPDATE_DRAFT] ❌ Error in store_ai_evaluations: {e}")
+            raise
 
-    # Update rekam medis
+    # --- Update rekam medis ---
     if claim.medical_record:
-        claim_helper.update_medical_record_fields(claim.medical_record, form_data, user.id, db, "draft")
+        claim_helper.update_medical_record_fields(
+            claim.medical_record, form_data, user.id, db, "draft"
+        )
 
-    # Update status klaim
+    # --- Update status ---
     claim.is_final = False
     claim.status = "draft"
     claim.updated_at = datetime.utcnow()
 
-    # Log klaim
+    # --- Log klaim ---
     db.add(models.ClaimLog(
         claim_id=claim.id,
         action="UPDATED",
@@ -159,9 +165,11 @@ def update_claim_draft_service(db: Session, claim_id: int, user, form_data: dict
         is_deleted=False,
         is_dummy=False
     ))
+
     db.commit()
     db.refresh(claim)
     return claim
+
 
 
 # ==================================================
