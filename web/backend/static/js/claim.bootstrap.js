@@ -139,6 +139,8 @@ window.alternatifDropdown = function ({ claimId }) {
 (function () {
   // Panel evaluasi (fungsi render) — tetap di window seperti versi lama
   function renderEvaluasiDiagnosis(data) {
+    const rows = Array.isArray(data) ? data : [data];
+
     const target = document.getElementById("evaluasi-diagnosis");
     if (!target) return;
     target.innerHTML = "";
@@ -209,60 +211,37 @@ window.alternatifDropdown = function ({ claimId }) {
   }
 
   function renderEvaluasiProcedure(data) {
+    // 🧠 PATCH: auto-wrap kalau bukan array
     const target = document.getElementById("evaluasi-procedure");
     if (!target) return;
     target.innerHTML = "";
 
-    // Normalisasi data - Jika tidak ada data sama sekali
-    if (!data || (Array.isArray(data) && data.length === 0) || Object.keys(data).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
       target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
       return;
     }
 
-    // Extract rows dari berbagai format data
-    let rows = [];
-    if (Array.isArray(data)) {
-      rows = data;
-    } else if (data.rows && Array.isArray(data.rows)) {
-      rows = data.rows;
-    } else if (data.items && Array.isArray(data.items)) {
-      rows = data.items;
-    } else {
-      rows = [data];
-    }
+    // 🧠 PATCH: auto-wrap kalau bukan array
+    const rows = Array.isArray(data) ? data : [data];
 
-    // Proses rows untuk empat kategori
     const wajib = [], validasi = [], dampak = [], konflik = [];
-    rows.forEach(p => {
-      const icon = window.statusIcon ? window.statusIcon(p.validasi || p.validitas) : '';
-      const tindakan = p.tindakan || p.name || p.validasi_detail || p.status_tindakan || "-";
-      const status = String(p.status_tindakan || p.status || "").toLowerCase();
-
-      if (status.includes("wajib") || status.includes("mandatory")) {
-        wajib.push(`${icon} - <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan}</span>`);
-      } else {
-        validasi.push(`${icon} - ${tindakan}`);
-      }
-
-      if (p.dampak || p.tarif_impact) {
-        dampak.push(`${icon} <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan} → ${p.dampak || p.tarif_impact}</span>`);
-      }
-
-      if (p.konflik || p.syarat_klinis) {
-        konflik.push(`${icon} - ${p.konflik || p.syarat_klinis}`);
-      }
+    rows.forEach((p) => {
+      const safe = (v) => (v && v !== "-" ? v : "-");
+      if (p.wajib) wajib.push(safe(p.wajib));
+      if (p.validasi) validasi.push(safe(p.validasi));
+      if (p.dampak) dampak.push(safe(p.dampak));
+      if (p.konflik) konflik.push(safe(p.konflik));
     });
 
-    // Helper untuk membuat list HTML
-    const listify = arr => arr.length ? arr.map(v => `<div>${v}</div>`).join("") : "-";
+    const listify = (arr) => (arr.length ? arr.map((v) => `<div>${v}</div>`).join("") : "-");
 
     target.innerHTML = `
       <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
       <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-        <tr><th class="border px-4 py-2">Tindakan Wajib Kombinasi</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
-        <tr><th class="border px-4 py-2">Validasi Pilihan Verifikator</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
-        <tr><th class="border px-4 py-2">Dampak INA-CBG / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
-        <tr><th class="border px-4 py-2">Konflik / Duplikasi</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
+        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Validasi</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Konflik / Catatan</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
       </table>
     `;
   }
@@ -428,34 +407,42 @@ window.alternatifDropdown = function ({ claimId }) {
     return '-';
   };
 
-  // Custom styling
+  // === i-DRG & Alternatif Table Fix for Light Mode ===
   document.head.insertAdjacentHTML('beforeend', `
-  <style>
-    .grid.grid-cols-2 > div:nth-child(odd) {
-      background-color: #374151; /* dark gray for headers */
-      color: white;
-      padding: 0.5rem 0.75rem;
-    }
-    
-    .grid.grid-cols-2 > div:nth-child(even) {
-      background-color: #1F2937; /* darker for content */
-      padding: 0.5rem 0.75rem;
-      color: #E5E7EB;
-    }
-    
-    /* Add yellow highlight for valid items */
-    [x-text*="valid"]:not(:empty) {
-      color: #FCD34D;
-      font-weight: 500;
-    }
-    
-    /* Add special styling for headers */
-    .bg-yellow-500, .bg-green-600 {
-      font-weight: bold;
-      color: white !important;
-    }
-  </style>
+    <style>
+      /* === i-DRG & Alternatif Table Fix for Light Mode === */
+      .grid.grid-cols-2 > div:nth-child(odd) {
+        background-color: var(--tw-prose-headings, #e6f4ff); /* soft blue for headers */
+        color: #0f172a; /* slate-900 */
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+      }
+
+      .grid.grid-cols-2 > div:nth-child(even) {
+        background-color: #ffffff; /* white for content */
+        color: #1e293b; /* slate-800 */
+        padding: 0.5rem 0.75rem;
+      }
+
+      /* === Dark mode === */
+      html.dark .grid.grid-cols-2 > div:nth-child(odd) {
+        background-color: #334155;
+        color: #f1f5f9;
+      }
+
+      html.dark .grid.grid-cols-2 > div:nth-child(even) {
+        background-color: #1e293b;
+        color: #e2e8f0;
+      }
+
+      /* Header bars (green/yellow) tetap tegas */
+      .bg-yellow-500, .bg-green-600 {
+        font-weight: bold;
+        color: white !important;
+      }
+    </style>
   `);
+
 
   // Helper untuk format angka dan styling
   window.statusIcon = window.statusIcon || function(status) {
@@ -857,112 +844,4 @@ window.renderAlternatifKombinasi = function (items) {
     </div>
   </div>`;
   if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
-};
-
-// Perbaikan generateSummary untuk menggabungkan semua perubahan
-window.generateSummary = async function() {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-  if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
-
-  try {
-    // ✅ Ganti loading lama dengan modal loading baru
-    if (typeof window.showAiLoadingModal === "function") {
-      window.showAiLoadingModal([
-        "Mengambil data dari core engine...",
-        "Menganalisis hasil diagnosis dan tindakan...",
-        "Menyiapkan rekomendasi AI..."
-      ]);
-    }
-
-    const state = Alpine.$data(document.getElementById("claimRoot"));
-    
-    // Ambil tab aktif
-    const currentTab = state.tab || 'admission';
-    
-    // Ekstrak data diagnosa dan tindakan dari simulasi tab saat ini
-    const simData = state.simulasi[currentTab];
-
-    if (!simData) {
-      throw new Error("Tidak ada data simulasi di tab ini");
-    }
-
-    // Format payload sesuai dengan core_engine
-    const payload = { 
-      claim_id: parseInt(claimId),
-      stage: currentTab,
-      primary_claim: simData.utama?.name || "",
-      secondary_claims: (simData.sekunder || []).map(d => d.name).filter(Boolean),
-      primary_action: simData.tindakanUtama?.name || "",
-      secondary_actions: (simData.tindakanSekunder || [])
-        .filter(t => t && t.name)
-        .map(t => t.name)
-    };
-
-    console.log("📤 Sending payload to generate_claim_combos:", payload);
-
-    const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Gagal request summary (${res.status}): ${errorText}`);
-    }
-
-    const data = await res.json();
-    console.log("📥 Summary result:", data);
-
-    if (data.error) {
-      throw new Error(`Error from server: ${data.error}`);
-    }
-
-    // Normalisasi format result untuk konsistensi
-    const resultData = data.result || data;
-    
-    // Ekstrak data yang relevan dari respons dengan logging untuk debug
-    console.log("Extracting evaluasi_diagnosis:", resultData.evaluasi_diagnosis);
-    console.log("Extracting evaluasi_tindakan:", resultData.evaluasi_tindakan);
-    
-    const diagnosisData = resultData.evaluasi_diagnosis || resultData.diagnosis || {};
-    
-    let procedureData = resultData.evaluasi_tindakan || resultData.procedure || {};
-    if (Array.isArray(procedureData)) {
-      // Already an array, use as is
-    } else if (procedureData && typeof procedureData === 'object') {
-      procedureData = procedureData.rows || procedureData.items || [procedureData];
-    }
-
-    // Update UI sections
-    console.log("Rendering evaluasi_diagnosis...");
-    window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(diagnosisData);
-    
-    console.log("Rendering evaluasi_procedure...");
-    window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(procedureData);
-    
-    // Render i-DRG dan alternatif dengan lazy loading dropdown
-    console.log("Rendering idrg_summary dengan lazy loading...");
-    window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary({}, claimId);
-    
-    console.log("Rendering alternatif dengan lazy loading...");
-    window.renderAlternatifKombinasi && window.renderAlternatifKombinasi([]);
-
-    const summaryField = document.getElementById("summaryField");
-    if (summaryField) summaryField.value = JSON.stringify(resultData);
-    
-    if (!window.claimState) window.claimState = {};
-    window.claimState.summary = resultData;
-
-    alert("✅ Summary berhasil digenerate");
-  } catch (err) {
-    console.error("❌ Error generate summary:", err);
-    alert(`❌ Gagal generate summary: ${err.message}`);
-  } finally {
-    // Remove loading message
-    if (typeof window.hideAiLoadingModal === "function") {
-      window.hideAiLoadingModal();
-    }
-    window.syncHiddenInputs && window.syncHiddenInputs();
-  }
 };

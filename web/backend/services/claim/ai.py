@@ -423,6 +423,23 @@ def store_ai_recommendations(
         print(f"[AI STORAGE] ❌ Error storing recommendations: {str(e)}")
         raise
 
+def clear_ai_results(db: Session, claim_id: int):
+    """
+    Hapus seluruh hasil rekomendasi dan evaluasi AI untuk klaim tertentu.
+    Biasanya dipanggil sebelum hasil baru dari core_engine disimpan ulang.
+    """
+    print(f"[AI STORAGE] Clearing AI results for claim {claim_id}")
+    try:
+        print("[AI STORAGE] Removing AI recommendations and evaluations")
+        db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).delete()
+        db.commit()
+        print(f"[AI STORAGE] ✅ Cleared all AI results for claim {claim_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[AI STORAGE] ❌ Failed to clear AI results: {e}")
     
 # ==================================================
 # AI EVALUATIONS (hasil generate_claim_combos / summary)
@@ -434,13 +451,10 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
       - ClaimDiagnosisEvaluation
       - ClaimProcedureEvaluation
       - ClaimCombinationAlternative
-
-    Args:
-        db (Session): DB session
-        claim_id (int): ID klaim
-        evaluasi (dict): payload evaluasi dari core_engine
     """
-    # 🔹 Hapus data lama biar tidak numpuk
+    import json
+
+    # 🧹 Bersihkan dulu
     db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
@@ -454,19 +468,51 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             return "invalid"
         if "warning" in raw_lower or "medium" in raw_lower:
             return "warning"
-        if "valid" in raw_lower:
+        if "valid" in raw_lower or "✅" in raw_lower:
             return "valid"
         return None
 
-    # === Kombinasi Diagnosis ===
+
+    # 🔄 Normalisasi key agar kompatibel
+    if "evaluasi_diagnosis" in evaluasi:
+        evaluasi["kombinasi_diagnosis"] = evaluasi.pop("evaluasi_diagnosis")
+    if "evaluasi_tindakan" in evaluasi:
+        val = evaluasi.pop("evaluasi_tindakan")
+        evaluasi["kombinasi_tindakan"] = [val] if isinstance(val, dict) else val
+    if not evaluasi.get("alternatif"):
+        evaluasi["alternatif"] = evaluasi.get("alternatives", [])
+
+
+    # === Diagnosis ===
     diag = evaluasi.get("kombinasi_diagnosis", {})
+    if isinstance(diag, str):
+        try:
+            diag = json.loads(diag)
+        except Exception:
+            print(f"[AI STORAGE] ⚠️ Failed to parse string diag: {diag}")
+            diag = {}
+
     if diag:
-        diag_eval = models.ClaimDiagnosisEvaluation(
+        # 🧠 Pisahkan validitas dan detail
+        raw_valid = diag.get("validitas", "")
+        parsed_valid = parse_validitas(raw_valid)
+        # Hilangkan emoji/ikon dan sisakan kalimat lengkap
+        clean_detail = (
+            raw_valid.replace("✅", "")
+            .replace("❌", "")
+            .replace("⚠️", "")
+            .strip()
+        )
+
+        # Kalau validitas_detail belum ada, pakai hasil ekstraksi dari validitas
+        validitas_detail = diag.get("validitas_detail") or clean_detail or None
+
+        db.add(models.ClaimDiagnosisEvaluation(
             claim_id=claim_id,
-            validitas=parse_validitas(diag.get("validitas")),
-            validitas_detail=diag.get("validitas_detail"),
+            validitas=parsed_valid,
+            validitas_detail=validitas_detail,
             severity=diag.get("severity"),
-            kode_ina_cbg=diag.get("kode_ina_cbg"),
+            kode_ina_cbg=diag.get("kode_ina_cbg") or diag.get("kode_cbg"),
             estimasi_tarif=parse_number(diag.get("estimasi_tarif")),
             syarat_klinis=diag.get("syarat_klinis"),
             evaluasi_faskes=diag.get("evaluasi_faskes"),
@@ -475,30 +521,40 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(diag_eval)
+        ))
+        print(f"[AI STORAGE] ✅ Stored diagnosis evaluation for claim {claim_id}")
 
-    # === Kombinasi Tindakan ===
+    # === Tindakan ===
+
     for td in evaluasi.get("kombinasi_tindakan", []):
-        proc_eval = models.ClaimProcedureEvaluation(
+        if isinstance(td, str):
+            try:
+                td = json.loads(td)
+            except Exception:
+                td = {}
+
+        db.add(models.ClaimProcedureEvaluation(
             claim_id=claim_id,
-            validitas=parse_validitas(td.get("validitas")),
-            validitas_detail=td.get("validitas_detail"),
-            status_tindakan=td.get("status_tindakan"),
-            tarif_impact=parse_number(td.get("tarif_impact")),
-            faskes=td.get("faskes"),
-            rawat_inap=td.get("rawat_inap"),
-            syarat_klinis=td.get("syarat_klinis"),
+            wajib=td.get("wajib"),
+            validasi=td.get("validasi"),
+            dampak=td.get("dampak"),
+            konflik=td.get("konflik"),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(proc_eval)
+        ))
+        print(f"[AI STORAGE] ✅ Stored procedure evaluation for claim {claim_id}")
 
-    # === Alternatif Kombinasi ===
+
+    # === Alternatif ===
     for alt in evaluasi.get("alternatif", []):
-        comb = models.ClaimCombinationAlternative(
+        if isinstance(alt, str):
+            try:
+                alt = json.loads(alt)
+            except Exception:
+                alt = {}
+        db.add(models.ClaimCombinationAlternative(
             claim_id=claim_id,
             kombinasi_nama=alt.get("kombinasi_nama"),
             severity=alt.get("severity"),
@@ -508,44 +564,14 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             faskes=alt.get("faskes"),
             rawat_inap=alt.get("rawat_inap"),
             tindakan_wajib=alt.get("tindakan_wajib"),
-            notes=alt.get("notes"),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(comb)
+        ))
 
     db.commit()
-
-# ==================================================
-# UTILITIES
-# ==================================================
-
-def clear_ai_results(db: Session, claim_id: int) -> None:
-    """
-    Clear all AI results for a specific claim before generating new ones.
-    Includes validation and logging.
-    """
-    print(f"[AI STORAGE] Clearing AI results for claim {claim_id}")
-    
-    try:
-        # Validate claim exists
-        claim = db.query(models.Claim).filter_by(id=claim_id).first()
-        if not claim:
-            raise ValueError(f"Claim {claim_id} not found")
-            
-        # Clear all related AI data
-        print(f"[AI STORAGE] Removing AI recommendations and evaluations")
-        db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
-        db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
-        db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
-        db.commit()
-        
-    except Exception as e:
-        print(f"[AI STORAGE] Error clearing AI results: {str(e)}")
-        db.rollback()
-        raise
+    print(f"[AI STORAGE] ✅ Successfully stored AI evaluations for claim {claim_id}")
 
 def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) -> None:
     """

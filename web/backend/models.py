@@ -460,9 +460,9 @@ class ClaimDiagnosisEvaluation(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"))
 
     validitas = Column(Enum("valid", "invalid", "warning", name="eval_status"), nullable=True)
-    validitas_detail = Column(String(255), nullable=True)
-    severity = Column(String(50), nullable=True)
-    kode_ina_cbg = Column(String(50), nullable=True)
+    validitas_detail = Column(Text, nullable=True)
+    severity = Column(Text, nullable=True)
+    kode_ina_cbg = Column(Text, nullable=True)
     estimasi_tarif = Column(Numeric(18, 2), nullable=True)
     syarat_klinis = Column(Text, nullable=True)
     evaluasi_faskes = Column(Text, nullable=True)
@@ -483,14 +483,11 @@ class ClaimProcedureEvaluation(Base):
     id = Column(Integer, primary_key=True, index=True)
     claim_id = Column(Integer, ForeignKey("claims.id"))
 
-    validitas = Column(Enum("valid", "invalid", "warning", name="eval_status_proc"), nullable=True)
-    validitas_detail = Column(String(255), nullable=True)
-
-    status_tindakan = Column(String(50), nullable=True)   # wajib / opsional / minor
-    tarif_impact = Column(Numeric(18, 2), nullable=True)
-    faskes = Column(Text, nullable=True)
-    rawat_inap = Column(Text, nullable=True)
-    syarat_klinis = Column(Text, nullable=True)
+    # Evaluasi tindakan (hasil AI)
+    wajib = Column(Text, nullable=True)
+    validasi = Column(Text, nullable=True)
+    dampak = Column(Text, nullable=True)
+    konflik = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=text("now()"))
     updated_at = Column(DateTime, server_default=text("now()"), onupdate=text("now()"))
@@ -499,7 +496,6 @@ class ClaimProcedureEvaluation(Base):
 
     claim = relationship("Claim", back_populates="procedure_evaluations")
 
-
 class ClaimCombinationAlternative(Base):
     __tablename__ = "claim_combination_alternatives"
 
@@ -507,7 +503,7 @@ class ClaimCombinationAlternative(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"))
 
     kombinasi_nama = Column(String(255), nullable=True)
-    severity = Column(String(50), nullable=True)
+    severity = Column(Text, nullable=True)
     kode_ina_cbg = Column(String(50), nullable=True)
     estimasi_tarif = Column(Numeric(18, 2), nullable=True)
     syarat_klinis = Column(Text, nullable=True)
@@ -555,7 +551,7 @@ class ClaimIDRGSummary(Base):
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
 
     group_idrg_kombinasi = Column(String(50))
-    severity_kombinasi = Column(String(50))
+    severity_kombinasi = Column(Text)
     checklist_kombinasi = Column(Text)
     faktor_severity = Column(Text)
     risiko_ungroupable = Column(Text)

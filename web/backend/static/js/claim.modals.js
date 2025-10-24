@@ -99,6 +99,12 @@
   function openModal(title, content, options = {}) {
     // pastikan claimState tersedia
     window.claimState = window.claimState || {};
+    // 🧹 Prevent modal duplication (gepeng / dua tampilan)
+    const existingContents = document.querySelectorAll("#modalContainer .modal-content");
+    if (existingContents.length > 0) {
+      existingContents.forEach(el => el.remove());
+      console.log("♻️ [CLEANUP] Old modal-content removed before opening new one");
+    }
     window.claimState.modalStack = window.claimState.modalStack || [];
 
     // pastikan elemen dasar modal tersedia
@@ -2961,15 +2967,16 @@ function renderProcedureDetailReadOnly(data) {
     }
 
     return `
-      <div class="flex flex-col bg-white rounded-lg shadow-sm ring-1 ring-gray-100 overflow-hidden">
-        <div class="px-3 py-2 text-gray-700 font-medium bg-gray-50">${label}</div>
-        <div class="px-3 py-2 text-gray-900">${content}</div>
+      <div class="flex flex-col rounded-lg overflow-hidden shadow-sm 
+                  bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100 
+                  ring-1 ring-gray-100 dark:ring-slate-700">
+        <div class="px-3 py-2 font-medium 
+                    bg-gray-50 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+          ${label}
+        </div>
+        <div class="px-3 py-2">${content}</div>
       </div>
     `;
-
-
-
-
 
   };
 
@@ -2987,7 +2994,7 @@ function renderProcedureDetailReadOnly(data) {
       </div>
 
       <!-- Basic Info -->
-      <div class="grid grid-cols-2 gap-3 text-sm bg-white">
+      <div class="grid grid-cols-2 gap-3 text-sm bg-transparent dark:bg-transparent">
         ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code || detail.icd9_code, "icd9_code")}
         ${renderProcBoxReadOnly("Deskripsi", procedureName, "icd9_desc")}
         ${renderProcBoxReadOnly("Validitas", analysis.validitas || detail.validitas, "validitas")}

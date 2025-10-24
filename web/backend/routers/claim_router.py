@@ -1765,13 +1765,17 @@ async def analyze_procedure(
         raise HTTPException(status_code=500, detail=f"Failed to store procedure analysis: {str(e)}")
 
 @router.post("/{claim_id}/generate_claim_combos")
-async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+async def generate_claim_combos(
+    claim_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
     cid = payload.get("claim_id") or claim_id
     if not cid:
         raise HTTPException(status_code=422, detail="claim_id required")
-    
-    print(f"[GENERATE_CLAIM_COMBOS] Received payload: {payload}")
-    
+
+    print(f"[GENERATE_CLAIM_COMBOS] Received payload for claim {cid}: {payload}")
+
     try:
         core_payload = {
             "claim_id": cid,
@@ -1780,29 +1784,56 @@ async def generate_claim_combos(claim_id: int, payload: dict = Body(...), db: Se
             "primary_action": payload.get("primary_action", ""),
             "secondary_actions": payload.get("secondary_actions", [])
         }
-            
-        print(f"[GENERATE_CLAIM_COMBOS] Forwarding to core_engine: {core_payload}")
-        
+
+        print(f"[GENERATE_CLAIM_COMBOS] ▶️ Forwarding to core_engine with payload: {core_payload}")
         result = await claim_ai.proxy_core_engine("/generate_claim_combos", core_payload)
-        
+
+        # 🔴 kalau core_engine balikin error
         if isinstance(result, dict) and result.get("error"):
-            print(f"[GENERATE_CLAIM_COMBOS] Error from core_engine: {result['error']}")
+            print(f"[GENERATE_CLAIM_COMBOS] ❌ Error from core_engine: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
-            
-        print(f"[GENERATE_CLAIM_COMBOS] Success, storing results to DB")
+
+        print(f"[GENERATE_CLAIM_COMBOS] ✅ Got result from core_engine, storing results to DB")
+
+        # 🔹 Step 1: clear hasil lama supaya gak dobel
         ai.clear_ai_results(db, cid)
+
+        # 🔹 Step 2: simpan hasil utama (summary & kombinasi)
         ai.bulk_store_ai_results_from_core(db, cid, result)
-        
+
+        # 🔹 Step 3: simpan evaluasi diagnosis, tindakan, alternatif
+        if any(k in result for k in ["evaluasi_diagnosis", "evaluasi_tindakan", "alternatif"]):
+            try:
+                print(f"[GENERATE_CLAIM_COMBOS] 🧠 Storing AI evaluations for claim {cid}")
+                ai.store_ai_evaluations(db, cid, result)
+                print(f"[GENERATE_CLAIM_COMBOS] ✅ AI evaluations stored successfully")
+            except Exception as e:
+                print(f"[GENERATE_CLAIM_COMBOS] ⚠️ Failed to store evaluations: {e}")
+                # jangan raise error dulu, biar result utama tetap tersimpan
+
+        # 🔹 Step 4: alias untuk FE compatibility
         if "evaluasi_diagnosis" in result:
             result["diagnosis"] = result["evaluasi_diagnosis"]
         if "evaluasi_tindakan" in result:
             result["procedure"] = result["evaluasi_tindakan"]
-            
-        return {"claim_id": cid, "stage": payload.get("stage", "admission"), "result": result}
-        
+
+        # 🔹 Step 5: commit global
+        db.commit()
+        print(f"[GENERATE_CLAIM_COMBOS] 💾 All AI results committed successfully")
+
+        return {
+            "claim_id": cid,
+            "stage": payload.get("stage", "admission"),
+            "status": "success",
+            "result": result
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[GENERATE_CLAIM_COMBOS] Unhandled error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[GENERATE_CLAIM_COMBOS] ❌ Unhandled error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to generate claim combos: {str(e)}")
 
 
 @router.post("/{claim_id}/resume_medis")

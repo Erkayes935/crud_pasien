@@ -156,13 +156,24 @@
   }
 
   // ============================================================
-  // 🧠 Generate Summary
+  // 🧠 Generate Summary (sinkron BE terbaru + key fallback baru)
   // ============================================================
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     if (!claimId) return showToast("❌ Claim ID tidak ditemukan.", true);
 
     try {
+      console.log("🚀 generateSummary() dimulai");
+
+      // ✅ Ganti loading lama dengan modal loading baru
+      if (typeof window.showAiLoadingModal === "function") {
+        window.showAiLoadingModal([
+          "Mengambil data dari core engine...",
+          "Menganalisis hasil diagnosis dan tindakan...",
+          "Menyiapkan rekomendasi AI..."
+        ]);
+      }
+
       const state = Alpine.$data(document.getElementById("claimRoot"));
 
       const payload = {
@@ -179,25 +190,32 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok)
-        throw new Error(`HTTP ${res.status} - Gagal request evaluasi`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} - Gagal request evaluasi`);
 
+      console.log("📡 Response status:", res.status);
       const result = await res.json();
       console.log("🔍 Core engine evaluasi result:", result);
-      const data = result.data || result;
 
-      window.renderEvaluasiDiagnosis &&
-        window.renderEvaluasiDiagnosis(
-          data.evaluasi_diagnosis || data.diagnosis || {}
-        );
-      window.renderEvaluasiProcedure &&
-        window.renderEvaluasiProcedure(
-          data.evaluasi_tindakan || data.procedure || {}
-        );
-      window.renderEvaluasiIDRGSummary &&
-        window.renderEvaluasiIDRGSummary(data.idrg_summary || {});
-      window.renderAlternatifKombinasi &&
-        window.renderAlternatifKombinasi(data.alternatif || []);
+      // ✅ hasil utama ada di result.result (fallback ke format lama jika perlu)
+      const data = result.result || result.data || result;
+      console.log("🧠 Evaluasi diagnosis data:", data.kombinasi_diagnosis || data.evaluasi_diagnosis);
+      console.log("🧠 Evaluasi tindakan data:", data.kombinasi_tindakan || data.evaluasi_tindakan);
+
+
+      // 🔎 debug singkat biar kelihatan mana yang kepakai
+      console.log("➡️ keys:", Object.keys(data || {}));
+
+      // ⬇️⬇️ HANYA 2 BARIS INI YANG PENTING (map ke nama field baru)
+      window.renderEvaluasiDiagnosis?.(
+        data.kombinasi_diagnosis || data.evaluasi_diagnosis || data.diagnosis || {}
+      );
+      window.renderEvaluasiProcedure?.(
+        data.kombinasi_tindakan   || data.evaluasi_tindakan   || data.procedure || {}
+      );
+      // ⬆️⬆️
+
+      window.renderEvaluasiIDRGSummary?.(data.idrg_summary || {});
+      window.renderAlternatifKombinasi?.(data.alternatif || []);
 
       const summaryField = document.getElementById("summaryField");
       if (summaryField) summaryField.value = JSON.stringify(data);
@@ -213,6 +231,7 @@
       }
     }
   }
+
 
   // util kecil: set token ke input & meta
   function setCsrfTokenEverywhere(token) {

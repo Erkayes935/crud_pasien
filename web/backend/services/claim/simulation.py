@@ -108,13 +108,10 @@ def load_sim_and_summary(db: Session, claim_id: int, include_summary: bool = Tru
         summ["procedure"] = [
             {
                 "id": p.id,
-                "validitas": p.validitas,
-                "validitas_detail": p.validitas_detail,
-                "status_tindakan": p.status_tindakan,
-                "tarif_impact": float(p.tarif_impact) if p.tarif_impact else None,
-                "faskes": p.faskes,
-                "rawat_inap": p.rawat_inap,
-                "syarat_klinis": p.syarat_klinis,
+                "wajib": p.wajib,
+                "validasi": p.validasi,
+                "dampak": p.dampak,
+                "konflik": p.konflik,
             }
             for p in db.query(models.ClaimProcedureEvaluation)
                       .filter_by(claim_id=claim_id)
