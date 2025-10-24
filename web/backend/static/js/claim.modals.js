@@ -1221,7 +1221,7 @@ window.renderChecklistHtml = function(checklist) {
         function renderPredictionRow(label, valueHtml) {
           return `
             <div class="grid grid-cols-2">
-              <div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
+              <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2 font-medium">${label}</div>
               <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2">${valueHtml}</div>
             </div>
           `;
@@ -1240,7 +1240,7 @@ window.renderChecklistHtml = function(checklist) {
           }
           return `
             <div class="grid grid-cols-2">
-              <div class="bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white px-3 py-2 font-medium">${label}</div>
+              <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 px-3 py-2 font-medium">${label}</div>
               <div class="bg-white text-gray-900 dark:bg-gray-600 dark:text-gray-100 px-3 py-2">${content}</div>
             </div>
           `;
@@ -1849,10 +1849,32 @@ window.renderChecklistHtml = function(checklist) {
     `;
   }
 
-  // ===================== CLOSE NESTED MODAL (aman + restore) =====================
+  let modalClosing = false;
+
   function closeNestedModal() {
+    if (modalClosing) {
+      console.log("⚠️ [DEBUG] closeNestedModal double trigger prevented");
+      return;
+    }
+    modalClosing = true;
+
     document.body.classList.remove("modal-open");
-    // 🧩 simpan tindakan manual sebelum modal ditutup
+
+    // 🚫 MODE VERIFIKATOR: close langsung, tanpa stack restore & Alpine
+    if (window.currentUserRole === "verifikator") {
+      const modalContainer = document.getElementById("modalContainer");
+      if (modalContainer) {
+        modalContainer.classList.add("hidden");
+        modalContainer.innerHTML = "";
+      }
+      window.claimState.modalOpen = false;
+      modalClosing = false;
+      console.log("✅ [VERIFICATOR] Modal closed cleanly.");
+      return;
+    }
+
+
+    // 🧩 MODE DOKTER (flow lama utuh)
     try {
       window.persistManualTindakanBeforeClose && window.persistManualTindakanBeforeClose();
     } catch (e) {
@@ -1888,7 +1910,6 @@ window.renderChecklistHtml = function(checklist) {
       modalContent.prepend(modalTitle);
     }
 
-    // 🪄 Animasi fade-out
     modalContent.classList.add("modal-fade-exit");
     setTimeout(() => modalContent.classList.add("modal-fade-exit-active"), 10);
 
@@ -1896,31 +1917,23 @@ window.renderChecklistHtml = function(checklist) {
       modalContent.classList.remove("modal-fade-exit", "modal-fade-exit-active");
 
       if (stack.length > 0) {
-        // restore modal sebelumnya
         const prev = stack.pop();
         console.log("🧩 restore modal:", prev);
-
         modalTitle.innerHTML = prev.title || "(Untitled)";
         modalContent.innerHTML = prev.content || "<p>Tidak ada konten sebelumnya</p>";
       } else {
-        // tutup total
-       
         modalContainer.classList.add("hidden");
         window.claimState.modalOpen = false;
         modalContent.innerHTML = "";
         modalTitle.innerHTML = "";
       }
 
-      // 🧹 Bersihkan listener dropdown autocomplete
-      document.querySelectorAll('ul[x-teleport="body"]').forEach(el => {
-        if (el?._cleanup) el._cleanup();
-      });
+      document
+        .querySelectorAll('ul[x-teleport="body"]')
+        .forEach(el => el?._cleanup && el._cleanup());
 
-      // 🔁 Re-init Alpine dan render manual tindakan ulang
       setTimeout(() => {
         Alpine.initTree(modalContent);
-
-        // 🧩 Delay tambahan biar DOM siap & Alpine rehydrated
         setTimeout(() => {
           try {
             if (typeof window.renderManualTindakanList === "function") {
@@ -1934,7 +1947,8 @@ window.renderChecklistHtml = function(checklist) {
         }, 150);
       }, 50);
 
-    }, 250); // durasi sinkron dengan CSS transition
+      modalClosing = false;
+    }, 250);
 
     if (window.claimState?.pendingRestoreDiagnosis) {
       setTimeout(() => {
@@ -1955,6 +1969,7 @@ window.renderChecklistHtml = function(checklist) {
       }, 100);
     }
   }
+
 // ==========================================================
 // 🧩 SISTEM NOTES FINAL (DOKTER / CODER / VERIFIKATOR)
 // ==========================================================
@@ -2615,18 +2630,18 @@ window.showStoredDiagnosisModalVerificator = async function(diagnosisName) {
       throw new Error('Claim ID tidak ditemukan');
     }
 
-    // Show loading modal
-    openModal(
-      `<div class="flex items-center">
-        <span class="text-lg font-bold">🔍 Detail Diagnosis: ${diagnosisName}</span>
-        <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">READ-ONLY</span>
-      </div>`,
-      `<div class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data diagnosis...</p>
-      </div>`,
-      { hideDefaultClose: false }
-    );
+    // tampilkan loading langsung di kontainer
+    const container = document.getElementById("modalContainer");
+    if (container) {
+      container.classList.remove("hidden");
+      container.innerHTML = `
+        <div class="modal-content p-6 text-center bg-white dark:bg-slate-800 rounded-xl shadow-lg">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data diagnosis...</p>
+        </div>
+      `;
+    }
+
     
     const response = await fetch(`/claims/${claimId}/stored-diagnosis-detail/${encodeURIComponent(diagnosisName)}`, {
       method: 'GET',
@@ -2684,18 +2699,18 @@ window.showStoredProcedureModalVerificator = async function(procedureName) {
       throw new Error('Claim ID tidak ditemukan');
     }
 
-    // Show loading modal
-    openModal(
-      `<div class="flex items-center">
-        <span class="text-lg font-bold">🔧 Detail Tindakan: ${procedureName}</span>
-        <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">READ-ONLY</span>
-      </div>`,
-      `<div class="text-center py-8">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data tindakan...</p>
-      </div>`,
-      { hideDefaultClose: false }
-    );
+    // tampilkan loading langsung di kontainer
+    const container = document.getElementById("modalContainer");
+    if (container) {
+      container.classList.remove("hidden");
+      container.innerHTML = `
+        <div class="modal-content p-6 text-center bg-white dark:bg-slate-800 rounded-xl shadow-lg">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p class="mt-2 text-gray-600 dark:text-gray-400">Memuat data diagnosis...</p>
+        </div>
+      `;
+    }
+
     
     const response = await fetch(`/claims/${claimId}/stored-procedure-detail/${encodeURIComponent(procedureName)}`, {
       method: 'GET',
@@ -2807,143 +2822,131 @@ window.showStoredRegulationModalVerificator = async function(fieldName, context 
  */
 function renderDiagnosisDetailReadOnly(data) {
   console.log("📋 [VERIFICATOR] renderDiagnosisDetailReadOnly received data:", data);
-  
-  // Extract data from stored format
-  const diagnosisName = data.diagnosis_name || data.name || "";
-  const diagnosisId = data.diagnosis_id || data.id
-  
-  // Get diagnosis detail from the correct nested structure
-  const detail = data.diagnosis_detail || {};
 
-  // ✅ PATCH: kalau diagnosis_detail kosong tapi field langsung di root, ambil dari root
-  if (Object.keys(detail).length === 0 && data.justifikasi) {
-    console.log("🩹 [PATCH] Flattened data detected, using root-level fields for read-only view");
-    Object.assign(detail, data);
-  }
+  const detail = data.data || {};
+  const klinis = detail.klinis || {};
+  const icd10 = detail.icd10 || {};
+  const faskes = detail.faskes || {};
+  const rawat = detail.rawat_inap || {};
+  const rujukan = detail.rujukan || {};
+  const inacbg = detail.inaCbg || {};
+  const idrg = detail.idrg_prediction || {};
+  const regulasi = detail.regulasi || [];
 
-  
-  // Build the structure similar to doctor but from database
-  const klinis = {
-    justifikasi: detail.justifikasi || "",
-    bukti_klinis: detail.bukti_klinis || "", 
-    syarat_klinis: detail.syarat_klinis || "",
-    status: "readonly"
-  };
+  // reusable field renderer
+  const fieldRow = (label, value, fieldName = null, context = "diagnosis", diagnosisId = null) => {
+    const safeValue = value && value !== "" ? value : "-";
 
-  const icd10 = {
-    kode_icd: detail.icd10_code || "",
-    struktur_icd10: detail.struktur_icd10 || "",
-    kode_ganda: detail.kode_ganda || "",
-    z_code: detail.z_code || "",
-    kode_bpjs_khusus: detail.kode_bpjs_khusus || "",
-    status_icd: "readonly"
-  };
+    // aktifkan klik kalau field punya regulasi
+    const isClickable =
+      fieldName && checkFieldHasRegulation(fieldName) && safeValue !== "-";
 
-  const tindakan = data.tindakan || [];
-  const regulasi = data.regulasi || [];
-  const idrg_data = data.idrg_data || null;
+    const clickableSpan = isClickable
+      ? `<span class="cursor-pointer hover:underline hover:text-blue-600"
+                title="📋 Klik untuk melihat regulasi ${fieldName}"
+                data-field="${fieldName}"
+                data-diagnosis-id="${diagnosisId || ''}"
+                onclick="window.showStoredRegulationModalVerificator('${fieldName}', '${context}')">${safeValue}</span>`
+      : safeValue;
 
-  // Read-only version of renderBox - no onClick for regulations
-  const renderBoxReadOnly = (label, value, status = "readonly", diagnosisId = null, fieldName = null) => {
-    let colorClass = "bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
-    
-    const safeValue = value || "-";
-    console.log(`📋 [VERIFICATOR] renderBoxReadOnly(${label}): value="${value}", safeValue="${safeValue}"`);
-
-    const hasRegulation = checkFieldHasRegulation(fieldName);
-    
-    let content = safeValue;
-    if (hasRegulation && diagnosisId && safeValue !== "") {
-      // Clickable for regulations but read-only context
-      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200" 
-                  title="📋 Klik untuk melihat regulasi ${fieldName} (Read-Only)" 
-                  data-field="${fieldName}"
-                  data-diagnosis-id="${diagnosisId}"
-                  onclick="window.showStoredRegulationModalVerificator('${fieldName}', 'diagnosis')">${safeValue}</span>`;
-    }
-    
     return `
-      <div class="grid grid-cols-2">
-        <div class="bg-slate-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 font-medium">${label}</div>
-        <div class="${colorClass} px-3 py-2">${content}</div>
-      </div>
-    `;
-  };
-
-  // Read-only notification box
-  const renderNotificationBoxReadOnly = (section) => {
-    return `
-      <div class="notification-box bg-blue-50 border-blue-400 text-blue-700 border-l-4 p-2 rounded mb-2 text-sm flex items-start gap-2">
-        <span class="text-lg">👁️</span>
-        <div>
-          <strong>Mode Read-Only</strong>
-          <div class="text-xs leading-snug mt-0.5">Data ini telah disimpan oleh doctor dan hanya bisa dilihat.</div>
+      <div class="grid grid-cols-2 border-b border-gray-200 dark:border-gray-700">
+        <div class="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 font-medium">${label}</div>
+        <div class="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 border-l border-gray-100 dark:border-gray-600">
+          ${clickableSpan}
         </div>
       </div>
     `;
   };
 
+
+  const section = (title, rows, color = "blue") => `
+    <section class="rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="px-4 py-2 font-bold text-white bg-gradient-to-r from-${color}-600 to-${color}-500">${title}</div>
+      <div class="bg-white dark:bg-gray-800">${rows}</div>
+    </section>
+  `;
+
+  const infoBox = (text, icon = "👁️") => `
+    <div class="flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border-l-4 border-blue-400 p-3 rounded mb-3">
+      <span class="text-lg">${icon}</span>
+      <div class="text-sm leading-snug">${text}</div>
+    </div>
+  `;
+
   return `
-    <div class="space-y-6 text-sm">
-      <!-- Read-Only Notice -->
-      <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-l-4 border-blue-500">
+    <div class="space-y-6 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+      <!-- Header -->
+      <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border-l-4 border-blue-500">
         <div class="flex items-center">
-          <span class="text-blue-600 text-lg mr-2">👁️</span>
+          <span class="text-blue-600 dark:text-blue-300 text-lg mr-2">👁️</span>
           <div>
-            <h4 class="font-semibold text-blue-900 dark:text-blue-300">Mode Read-Only Verificator</h4>
-            <p class="text-blue-800 dark:text-blue-400 text-sm">Data ini telah disimpan oleh doctor dan hanya bisa dilihat oleh verificator</p>
+            <h4 class="font-semibold text-blue-900 dark:text-blue-200">Mode Read-Only Verifikator</h4>
+            <p class="text-blue-800 dark:text-blue-400 text-xs">Data ini ditampilkan persis seperti hasil analisis dokter.</p>
           </div>
         </div>
       </div>
 
-      <!-- 🩺 KLINIS -->
-      <section class="rounded shadow overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 font-bold">KLINIS</div>
-        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
-          ${renderNotificationBoxReadOnly("klinis")}
-          ${renderBoxReadOnly("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi")}
-          ${renderBoxReadOnly("Bukti Klinis", klinis.bukti_klinis, null, null, "bukti_klinis")}
-          ${renderBoxReadOnly("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis")}
-        </div>
-      </section>
+      ${section("KLINIS", `
+        ${infoBox("Justifikasi, bukti, dan syarat klinis yang disimpan dokter.")}
+        ${fieldRow("Justifikasi", klinis.justifikasi)}
+        ${fieldRow("Bukti Klinis", klinis.bukti_klinis)}
+        ${fieldRow("Syarat Klinis", klinis.syarat_klinis)}
+      `)}
 
-      <!-- 🧾 ICD-10 -->
-      <section class="rounded shadow overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 font-bold">ICD-10</div>
-        <div class="space-y-2 p-3 bg-gray-100 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
-          ${renderNotificationBoxReadOnly("icd")}
-          ${renderBoxReadOnly("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd")}
-          ${renderBoxReadOnly("Struktur ICD 10", icd10.struktur_icd10, icd10.status_icd, diagnosisId, "struktur_icd10")}
-          ${renderBoxReadOnly("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda")}
-          ${renderBoxReadOnly("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code")}
-          ${renderBoxReadOnly("Kode Khusus BPJS", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus")}
-        </div>
-      </section>
+      ${section("ICD-10", `
+        ${fieldRow("Kode ICD-10", icd10.kode_icd)}
+        ${fieldRow("Kode Ganda", icd10.kode_ganda)}
+        ${fieldRow("Z-Code", icd10.z_code)}
+        ${fieldRow("Kode Khusus BPJS", icd10.kode_bpjs_khusus)}
+      `)}
 
-      <!-- 📊 i-DRG (From Database) -->
-      ${renderIdrgSectionReadOnly(idrg_data)}
+      ${section("FAKTOR FASKES", `
+        ${fieldRow("Tingkat Faskes", faskes.tingkat)}
+        ${fieldRow("Justifikasi Faskes", faskes.justifikasi)}
+        ${fieldRow("Kompetensi Faskes", faskes.kompetensi)}
+      `)}
 
-      <!-- ⚙️ TINDAKAN -->
-      <section class="rounded shadow overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 font-bold">TINDAKAN</div>
-        <div class="p-3 bg-gray-100 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
-          ${renderNotificationBoxReadOnly("tindakan")}
-          ${renderTindakanReadOnly(tindakan)}
-        </div>
-      </section>
+      ${section("RAWAT INAP", `
+        ${fieldRow("Lama Rawat", rawat.lama_rawat)}
+        ${fieldRow("Indikasi Rawat", rawat.indikasi)}
+        ${fieldRow("Kriteria Rawat", rawat.kriteria)}
+      `)}
 
-      <!-- 📋 REGULASI -->
-      ${regulasi.length > 0 ? `
-      <section class="rounded shadow overflow-hidden">
-        <div class="bg-yellow-600 text-white px-3 py-2 font-bold">REGULASI TERKAIT</div>
-        <div class="p-3 bg-gray-100 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
-          ${renderRegulatiListReadOnly(regulasi)}
-        </div>
-      </section>` : ''}
+      ${section("RUJUKAN", `
+        ${fieldRow("Indikasi Rujukan", rujukan.indikasi)}
+        ${fieldRow("Kriteria Rujukan", rujukan.kriteria)}
+        ${fieldRow("Tujuan Rujukan", rujukan.tujuan)}
+      `)}
 
+      ${section("INA-CBG", `
+        ${fieldRow("Kode INA-CBG", inacbg.kode)}
+        ${fieldRow("Deskripsi", inacbg.deskripsi)}
+        ${fieldRow("Tarif", inacbg.tarif)}
+      `)}
+
+      ${idrg && Object.keys(idrg).length > 0 ? section("i-DRG", `
+        ${fieldRow("Group IDRG", idrg.group_idrg)}
+        ${fieldRow("Severity Index", idrg.severity_index)}
+        ${fieldRow("Estimasi Tarif", idrg.estimasi_tarif)}
+        ${fieldRow("Gap Analysis", idrg.gap_analysis)}
+        ${fieldRow("Checklist", (idrg.checklist || []).join("<br>"))}
+        ${fieldRow("Faktor Severity", (idrg.faktor_severity || []).join("<br>"))}
+      `) : ""}
+
+      ${regulasi && regulasi.length > 0 ? section("REGULASI TERKAIT", `
+        ${regulasi.map(r => `
+          <div class="p-2 border-b border-gray-200 dark:border-gray-700">
+            <div class="font-semibold text-yellow-700 dark:text-yellow-300">${r.judul}</div>
+            <div class="text-xs text-gray-700 dark:text-gray-400">${r.isi || "-"}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-500">${r.dasar_hukum || ""} ${r.bab_pasal || ""}</div>
+          </div>
+        `).join("")}
+      `, "yellow") : ""}
     </div>
   `;
 }
+
 
 /**
  * 🎨 Render procedure detail in read-only mode for verificator
@@ -2975,11 +2978,16 @@ function renderProcedureDetailReadOnly(data) {
     }
 
     return `
-      <div class="grid grid-cols-2">
-        <div class="bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white px-3 py-2"><b>${label}:</b></div>
-        <div class="bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100 px-3 py-2">${content}</div>
+      <div class="flex flex-col bg-white rounded-lg shadow-sm ring-1 ring-gray-100 overflow-hidden">
+        <div class="px-3 py-2 text-gray-700 font-medium bg-gray-50">${label}</div>
+        <div class="px-3 py-2 text-gray-900">${content}</div>
       </div>
     `;
+
+
+
+
+
   };
 
   return `
@@ -2996,7 +3004,7 @@ function renderProcedureDetailReadOnly(data) {
       </div>
 
       <!-- Basic Info -->
-      <div class="grid grid-cols-2 gap-2 text-sm">
+      <div class="grid grid-cols-2 gap-3 text-sm bg-white">
         ${renderProcBoxReadOnly("Kode ICD-9", analysis.icd9_code || detail.icd9_code, "icd9_code")}
         ${renderProcBoxReadOnly("Deskripsi", procedureName, "icd9_desc")}
         ${renderProcBoxReadOnly("Validitas", analysis.validitas || detail.validitas, "validitas")}
@@ -3005,17 +3013,7 @@ function renderProcedureDetailReadOnly(data) {
         ${renderProcBoxReadOnly("Faskes", analysis.faskes_tindakan || detail.faskes_tindakan, "faskes")}
         ${renderProcBoxReadOnly("Rawat Inap", analysis.rawat_inap_tindakan || detail.rawat_inap_tindakan, "rawat_inap_tindakan")}
         ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis || detail.syarat_klinis, "syarat_klinis")}
-        ${renderProcBoxReadOnly("Syarat Klinis", analysis.syarat_klinis, "syarat_klinis")}
       </div>
-
-      <!-- Regulations -->
-      ${regulasi.length > 0 ? `
-      <section class="rounded shadow overflow-hidden">
-        <div class="bg-yellow-600 text-white px-3 py-2 font-bold">REGULASI TERKAIT</div>
-        <div class="p-3 bg-gray-100 dark:bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white">
-          ${renderRegulatiListReadOnly(regulasi)}
-        </div>
-      </section>` : ''}
     </div>
   `;
 }
@@ -3097,41 +3095,6 @@ function renderRegulationDetailReadOnly(data) {
 
   html += `</div>`;
   return html;
-}
-
-/**
- * 🎨 Helper functions for read-only rendering
- */
-function renderTindakanReadOnly(list) {
-  if (!list || list.length === 0) {
-    return `<div class="italic text-gray-500">Tidak ada tindakan tersimpan</div>`;
-  }
-
-  return list.map(td => {
-    const nama = td.name || td.procedure_text || td.tindakan || "";
-    const stage = td.stage || "";
-    const type = td.procedure_type || td.type || "";
-    
-    return `
-    <div class="grid grid-cols-3 gap-4 items-center bg-white text-gray-900 dark:bg-slate-800 dark:text-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-slate-200 dark:border-slate-700 mb-3"
-        data-procid="${procId}">
-      <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
-          onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
-      <div>
-        <span class="block px-3 py-1 text-sm font-medium bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white rounded shadow-sm whitespace-nowrap overflow-hidden text-ellipsis"
-              title="${description}">${"&nbsp;"}</span>
-      </div>
-      <div class="flex space-x-2 justify-end">
-        <button type="button"
-                onclick="updateSimulasi('tindakan','Primary','${nama}','Manual', window.claimState.tab)"
-                class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">Pilih Utama</button>
-        <button type="button"
-                onclick="updateSimulasi('tindakan','Secondary','${nama}','Manual', window.claimState.tab)"
-                class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">Pilih Sekunder</button>
-      </div>
-    </div>
-  `;
-  }).join("");
 }
 
 function renderRegulatiListReadOnly(regulations) {

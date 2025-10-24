@@ -69,14 +69,22 @@ def store_ai_recommendations(
                 db.add(sim)
                 db.flush()
 
-            # 🔥 Hapus data lama: rekomendasi & diagnosis hasil AI sebelumnya
-            db.query(models.ClaimAIRecommendation).filter_by(
-                claim_id=claim_id, stage=stage, is_deleted=False
-            ).delete()
+            # Soft-clearing old AI data    
 
-            db.query(models.ClaimDiagnosis).filter_by(
+            print(f"[AI STORAGE] Soft-clearing old AI data for claim {claim_id}")
+            old_recs = db.query(models.ClaimAIRecommendation).filter_by(
+                claim_id=claim_id, stage=stage, is_deleted=False
+            ).all()
+            for rec in old_recs:
+                rec.is_deleted = True
+                rec.updated_at = datetime.utcnow()
+
+            old_diags = db.query(models.ClaimDiagnosis).filter_by(
                 claim_id=claim_id, diagnosis_source="ai", is_deleted=False
-            ).delete()
+            ).all()
+            for diag in old_diags:
+                diag.is_deleted = True
+                diag.updated_at = datetime.utcnow()
 
             db.commit()
 
@@ -315,23 +323,52 @@ def store_ai_recommendations(
                 print(f"[AI STORAGE] ⚠️ Skipped storing procedure because text is empty")
                 return  # jangan insert kalau kosong
 
-            proc = models.ClaimProcedure(
-                claim_id=claim_id,
-                procedure_text=procedure_text.strip(),
-                procedure_source=ai_data.get("procedure_source"),
-                requirement_flag=False,
-                stage=stage,
-                is_deleted=False,
-                is_dummy=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(proc)
-            db.flush()
+            # ✅ pastikan tidak duplikat & source selalu "ai"
+            existing_proc = db.query(models.ClaimProcedure).filter(
+                models.ClaimProcedure.claim_id == claim_id,
+                models.ClaimProcedure.procedure_text == procedure_text.strip(),
+                models.ClaimProcedure.procedure_source == "ai",
+                models.ClaimProcedure.is_deleted == False,
+            ).first()
 
-            # 🔁 Inject procedure_id ke ai_data agar bisa dipakai saat simpan regulasi
-            ai_data["procedure_id"] = proc.id
-            print(f"[AI STORAGE] Injected procedure_id={proc.id} into ai_data for later use")
+            icd9_code = ai_data.get("icd9_code")
+            if isinstance(icd9_code, str) and "," in icd9_code:
+                icd9_code = icd9_code.split(",")[0].strip()
+            elif isinstance(icd9_code, list):
+                icd9_code = icd9_code[0]
+
+            if not existing_proc:
+                proc = models.ClaimProcedure(
+                    claim_id=claim_id,
+                    procedure_text=procedure_text.strip(),
+                    procedure_source="ai",  # ✅ hardcode AI di sini
+                    icd9_code=icd9_code,
+                    requirement_flag=False,
+                    stage=stage,
+                    is_deleted=False,
+                    is_dummy=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(proc)
+                db.flush()
+                print(f"[AI STORAGE] Inserted new AI procedure: {procedure_text} (ID {proc.id})")
+
+                # Tambahkan detail ICD-9
+                if icd9_code:
+                    db.add(models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=icd9_code,
+                        deskripsi_tindakan=f"ICD-9: {icd9_code}",
+                        is_deleted=False,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                    ))
+            else:
+                existing_proc.icd9_code = icd9_code or existing_proc.icd9_code
+                existing_proc.updated_at = datetime.utcnow()
+                print(f"[AI STORAGE] Updated existing AI procedure: {procedure_text}")
+
 
 
         # ============================================================

@@ -1153,7 +1153,13 @@ async def update_claim_draft(
     """Update draft klaim oleh dokter - DENGAN MEMPERTAHANKAN GROUP_ID"""
     try:
         # Parse JSON payload
+        print(f"[UPDATE_DRAFT] Raw payload type: {type(payload)}")
+        print(f"[UPDATE_DRAFT] Raw payload value (first 300 chars): {str(payload)[:300]}")
+
         payload_dict = json.loads(payload)
+
+        print(f"[UPDATE_DRAFT] Parsed keys: {list(payload_dict.keys())}")
+
 
         ai_recommendations = payload_dict.get("ai_recommendations")
         stage = payload_dict.get("stage", "admission")
@@ -1711,22 +1717,6 @@ async def analyze_procedure(
         # ======================================================
         # 2️⃣ STORE / UPDATE PROCEDURE DETAIL (anti-duplikat)
         # ======================================================
-        simulation = db.query(models.ClaimSimulation).filter_by(
-            claim_id=cid, stage=stage, is_deleted=False
-        ).first()
-
-        if not simulation:
-            simulation = models.ClaimSimulation(
-                claim_id=cid,
-                stage=stage,
-                is_deleted=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(simulation)
-            db.flush()
-            print(f"[ANALYZE_PROCEDURE] Created simulation record for stage {stage}")
-
         desc_parts = []
         # Fallback: handle format AI yang beda-beda
         icd9_val = result.get("icd9_code") or result.get("icd9") or result.get("data", {}).get("icd9")
@@ -1740,7 +1730,6 @@ async def analyze_procedure(
 
 
         detail = db.query(models.ClaimProcedureDetail).filter_by(
-            claim_simulation_id=simulation.id,
             procedure_id=procedure.id,
             is_deleted=False
         ).first()
@@ -1758,7 +1747,6 @@ async def analyze_procedure(
             print(f"[ANALYZE_PROCEDURE] Updated ClaimProcedureDetail (id={detail.id})")
         else:
             new_detail = models.ClaimProcedureDetail(
-                claim_simulation_id=simulation.id,
                 procedure_id=procedure.id,
                 icd9_tindakan=result.get("icd9_code", ""),
                 validitas_tindakan=result.get("validitas", ""),
@@ -3489,10 +3477,12 @@ async def get_stored_diagnosis_detail(
     """
     Read-only endpoint untuk verificator - mengambil detail diagnosis yang sudah disimpan doctor.
     Jika data di DB kosong, fallback otomatis ke core_engine (AI) untuk ditampilkan.
+    Struktur hasil disamakan dengan /analyze_diagnosis milik dokter.
     """
     try:
         print(f"[STORED_DIAGNOSIS_DETAIL] Loading stored data for claim {claim_id}, diagnosis: {diagnosis_name}")
 
+        # 🔍 Ambil diagnosis di DB
         diagnosis = db.query(models.ClaimDiagnosis).filter(
             models.ClaimDiagnosis.claim_id == claim_id,
             models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis_name}%"),
@@ -3502,42 +3492,33 @@ async def get_stored_diagnosis_detail(
         if not diagnosis:
             raise HTTPException(status_code=404, detail=f"Stored diagnosis '{diagnosis_name}' not found")
 
+        # 🔍 Ambil tarif INA-CBG (kalau ada)
+        tariff = db.query(models.ClaimTariff).filter_by(
+            claim_id=claim_id,
+            is_deleted=False
+        ).order_by(models.ClaimTariff.updated_at.desc()).first()
+
         # ==== kalau data klinis kosong, auto fallback ke AI ====
         is_empty = not (diagnosis.justifikasi_klinis or diagnosis.syarat_klinis or diagnosis.bukti_klinis)
         if is_empty:
             try:
                 print("[STORED_DIAGNOSIS_DETAIL] ⚠️ Empty record, requesting AI fallback...")
-                payload = {"claim_id": claim_id, "disease_name": diagnosis_name, "stage": "admission"}
                 from ..services import claim_ai
+                payload = {"claim_id": claim_id, "disease_name": diagnosis_name, "stage": "admission"}
                 ai_result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
                 print("[STORED_DIAGNOSIS_DETAIL] ✅ Got AI fallback result")
 
-                # merge hasil AI ke result
-                # flatten hasil AI langsung ke root, biar FE bisa render
                 flattened = ai_result.get("data") if isinstance(ai_result, dict) and "data" in ai_result else ai_result
-                # 🔹 Ekstra flatten manual biar field-field sesuai struktur FE lama
                 flat_result = {
-                    "justifikasi": flattened.get("faskes", {}).get("justifikasi", "-"),
-                    "bukti_klinis": flattened.get("klinis", {}).get("bukti_klinis", "-"),
-                    "syarat_klinis": flattened.get("klinis", {}).get("syarat_klinis", "-"),
-                    "icd10_code": flattened.get("icd10", {}).get("kode_icd", "-"),
-                    "struktur_icd10": flattened.get("icd10", {}).get("struktur_icd10", "-"),
-                    "kode_ganda": flattened.get("icd10", {}).get("kode_bpjs_khusus", "-"),
-                    "z_code": flattened.get("icd10", {}).get("z_code", "-"),
-                    "ina_cbg": flattened.get("inacbg", {}).get("tarif", "-"),
-                }
-
-                print("[FALLBACK_FLAT_RESULT]", flat_result)
-                
-                return {
-                    **flat_result,
                     "status": "success",
                     "mode": "ai_fallback",
                     "claim_id": claim_id,
                     "diagnosis_name": diagnosis_name,
                     "read_only_mode": True,
-                    "message": "⚙️ Data kosong, diambil langsung dari AI (flattened untuk FE)"
+                    "message": "⚙️ Data kosong, diambil langsung dari AI (flattened untuk FE)",
+                    "data": flattened,
                 }
+                return flat_result
 
             except Exception as e:
                 print(f"[STORED_DIAGNOSIS_DETAIL] ❌ AI fallback failed: {e}")
@@ -3545,23 +3526,47 @@ async def get_stored_diagnosis_detail(
         print(f"[STORED_DIAGNOSIS_DETAIL] is_empty? {is_empty}")
 
         # ==== kalau data ada, kirim dari DB ====
+        print(f"[STORED_DIAGNOSIS_DETAIL] ✅ Sending stored data in doctor-like format")
+
         result = {
             "status": "success",
             "mode": "stored_data",
             "claim_id": claim_id,
             "diagnosis_name": diagnosis_name,
-            "diagnosis_detail": {
-                "diagnosis_text": diagnosis.diagnosis_text,
-                "icd10_code": diagnosis.icd10_code or "-",
-                "justifikasi": diagnosis.justifikasi_klinis or "Belum diisi oleh doctor",
-                "syarat_klinis": diagnosis.syarat_klinis or "Belum diisi oleh doctor",
-                "bukti_klinis": diagnosis.bukti_klinis or "Belum diisi oleh doctor",
-                "struktur_icd10": diagnosis.struktur_icd10 or "-",
-                "kode_ganda": diagnosis.kode_ganda or "-",
-                "z_code": diagnosis.z_code or "-"
-            },
             "read_only_mode": True,
-            "message": f"✅ Stored data loaded successfully for '{diagnosis_name}'"
+            "message": f"✅ Stored data loaded successfully for '{diagnosis_name}'",
+            "data": {   # 🔹 Struktur disamakan dengan analyze_diagnosis
+                "klinis": {
+                    "justifikasi": diagnosis.justifikasi_klinis or "Belum diisi oleh doctor",
+                    "bukti_klinis": diagnosis.bukti_klinis or "Belum diisi oleh doctor",
+                    "syarat_klinis": diagnosis.syarat_klinis or "Belum diisi oleh doctor",
+                },
+                "icd10": {
+                    "kode_icd": diagnosis.icd10_code or "-",
+                    "kode_ganda": diagnosis.kode_ganda_icd10 or "-",
+                    "z_code": diagnosis.z_code_icd10 or "-",
+                },
+                "faskes": {
+                    "tingkat": diagnosis.tingkat_faskes or "-",
+                    "justifikasi": diagnosis.justifikasi_faskes or "-",
+                    "kompetensi": diagnosis.kompetensi_faskes or "-",
+                },
+                "rawat_inap": {
+                    "lama_rawat": diagnosis.lama_rawat_inap or "-",
+                    "indikasi": diagnosis.indikasi_rawat_inap or "-",
+                    "kriteria": diagnosis.kriteria_rawat_inap or "-",
+                },
+                "rujukan": {
+                    "indikasi": diagnosis.indikasi_rujukan or "-",
+                    "kriteria": diagnosis.kriteria_rujukan or "-",
+                    "tujuan": diagnosis.tujuan_rujukan or "-",
+                },
+                "inaCbg": {
+                    "kode": tariff.cbg_code if tariff else "-",
+                    "tarif": f"Rp{int(tariff.tariff_amount):,}".replace(",", ".") if tariff and tariff.tariff_amount else "-",
+                    "deskripsi": tariff.description if tariff else "-",
+                }
+            }
         }
 
         return result
@@ -3570,6 +3575,7 @@ async def get_stored_diagnosis_detail(
         raise
     except Exception as e:
         print(f"[STORED_DIAGNOSIS_DETAIL] ❌ Error: {str(e)}")
+        import traceback; traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to load stored diagnosis detail: {str(e)}")
 
 

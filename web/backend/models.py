@@ -336,7 +336,7 @@ class ClaimProcedure(Base):
         return self.procedure_details[0].description
 
     @property
-    def icd9_code(self):
+    def icd9_code_detail(self):
         """Ambil ICD-9 dari detail pertama jika ada."""
         if self.procedure_details and len(self.procedure_details) > 0:
             return self.procedure_details[0].icd9_tindakan
@@ -349,16 +349,12 @@ class ClaimProcedureDetail(Base):
     __tablename__ = "claim_procedure_details"
 
     id = Column(Integer, primary_key=True, index=True)
-    claim_simulation_id = Column(Integer, ForeignKey("claim_simulations.id", ondelete="CASCADE"), nullable=False)
-
-    # satu detail hanya milik satu simulation
-    simulation = relationship("ClaimSimulation", back_populates="procedure_details")
 
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=False)
     procedure = relationship("ClaimProcedure", back_populates="procedure_details")
 
     icd9_tindakan = Column(String, nullable=False)
-    validitas_tindakan = Column(String, nullable=False)
+    validitas_tindakan = Column(String, nullable=True)
     status_tindakan = Column(String, nullable=True)
     ina_cbg_tindakan = Column(Text, nullable=True)
     faskes_tindakan = Column(Text, nullable=True)
@@ -453,12 +449,6 @@ class ClaimSimulation(Base):
     diagnosis_sekunder = relationship("ClaimDiagnosis", foreign_keys=[diagnosis_sekunder_id])
     tindakan_utama = relationship("ClaimProcedure", foreign_keys=[tindakan_utama_id])
     tindakan_sekunder = relationship("ClaimProcedure", foreign_keys=[tindakan_sekunder_id])
-
-    procedure_details = relationship(
-        "ClaimProcedureDetail",
-        back_populates="simulation",
-        cascade="all, delete-orphan"
-    )
 
 # =========================================
 # Claim AI Recommendations Summary

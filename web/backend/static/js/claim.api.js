@@ -214,63 +214,89 @@
     }
   }
 
+  // util kecil: set token ke input & meta
+  function setCsrfTokenEverywhere(token) {
+    const input = document.querySelector('input[name="csrf_token"]');
+    const meta  = document.querySelector('meta[name="csrf-token"]');
+    if (input) input.value = token;
+    if (meta)  meta.setAttribute("content", token);
+  }
+
   // ============================================================
-  // 💾 Save Draft (with CSRF retry)
+  // 💾 Save Draft (with CSRF refresh & dual sink)
   // ============================================================
   async function saveDraft(claimId, data = null) {
     try {
-      const csrfInput = document.querySelector('input[name="csrf_token"]');
-      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfGeneric = document.querySelector('[name="csrf_token"]');
-      const csrfToken =
-        csrfInput?.value || csrfMeta?.content || csrfGeneric?.value;
+      const claimRoot = document.getElementById("claimRoot");
+      const state = claimRoot ? Alpine.$data(claimRoot) : window.claimState || {};
+
+      const csrfInput  = document.querySelector('input[name="csrf_token"]');
+      const csrfMeta   = document.querySelector('meta[name="csrf-token"]');
+      const csrfGeneric= document.querySelector('[name="csrf_token"]');
+      const csrfToken  = csrfInput?.value || csrfMeta?.content || csrfGeneric?.value;
+
+      if (!csrfToken) throw new Error("CSRF token required");
 
       const payload = data || get_form_as_dict();
+
       const formData = new FormData();
-
-      if (csrfToken) {
-        formData.append("csrf_token", csrfToken);
-      } else {
-        throw new Error("CSRF token required");
-      }
-
+      formData.append("csrf_token", csrfToken);           // ✔️ untuk dependency yang baca dari form field
       formData.append("payload", JSON.stringify(payload));
+
+      // === Inject mapping info sebelum kirim ke backend ===
+      Object.keys(state.simulasi || {}).forEach(tab => {
+        const sim = state.simulasi[tab];
+        if (!sim || typeof sim !== "object") return;
+        ["diagnosis","komorbid","komplikasi","tindakan"].forEach(tp => {
+          const arr = sim[tp];
+          if (Array.isArray(arr)) {
+            arr.forEach(it => {
+              if (sim.utama?.name === it.name) it.mapping = "Primary";
+              else if (sim.sekunder?.some(s => s.name === it.name)) it.mapping = "Secondary";
+              else if (sim.tindakanUtama?.name === it.name) it.mapping = "Primary Action";
+              else if (sim.tindakanSekunder?.some(s => s.name === it.name)) it.mapping = "Secondary Actions";
+              else delete it.mapping; // jgn isi apa2 kalau dokter gak pilih
+            });
+          }
+        });
+      });
 
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include",                            // ✔️ cookie session ikut
+        headers: { "X-CSRF-Token": csrfToken },           // (opsional) ✔️ untuk dependency yang baca dari header
         body: formData,
       });
 
       if (!res.ok) {
-      // kalau token invalid, coba refresh
-      if (res.status === 403) {
-        showToast("⏳ Refreshing CSRF token...", true);
-        const refresh = await fetch("/claims/csrf/refresh");
-        const data = await refresh.json();
-        document.querySelector('input[name="csrf_token"]').value = data.csrf_token;
-        showToast("🔁 CSRF token diperbarui, silakan simpan lagi");
+        // kalau token invalid, coba refresh
+        if (res.status === 403) {
+          showToast("⏳ Refreshing CSRF token...", true);
+          const refresh = await fetch("/claims/csrf/refresh", { credentials: "include" });
+          const data = await refresh.json();
+          if (data?.csrf_token) {
+            setCsrfTokenEverywhere(data.csrf_token);
+            showToast("🔁 CSRF token diperbarui, silakan simpan lagi");
+          }
+        }
+        throw new Error(`HTTP ${res.status}`);
       }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
+
       const result = await res.json();
       console.log("📥 Draft saved successfully:", result);
       showToast("✅ Draft berhasil disimpan");
-      // after success save
-      const newTokenRes = await fetch("/claims/csrf/refresh");
+
+      // Setelah sukses, perbarui token lagi (rotating token)
+      const newTokenRes = await fetch("/claims/csrf/refresh", { credentials: "include" });
       const newToken = await newTokenRes.json();
-      document.querySelector('input[name="csrf_token"]').value = newToken.csrf_token;
+      if (newToken?.csrf_token) setCsrfTokenEverywhere(newToken.csrf_token);
 
       return result;
-      // after success save
     } catch (err) {
       console.error("❌ Error save draft:", err);
       showToast(`Gagal menyimpan draft: ${err.message}`, true);
     }
   }
-  window.saveDraft = saveDraft;
-  window.get_form_as_dict = get_form_as_dict;
 
   // ============================================================
   // Helper: Form Extractor
@@ -300,7 +326,7 @@
           const transformedSimulasi = transformSimulasiForBackend(state.simulasi);
           console.log("🔄 [SAVE_DEBUG] Transformed simulasi:", transformedSimulasi);
           
-          result.simulasi = JSON.stringify(transformedSimulasi);
+          result.simulasi = transformedSimulasi
         }
         if (window.claimState && window.claimState.summary)
           result.summary = JSON.stringify(window.claimState.summary);
@@ -435,50 +461,40 @@
 
 
   // ============================================================
-// 🧾 Submit Verification (Coder)
-// ============================================================
-async function submitCoderVerification(claimId, payload) {
-  try {
-    const csrfToken =
-      document.querySelector('input[name="csrf_token"]')?.value ||
-      document.querySelector('meta[name="csrf-token"]')?.content;
+  // 🧾 Submit Verification (Coder)
+  // ============================================================
+  async function submitCoderVerification(claimId, payload) {
+    try {
+      const csrfToken =
+        document.querySelector('input[name="csrf_token"]')?.value ||
+        document.querySelector('meta[name="csrf-token"]')?.content;
 
-    const headers = { "Content-Type": "application/json" };
-    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      const headers = { "Content-Type": "application/json" };
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
-    const res = await fetch(`/claims/${claimId}/coder`, {
-      method: "POST",
-      headers,
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch(`/claims/${claimId}/coder`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("❌ Verification failed:", errText);
-      showToast("Gagal verifikasi klaim", true);
-      return null;
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("❌ Verification failed:", errText);
+        showToast("Gagal verifikasi klaim", true);
+        return null;
+      }
+
+      const data = await res.json();
+      console.log("✅ Verification success:", data);
+      showToast("✅ Verifikasi berhasil dikirim");
+      return data;
+    } catch (err) {
+      console.error("❌ Error submit verification:", err);
+      showToast("❌ Gagal kirim verifikasi", true);
     }
-
-    const data = await res.json();
-    console.log("✅ Verification success:", data);
-    showToast("✅ Verifikasi berhasil dikirim");
-    return data;
-  } catch (err) {
-    console.error("❌ Error submit verification:", err);
-    showToast("❌ Gagal kirim verifikasi", true);
   }
-}
-
-window.submitCoderVerification = submitCoderVerification;
-
-
-  // ============================================================
-  // Exports
-  // ============================================================
-  window.generateAI = generateAI;
-  window.generateSummary = generateSummary;
-  window.loadSimulations = loadSimulations;
   // ============================================================
   // � Rules Functions
   // ============================================================
@@ -618,6 +634,15 @@ window.submitCoderVerification = submitCoderVerification;
     return transformed;
   }
 
+  // ============================================================
+  // Exports
+  // ============================================================
+  window.generateAI = generateAI;
+  window.generateSummary = generateSummary;
+  window.loadSimulations = loadSimulations;
+  window.saveDraft = saveDraft;
+  window.get_form_as_dict = get_form_as_dict;
+  window.submitCoderVerification = submitCoderVerification;
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
   window.searchTindakan = searchTindakan;
