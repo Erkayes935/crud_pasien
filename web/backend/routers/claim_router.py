@@ -1907,14 +1907,21 @@ async def generate_claim_combos(
         ai.bulk_store_ai_results_from_core(db, cid, result)
 
         # 🔹 Step 3: simpan evaluasi diagnosis, tindakan, alternatif
-        if any(k in result for k in ["evaluasi_diagnosis", "evaluasi_tindakan", "alternatif"]):
+        core_data = (result.get("result") or result or {})
+        if isinstance(core_data, dict) and any(k in core_data for k in ["evaluasi_diagnosis", "evaluasi_tindakan", "alternatif"]):
             try:
                 print(f"[GENERATE_CLAIM_COMBOS] 🧠 Storing AI evaluations for claim {cid}")
-                ai.store_ai_evaluations(db, cid, result)
+                print("[DEBUG] Raw result keys:", list(core_data.keys()))
+                print("[DEBUG] Alternatif content:", core_data.get("alternatif"))
+
+                ai.store_ai_evaluations(db, cid, core_data)
                 print(f"[GENERATE_CLAIM_COMBOS] ✅ AI evaluations stored successfully")
             except Exception as e:
+                import traceback; traceback.print_exc()
                 print(f"[GENERATE_CLAIM_COMBOS] ⚠️ Failed to store evaluations: {e}")
-                # jangan raise error dulu, biar result utama tetap tersimpan
+                # jangan raise error dulu
+
+
 
         # 🔹 Step 4: alias untuk FE compatibility
         if "evaluasi_diagnosis" in result:
@@ -1972,25 +1979,93 @@ async def regulation_detail(
     - Jika `force_refresh=True`: panggil core_engine & update DB
     """
 
-    from backend import models
-
     try:
         field = payload.get("field")
         raw_scope = payload.get("scope", "diagnosis")
         scope = str(raw_scope).lower().strip()
         force_refresh = payload.get("force_refresh", False)
 
-        # 🔎 Ambil ID dari payload dan normalisasi
-        raw_id = payload.get("diagnosis_id") or payload.get("procedure_id") or payload.get("item_id")
-        item_id = None
-        if raw_id is not None:
-            try:
-                item_id = int(str(raw_id).strip())
-            except Exception:
-                item_id = None
+        print("\n[REGULATION_DETAIL] =============================")
+        print(f"[REGULATION_DETAIL] 🧾 Incoming payload: {payload}")
+        print(f"[REGULATION_DETAIL] 🔎 claim_id={claim_id}, field={field}, scope={scope}, force_refresh={force_refresh}")
 
-        print(f"\n[REGULATION_DETAIL] 🔍 Claim={claim_id} | Field={field} | Scope={scope} | Force Refresh={force_refresh}")
-        print(f"[REGULATION_DETAIL] ⚙️ Raw item_id={raw_id} | Normalized={item_id} | type={type(item_id)}")
+        # 🔧 inisialisasi item_id dasar
+        item_id = payload.get("diagnosis_id") or payload.get("procedure_id") or payload.get("item_id")
+        try:
+            item_id = int(str(item_id).strip()) if item_id else None
+        except Exception:
+            item_id = None
+        print(f"[REGULATION_DETAIL] 📦 Normalized item_id={item_id}")
+
+        # 🩹 PATCH 1: kalau FE kirim item_id='diagnosis_eval' tapi scope=diagnosis → ubah scope otomatis
+        if str(payload.get("item_id", "")).strip().lower() == "diagnosis_eval":
+            print("[REGULATION_DETAIL] ⚠️ item_id='diagnosis_eval' detected → ubah scope ke diagnosis_eval otomatis")
+            scope = "diagnosis_eval"
+
+        # ✅ FIXED DETECTION BLOCK (handle evaluation scope)
+        if (
+            scope in ["diagnosis_eval", "diagnosis_evaluation"]
+            or "diagnosis_evaluation_id" in payload
+            or "diagnosis_eval" in payload
+        ):
+            print(f"[REGULATION_DETAIL] 🔧 Detected evaluation-based context (scope={scope})")
+
+            # ambil ID evaluasi (support beberapa key sekaligus)
+            eval_id = (
+                payload.get("diagnosis_evaluation_id")
+                or payload.get("item_id")
+                or payload.get("diagnosis_eval")
+            )
+
+            # 🩹 PATCH 2: kalau FE kirim literal 'diagnosis_eval', cari ID evaluasi di DB
+            if str(eval_id).strip().lower() == "diagnosis_eval":
+                found_eval = (
+                    db.query(models.ClaimDiagnosisEvaluation.id)
+                    .filter(models.ClaimDiagnosisEvaluation.claim_id == claim_id)
+                    .filter(models.ClaimDiagnosisEvaluation.is_deleted == False)
+                    .first()
+                )
+                if found_eval:
+                    eval_id = found_eval[0]
+                    print(f"[REGULATION_DETAIL] 🔁 Auto-mapped 'diagnosis_eval' → evaluation_id={eval_id}")
+                else:
+                    print("[REGULATION_DETAIL] ⚠️ Tidak ditemukan ClaimDiagnosisEvaluation untuk claim ini")
+                    eval_id = None
+
+            try:
+                eval_id = int(str(eval_id).strip()) if eval_id else None
+            except Exception:
+                eval_id = None
+
+            print(f"[REGULATION_DETAIL] 📊 Evaluation ID normalized: {eval_id}")
+
+            if not eval_id:
+                raise HTTPException(status_code=400, detail="Missing or invalid diagnosis_evaluation_id")
+
+            # ambil regulasi yang terkait evaluasi ini
+            regs = db.query(models.ClaimRegulationDetail).filter(
+                models.ClaimRegulationDetail.claim_id == claim_id,
+                models.ClaimRegulationDetail.diagnosis_evaluation_id == eval_id,
+                models.ClaimRegulationDetail.is_deleted == False
+            ).all()
+
+            print(f"[REGULATION_DETAIL] ✅ Found {len(regs)} regs for diagnosis_evaluation_id={eval_id}")
+
+            return {
+                "status": "success",
+                "scope": "diagnosis_evaluation",
+                "message": f"{len(regs)} regulasi ditemukan untuk diagnosis_evaluation_id={eval_id}",
+                "data": [
+                    {
+                        "judul_regulasi": r.judul_regulasi,
+                        "dasar_hukum": r.dasar_hukum,
+                        "bab_pasal": r.bab_pasal,
+                        "isi": r.isi,
+                        "entry_field": r.entry_field
+                    }
+                    for r in regs
+                ]
+            }
 
 
         # ✅ Validasi bahwa ID tersebut memang milik klaim ini
