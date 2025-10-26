@@ -1,0 +1,1745 @@
+2025-10-24 09:49:48,470 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-24 09:49:49,706 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: Exception - Testing 500 handler
+Path: /force-error
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/main.py", line 52, in force_error
+    raise Exception("Testing 500 handler")
+Exception: Testing 500 handler
+
+2025-10-24 09:49:49,915 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-24T09:49:49.914908', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-24 09:49:57,497 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-24T09:49:57.497187', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/group', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('path', 'claim_id'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': 'group', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 00:57:48,448 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 01:10:51,032 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:10:51.032464', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 01:10:54,287 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-25 01:10:54,529 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-25 01:14:56,502 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:14:56.502746', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/141/move-to-group', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'missing', 'loc': ('body', 'target_group_id'), 'msg': 'Field required', 'input': None, 'url': 'https://errors.pydantic.dev/2.12/v/missing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 01:15:31,083 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-25 01:15:31,296 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-25 01:15:53,408 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-25 01:15:53,630 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-25 01:33:59,283 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 01:46:38,068 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:46:38.068351', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 01:46:53,059 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:46:53.059169', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 01:51:35,426 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 01:53:36,856 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 01:53:51,273 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:53:51.273794', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 01:53:56,714 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T01:53:56.714886', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:02:24,769 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 02:02:36,994 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:02:36.994334', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:04:47,106 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: TemplateSyntaxError - Unexpected end of template. Jinja was looking for the following tags: 'endblock'. The innermost block that needs to be closed is 'block'.
+Path: /medical-records
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/medical_record_router.py", line 71, in list_medical_records
+    return templates.TemplateResponse("medical_record_list.html", {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 112, in TemplateResponse
+    template = self.get_template(name)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 94, in get_template
+    return self.env.get_template(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1010, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 969, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 768, in compile
+    self.handle_exception(source=source_hint)
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/medical_record_list.html", line 242, in template
+    <a href="{{ url_for('dashboard') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: Unexpected end of template. Jinja was looking for the following tags: 'endblock'. The innermost block that needs to be closed is 'block'.
+
+2025-10-25 02:04:47,475 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:04:47.475729', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:04:52,760 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: TemplateSyntaxError - Unexpected end of template. Jinja was looking for the following tags: 'endblock'. The innermost block that needs to be closed is 'block'.
+Path: /medical-records
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/medical_record_router.py", line 71, in list_medical_records
+    return templates.TemplateResponse("medical_record_list.html", {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 112, in TemplateResponse
+    template = self.get_template(name)
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 94, in get_template
+    return self.env.get_template(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1010, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 969, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 768, in compile
+    self.handle_exception(source=source_hint)
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/medical_record_list.html", line 242, in template
+    <a href="{{ url_for('dashboard') }}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: Unexpected end of template. Jinja was looking for the following tags: 'endblock'. The innermost block that needs to be closed is 'block'.
+
+2025-10-25 02:04:52,997 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:04:52.996995', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:04:56,735 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:04:56.735278', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:10:47,494 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'min' is undefined
+Path: /medical-records
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/medical_record_router.py", line 71, in list_medical_records
+    return templates.TemplateResponse("medical_record_list.html", {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/medical_record_list.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/medical_record_list.html", line 217, in block 'content'
+    {% for i in range(2, min(4, total_pages)) %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/utils.py", line 83, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'min' is undefined
+
+2025-10-25 02:10:47,810 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:10:47.810797', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:11:07,934 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'min' is undefined
+Path: /medical-records
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/medical_record_router.py", line 71, in list_medical_records
+    return templates.TemplateResponse("medical_record_list.html", {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/medical_record_list.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/medical_record_list.html", line 217, in block 'content'
+    {% for i in range(2, min(4, total_pages)) %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/utils.py", line 83, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'min' is undefined
+
+2025-10-25 02:11:08,198 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:11:08.197870', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:11:26,092 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'min' is undefined
+Path: /medical-records
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/medical_record_router.py", line 71, in list_medical_records
+    return templates.TemplateResponse("medical_record_list.html", {
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/medical_record_list.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/medical_record_list.html", line 217, in block 'content'
+    {% for i in range(2, min(4, total_pages)) %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/utils.py", line 83, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'min' is undefined
+
+2025-10-25 02:11:26,387 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:11:26.387223', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:12:15,877 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:12:15.877649', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:27:22,604 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 02:28:05,178 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:28:05.178122', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:30:22,148 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:30:22.148043', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?workflow_status=&patient_name=Masitha&claim_id=&tanggal_kunjungan=&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:50:42,589 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:50:42.589263', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:51:49,317 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:51:49.317283', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=doctor_submitted&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:51:52,322 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:51:52.322805', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=draft&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:51:57,742 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:51:57.742540', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=&tanggal_kunjungan=&workflow_status=draft&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:56:36,847 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:56:36.847605', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=&tanggal_kunjungan=&workflow_status=draft&diagnosis=&tindakan=&doctor_name=&ai_status=error&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 02:56:54,231 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T02:56:54.231249', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:06:15,839 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:06:15.839393', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:06:44,066 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:06:44.066112', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:18:39,511 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:18:39.511200', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:18:55,064 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:18:55.064561', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_review&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:19:38,390 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 03:21:59,248 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:21:59.248386', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:22:02,432 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:22:02.431991', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_review&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:22:41,606 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - 'ClaimTariff' object has no attribute 'tariff_type'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 452, in list_claims
+    c.tarif_ina_cbg = _get_ina_cbg_tariff(c)
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in _get_ina_cbg_tariff
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in <genexpr>
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                                                          ^^^^^^^^^^^^^
+AttributeError: 'ClaimTariff' object has no attribute 'tariff_type'
+
+2025-10-25 03:24:53,369 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - 'ClaimTariff' object has no attribute 'tariff_type'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 452, in list_claims
+    c.tarif_ina_cbg = _get_ina_cbg_tariff(c)
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in _get_ina_cbg_tariff
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in <genexpr>
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                                                          ^^^^^^^^^^^^^
+AttributeError: 'ClaimTariff' object has no attribute 'tariff_type'
+
+2025-10-25 03:24:53,808 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:24:53.807894', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:40:43,312 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 03:40:59,440 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:40:59.440344', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:47:46,559 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 03:48:13,138 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T03:48:13.137842', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 03:51:01,181 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - 'ClaimTariff' object has no attribute 'tariff_type'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 452, in list_claims
+    c.tarif_ina_cbg = _get_ina_cbg_tariff(c)
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in _get_ina_cbg_tariff
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 3984, in <genexpr>
+    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                                                          ^^^^^^^^^^^^^
+AttributeError: 'ClaimTariff' object has no attribute 'tariff_type'
+
+2025-10-25 04:01:50,324 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 04:02:42,015 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 04:04:04,484 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T04:04:04.484540', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 04:04:07,000 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-25 04:04:07,215 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-25 04:05:38,944 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - 'ClaimTariff' object has no attribute 'tariff_type'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 453, in list_claims
+    c.tarif_rs = _get_rs_tariff(c)
+                 ^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 4005, in _get_rs_tariff
+    rs_tariff = next((t for t in claim.tariffs if "rs" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 4005, in <genexpr>
+    rs_tariff = next((t for t in claim.tariffs if "rs" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                                                           ^^^^^^^^^^^^^
+AttributeError: 'ClaimTariff' object has no attribute 'tariff_type'
+
+2025-10-25 04:06:29,982 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - 'ClaimTariff' object has no attribute 'tariff_type'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 453, in list_claims
+    c.tarif_rs = _get_rs_tariff(c)
+                 ^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 4005, in _get_rs_tariff
+    rs_tariff = next((t for t in claim.tariffs if "rs" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 4005, in <genexpr>
+    rs_tariff = next((t for t in claim.tariffs if "rs" in (t.tariff_type or "").lower() and not t.is_deleted), None)
+                                                           ^^^^^^^^^^^^^
+AttributeError: 'ClaimTariff' object has no attribute 'tariff_type'
+
+2025-10-25 04:09:09,798 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 04:11:12,667 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T04:11:12.665305', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 04:13:06,032 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T04:13:06.032108', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 04:13:34,048 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T04:13:34.047586', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 05:11:10,417 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: OperationalError - (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: SELECT anon_1.claims_id AS anon_1_claims_id, anon_1.claims_uuid AS anon_1_claims_uuid, anon_1.claims_claim_date AS anon_1_claims_claim_date, anon_1.claims_patient_id AS anon_1_claims_patient_id, anon_1.claims_visit_id AS anon_1_claims_visit_id, anon_1.claims_hospital_id AS anon_1_claims_hospital_id, anon_1.claims_medical_record_id AS anon_1_claims_medical_record_id, anon_1.claims_status AS anon_1_claims_status, anon_1.claims_is_final AS anon_1_claims_is_final, anon_1.claims_is_deleted AS anon_1_claims_is_deleted, anon_1.claims_is_dummy AS anon_1_claims_is_dummy, anon_1.claims_doctor_id AS anon_1_claims_doctor_id, anon_1.claims_doctor_name AS anon_1_claims_doctor_name, anon_1.claims_created_at AS anon_1_claims_created_at, anon_1.claims_updated_at AS anon_1_claims_updated_at, anon_1.claims_workflow_status AS anon_1_claims_workflow_status, anon_1.claims_doctor_submitted_by AS anon_1_claims_doctor_submitted_by, anon_1.claims_doctor_submitted_at AS anon_1_claims_doctor_submitted_at, anon_1.claims_coder_verified_by AS anon_1_claims_coder_verified_by, anon_1.claims_coder_verified_at AS anon_1_claims_coder_verified_at, anon_1.claims_finalized_by AS anon_1_claims_finalized_by, anon_1.claims_finalized_at AS anon_1_claims_finalized_at, anon_1.claims_ai_medical_resume AS anon_1_claims_ai_medical_resume, anon_1.claims_group_id AS anon_1_claims_group_id, patients_1.id AS patients_1_id, patients_1.uuid AS patients_1_uuid, patients_1.no_rm AS patients_1_no_rm, patients_1.no_ktp AS patients_1_no_ktp, patients_1.no_bpjs AS patients_1_no_bpjs, patients_1.nama AS patients_1_nama, patients_1.tanggal_lahir AS patients_1_tanggal_lahir, patients_1.alamat AS patients_1_alamat, patients_1.email AS patients_1_email, patients_1.no_hp AS patients_1_no_hp, patients_1.jenis_kelamin AS patients_1_jenis_kelamin, patients_1.eksternal_id AS patients_1_eksternal_id, patients_1.source AS patients_1_source, patients_1.hospital_id AS patients_1_hospital_id, patients_1.created_at AS patients_1_created_at, patients_1.updated_at AS patients_1_updated_at, patients_1.is_deleted AS patients_1_is_deleted, patients_1.is_dummy AS patients_1_is_dummy, visits_1.id AS visits_1_id, visits_1.uuid AS visits_1_uuid, visits_1.patient_id AS visits_1_patient_id, visits_1.hospital_id AS visits_1_hospital_id, visits_1.eksternal_id AS visits_1_eksternal_id, visits_1.sumber AS visits_1_sumber, visits_1.tanggal_kunjungan AS visits_1_tanggal_kunjungan, visits_1.jenis_kunjungan AS visits_1_jenis_kunjungan, visits_1.poli AS visits_1_poli, visits_1.doctor_id AS visits_1_doctor_id, visits_1.doctor_name AS visits_1_doctor_name, visits_1.created_at AS visits_1_created_at, visits_1.updated_at AS visits_1_updated_at, visits_1.is_deleted AS visits_1_is_deleted, visits_1.is_dummy AS visits_1_is_dummy, medical_records_1.id AS medical_records_1_id, medical_records_1.uuid AS medical_records_1_uuid, medical_records_1.record_type AS medical_records_1_record_type, medical_records_1.is_final AS medical_records_1_is_final, medical_records_1.notes_date AS medical_records_1_notes_date, medical_records_1.doctor_id AS medical_records_1_doctor_id, medical_records_1.doctor_name AS medical_records_1_doctor_name, medical_records_1.riwayat_penyakit AS medical_records_1_riwayat_penyakit, medical_records_1.riwayat_pengobatan AS medical_records_1_riwayat_pengobatan, medical_records_1.riwayat_operasi AS medical_records_1_riwayat_operasi, medical_records_1.alergi AS medical_records_1_alergi, medical_records_1.keluhan AS medical_records_1_keluhan, medical_records_1.gejala_lain AS medical_records_1_gejala_lain, medical_records_1.tekanan_darah AS medical_records_1_tekanan_darah, medical_records_1.nadi AS medical_records_1_nadi, medical_records_1.pernapasan AS medical_records_1_pernapasan, medical_records_1.suhu AS medical_records_1_suhu, medical_records_1.spo2 AS medical_records_1_spo2, medical_records_1.berat_badan AS medical_records_1_berat_badan, medical_records_1.tinggi_badan AS medical_records_1_tinggi_badan, medical_records_1.hemoglobin AS medical_records_1_hemoglobin, medical_records_1.leukosit AS medical_records_1_leukosit, medical_records_1.trombosit AS medical_records_1_trombosit, medical_records_1.gula_darah AS medical_records_1_gula_darah, medical_records_1.creatinin AS medical_records_1_creatinin, medical_records_1.rontgen_thorax AS medical_records_1_rontgen_thorax, medical_records_1.ct_scan AS medical_records_1_ct_scan, medical_records_1.usg AS medical_records_1_usg, medical_records_1.diagnosis_awal AS medical_records_1_diagnosis_awal, medical_records_1.komorbid AS medical_records_1_komorbid, medical_records_1.komplikasi AS medical_records_1_komplikasi, medical_records_1.diagnosis_akhir AS medical_records_1_diagnosis_akhir, medical_records_1.tindakan AS medical_records_1_tindakan, medical_records_1.obat AS medical_records_1_obat, medical_records_1.validasi_fornas AS medical_records_1_validasi_fornas, medical_records_1.notes_doctor AS medical_records_1_notes_doctor, medical_records_1.patient_id AS medical_records_1_patient_id, medical_records_1.visit_id AS medical_records_1_visit_id, medical_records_1.created_at AS medical_records_1_created_at, medical_records_1.updated_at AS medical_records_1_updated_at, medical_records_1.is_deleted AS medical_records_1_is_deleted, medical_records_1.is_dummy AS medical_records_1_is_dummy, claim_ai_recommendations_1.id AS claim_ai_recommendations_1_id, claim_ai_recommendations_1.claim_id AS claim_ai_recommendations_1_claim_id, claim_ai_recommendations_1.stage AS claim_ai_recommendations_1_stage, claim_ai_recommendations_1.category AS claim_ai_recommendations_1_category, claim_ai_recommendations_1.diagnosis_id AS claim_ai_recommendations_1_diagnosis_id, claim_ai_recommendations_1.confidence_score AS claim_ai_recommendations_1_confidence_score, claim_ai_recommendations_1.child AS claim_ai_recommendations_1_child, claim_ai_recommendations_1.created_at AS claim_ai_recommendations_1_created_at, claim_ai_recommendations_1.updated_at AS claim_ai_recommendations_1_updated_at, claim_ai_recommendations_1.is_deleted AS claim_ai_recommendations_1_is_deleted, claim_ai_recommendations_1.is_dummy AS claim_ai_recommendations_1_is_dummy, claim_diagnoses_1.id AS claim_diagnoses_1_id, claim_diagnoses_1.claim_id AS claim_diagnoses_1_claim_id, claim_diagnoses_1.diagnosis_type AS claim_diagnoses_1_diagnosis_type, claim_diagnoses_1.diagnosis_text AS claim_diagnoses_1_diagnosis_text, claim_diagnoses_1.diagnosis_source AS claim_diagnoses_1_diagnosis_source, claim_diagnoses_1.icd10_code AS claim_diagnoses_1_icd10_code, claim_diagnoses_1.justifikasi_klinis AS claim_diagnoses_1_justifikasi_klinis, claim_diagnoses_1.syarat_klinis AS claim_diagnoses_1_syarat_klinis, claim_diagnoses_1.bukti_klinis AS claim_diagnoses_1_bukti_klinis, claim_diagnoses_1.tingkat_faskes AS claim_diagnoses_1_tingkat_faskes, claim_diagnoses_1.justifikasi_faskes AS claim_diagnoses_1_justifikasi_faskes, claim_diagnoses_1.kompetensi_faskes AS claim_diagnoses_1_kompetensi_faskes, claim_diagnoses_1.kode_ganda_icd10 AS claim_diagnoses_1_kode_ganda_icd10, claim_diagnoses_1.z_code_icd10 AS claim_diagnoses_1_z_code_icd10, claim_diagnoses_1.kode_bpjs_khusus_icd10 AS claim_diagnoses_1_kode_bpjs_khusus_icd10, claim_diagnoses_1.klinis AS claim_diagnoses_1_klinis, claim_diagnoses_1.lama_rawat_inap AS claim_diagnoses_1_lama_rawat_inap, claim_diagnoses_1.kriteria_rawat_inap AS claim_diagnoses_1_kriteria_rawat_inap, claim_diagnoses_1.indikasi_rawat_inap AS claim_diagnoses_1_indikasi_rawat_inap, claim_diagnoses_1.indikasi_rujukan AS claim_diagnoses_1_indikasi_rujukan, claim_diagnoses_1.kriteria_rujukan AS claim_diagnoses_1_kriteria_rujukan, claim_diagnoses_1.tujuan_rujukan AS claim_diagnoses_1_tujuan_rujukan, claim_diagnoses_1.created_at AS claim_diagnoses_1_created_at, claim_diagnoses_1.updated_at AS claim_diagnoses_1_updated_at, claim_diagnoses_1.is_deleted AS claim_diagnoses_1_is_deleted, claim_diagnoses_1.is_dummy AS claim_diagnoses_1_is_dummy, claim_procedures_1.id AS claim_procedures_1_id, claim_procedures_1.claim_id AS claim_procedures_1_claim_id, claim_procedures_1.procedure_source AS claim_procedures_1_procedure_source, claim_procedures_1.procedure_text AS claim_procedures_1_procedure_text, claim_procedures_1.icd9_code AS claim_procedures_1_icd9_code, claim_procedures_1.requirement_flag AS claim_procedures_1_requirement_flag, claim_procedures_1.created_at AS claim_procedures_1_created_at, claim_procedures_1.updated_at AS claim_procedures_1_updated_at, claim_procedures_1.is_deleted AS claim_procedures_1_is_deleted, claim_procedures_1.is_dummy AS claim_procedures_1_is_dummy, claim_procedures_1.stage AS claim_procedures_1_stage, claim_procedures_1.icd9_final_by_coder AS claim_procedures_1_icd9_final_by_coder, claim_procedures_1.verified_by AS claim_procedures_1_verified_by, claim_procedures_1.verified_at AS claim_procedures_1_verified_at, claim_tariffs_1.id AS claim_tariffs_1_id, claim_tariffs_1.claim_id AS claim_tariffs_1_claim_id, claim_tariffs_1.cbg_code AS claim_tariffs_1_cbg_code, claim_tariffs_1.description AS claim_tariffs_1_description, claim_tariffs_1.tariff_amount AS claim_tariffs_1_tariff_amount, claim_tariffs_1.status AS claim_tariffs_1_status, claim_tariffs_1.created_at AS claim_tariffs_1_created_at, claim_tariffs_1.updated_at AS claim_tariffs_1_updated_at, claim_tariffs_1.is_deleted AS claim_tariffs_1_is_deleted, claim_tariffs_1.is_dummy AS claim_tariffs_1_is_dummy, claim_groups_1.id AS claim_groups_1_id, claim_groups_1.uuid AS claim_groups_1_uuid, claim_groups_1.kode_group AS claim_groups_1_kode_group, claim_groups_1.nama_group AS claim_groups_1_nama_group, claim_groups_1.deskripsi AS claim_groups_1_deskripsi, claim_groups_1.tanggal_mulai AS claim_groups_1_tanggal_mulai, claim_groups_1.tanggal_selesai AS claim_groups_1_tanggal_selesai, claim_groups_1.patient_id AS claim_groups_1_patient_id, claim_groups_1.hospital_id AS claim_groups_1_hospital_id, claim_groups_1.created_by AS claim_groups_1_created_by, claim_groups_1.created_at AS claim_groups_1_created_at, claim_groups_1.updated_at AS claim_groups_1_updated_at 
+FROM (SELECT claims.id AS claims_id, claims.uuid AS claims_uuid, claims.claim_date AS claims_claim_date, claims.patient_id AS claims_patient_id, claims.visit_id AS claims_visit_id, claims.hospital_id AS claims_hospital_id, claims.medical_record_id AS claims_medical_record_id, claims.status AS claims_status, claims.is_final AS claims_is_final, claims.is_deleted AS claims_is_deleted, claims.is_dummy AS claims_is_dummy, claims.doctor_id AS claims_doctor_id, claims.doctor_name AS claims_doctor_name, claims.created_at AS claims_created_at, claims.updated_at AS claims_updated_at, claims.workflow_status AS claims_workflow_status, claims.doctor_submitted_by AS claims_doctor_submitted_by, claims.doctor_submitted_at AS claims_doctor_submitted_at, claims.coder_verified_by AS claims_coder_verified_by, claims.coder_verified_at AS claims_coder_verified_at, claims.finalized_by AS claims_finalized_by, claims.finalized_at AS claims_finalized_at, claims.ai_medical_resume AS claims_ai_medical_resume, claims.group_id AS claims_group_id 
+FROM claims 
+WHERE claims.doctor_id = %(doctor_id_1)s ORDER BY claims.created_at DESC 
+ LIMIT %(param_1)s OFFSET %(param_2)s) AS anon_1 LEFT OUTER JOIN patients AS patients_1 ON patients_1.id = anon_1.claims_patient_id LEFT OUTER JOIN visits AS visits_1 ON visits_1.id = anon_1.claims_visit_id LEFT OUTER JOIN medical_records AS medical_records_1 ON medical_records_1.id = anon_1.claims_medical_record_id LEFT OUTER JOIN claim_ai_recommendations AS claim_ai_recommendations_1 ON anon_1.claims_id = claim_ai_recommendations_1.claim_id LEFT OUTER JOIN claim_diagnoses AS claim_diagnoses_1 ON anon_1.claims_id = claim_diagnoses_1.claim_id LEFT OUTER JOIN claim_procedures AS claim_procedures_1 ON anon_1.claims_id = claim_procedures_1.claim_id LEFT OUTER JOIN claim_tariffs AS claim_tariffs_1 ON anon_1.claims_id = claim_tariffs_1.claim_id LEFT OUTER JOIN claim_groups AS claim_groups_1 ON claim_groups_1.id = anon_1.claims_group_id ORDER BY anon_1.claims_created_at DESC]
+[parameters: {'doctor_id_1': 46, 'param_1': 20, 'param_2': 20}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 433, in list_claims
+    claims_raw = query.order_by(models.Claim.created_at.desc()).offset(offset).limit(limit).all()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: SELECT anon_1.claims_id AS anon_1_claims_id, anon_1.claims_uuid AS anon_1_claims_uuid, anon_1.claims_claim_date AS anon_1_claims_claim_date, anon_1.claims_patient_id AS anon_1_claims_patient_id, anon_1.claims_visit_id AS anon_1_claims_visit_id, anon_1.claims_hospital_id AS anon_1_claims_hospital_id, anon_1.claims_medical_record_id AS anon_1_claims_medical_record_id, anon_1.claims_status AS anon_1_claims_status, anon_1.claims_is_final AS anon_1_claims_is_final, anon_1.claims_is_deleted AS anon_1_claims_is_deleted, anon_1.claims_is_dummy AS anon_1_claims_is_dummy, anon_1.claims_doctor_id AS anon_1_claims_doctor_id, anon_1.claims_doctor_name AS anon_1_claims_doctor_name, anon_1.claims_created_at AS anon_1_claims_created_at, anon_1.claims_updated_at AS anon_1_claims_updated_at, anon_1.claims_workflow_status AS anon_1_claims_workflow_status, anon_1.claims_doctor_submitted_by AS anon_1_claims_doctor_submitted_by, anon_1.claims_doctor_submitted_at AS anon_1_claims_doctor_submitted_at, anon_1.claims_coder_verified_by AS anon_1_claims_coder_verified_by, anon_1.claims_coder_verified_at AS anon_1_claims_coder_verified_at, anon_1.claims_finalized_by AS anon_1_claims_finalized_by, anon_1.claims_finalized_at AS anon_1_claims_finalized_at, anon_1.claims_ai_medical_resume AS anon_1_claims_ai_medical_resume, anon_1.claims_group_id AS anon_1_claims_group_id, patients_1.id AS patients_1_id, patients_1.uuid AS patients_1_uuid, patients_1.no_rm AS patients_1_no_rm, patients_1.no_ktp AS patients_1_no_ktp, patients_1.no_bpjs AS patients_1_no_bpjs, patients_1.nama AS patients_1_nama, patients_1.tanggal_lahir AS patients_1_tanggal_lahir, patients_1.alamat AS patients_1_alamat, patients_1.email AS patients_1_email, patients_1.no_hp AS patients_1_no_hp, patients_1.jenis_kelamin AS patients_1_jenis_kelamin, patients_1.eksternal_id AS patients_1_eksternal_id, patients_1.source AS patients_1_source, patients_1.hospital_id AS patients_1_hospital_id, patients_1.created_at AS patients_1_created_at, patients_1.updated_at AS patients_1_updated_at, patients_1.is_deleted AS patients_1_is_deleted, patients_1.is_dummy AS patients_1_is_dummy, visits_1.id AS visits_1_id, visits_1.uuid AS visits_1_uuid, visits_1.patient_id AS visits_1_patient_id, visits_1.hospital_id AS visits_1_hospital_id, visits_1.eksternal_id AS visits_1_eksternal_id, visits_1.sumber AS visits_1_sumber, visits_1.tanggal_kunjungan AS visits_1_tanggal_kunjungan, visits_1.jenis_kunjungan AS visits_1_jenis_kunjungan, visits_1.poli AS visits_1_poli, visits_1.doctor_id AS visits_1_doctor_id, visits_1.doctor_name AS visits_1_doctor_name, visits_1.created_at AS visits_1_created_at, visits_1.updated_at AS visits_1_updated_at, visits_1.is_deleted AS visits_1_is_deleted, visits_1.is_dummy AS visits_1_is_dummy, medical_records_1.id AS medical_records_1_id, medical_records_1.uuid AS medical_records_1_uuid, medical_records_1.record_type AS medical_records_1_record_type, medical_records_1.is_final AS medical_records_1_is_final, medical_records_1.notes_date AS medical_records_1_notes_date, medical_records_1.doctor_id AS medical_records_1_doctor_id, medical_records_1.doctor_name AS medical_records_1_doctor_name, medical_records_1.riwayat_penyakit AS medical_records_1_riwayat_penyakit, medical_records_1.riwayat_pengobatan AS medical_records_1_riwayat_pengobatan, medical_records_1.riwayat_operasi AS medical_records_1_riwayat_operasi, medical_records_1.alergi AS medical_records_1_alergi, medical_records_1.keluhan AS medical_records_1_keluhan, medical_records_1.gejala_lain AS medical_records_1_gejala_lain, medical_records_1.tekanan_darah AS medical_records_1_tekanan_darah, medical_records_1.nadi AS medical_records_1_nadi, medical_records_1.pernapasan AS medical_records_1_pernapasan, medical_records_1.suhu AS medical_records_1_suhu, medical_records_1.spo2 AS medical_records_1_spo2, medical_records_1.berat_badan AS medical_records_1_berat_badan, medical_records_1.tinggi_badan AS medical_records_1_tinggi_badan, medical_records_1.hemoglobin AS medical_records_1_hemoglobin, medical_records_1.leukosit AS medical_records_1_leukosit, medical_records_1.trombosit AS medical_records_1_trombosit, medical_records_1.gula_darah AS medical_records_1_gula_darah, medical_records_1.creatinin AS medical_records_1_creatinin, medical_records_1.rontgen_thorax AS medical_records_1_rontgen_thorax, medical_records_1.ct_scan AS medical_records_1_ct_scan, medical_records_1.usg AS medical_records_1_usg, medical_records_1.diagnosis_awal AS medical_records_1_diagnosis_awal, medical_records_1.komorbid AS medical_records_1_komorbid, medical_records_1.komplikasi AS medical_records_1_komplikasi, medical_records_1.diagnosis_akhir AS medical_records_1_diagnosis_akhir, medical_records_1.tindakan AS medical_records_1_tindakan, medical_records_1.obat AS medical_records_1_obat, medical_records_1.validasi_fornas AS medical_records_1_validasi_fornas, medical_records_1.notes_doctor AS medical_records_1_notes_doctor, medical_records_1.patient_id AS medical_records_1_patient_id, medical_records_1.visit_id AS medical_records_1_visit_id, medical_records_1.created_at AS medical_records_1_created_at, medical_records_1.updated_at AS medical_records_1_updated_at, medical_records_1.is_deleted AS medical_records_1_is_deleted, medical_records_1.is_dummy AS medical_records_1_is_dummy, claim_ai_recommendations_1.id AS claim_ai_recommendations_1_id, claim_ai_recommendations_1.claim_id AS claim_ai_recommendations_1_claim_id, claim_ai_recommendations_1.stage AS claim_ai_recommendations_1_stage, claim_ai_recommendations_1.category AS claim_ai_recommendations_1_category, claim_ai_recommendations_1.diagnosis_id AS claim_ai_recommendations_1_diagnosis_id, claim_ai_recommendations_1.confidence_score AS claim_ai_recommendations_1_confidence_score, claim_ai_recommendations_1.child AS claim_ai_recommendations_1_child, claim_ai_recommendations_1.created_at AS claim_ai_recommendations_1_created_at, claim_ai_recommendations_1.updated_at AS claim_ai_recommendations_1_updated_at, claim_ai_recommendations_1.is_deleted AS claim_ai_recommendations_1_is_deleted, claim_ai_recommendations_1.is_dummy AS claim_ai_recommendations_1_is_dummy, claim_diagnoses_1.id AS claim_diagnoses_1_id, claim_diagnoses_1.claim_id AS claim_diagnoses_1_claim_id, claim_diagnoses_1.diagnosis_type AS claim_diagnoses_1_diagnosis_type, claim_diagnoses_1.diagnosis_text AS claim_diagnoses_1_diagnosis_text, claim_diagnoses_1.diagnosis_source AS claim_diagnoses_1_diagnosis_source, claim_diagnoses_1.icd10_code AS claim_diagnoses_1_icd10_code, claim_diagnoses_1.justifikasi_klinis AS claim_diagnoses_1_justifikasi_klinis, claim_diagnoses_1.syarat_klinis AS claim_diagnoses_1_syarat_klinis, claim_diagnoses_1.bukti_klinis AS claim_diagnoses_1_bukti_klinis, claim_diagnoses_1.tingkat_faskes AS claim_diagnoses_1_tingkat_faskes, claim_diagnoses_1.justifikasi_faskes AS claim_diagnoses_1_justifikasi_faskes, claim_diagnoses_1.kompetensi_faskes AS claim_diagnoses_1_kompetensi_faskes, claim_diagnoses_1.kode_ganda_icd10 AS claim_diagnoses_1_kode_ganda_icd10, claim_diagnoses_1.z_code_icd10 AS claim_diagnoses_1_z_code_icd10, claim_diagnoses_1.kode_bpjs_khusus_icd10 AS claim_diagnoses_1_kode_bpjs_khusus_icd10, claim_diagnoses_1.klinis AS claim_diagnoses_1_klinis, claim_diagnoses_1.lama_rawat_inap AS claim_diagnoses_1_lama_rawat_inap, claim_diagnoses_1.kriteria_rawat_inap AS claim_diagnoses_1_kriteria_rawat_inap, claim_diagnoses_1.indikasi_rawat_inap AS claim_diagnoses_1_indikasi_rawat_inap, claim_diagnoses_1.indikasi_rujukan AS claim_diagnoses_1_indikasi_rujukan, claim_diagnoses_1.kriteria_rujukan AS claim_diagnoses_1_kriteria_rujukan, claim_diagnoses_1.tujuan_rujukan AS claim_diagnoses_1_tujuan_rujukan, claim_diagnoses_1.created_at AS claim_diagnoses_1_created_at, claim_diagnoses_1.updated_at AS claim_diagnoses_1_updated_at, claim_diagnoses_1.is_deleted AS claim_diagnoses_1_is_deleted, claim_diagnoses_1.is_dummy AS claim_diagnoses_1_is_dummy, claim_procedures_1.id AS claim_procedures_1_id, claim_procedures_1.claim_id AS claim_procedures_1_claim_id, claim_procedures_1.procedure_source AS claim_procedures_1_procedure_source, claim_procedures_1.procedure_text AS claim_procedures_1_procedure_text, claim_procedures_1.icd9_code AS claim_procedures_1_icd9_code, claim_procedures_1.requirement_flag AS claim_procedures_1_requirement_flag, claim_procedures_1.created_at AS claim_procedures_1_created_at, claim_procedures_1.updated_at AS claim_procedures_1_updated_at, claim_procedures_1.is_deleted AS claim_procedures_1_is_deleted, claim_procedures_1.is_dummy AS claim_procedures_1_is_dummy, claim_procedures_1.stage AS claim_procedures_1_stage, claim_procedures_1.icd9_final_by_coder AS claim_procedures_1_icd9_final_by_coder, claim_procedures_1.verified_by AS claim_procedures_1_verified_by, claim_procedures_1.verified_at AS claim_procedures_1_verified_at, claim_tariffs_1.id AS claim_tariffs_1_id, claim_tariffs_1.claim_id AS claim_tariffs_1_claim_id, claim_tariffs_1.cbg_code AS claim_tariffs_1_cbg_code, claim_tariffs_1.description AS claim_tariffs_1_description, claim_tariffs_1.tariff_amount AS claim_tariffs_1_tariff_amount, claim_tariffs_1.status AS claim_tariffs_1_status, claim_tariffs_1.created_at AS claim_tariffs_1_created_at, claim_tariffs_1.updated_at AS claim_tariffs_1_updated_at, claim_tariffs_1.is_deleted AS claim_tariffs_1_is_deleted, claim_tariffs_1.is_dummy AS claim_tariffs_1_is_dummy, claim_groups_1.id AS claim_groups_1_id, claim_groups_1.uuid AS claim_groups_1_uuid, claim_groups_1.kode_group AS claim_groups_1_kode_group, claim_groups_1.nama_group AS claim_groups_1_nama_group, claim_groups_1.deskripsi AS claim_groups_1_deskripsi, claim_groups_1.tanggal_mulai AS claim_groups_1_tanggal_mulai, claim_groups_1.tanggal_selesai AS claim_groups_1_tanggal_selesai, claim_groups_1.patient_id AS claim_groups_1_patient_id, claim_groups_1.hospital_id AS claim_groups_1_hospital_id, claim_groups_1.created_by AS claim_groups_1_created_by, claim_groups_1.created_at AS claim_groups_1_created_at, claim_groups_1.updated_at AS claim_groups_1_updated_at 
+FROM (SELECT claims.id AS claims_id, claims.uuid AS claims_uuid, claims.claim_date AS claims_claim_date, claims.patient_id AS claims_patient_id, claims.visit_id AS claims_visit_id, claims.hospital_id AS claims_hospital_id, claims.medical_record_id AS claims_medical_record_id, claims.status AS claims_status, claims.is_final AS claims_is_final, claims.is_deleted AS claims_is_deleted, claims.is_dummy AS claims_is_dummy, claims.doctor_id AS claims_doctor_id, claims.doctor_name AS claims_doctor_name, claims.created_at AS claims_created_at, claims.updated_at AS claims_updated_at, claims.workflow_status AS claims_workflow_status, claims.doctor_submitted_by AS claims_doctor_submitted_by, claims.doctor_submitted_at AS claims_doctor_submitted_at, claims.coder_verified_by AS claims_coder_verified_by, claims.coder_verified_at AS claims_coder_verified_at, claims.finalized_by AS claims_finalized_by, claims.finalized_at AS claims_finalized_at, claims.ai_medical_resume AS claims_ai_medical_resume, claims.group_id AS claims_group_id 
+FROM claims 
+WHERE claims.doctor_id = %(doctor_id_1)s ORDER BY claims.created_at DESC 
+ LIMIT %(param_1)s OFFSET %(param_2)s) AS anon_1 LEFT OUTER JOIN patients AS patients_1 ON patients_1.id = anon_1.claims_patient_id LEFT OUTER JOIN visits AS visits_1 ON visits_1.id = anon_1.claims_visit_id LEFT OUTER JOIN medical_records AS medical_records_1 ON medical_records_1.id = anon_1.claims_medical_record_id LEFT OUTER JOIN claim_ai_recommendations AS claim_ai_recommendations_1 ON anon_1.claims_id = claim_ai_recommendations_1.claim_id LEFT OUTER JOIN claim_diagnoses AS claim_diagnoses_1 ON anon_1.claims_id = claim_diagnoses_1.claim_id LEFT OUTER JOIN claim_procedures AS claim_procedures_1 ON anon_1.claims_id = claim_procedures_1.claim_id LEFT OUTER JOIN claim_tariffs AS claim_tariffs_1 ON anon_1.claims_id = claim_tariffs_1.claim_id LEFT OUTER JOIN claim_groups AS claim_groups_1 ON claim_groups_1.id = anon_1.claims_group_id ORDER BY anon_1.claims_created_at DESC]
+[parameters: {'doctor_id_1': 46, 'param_1': 20, 'param_2': 20}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+2025-10-25 05:11:12,550 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T05:11:12.530455', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 06:56:00,895 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-25 06:56:02,102 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-25T06:56:02.102163', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-25 06:56:07,426 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-25 06:56:07,776 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 02:50:37,137 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 02:51:56,674 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T02:51:56.674390', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 02:52:00,107 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 02:52:00,359 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 02:52:36,271 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T02:52:36.271020', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/export', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('path', 'claim_id'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': 'export', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 02:52:43,400 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T02:52:43.399969', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 03:29:42,851 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 03:29:57,577 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 03:31:10,852 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'backend.models.Claim object' has no attribute 'ai_status'
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 456, in list_claims
+    return templates.TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_list.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_list.html", line 81, in block 'content'
+    {% set total_ai_alerts = claims|sum(attribute='ai_status.total_count') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/async_utils.py", line 45, in wrapper
+    return normal_func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/filters.py", line 1295, in sync_do_sum
+    return sum(iterable, start)  # type: ignore[no-any-return, call-overload]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/filters.py", line 70, in attrgetter
+    item = environment.getitem(item, part)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 466, in getitem
+    return obj[argument]
+           ~~~^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'backend.models.Claim object' has no attribute 'ai_status'
+
+2025-10-26 03:31:11,931 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T03:31:11.931431', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 03:32:07,854 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 03:39:30,410 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 03:56:00,741 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: NameError - name '_get_primary_diagnosis_from_list' is not defined
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 529, in list_claims
+    c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_get_primary_diagnosis_from_list' is not defined
+
+2025-10-26 03:56:01,295 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T03:56:01.295676', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 03:56:05,700 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: NameError - name '_get_primary_diagnosis_from_list' is not defined
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 529, in list_claims
+    c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_get_primary_diagnosis_from_list' is not defined
+
+2025-10-26 03:56:14,187 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: NameError - name '_get_primary_diagnosis_from_list' is not defined
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 529, in list_claims
+    c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_get_primary_diagnosis_from_list' is not defined
+
+2025-10-26 03:56:14,477 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T03:56:14.476911', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:02:36,779 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:02:38,814 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: NameError - name '_get_primary_diagnosis_from_list' is not defined
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 533, in list_claims
+    c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_get_primary_diagnosis_from_list' is not defined
+
+2025-10-26 04:02:39,636 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:02:39.636625', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:02:45,494 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: NameError - name '_get_primary_diagnosis_from_list' is not defined
+Path: /claims
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 533, in list_claims
+    c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_get_primary_diagnosis_from_list' is not defined
+
+2025-10-26 04:02:45,962 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:02:45.962458', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:07:02,896 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:09:29,893 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:29.893143', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:36,823 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:36.823396', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=draft&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:39,097 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:39.097502', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=doctor_submitted&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:40,694 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:40.693996', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_review&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:42,192 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:42.192221', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:43,673 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:43.673482', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=error&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:44,980 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:44.979908', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:47,806 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:47.806655', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:52,481 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:52.481807', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=167&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:09:58,334 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:09:58.334310', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=167&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:11:21,739 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:11:33,198 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:12:06,444 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:12:29,357 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:29.357415', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=167&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:12:29,977 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:29.977323', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:12:39,535 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:12:41,794 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:41.794251', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:12:43,247 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:43.246955', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:12:44,559 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:44.559634', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:12:49,254 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:12:49.254678', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=doctor_submitted&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:05,013 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:05.013136', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:12,153 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:12.152954', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_review&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:18,721 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:18.721623', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:26,842 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:26.841991', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:52,168 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:52.168802', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=167&tanggal_kunjungan=&workflow_status=coder_verified&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:13:59,556 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:13:59.556614', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=Masitha&claim_id=167&tanggal_kunjungan=&workflow_status=doctor_submitted&diagnosis=&tindakan=&doctor_name=&ai_status=warning&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:14:22,990 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:14:22.990677', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:16:00,072 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:16:00.072678', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims?patient_name=&claim_id=&tanggal_kunjungan=&workflow_status=coder_review&diagnosis=&tindakan=&doctor_name=&ai_status=&tarif_cbg_min=&tarif_cbg_max=&los_min=&los_max=', 'status_code': 422, 'error_type': 'RequestValidationError', 'error_message': "[{'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'tarif_cbg_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_min'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}, {'type': 'int_parsing', 'loc': ('query', 'los_max'), 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '', 'url': 'https://errors.pydantic.dev/2.12/v/int_parsing'}]", 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:17:49,683 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:18:02,494 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:18:18,279 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:19:14,262 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:19:24,300 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:19:54,347 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:20:14,219 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 04:31:07,097 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:31:07.097862', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:32:30,313 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 04:32:30,594 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 04:32:50,520 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-26 04:35:22,289 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-26 04:35:30,273 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T04:35:30.272704', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 04:35:38,447 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-26 04:35:58,923 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-26 04:36:08,759 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-26 04:41:22,730 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 04:41:23,006 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 05:16:26,869 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T05:16:26.862174', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 11:03:06,049 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-26 11:03:15,169 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T11:03:15.168896', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 11:03:23,811 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 11:03:24,057 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 12:12:03,410 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:12:03.409935', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:17:15,955 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:17:15.954952', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:17:42,298 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:17:42.298261', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:17:47,295 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:17:47.295459', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:18:07,109 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:18:07.108922', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:18:21,744 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:18:21.744016', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:18:23,961 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:18:23.961244', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/visits/3008/detail', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:18:29,047 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:18:29.047501', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/visits/3008/detail', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:18:37,811 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:18:37.811315', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/visits/3008/detail', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:19:28,772 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:19:28.772572', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:19:53,878 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:19:53.878641', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:47:33,177 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:47:33.175361', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:49:38,410 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:49:38.409682', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:51:50,898 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:51:50.898186', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:52:28,621 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:52:28.621424', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:53:53,970 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:53:53.970038', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:54:28,423 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/156/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 12:54:43,417 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/156/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 12:57:25,929 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/156/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 12:57:26,368 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:57:26.368288', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 12:58:43,479 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/156/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 12:58:43,898 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T12:58:43.897969', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 13:00:03,892 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/156/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 13:00:04,474 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T13:00:04.474178', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 13:00:12,489 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/155/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 13:01:02,416 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: UndefinedError - 'claim' is undefined
+Path: /claims/152/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim_router.py", line 1424, in edit_claim_form
+    return templates.TemplateResponse(template_name, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 113, in TemplateResponse
+    return _TemplateResponse(
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/templating.py", line 39, in __init__
+    content = template.render(context)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 1301, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 936, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "frontend/templates/claim_combine.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "frontend/templates/base.html", line 458, in top-level template code
+    {% block content %}{% endblock %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "frontend/templates/claim_combine.html", line 7, in block 'content'
+    action="/claims/{{ claim.id }}/combine-finalize"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/jinja2/environment.py", line 485, in getattr
+    return getattr(obj, attribute)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'claim' is undefined
+
+2025-10-26 13:02:52,660 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 13:02:52,911 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 13:03:25,872 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T13:03:25.872544', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-26 13:06:00,790 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-26 13:06:01,088 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-26 13:16:12,521 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T13:16:12.521108', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}

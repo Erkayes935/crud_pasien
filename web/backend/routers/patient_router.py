@@ -138,11 +138,13 @@ def list_patients(
     request: Request,
     flow: Optional[str] = None,
     search: Optional[str] = Query(None),
-    mode: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),  # ← Tambahan: nomor halaman
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor","admin_rs","superadmin","coder","verifikator"))
 ):
-    query = db.query(models.Patient)
+    PAGE_SIZE = 20  # batas 20 data per halaman
+
+    query = db.query(models.Patient).filter(models.Patient.is_deleted == False)
 
     if search:
         pattern = f"%{search.strip()}%"
@@ -155,12 +157,18 @@ def list_patients(
             )
         )
 
+    total_count = query.count()
+    total_pages = max((total_count + PAGE_SIZE - 1) // PAGE_SIZE, 1)
+    offset = (page - 1) * PAGE_SIZE
+
     patients = (
-        query.filter(models.Patient.is_deleted == False)
-             .options(joinedload(models.Patient.hospital))
+        query.options(joinedload(models.Patient.hospital))
              .order_by(models.Patient.id.desc())
+             .offset(offset)
+             .limit(PAGE_SIZE)
              .all()
     )
+
     csrf_token = issue_csrf_token(request)
 
     return templates.TemplateResponse("patient_list.html", {
@@ -169,9 +177,12 @@ def list_patients(
         "user": user,
         "current_user": user,
         "search": search,
-        "mode": mode,
         "flow": flow,
         "csrf_token": csrf_token,
+        "page": page,
+        "total_pages": total_pages,
+        "total_count": total_count,
+        "page_size": PAGE_SIZE,
     })
 
 # =========================

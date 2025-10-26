@@ -29,6 +29,7 @@ def list_medical_records(
     date_str: str | None = Query(None, alias="date"),
     user=Depends(require_roles_session("doctor", "admin_rs")),
 ):
+    PAGE_SIZE = 20  # batas 20 data per halaman
     date_val = None
     if date_str:
         try:
@@ -36,8 +37,35 @@ def list_medical_records(
         except ValueError:
             pass
 
-    records, total = mr_crud.list_medical_records(db, q, status, date_val, page=page, page_size=10)
-    total_pages = (total + 10 - 1) // 10
+    # Base query
+    query = db.query(models.MedicalRecord).join(models.Patient).filter(models.MedicalRecord.is_deleted == False)
+
+    # 🔹 Filter pencarian
+    if q:
+        query = query.filter(models.Patient.nama.ilike(f"%{q}%"))
+
+    # 🔹 Filter status
+    if status:
+        if status == "final":
+            query = query.filter(models.MedicalRecord.is_final == True)
+        elif status == "draft":
+            query = query.filter(models.MedicalRecord.is_final == False)
+
+    # 🔹 Filter tanggal
+    if date_val:
+        query = query.filter(models.MedicalRecord.notes_date == date_val)
+
+    # Hitung total & ambil halaman
+    total_count = query.count()
+    total_pages = max((total_count + PAGE_SIZE - 1) // PAGE_SIZE, 1)
+    offset = (page - 1) * PAGE_SIZE
+
+    records = (
+        query.order_by(models.MedicalRecord.id.desc())
+        .offset(offset)
+        .limit(PAGE_SIZE)
+        .all()
+    )
 
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("medical_record_list.html", {
@@ -51,6 +79,8 @@ def list_medical_records(
         "csrf_token": csrf_token,
         "user": user,
         "current_user": user,
+        "total_count": total_count,
+        "page_size": PAGE_SIZE,
     })
 
 
