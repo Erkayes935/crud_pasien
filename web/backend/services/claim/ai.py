@@ -547,18 +547,22 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
         print(f"[AI STORAGE] ✅ Stored procedure evaluation for claim {claim_id}")
 
 
-    # === Alternatif ===
-    for alt in evaluasi.get("alternatif", []):
+    # === Alternatif (with fallback & parsing) ===
+    alt_list = evaluasi.get("alternatif") or evaluasi.get("alternatives") or []
+
+    print(f"[AI STORAGE] 🧩 Alt list length: {len(alt_list)}")
+    for alt in alt_list:
         if isinstance(alt, str):
             try:
                 alt = json.loads(alt)
             except Exception:
                 alt = {}
+
         db.add(models.ClaimCombinationAlternative(
             claim_id=claim_id,
-            kombinasi_nama=alt.get("kombinasi_nama"),
+            kombinasi_nama=alt.get("kombinasi_nama") or alt.get("nama") or alt.get("judul"),
             severity=alt.get("severity"),
-            kode_ina_cbg=alt.get("kode_ina_cbg"),
+            kode_ina_cbg=alt.get("kode_ina_cbg") or alt.get("kode_cbg"),
             estimasi_tarif=parse_number(alt.get("estimasi_tarif")),
             syarat_klinis=alt.get("syarat_klinis"),
             faskes=alt.get("faskes"),
@@ -570,7 +574,9 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             updated_at=datetime.utcnow(),
         ))
 
+
     db.commit()
+    print(f"[AI STORAGE] ✅ Stored {len(alt_list)} alternatives for claim {claim_id}")
     print(f"[AI STORAGE] ✅ Successfully stored AI evaluations for claim {claim_id}")
 
 def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) -> None:
@@ -601,7 +607,8 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
             raise ValueError(f"Claim {claim_id} not found")
             
         # Store alternatives
-        for alt in result.get("alternatives", []):
+        alternatives = result.get("alternatif") or result.get("alternatives") or []
+        for alt in alternatives:
             try:
                 db.add(models.ClaimCombinationAlternative(
                     claim_id=claim_id,
@@ -618,6 +625,7 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
                 stored_items["alternatives"] += 1
             except Exception as e:
                 print(f"[AI STORAGE] Error storing alternative: {str(e)}")
+
 
         # Store diagnosis evaluations
         for diag in result.get("diagnosis_evaluations", []):

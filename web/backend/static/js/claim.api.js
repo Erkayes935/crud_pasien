@@ -169,7 +169,7 @@
       if (typeof window.showAiLoadingModal === "function") {
         window.showAiLoadingModal([
           "Mengambil data dari core engine...",
-          "Menganalisis hasil diagnosis dan tindakan...",
+          "Menganalisis evaluasi kombinasi diagnosis dan tindakan...",
           "Menyiapkan rekomendasi AI..."
         ]);
       }
