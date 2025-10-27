@@ -140,8 +140,8 @@ window.alternatifDropdown = function ({ claimId }) {
   // Panel evaluasi (fungsi render) — tetap di window seperti versi lama
   function renderEvaluasiDiagnosis(data) {
     const rows = Array.isArray(data) ? data : [data];
-
     const target = document.getElementById("evaluasi-diagnosis");
+    console.log("🧠 Evaluasi data raw:", data);
     if (!target) return;
     target.innerHTML = "";
 
@@ -150,10 +150,9 @@ window.alternatifDropdown = function ({ claimId }) {
       return;
     }
 
-    // Handle both possible formats from core_engine
+    const evalId = data.id || data.diagnosis_evaluation_id || window.claimState?.diagnosis_eval_id || null;
+
     const validitasIcon = window.statusIcon ? window.statusIcon(data.validitas) : '';
-    
-    // Normalize field names for maximum compatibility
     const validitasText = data.validitas_detail || data.catatan_validitas || "-";
     const severity = data.severity || "-";
     const kodeInaCbg = data.kode_ina_cbg || data.kode_cbg || "-";
@@ -169,19 +168,19 @@ window.alternatifDropdown = function ({ claimId }) {
           <th class="border px-4 py-2">Validitas Klinis Kombinasi</th>
           <td class="border px-4 py-2">
             ${validitasIcon} - <span class="cursor-pointer" title="PNPK Evaluasi Diagnosis 2020"
-               onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${validitasText}</span>
+              onclick="openRegulationDetailModal('validitas_klinis_kombinasi', ${evalId})">${validitasText}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Severity</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${severity}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('severity', ${evalId})">${severity}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Kode INA-CBG</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${kodeInaCbg}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('kode_ina_cbg', ${evalId})">${kodeInaCbg}</span>
           </td>
         </tr>
         <tr>
@@ -191,24 +190,25 @@ window.alternatifDropdown = function ({ claimId }) {
         <tr>
           <th class="border px-4 py-2">Syarat Klinis (Kombinasi)</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${syarat}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('syarat_klinis', ${evalId})">${syarat}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Evaluasi Faskes</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${evaluasiFaskes}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('evaluasi_faskes', ${evalId})">${evaluasiFaskes}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Rawat Inap</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal('diagnosis_eval', ${data.id})">${rawatInap}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('rawat_inap', ${evalId})">${rawatInap}</span>
           </td>
         </tr>
       </table>
     `;
   }
+
 
   function renderEvaluasiProcedure(data) {
     // 🧠 PATCH: auto-wrap kalau bukan array

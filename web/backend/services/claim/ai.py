@@ -431,15 +431,26 @@ def clear_ai_results(db: Session, claim_id: int):
     print(f"[AI STORAGE] Clearing AI results for claim {claim_id}")
     try:
         print("[AI STORAGE] Removing AI recommendations and evaluations")
+
+        # 🧹 1️⃣ Hapus dulu regulasi yang mengacu ke evaluation lama
+        deleted_regs = db.query(models.ClaimRegulationDetail).filter(
+            models.ClaimRegulationDetail.claim_id == claim_id
+        ).delete(synchronize_session=False)
+        print(f"[AI STORAGE] 🗑️ Deleted {deleted_regs} linked regulation details")
+
+        # 🧹 2️⃣ Baru hapus hasil evaluasi & rekomendasi
         db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
         db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).delete()
+
         db.commit()
         print(f"[AI STORAGE] ✅ Cleared all AI results for claim {claim_id}")
+
     except Exception as e:
         db.rollback()
         print(f"[AI STORAGE] ❌ Failed to clear AI results: {e}")
+
     
 # ==================================================
 # AI EVALUATIONS (hasil generate_claim_combos / summary)
