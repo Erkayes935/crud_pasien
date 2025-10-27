@@ -8,8 +8,7 @@
 
 {% block content %}
 <div class="min-h-screen">
-  <main class="max-w-7xl mx-auto px-6 py-8">
-    
+  <main class="w-full px-8 py-8">
     <!-- Header Section -->
     <div class="mb-8">
       <div class="flex items-center justify-between mb-6">
@@ -87,38 +86,26 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-200 dark:border-gray-700">
-              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. RM</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. KTP</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. BPJS</th>
-              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama RS</th>
-              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">ID Eksternal</th>
-              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Sumber</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nama</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tanggal Lahir</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Jenis Kelamin</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Alamat</th>
-              <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Email</th>
               <th class="text-left py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nomor HP</th>
-              <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-32">Dibuat</th>
               <th class="text-center py-4 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 w-52">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {% for p in patients %}
             <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_rm or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_ktp or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_bpjs or '-' }}</td>
-              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ user.hospital.nama or '-' }}</td>
-              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.eksternal_id or '-' }}</td>
-              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.source or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-800 dark:text-gray-200 font-medium">{{ p.nama }}</td>
               <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400">{{ p.tanggal_lahir or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.jenis_kelamin or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.alamat or '-' }}</td>
-              <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.email or '-' }}</td>
               <td class="py-4 px-3 text-sm text-gray-700 dark:text-gray-300">{{ p.no_hp or '-' }}</td>
-              <td class="py-4 px-3 text-sm text-gray-600 dark:text-gray-400 text-center">{{ p.created_at or '-' }}</td>
               <td class="py-4 px-3 text-center">
                 {% if flow == "claim" %}
                   <!-- Mode wizard klaim -->
@@ -178,7 +165,135 @@
         </table>
       </div>
     </div>
-
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="mt-6 flex justify-center items-center space-x-1">
+  {% set search_param = '&search=' + search if search else '' %}
+  
+  <!-- Previous Button -->
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}{{ search_param }}"
+     class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center gap-1">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+    </svg>
+    <span class="hidden sm:inline">Sebelumnya</span>
+  </a>
+  {% else %}
+  <span class="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-1">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+    </svg>
+    <span class="hidden sm:inline">Sebelumnya</span>
+  </span>
+  {% endif %}
+  
+  <!-- Page Numbers Logic -->
+  {% if total_pages <= 7 %}
+    <!-- Show all pages if 7 or fewer -->
+    {% for i in range(1, total_pages + 1) %}
+      {% if i == page %}
+      <span class="px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/30">{{ i }}</span>
+      {% else %}
+      <a href="?page={{ i }}{{ search_param }}"
+         class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+        {{ i }}
+      </a>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <!-- Smart pagination for many pages -->
+    
+    <!-- First Page -->
+    {% if page == 1 %}
+    <span class="px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/30">1</span>
+    {% else %}
+    <a href="?page=1{{ search_param }}"
+       class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+      1
+    </a>
+    {% endif %}
+    
+    <!-- Left Ellipsis -->
+    {% if page > 3 %}
+    <span class="px-2 py-2 text-gray-500 dark:text-gray-400">...</span>
+    {% endif %}
+    
+    <!-- Pages around current page -->
+    {% if page == 1 %}
+      <!-- Show pages 2, 3 when on page 1 -->
+      {% set end_range = 4 if total_pages >= 4 else total_pages %}
+      {% for i in range(2, end_range) %}
+      <a href="?page={{ i }}{{ search_param }}"
+         class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+        {{ i }}
+      </a>
+      {% endfor %}
+    {% elif page == total_pages %}
+      <!-- Show pages n-2, n-1 when on last page -->
+      {% set start_range = total_pages - 2 if total_pages - 2 > 2 else 2 %}
+      {% for i in range(start_range, total_pages) %}
+      <a href="?page={{ i }}{{ search_param }}"
+         class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+        {{ i }}
+      </a>
+      {% endfor %}
+    {% else %}
+      <!-- Show current page with one page before and after -->
+      {% set start = page - 1 if page - 1 > 2 else 2 %}
+      {% set end = page + 1 if page + 1 < total_pages - 1 else total_pages - 1 %}
+      {% for i in range(start, end + 1) %}
+        {% if i == page %}
+        <span class="px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/30">{{ i }}</span>
+        {% else %}
+        <a href="?page={{ i }}{{ search_param }}"
+           class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+          {{ i }}
+        </a>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    <!-- Right Ellipsis -->
+    {% if page < total_pages - 2 %}
+    <span class="px-2 py-2 text-gray-500 dark:text-gray-400">...</span>
+    {% endif %}
+    
+    <!-- Last Page -->
+    {% if page == total_pages %}
+    <span class="px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/30">{{ total_pages }}</span>
+    {% else %}
+    <a href="?page={{ total_pages }}{{ search_param }}"
+       class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+      {{ total_pages }}
+    </a>
+    {% endif %}
+  {% endif %}
+  
+  <!-- Next Button -->
+  {% if page < total_pages %}
+  <a href="?page={{ page + 1 }}{{ search_param }}"
+     class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center gap-1">
+    <span class="hidden sm:inline">Berikutnya</span>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+    </svg>
+  </a>
+  {% else %}
+  <span class="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 rounded-lg cursor-not-allowed flex items-center gap-1">
+    <span class="hidden sm:inline">Berikutnya</span>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+    </svg>
+  </span>
+  {% endif %}
+  
+  <!-- Page Info -->
+  <div class="ml-4 text-sm text-gray-600 dark:text-gray-400 hidden md:block">
+    Halaman <span class="font-semibold text-gray-800 dark:text-gray-200">{{ page }}</span> dari <span class="font-semibold text-gray-800 dark:text-gray-200">{{ total_pages }}</span>
+  </div>
+</div>
+{% endif %}
     <!-- Import Section -->
     <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">

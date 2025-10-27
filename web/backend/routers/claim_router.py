@@ -58,26 +58,54 @@ def export_claims_excel(
     tindakan: Optional[str] = Query(None),
     doctor_name: Optional[str] = Query(None),
     ai_status: Optional[str] = Query(None),
-    tarif_cbg_min: Optional[int] = Query(None),
-    tarif_cbg_max: Optional[int] = Query(None),
-    los_min: Optional[int] = Query(None),
-    los_max: Optional[int] = Query(None),
+    tarif_cbg_min: Optional[str] = Query(None),
+    tarif_cbg_max: Optional[str] = Query(None),
+    los_min: Optional[str] = Query(None),
+    los_max: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
 ):
     """Export data klaim ke Excel dengan filter yang sama seperti list view"""
     
-    # ✅ Use same query logic as list_claims
-    query = db.query(models.Claim).options(
-        joinedload(models.Claim.patient),
-        joinedload(models.Claim.visit),
-        joinedload(models.Claim.group),
-        joinedload(models.Claim.medical_record),
-        joinedload(models.Claim.diagnoses),
-        joinedload(models.Claim.procedures),
-        joinedload(models.Claim.tariffs),
-        joinedload(models.Claim.ai_recommendations)
-    )
+    # Normalize parameters: convert empty strings to None
+    def normalize_str_param(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return None if value == "" else value
+    
+    def parse_int_param(value: Optional[str]) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Normalize all parameters
+    status = normalize_str_param(status)
+    tanggal_kunjungan = normalize_str_param(tanggal_kunjungan)
+    patient_name = normalize_str_param(patient_name)
+    claim_id = normalize_str_param(claim_id)
+    visit_id = normalize_str_param(visit_id)
+    workflow_status = normalize_str_param(workflow_status)
+    diagnosis = normalize_str_param(diagnosis)
+    tindakan = normalize_str_param(tindakan)
+    doctor_name = normalize_str_param(doctor_name)
+    ai_status = normalize_str_param(ai_status)
+    tarif_cbg_min = parse_int_param(tarif_cbg_min)
+    tarif_cbg_max = parse_int_param(tarif_cbg_max)
+    los_min = parse_int_param(los_min)
+    los_max = parse_int_param(los_max)
+    
+    # Track which tables we've joined
+    joined_patient = False
+    joined_visit = False
+    joined_diagnosis = False
+    joined_procedure = False
+    joined_user = False
+    
+    query = db.query(models.Claim)
 
     # 🔹 ROLE-BASED FILTER (same as list_claims)
     roles = user.role_names or []
@@ -88,37 +116,80 @@ def export_claims_excel(
     elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
         query = query.filter(models.Claim.doctor_id == user.id)
 
-    # 🔹 Apply all filters (same as list_claims)
+    # 🔹 Apply all filters with smart joins
     if status:
         query = query.filter(models.Claim.status == status)
     if workflow_status:
         query = query.filter(models.Claim.workflow_status == workflow_status)
     if patient_name:
-        query = query.join(models.Patient).filter(models.Patient.nama.ilike(f"%{patient_name}%"))
+        if not joined_patient:
+            query = query.join(models.Patient, models.Claim.patient_id == models.Patient.id)
+            joined_patient = True
+        query = query.filter(models.Patient.nama.ilike(f"%{patient_name}%"))
     if tanggal_kunjungan:
-        query = query.join(models.Visit).filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
+        if not joined_visit:
+            query = query.join(models.Visit, models.Claim.visit_id == models.Visit.id)
+            joined_visit = True
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
     if claim_id and str(claim_id).isdigit():
         query = query.filter(models.Claim.id == int(claim_id))
     if visit_id and str(visit_id).isdigit():
         query = query.filter(models.Claim.visit_id == int(visit_id))
 
-    # 🔹 Advanced filters (same as list_claims)
+    # 🔹 Advanced filters
     if diagnosis:
-        query = query.join(models.ClaimDiagnosis).filter(
+        if not joined_diagnosis:
+            query = query.join(models.ClaimDiagnosis, models.Claim.id == models.ClaimDiagnosis.claim_id)
+            joined_diagnosis = True
+        query = query.filter(
             or_(
                 models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis}%"),
                 models.ClaimDiagnosis.icd10_code.ilike(f"%{diagnosis}%")
-            )
+            ),
+            models.ClaimDiagnosis.is_deleted == False
         )
     if tindakan:
-        query = query.join(models.ClaimProcedure).filter(
+        if not joined_procedure:
+            query = query.join(models.ClaimProcedure, models.Claim.id == models.ClaimProcedure.claim_id)
+            joined_procedure = True
+        query = query.filter(
             or_(
                 models.ClaimProcedure.procedure_text.ilike(f"%{tindakan}%"),
-                models.ClaimProcedure.icd9_code.ilike(f"%{tindakan}%")
-            )
+                models.ClaimProcedure.icd9_final_by_coder.ilike(f"%{tindakan}%")
+            ),
+            models.ClaimProcedure.is_deleted == False
         )
     if doctor_name:
-        query = query.join(models.User).filter(models.User.username.ilike(f"%{doctor_name}%"))
+        if not joined_user:
+            query = query.outerjoin(models.User, models.Claim.doctor_id == models.User.id)
+            joined_user = True
+        query = query.filter(
+            or_(
+                models.Claim.doctor_name.ilike(f"%{doctor_name}%"),
+                models.User.name.ilike(f"%{doctor_name}%")
+            )
+        )
+    
+    # Add eager loading for tables not yet joined
+    if not joined_patient:
+        query = query.options(joinedload(models.Claim.patient))
+    if not joined_visit:
+        query = query.options(joinedload(models.Claim.visit))
+    
+    # Always eager load these for export
+    query = query.options(
+        joinedload(models.Claim.hospital),
+        joinedload(models.Claim.group),
+        joinedload(models.Claim.medical_record),
+        joinedload(models.Claim.diagnoses),
+        joinedload(models.Claim.procedures),
+        joinedload(models.Claim.tariffs),
+        joinedload(models.Claim.ai_recommendations)
+    )
+    
+    # Use distinct if we joined diagnosis/procedure
+    if joined_diagnosis or joined_procedure:
+        query = query.distinct()
 
     claims = query.all()
 
@@ -140,6 +211,7 @@ def export_claims_excel(
     # Add data with medical information
     for claim in claims:
         ai_agg = _aggregate_ai_notifications(claim)
+        tarif_cbg, tarif_rs = _get_tariffs_optimized(claim)  # OPTIMIZED: single pass
         
         row_data = [
             claim.id,
@@ -152,8 +224,8 @@ def export_claims_excel(
             _get_primary_diagnosis(claim),
             _get_secondary_diagnoses(claim),
             _get_primary_procedure(claim),
-            _get_ina_cbg_tariff(claim),
-            _get_rs_tariff(claim),
+            tarif_cbg,
+            tarif_rs,
             _calculate_length_of_stay(claim),
             ai_agg['max_severity'],
             ai_agg['total_count'],
@@ -190,26 +262,54 @@ def export_claims_pdf(
     tindakan: Optional[str] = Query(None),
     doctor_name: Optional[str] = Query(None),
     ai_status: Optional[str] = Query(None),
-    tarif_cbg_min: Optional[int] = Query(None),
-    tarif_cbg_max: Optional[int] = Query(None),
-    los_min: Optional[int] = Query(None),
-    los_max: Optional[int] = Query(None),
+    tarif_cbg_min: Optional[str] = Query(None),
+    tarif_cbg_max: Optional[str] = Query(None),
+    los_min: Optional[str] = Query(None),
+    los_max: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
 ):
     """Export data klaim ke PDF dengan filter yang sama seperti list view"""
     
-    # ✅ Use same query logic as list_claims
-    query = db.query(models.Claim).options(
-        joinedload(models.Claim.patient),
-        joinedload(models.Claim.visit),
-        joinedload(models.Claim.group),
-        joinedload(models.Claim.medical_record),
-        joinedload(models.Claim.diagnoses),
-        joinedload(models.Claim.procedures),
-        joinedload(models.Claim.tariffs),
-        joinedload(models.Claim.ai_recommendations)
-    )
+    # Normalize parameters: convert empty strings to None
+    def normalize_str_param(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return None if value == "" else value
+    
+    def parse_int_param(value: Optional[str]) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Normalize all parameters
+    status = normalize_str_param(status)
+    tanggal_kunjungan = normalize_str_param(tanggal_kunjungan)
+    patient_name = normalize_str_param(patient_name)
+    claim_id = normalize_str_param(claim_id)
+    visit_id = normalize_str_param(visit_id)
+    workflow_status = normalize_str_param(workflow_status)
+    diagnosis = normalize_str_param(diagnosis)
+    tindakan = normalize_str_param(tindakan)
+    doctor_name = normalize_str_param(doctor_name)
+    ai_status = normalize_str_param(ai_status)
+    tarif_cbg_min = parse_int_param(tarif_cbg_min)
+    tarif_cbg_max = parse_int_param(tarif_cbg_max)
+    los_min = parse_int_param(los_min)
+    los_max = parse_int_param(los_max)
+    
+    # Track which tables we've joined
+    joined_patient = False
+    joined_visit = False
+    joined_diagnosis = False
+    joined_procedure = False
+    joined_user = False
+    
+    query = db.query(models.Claim)
 
     # 🔹 ROLE-BASED FILTER (same as list_claims)
     roles = user.role_names or []
@@ -220,37 +320,80 @@ def export_claims_pdf(
     elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
         query = query.filter(models.Claim.doctor_id == user.id)
 
-    # 🔹 Apply all filters (same as list_claims)
+    # 🔹 Apply all filters with smart joins
     if status:
         query = query.filter(models.Claim.status == status)
     if workflow_status:
         query = query.filter(models.Claim.workflow_status == workflow_status)
     if patient_name:
-        query = query.join(models.Patient).filter(models.Patient.nama.ilike(f"%{patient_name}%"))
+        if not joined_patient:
+            query = query.join(models.Patient, models.Claim.patient_id == models.Patient.id)
+            joined_patient = True
+        query = query.filter(models.Patient.nama.ilike(f"%{patient_name}%"))
     if tanggal_kunjungan:
-        query = query.join(models.Visit).filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
+        if not joined_visit:
+            query = query.join(models.Visit, models.Claim.visit_id == models.Visit.id)
+            joined_visit = True
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
     if claim_id and str(claim_id).isdigit():
         query = query.filter(models.Claim.id == int(claim_id))
     if visit_id and str(visit_id).isdigit():
         query = query.filter(models.Claim.visit_id == int(visit_id))
 
-    # 🔹 Advanced filters (same as list_claims)
+    # 🔹 Advanced filters
     if diagnosis:
-        query = query.join(models.ClaimDiagnosis).filter(
+        if not joined_diagnosis:
+            query = query.join(models.ClaimDiagnosis, models.Claim.id == models.ClaimDiagnosis.claim_id)
+            joined_diagnosis = True
+        query = query.filter(
             or_(
                 models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis}%"),
                 models.ClaimDiagnosis.icd10_code.ilike(f"%{diagnosis}%")
-            )
+            ),
+            models.ClaimDiagnosis.is_deleted == False
         )
     if tindakan:
-        query = query.join(models.ClaimProcedure).filter(
+        if not joined_procedure:
+            query = query.join(models.ClaimProcedure, models.Claim.id == models.ClaimProcedure.claim_id)
+            joined_procedure = True
+        query = query.filter(
             or_(
                 models.ClaimProcedure.procedure_text.ilike(f"%{tindakan}%"),
-                models.ClaimProcedure.icd9_code.ilike(f"%{tindakan}%")
-            )
+                models.ClaimProcedure.icd9_final_by_coder.ilike(f"%{tindakan}%")
+            ),
+            models.ClaimProcedure.is_deleted == False
         )
     if doctor_name:
-        query = query.join(models.User).filter(models.User.username.ilike(f"%{doctor_name}%"))
+        if not joined_user:
+            query = query.outerjoin(models.User, models.Claim.doctor_id == models.User.id)
+            joined_user = True
+        query = query.filter(
+            or_(
+                models.Claim.doctor_name.ilike(f"%{doctor_name}%"),
+                models.User.name.ilike(f"%{doctor_name}%")
+            )
+        )
+    
+    # Add eager loading for tables not yet joined
+    if not joined_patient:
+        query = query.options(joinedload(models.Claim.patient))
+    if not joined_visit:
+        query = query.options(joinedload(models.Claim.visit))
+    
+    # Always eager load these for export
+    query = query.options(
+        joinedload(models.Claim.hospital),
+        joinedload(models.Claim.group),
+        joinedload(models.Claim.medical_record),
+        joinedload(models.Claim.diagnoses),
+        joinedload(models.Claim.procedures),
+        joinedload(models.Claim.tariffs),
+        joinedload(models.Claim.ai_recommendations)
+    )
+    
+    # Use distinct if we joined diagnosis/procedure
+    if joined_diagnosis or joined_procedure:
+        query = query.distinct()
 
     claims = query.all()
 
@@ -346,36 +489,69 @@ def list_claims(
     claim_id: Optional[str] = Query(None),
     visit_id: Optional[str] = Query(None),
     workflow_status: Optional[str] = Query(None),
-    # ✅ NEW: Advanced filter parameters
+    # Advanced filter parameters
     diagnosis: Optional[str] = Query(None),
     tindakan: Optional[str] = Query(None),
     doctor_name: Optional[str] = Query(None),
     ai_status: Optional[str] = Query(None),
-    tarif_cbg_min: Optional[int] = Query(None),
-    tarif_cbg_max: Optional[int] = Query(None),
-    los_min: Optional[int] = Query(None),
-    los_max: Optional[int] = Query(None),
-    # 🚀 NEW: Pagination parameters (light default for performance)
+    tarif_cbg_min: Optional[str] = Query(None),  # Changed to str to handle empty string
+    tarif_cbg_max: Optional[str] = Query(None),  # Changed to str to handle empty string
+    los_min: Optional[str] = Query(None),        # Changed to str to handle empty string
+    los_max: Optional[str] = Query(None),        # Changed to str to handle empty string
+    # 🚀 Pagination parameters
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     limit: int = Query(20, ge=1, le=100, description="Items per page (max 100, default 20)"),
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")),
 ):
-    """List klaim dengan filter berdasarkan role"""
-    # ✅ PERFORMANCE FIX: Selective JOINs for atasan requirements
-    # Keep essential JOINs for table display, lazy load details for modals
-    query = db.query(models.Claim).options(
-        joinedload(models.Claim.patient),        # Essential: Nama Pasien, RM/NIK  
-        joinedload(models.Claim.visit),          # Essential: Jenis Rawat, Poli, Tanggal
-        joinedload(models.Claim.medical_record), # Essential: Diagnosis Utama
-        # Heavy details will be lazy loaded when needed:
-        # - diagnoses: loaded when drill-down modal opened
-        # - procedures: loaded when drill-down modal opened  
-        # - tariffs: calculated on-demand
-        # - ai_recommendations: loaded when AI panel accessed
-    )
+    """List klaim dengan filter berdasarkan role dan pagination - OPTIMIZED"""
+    
+    # 🔹 Normalize parameters: convert empty strings to None
+    def normalize_str_param(value: Optional[str]) -> Optional[str]:
+        """Convert empty string to None"""
+        if value is None:
+            return None
+        value = value.strip()
+        return None if value == "" else value
+    
+    def parse_int_param(value: Optional[str]) -> Optional[int]:
+        """Convert string parameter to int, treating empty string as None"""
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    
+    # Normalize string parameters
+    status = normalize_str_param(status)
+    tanggal_kunjungan = normalize_str_param(tanggal_kunjungan)
+    patient_name = normalize_str_param(patient_name)
+    claim_id = normalize_str_param(claim_id)
+    visit_id = normalize_str_param(visit_id)
+    workflow_status = normalize_str_param(workflow_status)
+    diagnosis = normalize_str_param(diagnosis)
+    tindakan = normalize_str_param(tindakan)
+    doctor_name = normalize_str_param(doctor_name)
+    ai_status = normalize_str_param(ai_status)
+    
+    # Parse numeric parameters
+    tarif_cbg_min = parse_int_param(tarif_cbg_min)
+    tarif_cbg_max = parse_int_param(tarif_cbg_max)
+    los_min = parse_int_param(los_min)
+    los_max = parse_int_param(los_max)
+    
+    # 🚀 OPTIMASI 1: Build query dengan joins yang smart
+    # Track which tables we've joined to avoid duplicate joins
+    joined_patient = False
+    joined_visit = False
+    joined_diagnosis = False
+    joined_procedure = False
+    joined_user = False
+    
+    query = db.query(models.Claim)
 
-    # 🔹 ROLE-BASED FILTER (tetap sama seperti sebelumnya)
+    # Role-based filter
     roles = user.role_names or []
     if "verifikator" in roles and "coder" not in roles and "doctor" not in roles:
         query = query.filter(models.Claim.workflow_status.in_(["coder_verified", "verifikator_review", "finalized"]))
@@ -384,21 +560,32 @@ def list_claims(
     elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
         query = query.filter(models.Claim.doctor_id == user.id)
 
-    # 🔹 Filter tambahan (tetap sama)
+    # 🔹 Apply basic filters with smart joins
     if status:
         query = query.filter(models.Claim.status == status)
     if workflow_status:
         query = query.filter(models.Claim.workflow_status == workflow_status)
     if patient_name:
-        query = query.join(models.Patient).filter(models.Patient.nama.ilike(f"%{patient_name}%"))
+        if not joined_patient:
+            query = query.join(models.Patient, models.Claim.patient_id == models.Patient.id)
+            joined_patient = True
+        query = query.filter(models.Patient.nama.ilike(f"%{patient_name}%"))
     if tanggal_kunjungan:
-        query = query.join(models.Visit).filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
+        if not joined_visit:
+            query = query.join(models.Visit, models.Claim.visit_id == models.Visit.id)
+            joined_visit = True
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
     if claim_id and str(claim_id).isdigit():
         query = query.filter(models.Claim.id == int(claim_id))
+    if visit_id and str(visit_id).isdigit():
+        query = query.filter(models.Claim.visit_id == int(visit_id))
 
-    # ✅ NEW: Advanced Filters
+    # 🔹 Advanced filters - diagnosis & tindakan
     if diagnosis:
-        query = query.join(models.ClaimDiagnosis).filter(
+        if not joined_diagnosis:
+            query = query.join(models.ClaimDiagnosis, models.Claim.id == models.ClaimDiagnosis.claim_id)
+            joined_diagnosis = True
+        query = query.filter(
             or_(
                 models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis}%"),
                 models.ClaimDiagnosis.icd10_code.ilike(f"%{diagnosis}%")
@@ -407,74 +594,176 @@ def list_claims(
         )
     
     if tindakan:
-        query = query.join(models.ClaimProcedure).filter(
+        if not joined_procedure:
+            query = query.join(models.ClaimProcedure, models.Claim.id == models.ClaimProcedure.claim_id)
+            joined_procedure = True
+        query = query.filter(
             or_(
                 models.ClaimProcedure.procedure_text.ilike(f"%{tindakan}%"),
-                models.ClaimProcedure.icd9_code.ilike(f"%{tindakan}%")
+                models.ClaimProcedure.icd9_final_by_coder.ilike(f"%{tindakan}%")
             ),
             models.ClaimProcedure.is_deleted == False
         )
     
     if doctor_name:
+        if not joined_user:
+            query = query.outerjoin(models.User, models.Claim.doctor_id == models.User.id)
+            joined_user = True
         query = query.filter(
             or_(
                 models.Claim.doctor_name.ilike(f"%{doctor_name}%"),
-                models.Claim.created_by.ilike(f"%{doctor_name}%")
+                models.User.name.ilike(f"%{doctor_name}%")
             )
         )
-
-    # 🚀 PERFORMANCE FIX: Apply pagination to prevent memory issues
-    # Calculate offset
-    offset = (page - 1) * limit
     
-    # Get total count for pagination info
+    # 🔹 Now add eager loading for tables we'll need (avoid re-joining)
+    if not joined_patient:
+        query = query.options(joinedload(models.Claim.patient))
+    if not joined_visit:
+        query = query.options(joinedload(models.Claim.visit))
+    query = query.options(joinedload(models.Claim.hospital))
+    
+    # 🔹 Use distinct if we joined diagnosis/procedure (to avoid duplicate claims)
+    if joined_diagnosis or joined_procedure:
+        query = query.distinct()
+
+    # 🚀 OPTIMASI 2: Hitung total SEBELUM eager loading data berat
     total_count = query.count()
     
-    # Get paginated claims
-    claims_pre_filter = query.order_by(models.Claim.created_at.desc()).offset(offset).limit(limit).all()
+    # 🚀 OPTIMASI 3: Apply pagination LEBIH AWAL
+    total_pages = (total_count + limit - 1) // limit
+    offset = (page - 1) * limit
     
-    # Apply computed field filters
+    # Order dan paginate
+    query = query.order_by(models.Claim.created_at.desc()).offset(offset).limit(limit)
+    
+    # 🚀 OPTIMASI 4: Ambil semua claim IDs dulu untuk batch query
+    claims_raw = query.all()
+    claim_ids = [c.id for c in claims_raw]
+    
+    if not claim_ids:
+        return templates.TemplateResponse(
+            "claim_list.html",
+            {
+                "request": request,
+                "claims": [],
+                "user": user,
+                "current_user": user,
+                "csrf_token": issue_csrf_token(request),
+                "status": status,
+                "workflow_status": workflow_status,
+                "tanggal_kunjungan": tanggal_kunjungan,
+                "patient_name": patient_name,
+                "claim_id": claim_id,
+                "visit_id": visit_id,
+                "diagnosis": diagnosis,
+                "tindakan": tindakan,
+                "doctor_name": doctor_name,
+                "ai_status": ai_status,
+                "tarif_cbg_min": tarif_cbg_min,
+                "tarif_cbg_max": tarif_cbg_max,
+                "los_min": los_min,
+                "los_max": los_max,
+                "page": page,
+                "total_pages": 0,
+                "total_count": 0,
+                "limit": limit,
+            },
+        )
+    
+    # 🚀 OPTIMASI 5: Batch load semua data yang dibutuhkan dalam 1 query
+    # Load diagnoses untuk semua claims sekaligus
+    diagnoses_map = {}
+    diagnoses = db.query(models.ClaimDiagnosis).filter(
+        models.ClaimDiagnosis.claim_id.in_(claim_ids),
+        models.ClaimDiagnosis.is_deleted == False
+    ).all()
+    for diag in diagnoses:
+        if diag.claim_id not in diagnoses_map:
+            diagnoses_map[diag.claim_id] = []
+        diagnoses_map[diag.claim_id].append(diag)
+    
+    # Load procedures untuk semua claims sekaligus
+    procedures_map = {}
+    procedures = db.query(models.ClaimProcedure).filter(
+        models.ClaimProcedure.claim_id.in_(claim_ids),
+        models.ClaimProcedure.is_deleted == False
+    ).all()
+    for proc in procedures:
+        if proc.claim_id not in procedures_map:
+            procedures_map[proc.claim_id] = []
+        procedures_map[proc.claim_id].append(proc)
+    
+    # Load tariffs untuk semua claims sekaligus
+    tariffs_map = {}
+    tariffs = db.query(models.ClaimTariff).filter(
+        models.ClaimTariff.claim_id.in_(claim_ids),
+        models.ClaimTariff.is_deleted == False
+    ).all()
+    for tariff in tariffs:
+        if tariff.claim_id not in tariffs_map:
+            tariffs_map[tariff.claim_id] = []
+        tariffs_map[tariff.claim_id].append(tariff)
+    
+    # Load AI recommendations untuk semua claims sekaligus
+    ai_recs_map = {}
+    ai_recs = db.query(models.ClaimAIRecommendation).filter(
+        models.ClaimAIRecommendation.claim_id.in_(claim_ids),
+        models.ClaimAIRecommendation.is_deleted == False
+    ).all()
+    for rec in ai_recs:
+        if rec.claim_id not in ai_recs_map:
+            ai_recs_map[rec.claim_id] = []
+        ai_recs_map[rec.claim_id].append(rec)
+    
+    # 🚀 OPTIMASI 6: Process claims dengan data yang sudah di-batch
     claims = []
-    for c in claims_pre_filter:
-        # Calculate dynamic fields
+    for c in claims_raw:
+        # Basic patient info (sudah di-eager load)
         c.patient_name = c.patient.nama if c.patient else "-"
         c.patient_rm = c.patient.no_rm if c.patient else "-"
         c.tanggal_kunjungan = c.visit.tanggal_kunjungan if c.visit else None
         c.hospital_name = c.hospital.nama if c.hospital else "-"
         
-        # ✅ TEMPORARY: Simple fallback values for testing layout
-        c.diagnosis_utama = "Sample Diagnosis"
-        c.diagnosis_sekunder = 2  # Count of secondary diagnoses
-        c.tindakan_utama = "Sample Procedure" 
-        c.tarif_ina_cbg = 1500000
-        c.tarif_rs = 1200000
-        c.lama_rawat = 3  # LOS in days
+        # ✅ GET DATA dari batch maps (TIDAK ADA QUERY LAGI)
+        claim_diagnoses = diagnoses_map.get(c.id, [])
+        claim_procedures = procedures_map.get(c.id, [])
+        claim_tariffs = tariffs_map.get(c.id, [])
+        claim_ai_recs = ai_recs_map.get(c.id, [])
         
-        # Simple AI status for testing
-        c.ai_status = {
-            'total_count': 1, 
-            'max_severity': 'info',
-            'status_icon': '✅',
-            'summary_text': '1 Valid'
-        }
-        c.ai_notifications_count = 1
-        c.ai_severity = 'info'        # Apply filters on computed fields
+        # Diagnosis utama dan sekunder
+        c.diagnosis_utama = _get_primary_diagnosis_from_list(claim_diagnoses)
+        c.diagnosis_sekunder = len([d for d in claim_diagnoses if d.diagnosis_type == "sekunder"])
+        
+        # Tindakan utama
+        c.tindakan_utama = _get_primary_procedure_from_list(claim_procedures)
+        
+        # Tarif INA-CBG dan RS
+        c.tarif_ina_cbg, c.tarif_rs = _get_tariffs_from_list(claim_tariffs)
+        
+        # Length of Stay (simple calculation)
+        c.lama_rawat = _calculate_length_of_stay(c)
+        
+        # AI Status aggregation
+        ai_agg = _aggregate_ai_notifications_from_list(claim_ai_recs)
+        c.ai_status = ai_agg
+        c.ai_notifications_count = ai_agg['total_count']
+        c.ai_severity = ai_agg['max_severity']
+        
+        # 🔹 Apply computed field filters
         include_claim = True
         
-        # AI Status filter
         if ai_status:
             if ai_status == 'not_analyzed' and c.ai_notifications_count > 0:
                 include_claim = False
             elif ai_status != 'not_analyzed' and c.ai_severity != ai_status:
                 include_claim = False
         
-        # Tariff range filter
         if tarif_cbg_min is not None and c.tarif_ina_cbg < tarif_cbg_min:
             include_claim = False
         if tarif_cbg_max is not None and c.tarif_ina_cbg > tarif_cbg_max:
             include_claim = False
             
-        # Length of stay filter
         if los_min is not None and c.lama_rawat < los_min:
             include_claim = False
         if los_max is not None and c.lama_rawat > los_max:
@@ -491,13 +780,13 @@ def list_claims(
             "user": user,
             "current_user": user,
             "csrf_token": issue_csrf_token(request),
+            # Filter parameters
             "status": status,
             "workflow_status": workflow_status,
             "tanggal_kunjungan": tanggal_kunjungan,
             "patient_name": patient_name,
             "claim_id": claim_id,
             "visit_id": visit_id,
-            # ✅ NEW: Advanced filter parameters for template
             "diagnosis": diagnosis,
             "tindakan": tindakan,
             "doctor_name": doctor_name,
@@ -506,20 +795,13 @@ def list_claims(
             "tarif_cbg_max": tarif_cbg_max,
             "los_min": los_min,
             "los_max": los_max,
-            # 🚀 NEW: Pagination info
-            "pagination": {
-                "current_page": page,
-                "items_per_page": limit,
-                "total_items": total_count,
-                "total_pages": (total_count + limit - 1) // limit,  # Ceiling division
-                "has_previous": page > 1,
-                "has_next": page < (total_count + limit - 1) // limit,
-                "previous_page": page - 1 if page > 1 else None,
-                "next_page": page + 1 if page < (total_count + limit - 1) // limit else None,
-            },
+            # 🚀 Pagination variables untuk template
+            "page": page,
+            "total_pages": total_pages,
+            "total_count": total_count,
+            "limit": limit,
         },
     )
-
 # ==================================================
 # MANAGERIAL: EPISODE & KLAIM (ADMIN/MANAJEMEN)
 # ==================================================
@@ -4190,29 +4472,51 @@ def _get_primary_procedure(claim):
         
     return "-"
 
-def _get_ina_cbg_tariff(claim):
-    """Get INA-CBG tariff estimation"""
-    if not claim.tariffs:
-        return 0
+def _get_tariffs_optimized(claim):
+    """Get both INA-CBG and RS tariff in single pass (OPTIMIZED)"""
+    ina_cbg_amount = 0
+    rs_amount = 0
     
-    # Look for INA-CBG or IDRG tariff
-    ina_cbg = next((t for t in claim.tariffs if "ina" in (t.tariff_type or "").lower() and not t.is_deleted), None)
-    if ina_cbg and ina_cbg.estimated_amount:
-        return ina_cbg.estimated_amount
+    if not claim.tariffs:
+        return ina_cbg_amount, rs_amount
+    
+    # Single iteration through tariffs
+    for t in claim.tariffs:
+        if t.is_deleted:
+            continue
+            
+        # Early exit if both found
+        if ina_cbg_amount > 0 and rs_amount > 0:
+            break
+            
+        # Check for INA-CBG tariff (only if not found yet)
+        if ina_cbg_amount == 0 and t.tariff_amount:
+            cbg_code_lower = (t.cbg_code or "").lower()
+            desc_lower = (t.description or "").lower()
+            if "ina" in cbg_code_lower or "cbg" in cbg_code_lower or "ina" in desc_lower or "cbg" in desc_lower:
+                ina_cbg_amount = t.tariff_amount
+                continue
         
-    return 0
+        # Check for RS tariff (only if not found yet)
+        if rs_amount == 0 and t.tariff_amount:
+            desc_lower = (t.description or "").lower()
+            if "rs" in desc_lower or "hospital" in desc_lower:
+                rs_amount = t.tariff_amount
+    
+    return ina_cbg_amount, rs_amount
+
+
+def _get_ina_cbg_tariff(claim):
+    """Get INA-CBG tariff estimation (DEPRECATED - use _get_tariffs_optimized)"""
+    ina_cbg, _ = _get_tariffs_optimized(claim)
+    return ina_cbg
+
 
 def _get_rs_tariff(claim):
-    """Get RS internal tariff"""
-    if not claim.tariffs:
-        return 0
-    
-    # Look for hospital/RS tariff
-    rs_tariff = next((t for t in claim.tariffs if "rs" in (t.tariff_type or "").lower() and not t.is_deleted), None)
-    if rs_tariff and rs_tariff.actual_amount:
-        return rs_tariff.actual_amount
-        
-    return 0
+    """Get RS tariff estimation (DEPRECATED - use _get_tariffs_optimized)"""
+    _, rs = _get_tariffs_optimized(claim)
+    return rs
+
 
 def _calculate_length_of_stay(claim):
     """Calculate length of stay in days"""
@@ -4276,6 +4580,150 @@ def _aggregate_ai_notifications(claim):
             notifications['info_count'] += 1
     
     # Calculate totals and severity
+    total = sum(notifications.values())
+    
+    # Determine max severity
+    if notifications['error_count'] > 0:
+        max_severity = 'error'
+        status_icon = '❌'
+    elif notifications['warning_count'] > 0:
+        max_severity = 'warning'  
+        status_icon = '⚠️'
+    elif notifications['info_count'] > 0:
+        max_severity = 'info'
+        status_icon = 'ℹ️'
+    elif notifications['success_count'] > 0:
+        max_severity = 'success'
+        status_icon = '✅'
+    else:
+        max_severity = 'info'
+        status_icon = '⚪'
+    
+    # Build summary text
+    if total == 0:
+        summary_text = 'Belum ada analisis'
+    else:
+        parts = []
+        if notifications['error_count'] > 0:
+            parts.append(f"{notifications['error_count']} Error")
+        if notifications['warning_count'] > 0:
+            parts.append(f"{notifications['warning_count']} Warning")
+        if notifications['info_count'] > 0:
+            parts.append(f"{notifications['info_count']} Info")
+        if notifications['success_count'] > 0:
+            parts.append(f"{notifications['success_count']} OK")
+        
+        summary_text = ', '.join(parts)
+    
+    return {
+        'total_count': total,
+        'max_severity': max_severity,
+        'status_icon': status_icon,
+        'summary_text': summary_text,
+        **notifications
+    }
+
+
+# ==========================================
+# 📊 HELPER FUNCTIONS FOR LIST-BASED OPERATIONS
+# (Used for optimized batch processing in list_claims)
+# ==========================================
+
+def _get_primary_diagnosis_from_list(diagnoses_list):
+    """Get primary diagnosis from a list of ClaimDiagnosis objects"""
+    if not diagnoses_list:
+        return "-"
+    
+    primary = next((d for d in diagnoses_list if d.diagnosis_type == "utama" and not d.is_deleted), None)
+    if primary:
+        return f"{primary.diagnosis_text} ({primary.icd10_code or '-'})"
+        
+    return "-"
+
+
+def _get_primary_procedure_from_list(procedures_list):
+    """Get primary procedure from a list of ClaimProcedure objects"""
+    if not procedures_list:
+        return "-"
+    
+    primary = next((p for p in procedures_list if p.procedure_source == "utama" and not p.is_deleted), None)
+    if primary:
+        icd9_code = primary.icd9_final_by_coder if primary.icd9_final_by_coder else "-"
+        return f"{primary.procedure_text} ({icd9_code})"
+        
+    return "-"
+
+
+def _get_tariffs_from_list(tariffs_list):
+    """Get both INA-CBG and RS tariff from a list of ClaimTariff objects"""
+    ina_cbg_amount = 0
+    rs_amount = 0
+    
+    if not tariffs_list:
+        return ina_cbg_amount, rs_amount
+    
+    for t in tariffs_list:
+        if t.is_deleted:
+            continue
+            
+        # Early exit if both found
+        if ina_cbg_amount > 0 and rs_amount > 0:
+            break
+            
+        # Check for INA-CBG tariff
+        if ina_cbg_amount == 0 and t.tariff_amount:
+            cbg_code_lower = (t.cbg_code or "").lower()
+            desc_lower = (t.description or "").lower()
+            if "ina" in cbg_code_lower or "cbg" in cbg_code_lower or "ina" in desc_lower or "cbg" in desc_lower:
+                ina_cbg_amount = t.tariff_amount
+                continue
+        
+        # Check for RS tariff
+        if rs_amount == 0 and t.tariff_amount:
+            desc_lower = (t.description or "").lower()
+            if "rs" in desc_lower or "hospital" in desc_lower:
+                rs_amount = t.tariff_amount
+    
+    return ina_cbg_amount, rs_amount
+
+
+def _aggregate_ai_notifications_from_list(ai_recs_list):
+    """Aggregate AI notifications from a list of AIRecommendation objects"""
+    if not ai_recs_list:
+        return {
+            'total_count': 0,
+            'error_count': 0,
+            'warning_count': 0,
+            'info_count': 0,
+            'success_count': 0,
+            'max_severity': 'info',
+            'summary_text': 'Belum ada analisis AI',
+            'status_icon': '⚪'
+        }
+    
+    notifications = {
+        'error_count': 0,
+        'warning_count': 0,  
+        'info_count': 0,
+        'success_count': 0
+    }
+    
+    for rec in ai_recs_list:
+        if rec.is_deleted:
+            continue
+            
+        if rec.confidence_score is not None:
+            if rec.confidence_score >= 90:
+                notifications['success_count'] += 1
+            elif rec.confidence_score >= 70:
+                notifications['info_count'] += 1
+            elif rec.confidence_score >= 50:
+                notifications['warning_count'] += 1
+            else:
+                notifications['error_count'] += 1
+        else:
+            notifications['info_count'] += 1
+    
     total = sum(notifications.values())
     
     # Determine max severity
