@@ -439,7 +439,7 @@
 
       const payload = {};
 
-      // 🔹 Determine diagnosis name from multiple possible sources (ensure kategori always diagnosis)
+      // 🔹 Diagnosis / Procedure name
       const diagnosisName =
         window.claimState?.currentDiagnosis?.disease_name ||
         window.claimState?.currentDiagnosis?.diagnosis_text ||
@@ -447,32 +447,29 @@
         document.querySelector('.diagnosis-name, .diagnosis-title, .selected-diagnosis')?.textContent?.trim() ||
         "";
 
-      // 🔹 Determine procedure name if this is a tindakan scope
       const procedureName =
         (procedureId && (window.claimState?.currentProcedure?.name ||
-          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()))
-        || window.claimState?.currentProcedure?.name
-        || document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()
-        || "";
+          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim())) ||
+        window.claimState?.currentProcedure?.name ||
+        document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim() ||
+        "";
 
-      // Decide scope
+      // 🔹 Tentukan scope
       let scope = procedureId ? "tindakan" : "diagnosis";
 
-      // ✅ Normalisasi ID biar gak timestamp
+      // ✅ Normalisasi ID
       const normalizedDiagnosisId = normalizeId(diagnosisId);
       const normalizedProcedureId = normalizeId(procedureId);
-      // 🩹 PATCH: ganti procedureId langsung ke versi valid
+
       if (normalizedProcedureId) {
-        procedureId = normalizedProcedureId; // gunakan ID valid
+        procedureId = normalizedProcedureId;
       } else if (window.claimState?.currentProcedure?.id) {
-        console.log("🩵 Fallback to stored procedure_id:", window.claimState.currentProcedure.id);
         procedureId = window.claimState.currentProcedure.id;
       } else {
-        console.warn("⚠️ procedureId invalid (timestamp), dikosongkan");
         procedureId = null;
       }
 
-      // fallback: coba ambil ID dari claimState bila invalid
+      // fallback ID dari claimState
       if (!normalizedDiagnosisId && window.claimState?.currentDiagnosis?.id) {
         payload.diagnosis_id = window.claimState.currentDiagnosis.id;
       }
@@ -481,9 +478,8 @@
       }
 
       // payload utama
-      Object.assign(payload,{
+      Object.assign(payload, {
         claim_id: claimId,
-        // Always send kategori as the diagnosis name (backend expects diagnosis in 'kategori')
         kategori: diagnosisName || "Regulasi Umum",
         field: fieldName,
         scope,
@@ -491,50 +487,65 @@
         region_id: window.claimState?.region_id || "jatim",
       });
 
-      // backward-compatible explicit fields for backend convenience
-      if (diagnosisName) {
-        payload.diagnosis_name = diagnosisName;
-      }
+      // ✅ Normalisasi nama field agar sesuai DB
+      const fieldMap = {
+        kodeInaCbg: "kode_ina_cbg",
+        kodeInacbg: "kode_ina_cbg",
+        evaluasiFaskes: "evaluasi_faskes",
+        validitas: "validitas_klinis_kombinasi",  // ✅ tambahkan ini
+        validitasText: "validitas_klinis_kombinasi"
+      };
 
-      // jika tindakan, sertakan nama procedure di payload (key 'procedure' untuk konsistensi backend)
+      const normalizedField = fieldMap[payload.field] || payload.field;
+      payload.field = normalizedField;
+
+      // payload tambahan
+      if (diagnosisName) payload.diagnosis_name = diagnosisName;
       if (procedureId || procedureName) {
         payload.procedure = procedureName || "";
-        // keep item_id for procedure context
         if (procedureId) payload.item_id = procedureId;
       }
-
-      // jika dipanggil dengan diagnosisId, sertakan item_id juga
       if (diagnosisId && !payload.item_id) payload.item_id = diagnosisId;
 
       const currentField = document.querySelector(`[data-field="${fieldName}"] .col-value`);
       if (currentField) payload.current_value = currentField.textContent.trim();
 
-      // 🔹 Diagnosis ID dari DB
-      if (scope === "diagnosis" && normalizedDiagnosisId) {
+      if (scope === "diagnosis" && normalizedDiagnosisId)
         payload.diagnosis_id = normalizedDiagnosisId;
-      }
-
-      // 🔹 Procedure ID dari DB
-      if (scope === "tindakan" && normalizedProcedureId) {
+      if (scope === "tindakan" && normalizedProcedureId)
         payload.procedure_id = normalizedProcedureId;
-      }
+
       console.log("[REGULATION] Payload sent to backend:", payload);
 
+      // ================== FETCH ==================
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const result = await response.json();
       console.log("[REGULATION] Response:", result);
 
+      // ================== RENDER ==================
       if (result.status === "success") {
         const rawData = result.data;
         const normalized = Array.isArray(rawData) ? rawData : rawData?.data || [];
+
+        let renderedHtml = "";
+        // 🩹 Smart fallback: kalau kosong, pakai mode read-only (kuning, grouped)
+        if (!normalized || normalized.length === 0) {
+          console.log("[REGULATION] No multilayer data → using read-only renderer");
+          renderedHtml = renderRegulationDetailReadOnly({
+            regulations: result.data?.data || [],
+            field_name: fieldName,
+          });
+        } else {
+          renderedHtml = renderRegulationDetailMultilayer(normalized, fieldName);
+        }
+
         openOverlayModal(
-          `${fieldName.replace('_', ' ').toUpperCase()}`,
-          renderRegulationDetailMultilayer(normalized, fieldName),
+          `${fieldName.replace("_", " ").toUpperCase()}`,
+          renderedHtml,
           procedureId ? "procedure" : "diagnosis",
           procedureId || diagnosisId
         );
@@ -542,7 +553,7 @@
         throw new Error(result.message || "Gagal memuat regulasi");
       }
     } catch (error) {
-      console.error(`❌ Error fetching regulation detail:`, error);
+      console.error("❌ Error fetching regulation detail:", error);
       openOverlayModal(
         "Error",
         `<div class="p-4 text-red-500 text-center">
@@ -557,6 +568,7 @@
       );
     }
   }
+
 
 // =====================================================
 // UPDATE RINGKASAN FROM ROW (asli kamu – tidak diubah isinya)
