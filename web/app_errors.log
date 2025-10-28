@@ -1905,3 +1905,253 @@ jinja2.exceptions.UndefinedError: 'claim' is undefined
 2025-10-26 13:16:12,521 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-26T13:16:12.521108', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
 >>>>>>> 39b44efd587295e33e99d75b1128947634e96e3b
 2025-10-27 02:13:45,284 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-27 02:15:21,069 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:15:21,476 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 02:27:10,029 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:27:10,365 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 02:30:25,569 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:30:25.569351', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:31:53,277 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:31:53.277798', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:38:47,020 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:38:47,328 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 02:39:36,892 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:39:37,112 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 02:40:13,578 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:13.578260', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=P45&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:14,172 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:14.172787', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=P45.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:15,092 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:15.092228', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=P45.2&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:17,931 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:17.931387', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=A3&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:18,378 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:18.378348', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=A35&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:19,059 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:19.059129', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=A35.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:19,886 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:19.886212', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=A35.3&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:21,693 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:21.693356', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=A35.7&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:24,186 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:24.186712', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=95&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:24,906 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:24.906683', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=95.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:25,498 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:25.498802', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=95.43&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:27,575 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:27.575663', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=67&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:28,347 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:28.347587', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=67.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:29,088 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:29.088837', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=67.90&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:37,514 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:37.514368', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=U96&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:38,107 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:38.106976', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=U96.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:38,610 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:38.610455', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=U96.2&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:41,102 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:41.102085', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=gk&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:42,931 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:42.930987', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=IU&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:44,398 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:44.398372', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=Ia&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:45,710 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:45.710879', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=IF&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:46,538 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:46.538159', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=IF%2F&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:47,192 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:47.192652', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=IF&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:49,679 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:49.679854', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=I48&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:50,410 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:50.410746', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=I48.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:51,221 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:51.221565', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=I48.3&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:54,635 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:54.635730', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=5y&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:55,349 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:55.349632', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=534&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:56,113 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:56.113227', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=53&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:56,460 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:56.460755', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=53.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:56,814 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:56.814706', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=53.7&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:57,368 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:57.368534', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=53.76&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:40:59,306 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:40:59.306594', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=645&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:00,008 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:00.008395', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=64&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:00,864 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:00.864879', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=64.21&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:04,310 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:04.310933', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=56&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:09,576 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:09.575895', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=B53&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:10,651 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:10.651074', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=B53.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:11,197 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:11.197647', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=B53.4&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:16,731 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:16.731293', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=K2&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:17,204 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:17.204096', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=K21&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:17,595 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:17.595302', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=K21.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:18,483 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:18.483896', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=K21.9&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:20,762 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:20.762329', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=34&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:21,710 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:21.710683', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=34.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:22,344 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:22.344929', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=34.69&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:24,162 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:24.162175', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=86&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:24,896 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:24.896798', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=86.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:25,627 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:25.627325', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=86.49&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:27,267 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:27.267379', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=86.49&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:27,749 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T02:41:27.749124', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=86.43&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 02:41:55,673 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:41:56,044 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 02:48:55,025 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 02:48:55,270 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 03:19:03,370 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 03:19:52,148 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 03:20:29,881 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 03:21:01,533 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-10-27 03:21:01,571 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-10-27T03:21:01.571388', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/168/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 03:21:23,195 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 03:21:48,158 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 03:21:53,652 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:21:53,933 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:21:58,874 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:21:59,586 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:22:02,928 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:22:03,535 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:22:07,822 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:22:08,560 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:22:42,288 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 03:31:19,495 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 03:31:19,753 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 03:32:59,887 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 03:33:00,151 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 03:33:37,680 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-10-27 03:36:02,415 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 03:36:02,696 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 03:36:33,045 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 03:56:21,245 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-27 03:57:02,735 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-27 03:57:12,141 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T03:57:12.140936', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 03:58:34,988 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 03:58:55,496 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 03:59:00,554 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:59:00,676 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 03:59:13,855 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 04:02:06,987 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 04:02:11,560 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 04:02:11,672 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 04:02:28,737 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 04:02:33,179 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 04:02:33,456 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 04:02:38,833 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 04:02:38,946 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 05:00:34,466 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T05:00:34.465823', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 05:01:42,629 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 05:02:01,966 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 05:02:07,373 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 05:02:07,482 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 05:02:21,234 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 05:02:39,699 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T05:02:39.699354', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 05:03:38,291 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 05:03:38,502 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 05:03:43,245 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T05:03:43.245696', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:18:10,178 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: OperationalError - (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+[SQL: SELECT users.id AS users_id, users.auth0_sub AS users_auth0_sub, users.email AS users_email, users.name AS users_name, users.jabatan AS users_jabatan, users.sip_number AS users_sip_number, users.hospital_id AS users_hospital_id, users.role AS users_role, users.is_active AS users_is_active, users.is_deleted AS users_is_deleted, users.is_dummy AS users_is_dummy 
+FROM users 
+WHERE users.id = %(pk_1)s]
+[parameters: {'pk_1': 43}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Path: /dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.OperationalError: SSL SYSCALL error: EOF detected
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 263, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 586, in solve_dependencies
+    solved = await run_in_threadpool(call, **sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/auth.py", line 136, in _dep
+    user = db.query(models.User).get(uid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in get
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/deprecations.py", line 386, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 1127, in get
+    return self._get_impl(ident, loading.load_on_pk_identity)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 1136, in _get_impl
+    return self.session._get_impl(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 3873, in _get_impl
+    return db_load_fn(
+           ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/loading.py", line 694, in load_on_pk_identity
+    session.execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+[SQL: SELECT users.id AS users_id, users.auth0_sub AS users_auth0_sub, users.email AS users_email, users.name AS users_name, users.jabatan AS users_jabatan, users.sip_number AS users_sip_number, users.hospital_id AS users_hospital_id, users.role AS users_role, users.is_active AS users_is_active, users.is_deleted AS users_is_deleted, users.is_dummy AS users_is_dummy 
+FROM users 
+WHERE users.id = %(pk_1)s]
+[parameters: {'pk_1': 43}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+2025-10-27 06:18:10,579 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:18:10.579410', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:18:52,727 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:18:52.727160', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:19:26,805 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:19:26.805196', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:19:56,473 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-10-27 06:20:27,307 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 06:20:46,562 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 06:21:21,753 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-27 06:21:21,980 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-27 06:21:37,632 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-10-27 06:21:56,202 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 06:22:24,319 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 06:22:24,440 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-10-27 06:22:37,986 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 06:37:30,169 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 06:37:34,008 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:37:34.008283', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:37:58,297 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:37:58.297734', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:38:33,065 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-10-27 06:38:36,637 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:38:36.637010', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:39:13,585 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-10-27 06:39:16,680 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-27T06:39:16.680347', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-27 06:40:51,967 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"

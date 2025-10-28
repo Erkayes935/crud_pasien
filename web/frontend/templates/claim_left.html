@@ -426,6 +426,34 @@
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.resume.js') }}"></script>
+<!-- 🌐 Tambahkan inisialisasi role di bawah semua JS -->
+<!-- 🌐 Role Initialization Safe Mode -->
+<script id="userRoleData" type="application/json">
+  {{ {"roles": user.role_names if user and user.role_names else ["doctor"]} | tojson | safe }}
+</script>
+
+<script>
+  try {
+    // Ambil JSON yang dirender Jinja dari tag di atas
+    const roleDataEl = document.getElementById("userRoleData");
+    const roleData = roleDataEl ? JSON.parse(roleDataEl.textContent) : { roles: ["doctor"] };
+
+    window.claimState = window.claimState || {};
+    window.roles = roleData.roles || ["doctor"];
+    window.currentUserRole = window.roles[0] || "doctor";
+
+    window.claimState.roles = window.roles;
+    window.claimState.currentUserRole = window.currentUserRole;
+
+    console.log("🧩 Initialized role:", window.currentUserRole, window.roles);
+  } catch (err) {
+    console.error("Role initialization failed:", err);
+    window.claimState = window.claimState || {};
+    window.roles = ["doctor"];
+    window.currentUserRole = "doctor";
+  }
+</script>
+
 <script>
 // Wait for all scripts to load before attaching form handler
 document.addEventListener('DOMContentLoaded', function() {
