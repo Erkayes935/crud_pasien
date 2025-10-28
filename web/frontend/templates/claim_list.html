@@ -47,7 +47,8 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Claims</p>
-            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ claims|length }}</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ total_count }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">All pages</p>
           </div>
           <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,8 +62,14 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Completed</p>
-            <p class="text-2xl font-bold text-green-600 dark:text-green-400">
-              {{ claims|selectattr('workflow_status','in',['coder_verified','finalized'])|list|length }}
+            {% set completed_count = workflow_counts.get('coder_verified', 0) + workflow_counts.get('finalized', 0) %}
+            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ completed_count }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              {% if total_count > 0 %}
+                {{ "%.0f"|format((completed_count / total_count) * 100) }}% done
+              {% else %}
+                0% done
+              {% endif %}
             </p>
           </div>
           <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -77,10 +84,8 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">AI Alerts</p>
-            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {% set total_ai_alerts = claims|sum(attribute='ai_status.total_count') %}
-              {{ total_ai_alerts or 0 }}
-            </p>
+            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ total_ai_alerts }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Needs review</p>
           </div>
           <div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
             <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,11 +100,17 @@
           <div>
             <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Tarif</p>
             <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {% set total_tarif = claims|sum(attribute='tarif_ina_cbg') %}
               {% if total_tarif > 0 %}
                 {{ "%.1f"|format(total_tarif/1000000) }}M
               {% else %}
                 0
+              {% endif %}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              {% if total_count > 0 %}
+                Avg {{ "%.1f"|format(total_tarif/total_count/1000) }}K
+              {% else %}
+                Avg 0K
               {% endif %}
             </p>
           </div>
@@ -112,22 +123,15 @@
       </div>
     </div>
 
-    <!-- ✨ NEW: Workflow Status Breakdown -->
+    <!-- Workflow Status Breakdown - Updated dengan data global -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {% set draft_count = claims|selectattr('workflow_status','equalto','draft')|list|length %}
-        {% set submitted_count = claims|selectattr('workflow_status','equalto','doctor_submitted')|list|length %}
-        {% set coder_review_count = claims|selectattr('workflow_status','equalto','coder_review')|list|length %}
-        {% set coder_verified_count = claims|selectattr('workflow_status','equalto','coder_verified')|list|length %}
-        {% set verifikator_review_count = claims|selectattr('workflow_status','equalto','verifikator_review')|list|length %}
-        {% set finalized_count = claims|selectattr('workflow_status','equalto','finalized')|list|length %}
-
         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
           <div class="flex items-center gap-2 mb-1">
             <span class="text-lg">📝</span>
             <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Draft</span>
           </div>
-          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ draft_count }}</p>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ workflow_counts.get('draft', 0) }}</p>
         </div>
 
         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
@@ -135,15 +139,15 @@
             <span class="text-lg">📤</span>
             <span class="text-xs font-medium text-blue-600 dark:text-blue-400">Submitted</span>
           </div>
-          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ submitted_count }}</p>
+          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ workflow_counts.get('doctor_submitted', 0) }}</p>
         </div>
 
         <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-700">
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-lg">🔍</span>
+            <span class="text-lg">📋</span>
             <span class="text-xs font-medium text-amber-600 dark:text-amber-400">Coder Review</span>
           </div>
-          <p class="text-2xl font-bold text-amber-700 dark:text-amber-300">{{ coder_review_count }}</p>
+          <p class="text-2xl font-bold text-amber-700 dark:text-amber-300">{{ workflow_counts.get('coder_review', 0) }}</p>
         </div>
 
         <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-700">
@@ -151,7 +155,7 @@
             <span class="text-lg">✅</span>
             <span class="text-xs font-medium text-green-600 dark:text-green-400">Verified</span>
           </div>
-          <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ coder_verified_count }}</p>
+          <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ workflow_counts.get('coder_verified', 0) }}</p>
         </div>
 
         <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
@@ -159,7 +163,7 @@
             <span class="text-lg">👁</span>
             <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">Verifikator</span>
           </div>
-          <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{{ verifikator_review_count }}</p>
+          <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{{ workflow_counts.get('verifikator_review', 0) }}</p>
         </div>
 
         <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600">
@@ -167,7 +171,7 @@
             <span class="text-lg">🎯</span>
             <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Finalized</span>
           </div>
-          <p class="text-2xl font-bold text-gray-800 dark:text-gray-400">{{ finalized_count }}</p>
+          <p class="text-2xl font-bold text-gray-800 dark:text-gray-400">{{ workflow_counts.get('finalized', 0) }}</p>
         </div>
       </div>
     </div>
