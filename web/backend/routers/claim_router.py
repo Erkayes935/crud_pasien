@@ -1451,7 +1451,6 @@ async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Sessio
                         db.flush()
                     
                     procedure_detail = models.ClaimProcedureDetail(
-                        claim_simulation_id=simulation.id,
                         procedure_id=procedure.id,
                         icd9_tindakan=tindakan_item.get("icd9", ""),
                         validitas_tindakan=tindakan_item.get("validitas", ""),
@@ -1486,14 +1485,13 @@ async def analyze_diagnosis(claim_id: int, payload: dict = Body(...), db: Sessio
                 if not reg_item or not judul:
                     continue
 
-                    
                 regulation_detail = models.ClaimRegulationDetail(
                     claim_id=claim_id,
                     procedure_id=existing_procedure.id if mode == "procedure" else None,
                     diagnosis_id=diag.id if mode == "diagnosis" else None,
                     judul_regulasi=judul,
                     dasar_hukum=reg_item.get("dasar_hukum", ""),
-                    bab_pasal=reg_item.get("bab_pasal", ""),
+                    # bab_pasal removed - column deleted from database
                     isi=reg_item.get("isi", ""),
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
@@ -1559,7 +1557,11 @@ async def analyze_procedure(
 
     # 🔹 Build contextual payload for core_engine
     context = claim_helper.build_procedure_context(db, cid, stage)
-    core_payload = {"claim_id": cid, "procedure_text": procedure_text, "stage": stage}
+    core_payload = {
+        "claim_id": cid,
+        "procedure_name": procedure_text,  # ✅ Fixed: use procedure_name not procedure_text
+        "stage": stage
+    }
     if context:
         core_payload["context"] = context
 
@@ -1635,7 +1637,6 @@ async def analyze_procedure(
 
 
         detail = db.query(models.ClaimProcedureDetail).filter_by(
-            claim_simulation_id=simulation.id,
             procedure_id=procedure.id,
             is_deleted=False
         ).first()
@@ -1653,7 +1654,6 @@ async def analyze_procedure(
             print(f"[ANALYZE_PROCEDURE] Updated ClaimProcedureDetail (id={detail.id})")
         else:
             new_detail = models.ClaimProcedureDetail(
-                claim_simulation_id=simulation.id,
                 procedure_id=procedure.id,
                 icd9_tindakan=result.get("icd9_code", ""),
                 validitas_tindakan=result.get("validitas", ""),
@@ -1712,7 +1712,7 @@ async def analyze_procedure(
                         procedure_id=procedure.id,
                         judul_regulasi=judul,
                         dasar_hukum=reg_item.get("dasar_hukum", ""),
-                        bab_pasal=reg_item.get("bab_pasal", ""),
+                        # bab_pasal removed - column deleted from database
                         isi=isi_clean,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),
@@ -1941,7 +1941,7 @@ async def regulation_detail(
                         {
                             "judul_regulasi": r.judul_regulasi,
                             "dasar_hukum": r.dasar_hukum,
-                            "bab_pasal": r.bab_pasal,
+                            # "bab_pasal": removed - column deleted from database
                             "isi": r.isi,
                             "entry_field": r.entry_field,
                         }
@@ -1987,7 +1987,7 @@ async def regulation_detail(
                     entry_field=field,
                     dasar_hukum=reg_item.get("layer") or reg_item.get("dasar_hukum"),
                     judul_regulasi=reg_item.get("judul_regulasi") or reg_item.get("judul") or "-",
-                    bab_pasal=reg_item.get("sumber") or reg_item.get("bab_pasal"),
+                    # bab_pasal removed - column deleted from database
                     isi=isi or "-",
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
@@ -3535,7 +3535,7 @@ async def get_stored_procedure_detail(
                     {
                         "judul": reg.judul_regulasi,
                         "dasar_hukum": reg.dasar_hukum or "",
-                        "bab_pasal": reg.bab_pasal or "",
+                        # "bab_pasal": removed - column deleted from database
                         "isi": reg.isi or ""
                     } for reg in related_regs
                 ]
@@ -3636,7 +3636,7 @@ async def get_stored_regulation_detail(
                     {
                         "judul": reg.judul_regulasi,
                         "dasar_hukum": reg.dasar_hukum or "",
-                        "bab_pasal": reg.bab_pasal or "",
+                        # "bab_pasal": removed - column deleted from database
                         "isi": reg.isi or "",
                         "layer": getattr(reg, "layer", "-"),
                         "sumber": getattr(reg, "sumber", "-"),

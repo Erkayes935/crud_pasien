@@ -41,7 +41,7 @@ async def regulation_detail(payload: dict = Body(...), db: Session = Depends(get
                     "id": r.id,
                     "judul_regulasi": r.judul_regulasi,
                     "dasar_hukum": r.dasar_hukum,
-                    "bab_pasal": r.bab_pasal,
+                    # "bab_pasal": removed - column deleted from database
                     "isi": r.isi,
                 }
                 for r in regs

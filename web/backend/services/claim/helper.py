@@ -54,7 +54,7 @@ def _update_or_create_procedure(db, claim, data: dict, proc_type: str, sim_id: i
     if not detail:
         detail = models.ClaimProcedureDetail(
             procedure_id=proc.id,
-            claim_simulation_id=sim_id,   # ✅ wajib isi, biar gak null
+            # claim_simulation_id removed - not in database schema
             icd9_tindakan=data.get("icd") or "47.09",
             validitas_tindakan=data.get("validitas") or "valid",
             status_tindakan=data.get("status") or "valid",

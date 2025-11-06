@@ -348,10 +348,8 @@ class ClaimProcedureDetail(Base):
     __tablename__ = "claim_procedure_details"
 
     id = Column(Integer, primary_key=True, index=True)
-    claim_simulation_id = Column(Integer, ForeignKey("claim_simulations.id", ondelete="CASCADE"), nullable=False)
-
-    # satu detail hanya milik satu simulation
-    simulation = relationship("ClaimSimulation", back_populates="procedure_details")
+    # claim_simulation_id removed - not in database schema
+    # simulation relationship removed
 
     procedure_id = Column(Integer, ForeignKey("claim_procedures.id"), nullable=False)
     procedure = relationship("ClaimProcedure", back_populates="procedure_details")
@@ -397,7 +395,7 @@ class ClaimRegulationDetail(Base):
 
     judul_regulasi = Column(String(255), nullable=False)   # contoh: PNPK Sepsis 2020
     dasar_hukum    = Column(String(255), nullable=True)    # contoh: Permenkes, PNPK, ICD-10, INA-CBG
-    bab_pasal      = Column(String(255), nullable=True)    # contoh: Bab II, Pasal 4 ayat (2)
+    # bab_pasal column was removed from database by partner
     isi            = Column(Text, nullable=True)           # isi/penjelasan regulasi
 
     created_at = Column(DateTime, server_default=text("now()"))
@@ -453,11 +451,7 @@ class ClaimSimulation(Base):
     tindakan_utama = relationship("ClaimProcedure", foreign_keys=[tindakan_utama_id])
     tindakan_sekunder = relationship("ClaimProcedure", foreign_keys=[tindakan_sekunder_id])
 
-    procedure_details = relationship(
-        "ClaimProcedureDetail",
-        back_populates="simulation",
-        cascade="all, delete-orphan"
-    )
+    # procedure_details relationship removed - claim_simulation_id not in database
 
 # =========================================
 # Claim AI Recommendations Summary
