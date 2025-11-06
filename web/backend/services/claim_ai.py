@@ -49,10 +49,6 @@ async def analyze_procedure(payload: dict):
     return await proxy_core_engine("/analyze_procedure", payload)
 
 
-# async def generate_claim_combos(payload: dict):
-#     return await proxy_core_engine("/generate_claim_combos", payload)
-
-
 async def resume_medis(payload: dict):
     return await proxy_core_engine("/resume_medis", payload)
 

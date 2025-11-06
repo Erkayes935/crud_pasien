@@ -6,14 +6,17 @@ Helper khusus untuk integrasi klaim ↔ core_engine.
 Berbeda dari claim/helper.py (utility kecil untuk update model).
 """
 
+from fastapi import HTTPException, Body, Depends
+from functools import wraps
+from backend import models
+from backend.database import SessionLocal, get_db
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from sqlalchemy import func
 from datetime import datetime
 import json
-
-from backend import models
-
+import traceback
+import inspect
 
 # ==================================================
 # UPDATE MEDICAL RECORD (FULL) + LOG
@@ -238,3 +241,20 @@ def normalize_predict_ddx(raw_resp: dict) -> dict:
         "komorbid": komorbid,
         "komplikasi": komplikasi
     }
+
+# ==================================================
+# PARSING UTILITIES
+# ==================================================
+def parse_number(val):
+    """Helper parse angka dari string 'Rp xx.xxx' atau int/float langsung."""
+    if not val:
+        return None
+    if isinstance(val, (int, float)):
+        return val
+    cleaned = str(val).replace("Rp", "").replace(",", "").replace(".", "").strip()
+    if cleaned in ["", "-", "None", "nan"]:
+        return None
+    try:
+        return int(cleaned)
+    except ValueError:
+        return None

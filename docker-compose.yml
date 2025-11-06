@@ -6,7 +6,7 @@ services:
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgresql://postgres:user@27.112.78.243:5434/patients
+      DATABASE_URL: postgresql://postgres:user@103.179.56.158:5434/patients
 
       CORE_ENGINE_URL: http://core_engine:8002
     env_file:

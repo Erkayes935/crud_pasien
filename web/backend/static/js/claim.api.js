@@ -94,6 +94,10 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
+      // 🔧 Normalisasi hasil backend yang punya wrapper {status, data:{...}}
+      while (result && result.data) {
+        result = result.data;
+      }
       console.log("🔍 Core engine result:", result);
 
       const responseData = result.data || result;
@@ -361,100 +365,97 @@
   // Utilities (Search, Load)
   // ============================================================
   async function loadSimulations(claimId) {
-    try {
-      const res = await fetch(`/claims/${claimId}/simulations`);
-      if (!res.ok) return;
-      const body = await res.json();
-      const sims = body.data || [];
+  try {
+    const res = await fetch(`/claims/${claimId}/simulations`);
+    if (!res.ok) return;
+    const body = await res.json();
+    let sims = Array.isArray(body.data) ? body.data : [];
 
-      console.log(`🔄 [LOAD_SIMULATIONS] Loading ${sims.length} simulation records for claim ${claimId}`);
-
-      sims.forEach((s, index) => {
-        console.log(`📄 Processing simulation ${index + 1}:`, {
-          stage: s.stage,
-          primary_diag: s.diagnosis_utama_name,
-          secondary_diag: s.diagnosis_sekunder_name,
-          primary_action: s.tindakan_utama_name,
-          secondary_action: s.tindakan_sekunder_name
-        });
-
-        // 🎯 PRIMARY DIAGNOSIS
-        if (s.diagnosis_utama_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading PRIMARY diagnosis: ${s.diagnosis_utama_name} (stage: ${s.stage})`);
-              window.updateSimulasi("diagnosis", "Primary", {
-                id: s.diagnosis_utama_id,
-                name: s.diagnosis_utama_name || "(tanpa nama)",
-                mapping: "Primary",
-              }, true, s.stage);
-            },
-            index * 10 // Stagger timing to avoid conflicts
-          );
-        }
-
-        // 🎯 SECONDARY DIAGNOSIS  
-        if (s.diagnosis_sekunder_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading SECONDARY diagnosis: ${s.diagnosis_sekunder_name} (stage: ${s.stage})`);
-              window.updateSimulasi("diagnosis", "Secondary", {
-                id: s.diagnosis_sekunder_id,
-                name: s.diagnosis_sekunder_name || "(tanpa nama)",
-                mapping: "Secondary",
-              }, true, s.stage);
-            },
-            index * 10 + 5
-          );
-        }
-
-        // 🎯 PRIMARY ACTION
-        if (s.tindakan_utama_id) {
-          window.updateSimulasi("tindakan", "Primary Action", {
-            id: s.tindakan_utama_id,
-            name: s.tindakan_utama_name || "(tanpa nama)",
-            mapping: "Primary Action",
-          }, true, s.stage);
-        }
-
-        // 🎯 SECONDARY ACTION
-        if (s.tindakan_sekunder_id) {
-          window.updateSimulasi("tindakan", "Secondary Actions", {
-            id: s.tindakan_sekunder_id,
-            name: s.tindakan_sekunder_name || "(tanpa nama)",
-            mapping: "Secondary Actions",
-          }, true, s.stage);
-        }
-
-      });
-      // 🩹 PATCH KOMPATIBILITAS UNTUK STRUKTUR BARU
-      const state =
-        Alpine?.$data(document.getElementById("claimRoot")) ||
-        window.claimState ||
-        {};
-
-      Object.keys(state.simulasi || {}).forEach(tab => {
-        const sim = state.simulasi[tab];
-        if (!sim || typeof sim !== "object") return;
-
-        // kalau partner menaruh semua tindakan di array `tindakan`
-        if (Array.isArray(sim.tindakan)) {
-          const primary = sim.tindakan.find(t => (t.mapping || '').toLowerCase().includes('primary'));
-          const secondary = sim.tindakan.filter(t => (t.mapping || '').toLowerCase().includes('secondary'));
-          sim.tindakanUtama = primary || null;
-          sim.tindakanSekunder = secondary || [];
-        }
-
-        // fallback agar field tetap ada
-        if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
-        if (!("tindakanSekunder" in sim)) sim.tindakanSekunder = [];
-      });
-
-      console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);
-    } catch (e) {
-      console.error("❌ [LOAD_SIMULATIONS] Gagal load simulations:", e);
+    // 🧩 kompatibilitas: kalau formatnya dict of stages (verifikator)
+    if (!sims.length && body.data?.stages) {
+      sims = [];
+      for (const [stage, groups] of Object.entries(body.data.stages)) {
+        const diag = (groups.diagnosis || []).map(i => ({
+          stage,
+          diagnosis_utama_id: i.id,
+          diagnosis_utama_name: i.name,
+        }));
+        const proc = (groups.procedure || []).map(i => ({
+          stage,
+          tindakan_utama_id: i.id,
+          tindakan_utama_name: i.name,
+        }));
+        sims.push(...diag, ...proc);
+      }
     }
+
+    console.log(`🔄 [LOAD_SIMULATIONS] Loading ${sims.length} simulation records for claim ${claimId}`);
+
+    sims.forEach((s, index) => {
+      // Diagnosis utama
+      if (s.diagnosis_utama_id) {
+        setTimeout(() => {
+          window.updateSimulasi(
+            "diagnosis",
+            "Primary",
+            {
+              id: s.diagnosis_utama_id,
+              name: s.diagnosis_utama_name || "(tanpa nama)",
+              mapping: "Primary",
+            },
+            true,
+            s.stage
+          );
+        }, index * 10);
+      }
+
+      // Tindakan utama
+      if (s.tindakan_utama_id) {
+        setTimeout(() => {
+          window.updateSimulasi(
+            "tindakan",
+            "Primary Action",
+            {
+              id: s.tindakan_utama_id,
+              name: s.tindakan_utama_name || "(tanpa nama)",
+              mapping: "Primary Action",
+            },
+            true,
+            s.stage
+          );
+        }, index * 10 + 5);
+      }
+    });
+
+    // 🔧 patch struktur lama agar tetap lengkap
+    const state =
+      Alpine?.$data(document.getElementById("claimRoot")) ||
+      window.claimState ||
+      {};
+
+    Object.keys(state.simulasi || {}).forEach(tab => {
+      const sim = state.simulasi[tab];
+      if (!sim || typeof sim !== "object") return;
+      if (Array.isArray(sim.tindakan)) {
+        const primary = sim.tindakan.find(t =>
+          (t.mapping || "").toLowerCase().includes("primary")
+        );
+        const secondary = sim.tindakan.filter(t =>
+          (t.mapping || "").toLowerCase().includes("secondary")
+        );
+        sim.tindakanUtama = primary || null;
+        sim.tindakanSekunder = secondary || [];
+      }
+      if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
+      if (!("tindakanSekunder" in sim)) sim.tindakanSekunder = [];
+    });
+
+    console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);
+  } catch (e) {
+    console.error("❌ [LOAD_SIMULATIONS] Gagal load simulations:", e);
   }
+}
+
 
   async function searchDiagnosis(query) {
     const res = await fetch(`/claims/search/diagnosis?query=${query}`);
