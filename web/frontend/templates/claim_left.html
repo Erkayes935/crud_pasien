@@ -25,19 +25,34 @@
             </button>
             </div>
           </div>
-
-
-            <!-- Tabs -->
+          <!-- ================= Dynamic Tabs (auto from backend stages) ================= -->
           <div class="tabs flex space-x-6 border-b mb-4">
-            <button type="button" class="px-4 py-2" 
-                    :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
-                      @click="tab='admission'">Admission</button>
-            <button type="button" class="px-4 py-2" 
-                    :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
-                    @click="tab='daily-0'">Daily</button>
-            <button type="button" class="px-4 py-2" 
-                    :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
-                    @click="tab='discharge'">Discharge</button>
+            {% if 'admission' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='admission'">
+                Admission
+              </button>
+            {% endif %}
+
+            {% if 'daily' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='daily-0'">
+                Daily
+              </button>
+            {% endif %}
+
+            {% if 'discharge' in stages %}
+              <button type="button"
+                      class="px-4 py-2"
+                      :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='discharge'">
+                Discharge
+              </button>
+            {% endif %}
           </div>
           <!-- Admission / Daily / Discharge isi sama persis dari file awal -->
           <!-- ================= ADMISSION TAB ================= -->
@@ -407,10 +422,38 @@
 <script src="{{ url_for('static', path='js/claim.state.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.manual.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.render.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.resume.js') }}"></script>
+<!-- 🌐 Tambahkan inisialisasi role di bawah semua JS -->
+<!-- 🌐 Role Initialization Safe Mode -->
+<script id="userRoleData" type="application/json">
+  {{ {"roles": user.role_names if user and user.role_names else ["doctor"]} | tojson | safe }}
+</script>
+
+<script>
+  try {
+    // Ambil JSON yang dirender Jinja dari tag di atas
+    const roleDataEl = document.getElementById("userRoleData");
+    const roleData = roleDataEl ? JSON.parse(roleDataEl.textContent) : { roles: ["doctor"] };
+
+    window.claimState = window.claimState || {};
+    window.roles = roleData.roles || ["doctor"];
+    window.currentUserRole = window.roles[0] || "doctor";
+
+    window.claimState.roles = window.roles;
+    window.claimState.currentUserRole = window.currentUserRole;
+
+    console.log("🧩 Initialized role:", window.currentUserRole, window.roles);
+  } catch (err) {
+    console.error("Role initialization failed:", err);
+    window.claimState = window.claimState || {};
+    window.roles = ["doctor"];
+    window.currentUserRole = "doctor";
+  }
+</script>
+
 <script>
 // Wait for all scripts to load before attaching form handler
 document.addEventListener('DOMContentLoaded', function() {

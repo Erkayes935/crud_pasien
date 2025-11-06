@@ -5,83 +5,148 @@ from .ai import store_ai_recommendations, store_ai_evaluations
 
 
 # ==========================================================
-# 🧩 HELPER 1: Simpan Diagnosis & Tindakan dasar
+# 🧩 HELPER 1: Simpan Diagnosis & Tindakan (dynamic source)
 # ==========================================================
 def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
     """
-    Simpan data diagnosis & tindakan hasil mapping dokter ke DB.
-    Tidak menghapus data lama, hanya tambah yang baru untuk simulasi aktif.
+    Simpan diagnosis & tindakan hasil mapping dokter ke DB.
+    - Tidak mengubah procedure_source.
+    - Tidak bikin duplikat AI vs manual.
+    - Menangani ICD9 list agar tidak campur antar tindakan.
     """
     primary_diagnosis, secondary_diagnoses = None, []
     primary_procedure, secondary_procedures = None, []
 
-    # === Diagnosis Section ===
+    # === Diagnosis ===
     for category in ["diagnosis", "komorbid", "komplikasi"]:
         for item in stage_data.get(category, []):
+            diag_name = (
+                item.get("name")
+                or item.get("kategori")
+                or item.get("nama_kategori")
+                or "-"
+            )
             mapping = (item.get("mapping") or "").lower()
-            diag_name = item.get("name") or item.get("kategori") or item.get("nama_kategori")
+            source = (item.get("source") or "manual").lower()
 
-            diag = models.ClaimDiagnosis(
+            existing = (
+                db.query(models.ClaimDiagnosis)
+                .filter(
+                    models.ClaimDiagnosis.claim_id == claim_id,
+                    models.ClaimDiagnosis.diagnosis_text == diag_name,
+                    models.ClaimDiagnosis.is_deleted == False,
+                )
+                .first()
+            )
+
+            if existing:
+                diag = existing
+                print(f"[SAVE_SIMULASI] ⚠️ Skip duplicate diagnosis: {diag_name}")
+            else:
+                diag = models.ClaimDiagnosis(
+                    claim_id=claim_id,
+                    diagnosis_type=category,
+                    diagnosis_text=diag_name,
+                    icd10_code=item.get("icd10_code") or item.get("icd"),
+                    diagnosis_source=source,
+                    justifikasi_klinis=item.get("klinis"),
+                    is_deleted=False,
+                    is_dummy=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(diag)
+                db.flush()
+                print(f"[SAVE_SIMULASI] ➕ Added diagnosis: {diag_name} ({source})")
+
+            if "utama" in mapping or "primary" in mapping:
+                primary_diagnosis = diag.id
+            else:
+                secondary_diagnoses.append(diag.id)
+
+    # === Procedure ===
+    for item in stage_data.get("tindakan", []):
+        proc_name = (
+            item.get("name")
+            or item.get("kategori")
+            or item.get("nama_kategori")
+            or "-"
+        )
+        mapping = (item.get("mapping") or "").lower()
+        source = (item.get("source") or "manual").lower()
+
+        # Pecah semua ICD9 jadi list
+        raw_icd9 = item.get("icd9_code") or item.get("icd")
+        if isinstance(raw_icd9, str):
+            codes = [x.strip() for x in raw_icd9.split(",") if x.strip()]
+        elif isinstance(raw_icd9, list):
+            codes = [x.strip() for x in raw_icd9 if isinstance(x, str)]
+        else:
+            codes = []
+
+        # Ambil satu kode berdasar urutan tindakan (index dinamis)
+        index = stage_data.get("tindakan", []).index(item) if item in stage_data.get("tindakan", []) else 0
+        icd9_val = codes[index] if index < len(codes) else (codes[0] if codes else None)
+
+        # Cari existing berdasarkan nama tindakan aja (tanpa lihat source)
+        existing_proc = (
+            db.query(models.ClaimProcedure)
+            .filter(
+                models.ClaimProcedure.claim_id == claim_id,
+                models.ClaimProcedure.procedure_text == proc_name,
+                models.ClaimProcedure.is_deleted == False,
+            )
+            .first()
+        )
+
+        if existing_proc:
+            # Jangan ubah apa-apa, cukup pakai ulang
+            print(f"[SAVE_SIMULASI] ⚠️ Existing procedure reused: {proc_name} ({existing_proc.procedure_source})")
+            proc = existing_proc
+        else:
+            proc = models.ClaimProcedure(
                 claim_id=claim_id,
-                diagnosis_type=category,
-                diagnosis_text=diag_name,
-                icd10_code=item.get("icd10_code") or item.get("icd"),
-                diagnosis_source="doctor",
-                justifikasi_klinis=item.get("klinis"),
+                procedure_text=proc_name,
+                procedure_source=source,
+                icd9_code=icd9_val,
+                stage=stage,
+                requirement_flag=False,
                 is_deleted=False,
                 is_dummy=False,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
-            db.add(diag)
+            db.add(proc)
             db.flush()
+            print(f"[SAVE_SIMULASI] ➕ Added procedure: {proc_name} ({source})")
 
-            if "utama" in mapping or "primary" in mapping:
-                primary_diagnosis = diag.id
-                print(f"[SAVE_SIMULASI] ✅ Primary diagnosis: {diag_name} (ID {diag.id})")
-            else:
-                secondary_diagnoses.append(diag.id)
-                print(f"[SAVE_SIMULASI] ➕ Secondary diagnosis: {diag_name} (ID {diag.id})")
-
-    # === Procedure Section ===
-    for item in stage_data.get("tindakan", []):
-        mapping = (item.get("mapping") or "").lower()
-        proc_name = item.get("name") or item.get("kategori") or item.get("nama_kategori")
-        source = item.get("source") or item.get("procedure_source") or "manual"
-        if source not in ["ai", "manual", "doctor"]:
-            source = "manual"  # fallback aman
-
-        proc = models.ClaimProcedure(
-            claim_id=claim_id,
-            procedure_text=proc_name,
-            procedure_source=source,
-            stage=stage,
-            requirement_flag=False,
-            is_deleted=False,
-            is_dummy=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        db.add(proc)
-        db.flush()
-
-        if item.get("icd9_code") or item.get("icd"):
-            db.add(models.ClaimProcedureDetail(
-                procedure_id=proc.id,
-                icd9_tindakan=item.get("icd9_code") or item.get("icd"),
-                nama_tindakan=proc_name,
-                is_deleted=False,
-                created_at=datetime.utcnow()
-            ))
+            if icd9_val:
+                db.add(
+                    models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=icd9_val,
+                        deskripsi_tindakan=f"ICD-9: {icd9_val}, Status: {item.get('status_tindakan') or 'Wajib (Manual)'}, INA-CBG: {item.get('ina_cbg_tindakan') or '-'}",
+                        validitas_tindakan=item.get("validitas") or "VALID (Manual)",
+                        status_tindakan=item.get("status_tindakan") or "Wajib (Manual)",
+                        ina_cbg_tindakan=item.get("ina_cbg_tindakan"),
+                        syarat_klinis_tindakan=item.get("syarat_klinis") or "-",
+                        is_deleted=False,
+                        created_at=datetime.utcnow(),
+                    )
+                )
 
         if "utama" in mapping or "primary" in mapping:
             primary_procedure = proc.id
-            print(f"[SAVE_SIMULASI] ✅ Primary procedure: {proc_name} (ID {proc.id})")
         else:
             secondary_procedures.append(proc.id)
-            print(f"[SAVE_SIMULASI] ➕ Secondary procedure: {proc_name} (ID {proc.id})")
 
-    db.commit()
+    # === Fallback kalau mapping kosong ===
+    if not primary_diagnosis and secondary_diagnoses:
+        primary_diagnosis = secondary_diagnoses[0]
+    if not primary_procedure and secondary_procedures:
+        primary_procedure = secondary_procedures[0]
+
+    db.flush()
     return {
         "primary_diagnosis": primary_diagnosis,
         "secondary_diagnoses": secondary_diagnoses,
@@ -90,48 +155,70 @@ def _save_base_data(db: Session, claim_id: int, stage: str, stage_data: dict):
     }
 
 
+
 # ==========================================================
-# 🧩 HELPER 2: Simpan relasi ClaimSimulation
+# 🧩 HELPER 2: Buat ulang ClaimSimulation (bersih)
 # ==========================================================
-def _save_simulation_mapping(db: Session, claim_id: int, stage: str, mapping: dict):
-    """Buat relasi utama–sekunder di ClaimSimulation."""
+def _save_simulation_mapping(db: Session, claim_id: int, stage: str, refs: dict):
+    """Bersihkan dan buat ulang ClaimSimulation agar mapping tetap fresh."""
     db.query(models.ClaimSimulation).filter(
         models.ClaimSimulation.claim_id == claim_id,
-        models.ClaimSimulation.stage == stage,
-        models.ClaimSimulation.is_deleted == False,
-    ).update({"is_deleted": True})
+        models.ClaimSimulation.stage == stage
+    ).delete(synchronize_session=False)
+
+    db.commit()
+
+    # ✅ Pastikan list aman, walau kosong atau None
+    secondary_diags = refs.get("secondary_diagnoses") or [None]
+    secondary_procs = refs.get("secondary_procedures") or [None]
 
     main_sim = models.ClaimSimulation(
         claim_id=claim_id,
         stage=stage,
-        diagnosis_utama_id=mapping["primary_diagnosis"],
-        diagnosis_sekunder_id=(mapping["secondary_diagnoses"] or [None])[0],
-        tindakan_utama_id=mapping["primary_procedure"],
-        tindakan_sekunder_id=(mapping["secondary_procedures"] or [None])[0],
+        diagnosis_utama_id=refs.get("primary_diagnosis"),
+        diagnosis_sekunder_id=secondary_diags[0],
+        tindakan_utama_id=refs.get("primary_procedure"),
+        tindakan_sekunder_id=secondary_procs[0],
         is_deleted=False,
         is_dummy=False,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
+        coder_verified=False,
+        is_coder_approved=False,
     )
     db.add(main_sim)
 
-    # Tambah simulasi tambahan untuk secondary procedure
-    for sec_id in mapping["secondary_procedures"][1:]:
-        db.add(models.ClaimSimulation(
-            claim_id=claim_id,
-            stage=stage,
-            diagnosis_utama_id=None,
-            diagnosis_sekunder_id=None,
-            tindakan_utama_id=None,
-            tindakan_sekunder_id=sec_id,
-            is_deleted=False,
-            is_dummy=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        ))
+    # secondary lainnya
+    for diag_id in secondary_diags[1:]:
+        if diag_id:
+            db.add(models.ClaimSimulation(
+                claim_id=claim_id,
+                stage=stage,
+                diagnosis_sekunder_id=diag_id,
+                is_deleted=False,
+                is_dummy=False,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                coder_verified=False,
+                is_coder_approved=False,
+            ))
+
+    for proc_id in secondary_procs[1:]:
+        if proc_id:
+            db.add(models.ClaimSimulation(
+                claim_id=claim_id,
+                stage=stage,
+                tindakan_sekunder_id=proc_id,
+                is_deleted=False,
+                is_dummy=False,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                coder_verified=False,
+                is_coder_approved=False,
+            ))
 
     db.commit()
-    print(f"[SAVE_SIMULASI] 🧩 Saved simulation mapping for {stage}")
+    print(f"[SAVE_SIMULASI] ✅ Simulation mapping refreshed for claim {claim_id}")
 
 
 # ==========================================================
@@ -205,20 +292,22 @@ def _save_modal_data(db: Session, claim_id: int, form_data: dict):
 # 🧩 FUNGSI UTAMA
 # ==========================================================
 def save_simulasi(db: Session, claim_id: int, sim_data: dict, form_data: dict = None):
-    """
-    Fungsi utama penyimpanan hasil simulasi dokter ke DB.
-    Aman, modular, dan sesuai dengan struktur claim_router.py & ai.py.
-    """
     print(f"[SAVE_SIMULASI] 🚀 Start saving simulation for claim {claim_id}")
+    if not sim_data:
+        print("[SAVE_SIMULASI] ⚠️ No sim_data provided, skip")
+        return
 
     for stage, stage_data in (sim_data or {}).items():
-        if not isinstance(stage_data, dict):
+        # ✅ Skip stage kosong biar tidak error
+        if not isinstance(stage_data, dict) or not stage_data:
+            print(f"[SAVE_SIMULASI] ⏭️ Skip empty stage: {stage}")
             continue
 
         print(f"[SAVE_SIMULASI] ▶ Stage: {stage}")
-        mapping = _save_base_data(db, claim_id, stage, stage_data)
-        _save_simulation_mapping(db, claim_id, stage, mapping)
+        refs = _save_base_data(db, claim_id, stage, stage_data)
+        _save_simulation_mapping(db, claim_id, stage, refs)
 
-    _save_modal_data(db, claim_id, form_data)
+    if form_data:
+        _save_modal_data(db, claim_id, form_data)
 
-    print(f"[SAVE_SIMULASI] ✅ Successfully saved doctor mapping for claim {claim_id}")
+    print(f"[SAVE_SIMULASI] ✅ Successfully saved dynamic simulation for claim {claim_id}")

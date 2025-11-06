@@ -2,161 +2,240 @@
 {% block title %}Daftar Klaim{% endblock %}
 
 {% block content %}
-<div class="min-h-screen">
-  <main class="max-w-7xl mx-auto px-6 py-8">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <main class="w-full px-8 py-8">
 
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">📋 Daftar Klaim</h1>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        {% if 'verifikator' in current_user.role_names %}
-          Menampilkan klaim yang sudah diverifikasi coder
-        {% elif 'coder' in current_user.role_names %}
-          Menampilkan klaim yang perlu review coder
-        {% elif 'doctor' in current_user.role_names %}
-          Menampilkan klaim yang Anda buat
-        {% else %}
-          Menampilkan semua klaim
-        {% endif %}
-      </p>
-    </div>
+    <!-- Compact Header with Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Daftar Klaim</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          {% if 'verifikator' in current_user.role_names %}
+            Klaim yang sudah diverifikasi coder
+          {% elif 'coder' in current_user.role_names %}
+            Klaim yang perlu review coder
+          {% elif 'doctor' in current_user.role_names %}
+            Klaim yang Anda buat
+          {% else %}
+            Semua klaim
+          {% endif %}
+        </p>
+      </div>
 
-    <!-- Enhanced Filter Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-      <!-- Filter Toggle -->
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">🔍 Filter & Pencarian</h3>
-        <button type="button" onclick="toggleAdvancedFilters()" 
-                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium">
-          <span id="filter-toggle-text">Tampilkan Filter Lanjutan</span>
+      <!-- Quick Actions -->
+      <div class="flex flex-wrap gap-2">
+        <button type="button" onclick="exportToExcel()"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Excel
+        </button>
+        <button type="button" onclick="exportToPDF()"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707L13.293 3.293A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          PDF
         </button>
       </div>
-      
+    </div>
+
+    <!-- Compact Statistics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Claims</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ total_count }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">All pages</p>
+          </div>
+          <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Completed</p>
+            {% set completed_count = workflow_counts.get('coder_verified', 0) + workflow_counts.get('finalized', 0) %}
+            <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ completed_count }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              {% if total_count > 0 %}
+                {{ "%.0f"|format((completed_count / total_count) * 100) }}% done
+              {% else %}
+                0% done
+              {% endif %}
+            </p>
+          </div>
+          <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">AI Alerts</p>
+            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ total_ai_alerts }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">Needs review</p>
+          </div>
+          <div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Tarif</p>
+            <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {% if total_tarif > 0 %}
+                {{ "%.1f"|format(total_tarif/1000000) }}M
+              {% else %}
+                0
+              {% endif %}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              {% if total_count > 0 %}
+                Avg {{ "%.1f"|format(total_tarif/total_count/1000) }}K
+              {% else %}
+                Avg 0K
+              {% endif %}
+            </p>
+          </div>
+          <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workflow Status Breakdown - Updated dengan data global -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">📝</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Draft</span>
+          </div>
+          <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ workflow_counts.get('draft', 0) }}</p>
+        </div>
+
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">📤</span>
+            <span class="text-xs font-medium text-blue-600 dark:text-blue-400">Submitted</span>
+          </div>
+          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ workflow_counts.get('doctor_submitted', 0) }}</p>
+        </div>
+
+        <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-700">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">📋</span>
+            <span class="text-xs font-medium text-amber-600 dark:text-amber-400">Coder Review</span>
+          </div>
+          <p class="text-2xl font-bold text-amber-700 dark:text-amber-300">{{ workflow_counts.get('coder_review', 0) }}</p>
+        </div>
+
+        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-700">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">✅</span>
+            <span class="text-xs font-medium text-green-600 dark:text-green-400">Verified</span>
+          </div>
+          <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ workflow_counts.get('coder_verified', 0) }}</p>
+        </div>
+
+        <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">👁</span>
+            <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">Verifikator</span>
+          </div>
+          <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{{ workflow_counts.get('verifikator_review', 0) }}</p>
+        </div>
+
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-lg">🎯</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Finalized</span>
+          </div>
+          <p class="text-2xl font-bold text-gray-800 dark:text-gray-400">{{ workflow_counts.get('finalized', 0) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
       <form method="get" action="/claims" class="space-y-4">
-        
-        <!-- Basic Filters (Always Visible) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Workflow Status</label>
-            <select name="workflow_status"
-                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-              <option value="">Semua Status</option>
-              <option value="draft" {% if workflow_status == 'draft' %}selected{% endif %}>Draft</option>
-              <option value="doctor_submitted" {% if workflow_status == 'doctor_submitted' %}selected{% endif %}>Submitted to Coder</option>
-              <option value="coder_review" {% if workflow_status == 'coder_review' %}selected{% endif %}>Coder Review</option>
-              <option value="coder_verified" {% if workflow_status == 'coder_verified' %}selected{% endif %}>Coder Verified</option>
-              <option value="verifikator_review" {% if workflow_status == 'verifikator_review' %}selected{% endif %}>Verifikator Review</option>
-              <option value="finalized" {% if workflow_status == 'finalized' %}selected{% endif %}>Finalized</option>
-            </select>
-          </div>
 
+        <!-- Quick Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Quick:</span>
+
+          <!-- Workflow Status Pills -->
+          <button type="button" onclick="setFilter('workflow_status', 'draft')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            📝 Draft
+          </button>
+          <button type="button" onclick="setFilter('workflow_status', 'doctor_submitted')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition">
+            📤 Submitted
+          </button>
+          <button type="button" onclick="setFilter('workflow_status', 'coder_review')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-amber-300 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition">
+            🔍 Coder Review
+          </button>
+          <button type="button" onclick="setFilter('workflow_status', 'coder_verified')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-green-300 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition">
+            ✅ Verified
+          </button>
+
+          <!-- AI Status Pills -->
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-2">AI:</span>
+          <button type="button" onclick="setFilter('ai_status', 'error')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-red-300 dark:border-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition">
+            ❌ Errors
+          </button>
+          <button type="button" onclick="setFilter('ai_status', 'warning')"
+                  class="px-3 py-1.5 text-xs rounded-full border border-yellow-300 dark:border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition">
+            ⚠️ Warnings
+          </button>
+
+          <button type="button" onclick="toggleAdvancedFilters()"
+                  class="ml-auto text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium">
+            <span id="filter-toggle-text">+ Advanced</span>
+          </button>
+        </div>
+
+        <!-- Main Search Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Pasien</label>
             <input type="text" name="patient_name" value="{{ patient_name or '' }}" placeholder="Cari nama pasien..."
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40 focus:border-transparent">
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ID Klaim</label>
             <input type="number" name="claim_id" value="{{ claim_id or '' }}" placeholder="ID Klaim"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40 focus:border-transparent">
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Kunjungan</label>
             <input type="date" name="tanggal_kunjungan" value="{{ tanggal_kunjungan or '' }}"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40 focus:border-transparent">
           </div>
-        </div>
-        
-        <!-- Advanced Filters (Collapsible) -->
-        <div id="advanced-filters" class="hidden">
-          <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              
-              <!-- Medical Filters -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🩺 Diagnosis</label>
-                <input type="text" name="diagnosis" value="{{ diagnosis or '' }}" placeholder="Cari diagnosis atau ICD-10..."
-                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">⚙️ Tindakan</label>
-                <input type="text" name="tindakan" value="{{ tindakan or '' }}" placeholder="Cari tindakan atau ICD-9..."
-                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🥼 Dokter (DPJP)</label>
-                <input type="text" name="doctor_name" value="{{ doctor_name or '' }}" placeholder="Nama dokter..."
-                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-              </div>
-
-              <!-- AI Status Filter -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🤖 AI Status</label>
-                <select name="ai_status"
-                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-                  <option value="">Semua AI Status</option>
-                  <option value="error" {% if ai_status == 'error' %}selected{% endif %}>❌ Error (Perlu Review)</option>
-                  <option value="warning" {% if ai_status == 'warning' %}selected{% endif %}>⚠️ Warning (Peringatan)</option>
-                  <option value="success" {% if ai_status == 'success' %}selected{% endif %}>✅ Success (Valid)</option>
-                  <option value="info" {% if ai_status == 'info' %}selected{% endif %}>ℹ️ Info</option>
-                  <option value="not_analyzed" {% if ai_status == 'not_analyzed' %}selected{% endif %}>⚪ Belum Dianalisis</option>
-                </select>
-              </div>
-
-              <!-- Tariff Range Filters -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">💰 Rentang Tarif CBG</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <input type="number" name="tarif_cbg_min" value="{{ tarif_cbg_min or '' }}" placeholder="Min"
-                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-                  <input type="number" name="tarif_cbg_max" value="{{ tarif_cbg_max or '' }}" placeholder="Max"
-                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-                </div>
-              </div>
-
-              <!-- Length of Stay Filter -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">📅 Lama Rawat (Hari)</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <input type="number" name="los_min" value="{{ los_min or '' }}" placeholder="Min hari"
-                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-                  <input type="number" name="los_max" value="{{ los_max or '' }}" placeholder="Max hari"
-                        class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
-                </div>
-              </div>
-              
-            </div>
-          </div>
-        </div>
-
-        <!-- ✅ PERBAIKAN: Action Buttons -->
-        <div class="flex justify-between items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <!-- Export Buttons (Left) -->
-          <div class="flex gap-2">
-            <button type="button" onclick="exportToExcel()" 
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              Export Excel
-            </button>
-            <button type="button" onclick="exportToPDF()" 
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707L13.293 3.293A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-              </svg>
-              Export PDF
-            </button>
-          </div>
-          
-          <!-- Filter Buttons (Right) -->
           <div class="flex gap-2">
             <button type="submit"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -169,452 +248,332 @@
             </a>
           </div>
         </div>
+
+        <!-- Advanced Filters (Collapsible) -->
+        <div id="advanced-filters" class="hidden border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Workflow Status</label>
+              <select name="workflow_status"
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                <option value="">Semua Status</option>
+                <option value="draft" {% if workflow_status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="doctor_submitted" {% if workflow_status == 'doctor_submitted' %}selected{% endif %}>Submitted to Coder</option>
+                <option value="coder_review" {% if workflow_status == 'coder_review' %}selected{% endif %}>Coder Review</option>
+                <option value="coder_verified" {% if workflow_status == 'coder_verified' %}selected{% endif %}>Coder Verified</option>
+                <option value="verifikator_review" {% if workflow_status == 'verifikator_review' %}selected{% endif %}>Verifikator Review</option>
+                <option value="finalized" {% if workflow_status == 'finalized' %}selected{% endif %}>Finalized</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Diagnosis</label>
+              <input type="text" name="diagnosis" value="{{ diagnosis or '' }}" placeholder="ICD-10 atau diagnosis..."
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tindakan</label>
+              <input type="text" name="tindakan" value="{{ tindakan or '' }}" placeholder="ICD-9 atau tindakan..."
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dokter (DPJP)</label>
+              <input type="text" name="doctor_name" value="{{ doctor_name or '' }}" placeholder="Nama dokter..."
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">AI Status</label>
+              <select name="ai_status"
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                <option value="">Semua AI Status</option>
+                <option value="error" {% if ai_status == 'error' %}selected{% endif %}>Errors</option>
+                <option value="warning" {% if ai_status == 'warning' %}selected{% endif %}>Warnings</option>
+                <option value="success" {% if ai_status == 'success' %}selected{% endif %}>Success</option>
+                <option value="info" {% if ai_status == 'info' %}selected{% endif %}>Info</option>
+                <option value="not_analyzed" {% if ai_status == 'not_analyzed' %}selected{% endif %}>Belum Dianalisis</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Rentang Tarif CBG</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="number" name="tarif_cbg_min" value="{{ tarif_cbg_min or '' }}" placeholder="Min"
+                      class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                <input type="number" name="tarif_cbg_max" value="{{ tarif_cbg_max or '' }}" placeholder="Max"
+                      class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Lama Rawat (Hari)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="number" name="los_min" value="{{ los_min or '' }}" placeholder="Min"
+                      class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+                <input type="number" name="los_max" value="{{ los_max or '' }}" placeholder="Max"
+                      class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs dark:text-gray-200 focus:ring-2 focus:ring-blue-500/40">
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
     </div>
 
     <!-- ✅ NEW: Column Visibility Controls -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">👁️ Column Visibility</h3>
-        <button type="button" onclick="toggleColumnControls()" 
+        <button type="button" onclick="toggleColumnControls()"
                 class="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium">
           <span id="column-toggle-text">Show Controls</span>
         </button>
       </div>
-      
+
+      <!-- Collapsible Column Controls -->
       <div id="column-controls" class="hidden mt-4">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <!-- Basic Columns (Always Visible) -->
-          <div class="flex items-center space-x-2 opacity-50">
-            <input type="checkbox" id="col_id" checked disabled class="rounded border-gray-300">
-            <label class="text-sm text-gray-600 dark:text-gray-400">ID (Required)</label>
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <span class="text-xs text-gray-600 dark:text-gray-400">Quick Presets:</span>
+          <div class="flex gap-2">
+            <button type="button" onclick="applyColumnPreset('essential')"
+                    class="px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/40 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+              Essential
+            </button>
+            <button type="button" onclick="applyColumnPreset('medical')"
+                    class="px-2 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-800/40 text-green-700 dark:text-green-300 rounded text-xs font-medium">
+              Medical
+            </button>
+            <button type="button" onclick="applyColumnPreset('full')"
+                    class="px-2 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-800/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">
+              All
+            </button>
           </div>
-          <div class="flex items-center space-x-2 opacity-50">
-            <input type="checkbox" id="col_patient" checked disabled class="rounded border-gray-300">
-            <label class="text-sm text-gray-600 dark:text-gray-400">Pasien (Required)</label>
-          </div>
-          
-          <!-- Toggleable Columns -->
+        </div>
+
+        <div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_episode" checked onchange="toggleColumn('episode')" class="rounded border-gray-300">
-            <label for="col_episode" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Episode</label>
+            <label for="col_episode" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Episode</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_rm" checked onchange="toggleColumn('rm')" class="rounded border-gray-300">
-            <label for="col_rm" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">No. RM</label>
+            <label for="col_rm" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">No. RM</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_tanggal" checked onchange="toggleColumn('tanggal')" class="rounded border-gray-300">
-            <label for="col_tanggal" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Tanggal</label>
-          </div>
-          <div class="flex items-center space-x-2 opacity-50">
-            <input type="checkbox" id="col_workflow" checked disabled class="rounded border-gray-300">
-            <label class="text-sm text-gray-600 dark:text-gray-400">Workflow (Required)</label>
+            <label for="col_tanggal" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Tanggal</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_dokter" checked onchange="toggleColumn('dokter')" class="rounded border-gray-300">
-            <label for="col_dokter" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Dokter</label>
+            <label for="col_dokter" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Dokter</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_coder" checked onchange="toggleColumn('coder')" class="rounded border-gray-300">
-            <label for="col_coder" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Coder</label>
+            <label for="col_coder" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Coder</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_diagnosis" checked onchange="toggleColumn('diagnosis')" class="rounded border-gray-300">
-            <label for="col_diagnosis" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Diagnosis</label>
+            <label for="col_diagnosis" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Diagnosis</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_tindakan" checked onchange="toggleColumn('tindakan')" class="rounded border-gray-300">
-            <label for="col_tindakan" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Tindakan</label>
+            <label for="col_tindakan" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Tindakan</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_tarif_cbg" checked onchange="toggleColumn('tarif_cbg')" class="rounded border-gray-300">
-            <label for="col_tarif_cbg" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Tarif CBG</label>
+            <label for="col_tarif_cbg" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Tarif CBG</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_tarif_rs" checked onchange="toggleColumn('tarif_rs')" class="rounded border-gray-300">
-            <label for="col_tarif_rs" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Tarif RS</label>
+            <label for="col_tarif_rs" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">Tarif RS</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_los" checked onchange="toggleColumn('los')" class="rounded border-gray-300">
-            <label for="col_los" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">LOS</label>
+            <label for="col_los" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">LOS</label>
           </div>
           <div class="flex items-center space-x-2">
             <input type="checkbox" id="col_ai_status" checked onchange="toggleColumn('ai_status')" class="rounded border-gray-300">
-            <label for="col_ai_status" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">AI Status</label>
-          </div>
-          <div class="flex items-center space-x-2 opacity-50">
-            <input type="checkbox" id="col_aksi" checked disabled class="rounded border-gray-300">
-            <label class="text-sm text-gray-600 dark:text-gray-400">Aksi (Required)</label>
-          </div>
-        </div>
-        
-        <!-- Preset Buttons -->
-        <div class="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <button type="button" onclick="applyColumnPreset('essential')" 
-                  class="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/40 text-blue-700 dark:text-blue-300 rounded text-sm font-medium">
-            Essential Only
-          </button>
-          <button type="button" onclick="applyColumnPreset('medical')" 
-                  class="px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-800/40 text-green-700 dark:text-green-300 rounded text-sm font-medium">
-            Medical Focus
-          </button>
-          <button type="button" onclick="applyColumnPreset('full')" 
-                  class="px-3 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-800/40 text-purple-700 dark:text-purple-300 rounded text-sm font-medium">
-            Show All
-          </button>
-          <button type="button" onclick="resetColumnSettings()" 
-                  class="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium">
-            Reset
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ✅ NEW: Statistics Dashboard -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">📊 Statistics Overview</h3>
-        <span class="text-sm text-gray-500 dark:text-gray-400">Data berdasarkan filter yang aktif</span>
-      </div>
-      
-      <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        
-        <!-- Total Claims Card -->
-        <div class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Claims</p>
-              <p class="text-2xl font-bold text-blue-800 dark:text-blue-300">{{ claims|length }}</p>
-            </div>
-            <div class="p-3 bg-blue-500 rounded-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Workflow Status Summary -->
-        <div class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700/50">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-green-600 dark:text-green-400">Completed</p>
-              <p class="text-2xl font-bold text-green-800 dark:text-green-300">
-                {{ claims|selectattr('workflow_status','in',['coder_verified','finalized'])|list|length }}
-              </p>
-              <p class="text-xs text-green-600 dark:text-green-400 mt-1">
-                Verified + Finalized
-              </p>
-            </div>
-            <div class="p-3 bg-green-500 rounded-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- AI Status Summary -->
-        <div class="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-xl p-4 border border-amber-200 dark:border-amber-700/50">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-amber-600 dark:text-amber-400">AI Alerts</p>
-              {% set total_ai_alerts = claims|sum(attribute='ai_status.total_count') %}
-              <p class="text-2xl font-bold text-amber-800 dark:text-amber-300">{{ total_ai_alerts or 0 }}</p>
-              <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Total notifications
-              </p>
-            </div>
-            <div class="p-3 bg-amber-500 rounded-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Financial Summary -->
-        <div class="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-700/50">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Total Tarif</p>
-              {% set total_tarif = claims|sum(attribute='tarif_ina_cbg') %}
-              <p class="text-2xl font-bold text-purple-800 dark:text-purple-300">
-                {% if total_tarif > 0 %}
-                  {{ "%.1f"|format(total_tarif/1000000) }}M
-                {% else %}
-                  0
-                {% endif %}
-              </p>
-              <p class="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                CBG Amount (Rupiah)
-              </p>
-            </div>
-            <div class="p-3 bg-purple-500 rounded-lg">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Detailed Status Breakdown -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Workflow Status Breakdown -->
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">📋 Workflow Status</h4>
-          <div class="space-y-2">
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">📝 Draft</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('workflow_status','equalto','draft')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">📤 Submitted</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('workflow_status','equalto','doctor_submitted')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">🔍 Coder Review</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('workflow_status','equalto','coder_review')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">✅ Verified</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('workflow_status','equalto','coder_verified')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">🎯 Finalized</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('workflow_status','equalto','finalized')|list|length }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Medical Insights -->
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">🏥 Medical Insights</h4>
-          <div class="space-y-2">
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">📅 Avg LOS</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {% set total_los = claims|sum(attribute='lama_rawat') %}
-                {% set claims_with_los = claims|selectattr('lama_rawat','gt',0)|list|length %}
-                {% if claims_with_los > 0 %}
-                  {{ "%.1f"|format(total_los/claims_with_los) }} days
-                {% else %}
-                  - days
-                {% endif %}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">💰 Avg Tarif CBG</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {% set total_tarif_cbg = claims|sum(attribute='tarif_ina_cbg') %}
-                {% set claims_with_tarif = claims|selectattr('tarif_ina_cbg','gt',0)|list|length %}
-                {% if claims_with_tarif > 0 %}
-                  Rp {{ "{:,.0f}".format(total_tarif_cbg/claims_with_tarif) }}
-                {% else %}
-                  Rp 0
-                {% endif %}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">🩺 With Diagnosis</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('diagnosis_utama','defined')|selectattr('diagnosis_utama','ne','')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">⚙️ With Procedures</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('tindakan_utama','defined')|selectattr('tindakan_utama','ne','')|list|length }}
-              </span>
-            </div>
-            <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 dark:text-gray-400">🤖 AI Analyzed</span>
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {{ claims|selectattr('ai_status.total_count','gt',0)|list|length }}
-              </span>
-            </div>
+            <label for="col_ai_status" class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">AI Status</label>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <!-- Improved Table with Better Hierarchy -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[1200px]">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-700">
-              <th data-column="id" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">ID</th>
-              <th data-column="patient" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Pasien</th>
+          <thead class="bg-gray-50 dark:bg-gray-700/50">
+            <tr>
+              <th class="text-left py-3 px-4 text-xs font-semibold text-gray-700 dark:text-gray-300 sticky left-0 bg-gray-50 dark:bg-gray-700/50">ID</th>
+              <th class="text-left py-3 px-4 text-xs font-semibold text-gray-700 dark:text-gray-300 min-w-[180px]">Pasien</th>
               <th data-column="episode" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Episode</th>
-              <th data-column="rm" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">No. RM</th>
-              <th data-column="tanggal" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tanggal</th>
-              <th data-column="workflow" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Workflow</th>
+              <th data-column="rm" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">No. RM</th>
+              <th data-column="tanggal" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tanggal</th>
+              <th class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 min-w-[120px]">Status</th>
               <th data-column="dokter" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Dokter</th>
               <th data-column="coder" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Coder</th>
-              <!-- ✅ Medical Data Columns -->
-              <th data-column="diagnosis" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Diagnosis</th>
-              <th data-column="tindakan" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tindakan</th>
-              <th data-column="tarif_cbg" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tarif CBG</th>
-              <th data-column="tarif_rs" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Tarif RS</th>
-              <th data-column="los" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">LOS</th>
-              <th data-column="ai_status" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">AI Status</th>
-              <th data-column="aksi" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Aksi</th>
+              <th data-column="diagnosis" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 min-w-[200px]">Diagnosis</th>
+              <th data-column="tindakan" class="text-left py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300 min-w-[200px]">Tindakan</th>
+              <th data-column="tarif_cbg" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tarif CBG</th>
+              <th data-column="tarif_rs" class="text-right py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Tarif RS</th>
+              <th data-column="los" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">LOS</th>
+              <th data-column="ai_status" class="text-center py-3 px-3 text-xs font-semibold text-gray-700 dark:text-gray-300">AI</th>
+              <th class="text-center py-3 px-4 text-xs font-semibold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-700/50">Aksi</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             {% for claim in claims %}
             {% set ws = claim.workflow_status or 'draft' %}
-            <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-              <td data-column="id" class="py-3 px-2 text-sm font-medium text-gray-800 dark:text-gray-200">#{{ claim.id }}</td>
-              <td data-column="patient" class="py-3 px-2 text-sm text-gray-700 dark:text-gray-300">
-                <div class="truncate" title="{{ claim.patient_name }}">{{ claim.patient_name }}</div>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+              <td class="py-3 px-4 text-sm font-semibold text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800">
+                #{{ claim.id }}
               </td>
-              
-              <!-- 🔹 Kolom Episode (Group) -->
-              <td data-column="episode" class="py-3 px-2 text-sm text-gray-700 dark:text-gray-300">
-                <div class="truncate">
-                  {% if claim.group %}
-                    <a href="/claims/group/{{ claim.group.id }}" 
-                       class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                       title="{{ claim.group.nama_group }}">
-                      {{ claim.group.nama_group }}
-                    </a>
-                  {% else %}
-                    <span class="text-gray-400">-</span>
-                  {% endif %}
+              <td class="py-3 px-4">
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ claim.patient_name }}</div>
+              </td>
+
+              <td data-column="episode" class="py-3 px-3">
+                {% if claim.group %}
+                  <a href="/claims/group/{{ claim.group.id }}"
+                     class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium truncate block max-w-[150px]"
+                     title="{{ claim.group.nama_group }}">
+                    {{ claim.group.nama_group }}
+                  </a>
+                {% else %}
+                  <span class="text-sm text-gray-400">-</span>
+                {% endif %}
+              </td>
+
+              <td data-column="rm" class="py-3 px-3 text-sm text-gray-600 dark:text-gray-400">
+                {{ claim.patient_rm or '-' }}
+              </td>
+
+              <td data-column="tanggal" class="py-3 px-3 text-sm text-gray-600 dark:text-gray-400 text-center whitespace-nowrap">
+                {{ claim.tanggal_kunjungan.strftime('%d/%m/%Y') if claim.tanggal_kunjungan else '-' }}
+              </td>
+
+              <td class="py-3 px-3 text-center">
+                {% if ws == 'draft' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    📝 Draft
+                  </span>
+                {% elif ws == 'doctor_submitted' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                    📤 Submitted
+                  </span>
+                {% elif ws == 'coder_review' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                    🔍 Review
+                  </span>
+                {% elif ws == 'coder_verified' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">
+                    ✅ Verified
+                  </span>
+                {% elif ws == 'verifikator_review' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                    👁 Verifikator
+                  </span>
+                {% elif ws == 'finalized' %}
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-400">
+                    🎯 Final
+                  </span>
+                {% endif %}
+              </td>
+
+              <td data-column="dokter" class="py-3 px-3">
+                <div class="text-sm text-gray-700 dark:text-gray-300">{{ claim.created_by or '-' }}</div>
+                {% if claim.doctor_submitted_at %}
+                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ claim.doctor_submitted_at.strftime('%d/%m %H:%M') }}</div>
+                {% endif %}
+              </td>
+
+              <td data-column="coder" class="py-3 px-3">
+                {% if claim.coder_verified_by %}
+                  <div class="text-sm text-green-600 dark:text-green-400 font-medium">{{ claim.coder_verified_by }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ claim.coder_verified_at.strftime('%d/%m %H:%M') }}</div>
+                {% else %}
+                  <span class="text-sm text-gray-400">-</span>
+                {% endif %}
+              </td>
+
+              <td data-column="diagnosis" class="py-3 px-3">
+                <div class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]" title="{{ claim.diagnosis_utama }}">
+                  {{ claim.diagnosis_utama or '-' }}
+                </div>
+                {% if claim.diagnosis_sekunder and claim.diagnosis_sekunder|int > 0 %}
+                  <div class="text-xs text-gray-500 dark:text-gray-400">+{{ claim.diagnosis_sekunder }} sekunder</div>
+                {% endif %}
+              </td>
+
+              <td data-column="tindakan" class="py-3 px-3">
+                <div class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]" title="{{ claim.tindakan_utama }}">
+                  {{ claim.tindakan_utama or '-' }}
                 </div>
               </td>
 
-              <td data-column="rm" class="py-3 px-2 text-sm text-gray-600 dark:text-gray-400">{{ claim.patient_rm or '-' }}</td>
-              <td data-column="tanggal" class="py-3 px-2 text-sm text-gray-600 dark:text-gray-400 text-center">
-                {{ claim.tanggal_kunjungan.strftime('%d/%m/%Y') if claim.tanggal_kunjungan else '-' }}
-              </td>
-              <td data-column="workflow" class="py-3 px-3 text-center">
-                {% if ws == 'draft' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">📝 Draft</span>
-                {% elif ws == 'doctor_submitted' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-blue-200 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">📤 Submitted</span>
-                {% elif ws == 'coder_review' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-amber-200 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">🔍 Coder Review</span>
-                {% elif ws == 'coder_verified' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-green-200 dark:bg-green-900/40 text-green-700 dark:text-green-300">✅ Coder Verified</span>
-                {% elif ws == 'verifikator_review' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-indigo-200 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">👁️ Verifikator</span>
-                {% elif ws == 'finalized' %}
-                  <span class="inline-block px-2 py-1 text-xs rounded bg-gray-300 dark:bg-gray-800 text-gray-800 dark:text-gray-400">🎯 Finalized</span>
-                {% endif %}
-              </td>
-              <td data-column="dokter" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">
-                {{ claim.created_by or '-' }}
-                {% if claim.doctor_submitted_at %}
-                  <br><small class="text-gray-500 dark:text-gray-400">{{ claim.doctor_submitted_at.strftime('%d/%m %H:%M') }}</small>
-                {% endif %}
-              </td>
-              <td data-column="coder" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">
-                {% if claim.coder_verified_by %}
-                  <span class="text-green-600 dark:text-green-400">✓ {{ claim.coder_verified_by }}</span>
-                  <br><small class="text-gray-500 dark:text-gray-400">{{ claim.coder_verified_at.strftime('%d/%m %H:%M') }}</small>
-                {% else %}
-                  <span class="text-gray-500 dark:text-gray-400">-</span>
-                {% endif %}
-              </td>
-              
-              <!-- ✅ NEW: Medical Data Cells -->
-              <td data-column="diagnosis" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">
-                <div class="max-w-xs truncate" title="{{ claim.diagnosis_utama }}">
-                  {{ claim.diagnosis_utama }}
-                </div>
-                {% if claim.diagnosis_sekunder and claim.diagnosis_sekunder|int > 0 %}
-                  <small class="text-gray-500 dark:text-gray-400">+{{ claim.diagnosis_sekunder }} sekunder</small>
-                {% endif %}
-              </td>
-              <td data-column="tindakan" class="py-3 px-3 text-sm text-gray-700 dark:text-gray-300">
-                <div class="max-w-xs truncate" title="{{ claim.tindakan_utama }}">
-                  {{ claim.tindakan_utama }}
-                </div>
-              </td>
-              <td data-column="tarif_cbg" class="py-3 px-3 text-sm text-right text-gray-700 dark:text-gray-300">
+              <td data-column="tarif_cbg" class="py-3 px-3 text-right">
                 {% if claim.tarif_ina_cbg > 0 %}
-                  <span class="font-medium">Rp {{ "{:,.0f}".format(claim.tarif_ina_cbg) }}</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Rp {{ "{:,.0f}".format(claim.tarif_ina_cbg) }}
+                  </span>
                 {% else %}
-                  <span class="text-gray-400">-</span>
+                  <span class="text-sm text-gray-400">-</span>
                 {% endif %}
               </td>
-              <td data-column="tarif_rs" class="py-3 px-3 text-sm text-right text-gray-700 dark:text-gray-300">
+
+              <td data-column="tarif_rs" class="py-3 px-3 text-right">
                 {% if claim.tarif_rs > 0 %}
-                  <span class="font-medium">Rp {{ "{:,.0f}".format(claim.tarif_rs) }}</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Rp {{ "{:,.0f}".format(claim.tarif_rs) }}
+                  </span>
                 {% else %}
-                  <span class="text-gray-400">-</span>
+                  <span class="text-sm text-gray-400">-</span>
                 {% endif %}
               </td>
-              <td data-column="los" class="py-3 px-3 text-sm text-center text-gray-700 dark:text-gray-300">
+
+              <td data-column="los" class="py-3 px-3 text-center">
                 {% if claim.lama_rawat > 0 %}
-                  <span class="font-medium">{{ claim.lama_rawat }} hari</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ claim.lama_rawat }} hari</span>
                 {% else %}
-                  <span class="text-gray-400">-</span>
+                  <span class="text-sm text-gray-400">-</span>
                 {% endif %}
               </td>
-              
-              <!-- ✅ NEW: AI Status Cell -->
+
               <td data-column="ai_status" class="py-3 px-3 text-center">
                 {% set ai_status = claim.ai_status %}
                 {% if ai_status.total_count > 0 %}
-                  <div class="flex flex-col items-center gap-1">
-                    <span class="text-lg">{{ ai_status.status_icon }}</span>
-                    <div class="text-xs text-gray-600 dark:text-gray-400">
-                      {{ ai_status.summary_text }}
-                    </div>
-                    {% if ai_status.max_severity == 'error' %}
-                      <span class="px-2 py-1 text-xs rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">Perlu Review</span>
-                    {% elif ai_status.max_severity == 'warning' %}
-                      <span class="px-2 py-1 text-xs rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">Peringatan</span>
-                    {% elif ai_status.max_severity == 'success' %}
-                      <span class="px-2 py-1 text-xs rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">Valid</span>
-                    {% else %}
-                      <span class="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">Info</span>
-                    {% endif %}
+                  <div class="inline-flex items-center gap-1">
+                    <span class="text-lg" title="{{ ai_status.summary_text }}">{{ ai_status.status_icon }}</span>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">{{ ai_status.total_count }}</span>
                   </div>
                 {% else %}
-                  <span class="text-gray-400 text-sm">⚪ Belum dianalisis</span>
+                  <span class="text-gray-400 text-xs">⚪</span>
                 {% endif %}
               </td>
-              
-              <td data-column="aksi" class="py-3 px-3 text-center">
+
+              <td class="py-3 px-4 text-center sticky right-0 bg-white dark:bg-gray-800">
                 <div class="flex justify-center gap-1">
                   <a href="/claims/{{ claim.id }}"
-                     class="px-2 py-1 text-xs rounded bg-blue-500 hover:bg-blue-600 text-white">
+                     class="px-3 py-1.5 text-xs font-medium rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors">
                     Detail
                   </a>
                   {% if 'doctor' in current_user.role_names and ws in ['draft','doctor_submitted'] %}
                     <a href="/claims/{{ claim.id }}/edit"
-                       class="px-2 py-1 text-xs rounded bg-amber-500 hover:bg-amber-600 text-white">
+                       class="px-3 py-1.5 text-xs font-medium rounded bg-amber-600 hover:bg-amber-700 text-white transition-colors">
                       Edit
                     </a>
                   {% endif %}
                   {% if 'coder' in current_user.role_names and ws in ['doctor_submitted','coder_review','coder_verified'] %}
                     <a href="/claims/{{ claim.id }}/coder"
-                       class="px-2 py-1 text-xs rounded bg-sky-500 hover:bg-sky-600 text-white">
+                       class="px-3 py-1.5 text-xs font-medium rounded bg-green-600 hover:bg-green-700 text-white transition-colors">
                       Verify
                     </a>
                   {% endif %}
                   {% if 'verifikator' in current_user.role_names and ws == 'coder_verified' %}
                     <a href="/claims/{{ claim.id }}/edit"
-                       class="px-2 py-1 text-xs rounded bg-green-600 hover:bg-green-700 text-white">
+                       class="px-3 py-1.5 text-xs font-medium rounded bg-purple-600 hover:bg-purple-700 text-white transition-colors">
                       Review
                     </a>
                   {% endif %}
@@ -623,7 +582,7 @@
             </tr>
             {% else %}
             <tr>
-              <td colspan="9" class="py-12 text-center text-gray-500 dark:text-gray-400">
+              <td colspan="15" class="py-12 text-center text-gray-500 dark:text-gray-400">
                 <div class="flex flex-col items-center">
                   <svg class="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -639,100 +598,85 @@
       </div>
     </div>
 
-    <!-- Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-      <div class="bg-white dark:bg-gray-800 rounded-xl border-l-4 border-blue-600 p-4 shadow-sm">
-        <h6 class="text-sm text-gray-500 dark:text-gray-400">Total Klaim</h6>
-        <p class="text-2xl font-semibold text-gray-800 dark:text-gray-100">{{ claims|length }}</p>
+    <!-- Compact Pagination -->
+    {% if total_pages > 1 %}
+    <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="text-sm text-gray-600 dark:text-gray-400">
+        Halaman <span class="font-semibold text-gray-900 dark:text-gray-100">{{ page }}</span> dari
+        <span class="font-semibold text-gray-900 dark:text-gray-100">{{ total_pages }}</span>
+        <span class="text-xs text-gray-500 dark:text-gray-500 ml-2">({{ total_count }} klaim)</span>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-xl border-l-4 border-amber-500 p-4 shadow-sm">
-        <h6 class="text-sm text-gray-500 dark:text-gray-400">Pending Coder</h6>
-        <p class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-          {{ claims|selectattr('workflow_status','equalto','doctor_submitted')|list|length }}
-        </p>
-      </div>
-      <div class="bg-white dark:bg-gray-800 rounded-xl border-l-4 border-green-600 p-4 shadow-sm">
-        <h6 class="text-sm text-gray-500 dark:text-gray-400">Verified Coder</h6>
-        <p class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-          {{ claims|selectattr('workflow_status','equalto','coder_verified')|list|length }}
-        </p>
-      </div>
-      <div class="bg-white dark:bg-gray-800 rounded-xl border-l-4 border-gray-700 p-4 shadow-sm">
-        <h6 class="text-sm text-gray-500 dark:text-gray-400">Finalized</h6>
-        <p class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-          {{ claims|selectattr('workflow_status','equalto','finalized')|list|length }}
-        </p>
+
+      <div class="flex items-center gap-2">
+        {% set query_params = '' %}
+        {% if workflow_status %}{% set query_params = query_params + '&workflow_status=' + workflow_status %}{% endif %}
+        {% if patient_name %}{% set query_params = query_params + '&patient_name=' + patient_name %}{% endif %}
+        {% if claim_id %}{% set query_params = query_params + '&claim_id=' + claim_id %}{% endif %}
+        {% if tanggal_kunjungan %}{% set query_params = query_params + '&tanggal_kunjungan=' + tanggal_kunjungan %}{% endif %}
+        {% if diagnosis %}{% set query_params = query_params + '&diagnosis=' + diagnosis %}{% endif %}
+        {% if tindakan %}{% set query_params = query_params + '&tindakan=' + tindakan %}{% endif %}
+        {% if doctor_name %}{% set query_params = query_params + '&doctor_name=' + doctor_name %}{% endif %}
+        {% if ai_status %}{% set query_params = query_params + '&ai_status=' + ai_status %}{% endif %}
+        {% if tarif_cbg_min %}{% set query_params = query_params + '&tarif_cbg_min=' + tarif_cbg_min|string %}{% endif %}
+        {% if tarif_cbg_max %}{% set query_params = query_params + '&tarif_cbg_max=' + tarif_cbg_max|string %}{% endif %}
+        {% if los_min %}{% set query_params = query_params + '&los_min=' + los_min|string %}{% endif %}
+        {% if los_max %}{% set query_params = query_params + '&los_max=' + los_max|string %}{% endif %}
+
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}{{ query_params }}"
+          class="px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        </a>
+        {% endif %}
+
+        {% for i in range(1, total_pages + 1) %}
+          {% if i == page %}
+          <span class="px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow-sm">{{ i }}</span>
+          {% elif i == 1 or i == total_pages or (i >= page - 1 and i <= page + 1) %}
+          <a href="?page={{ i }}{{ query_params }}"
+            class="px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">
+            {{ i }}
+          </a>
+          {% elif i == page - 2 or i == page + 2 %}
+          <span class="px-2 py-2 text-gray-400">...</span>
+          {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}{{ query_params }}"
+          class="px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+        {% endif %}
       </div>
     </div>
+    {% endif %}
 
   </main>
 </div>
 
 <script>
-// ✅ Enhanced Filter Functions
 function toggleAdvancedFilters() {
     const advancedFilters = document.getElementById('advanced-filters');
     const toggleText = document.getElementById('filter-toggle-text');
-    
+
     if (advancedFilters.classList.contains('hidden')) {
         advancedFilters.classList.remove('hidden');
-        toggleText.textContent = 'Sembunyikan Filter Lanjutan';
+        toggleText.textContent = '- Advanced';
     } else {
         advancedFilters.classList.add('hidden');
-        toggleText.textContent = 'Tampilkan Filter Lanjutan';
+        toggleText.textContent = '+ Advanced';
     }
 }
 
-// ✅ Export Functions
-function exportToExcel() {
-    const form = document.querySelector('form[action="/claims"]');
-    const formData = new FormData(form);
-    const params = new URLSearchParams(formData);
-    
-    // Show loading
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
-    button.disabled = true;
-    
-    // Create download link
-    const url = `/claims/export/excel?${params.toString()}`;
-    window.location.href = url;
-    
-    // Restore button after delay
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }, 2000);
-}
-
-function exportToPDF() {
-    const form = document.querySelector('form[action="/claims"]');
-    const formData = new FormData(form);
-    const params = new URLSearchParams(formData);
-    
-    // Show loading
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
-    button.disabled = true;
-    
-    // Create download link
-    const url = `/claims/export/pdf?${params.toString()}`;
-    window.location.href = url;
-    
-    // Restore button after delay
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }, 2000);
-}
-
-// ✅ Column Visibility Functions
 function toggleColumnControls() {
     const controls = document.getElementById('column-controls');
     const toggleText = document.getElementById('column-toggle-text');
-    
+
     if (controls.classList.contains('hidden')) {
         controls.classList.remove('hidden');
         toggleText.textContent = 'Hide Controls';
@@ -742,25 +686,36 @@ function toggleColumnControls() {
     }
 }
 
+function setFilter(filterName, filterValue) {
+    const form = document.querySelector('form[action="/claims"]');
+    const input = form.querySelector(`[name="${filterName}"]`);
+
+    if (input) {
+        if (input.value === filterValue) {
+            input.value = '';
+        } else {
+            input.value = filterValue;
+        }
+        form.submit();
+    }
+}
+
 function toggleColumn(columnName) {
     const checkbox = document.getElementById(`col_${columnName}`);
     if (!checkbox) return;
-    
+
     const isVisible = checkbox.checked;
-    
-    // Toggle column visibility in table
     const headers = document.querySelectorAll(`th[data-column="${columnName}"]`);
     const cells = document.querySelectorAll(`td[data-column="${columnName}"]`);
-    
+
     headers.forEach(header => {
         header.style.display = isVisible ? '' : 'none';
     });
-    
+
     cells.forEach(cell => {
         cell.style.display = isVisible ? '' : 'none';
     });
-    
-    // Save to localStorage
+
     saveColumnSettings();
 }
 
@@ -768,101 +723,68 @@ function applyColumnPreset(preset) {
     const presets = {
         essential: ['id', 'patient', 'workflow', 'aksi'],
         medical: ['id', 'patient', 'workflow', 'diagnosis', 'tindakan', 'ai_status', 'aksi'],
-        full: ['id', 'patient', 'episode', 'rm', 'tanggal', 'workflow', 'dokter', 'coder', 'diagnosis', 'tindakan', 'tarif_cbg', 'tarif_rs', 'los', 'ai_status', 'aksi']
+        full: ['episode', 'rm', 'tanggal', 'dokter', 'coder', 'diagnosis', 'tindakan', 'tarif_cbg', 'tarif_rs', 'los', 'ai_status']
     };
-    
+
     const columnsToShow = presets[preset] || presets.full;
     const allColumns = ['episode', 'rm', 'tanggal', 'dokter', 'coder', 'diagnosis', 'tindakan', 'tarif_cbg', 'tarif_rs', 'los', 'ai_status'];
-    
-    // Update checkboxes and apply visibility
+
     allColumns.forEach(column => {
         const checkbox = document.getElementById(`col_${column}`);
         if (!checkbox) return;
-        
+
         const shouldShow = columnsToShow.includes(column);
         checkbox.checked = shouldShow;
-        
-        // Apply visibility
+
         const headers = document.querySelectorAll(`th[data-column="${column}"]`);
         const cells = document.querySelectorAll(`td[data-column="${column}"]`);
-        
+
         headers.forEach(header => {
             header.style.display = shouldShow ? '' : 'none';
         });
-        
+
         cells.forEach(cell => {
             cell.style.display = shouldShow ? '' : 'none';
         });
     });
-    
-    // Save settings
-    saveColumnSettings();
-}
 
-function resetColumnSettings() {
-    // Reset to default (all visible)
-    const allColumns = ['episode', 'rm', 'tanggal', 'dokter', 'coder', 'diagnosis', 'tindakan', 'tarif_cbg', 'tarif_rs', 'los', 'ai_status'];
-    
-    allColumns.forEach(column => {
-        const checkbox = document.getElementById(`col_${column}`);
-        if (!checkbox) return;
-        
-        checkbox.checked = true;
-        
-        // Show all columns
-        const headers = document.querySelectorAll(`th[data-column="${column}"]`);
-        const cells = document.querySelectorAll(`td[data-column="${column}"]`);
-        
-        headers.forEach(header => {
-            header.style.display = '';
-        });
-        
-        cells.forEach(cell => {
-            cell.style.display = '';
-        });
-    });
-    
-    // Clear localStorage
-    localStorage.removeItem('claimTableColumns');
+    saveColumnSettings();
 }
 
 function saveColumnSettings() {
     const settings = {};
     const allColumns = ['episode', 'rm', 'tanggal', 'dokter', 'coder', 'diagnosis', 'tindakan', 'tarif_cbg', 'tarif_rs', 'los', 'ai_status'];
-    
+
     allColumns.forEach(column => {
         const checkbox = document.getElementById(`col_${column}`);
         if (checkbox) {
             settings[column] = checkbox.checked;
         }
     });
-    
+
     localStorage.setItem('claimTableColumns', JSON.stringify(settings));
-    console.log('✅ Column settings saved:', settings);
 }
 
 function loadColumnSettings() {
     const savedSettings = localStorage.getItem('claimTableColumns');
-    
+
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
-            console.log('📥 Loading column settings:', settings);
-            
+
             Object.keys(settings).forEach(column => {
                 const checkbox = document.getElementById(`col_${column}`);
                 if (checkbox) {
                     checkbox.checked = settings[column];
-                    
-                    // Apply visibility
+
                     const headers = document.querySelectorAll(`th[data-column="${column}"]`);
                     const cells = document.querySelectorAll(`td[data-column="${column}"]`);
-                    
+
                     const display = settings[column] ? '' : 'none';
                     headers.forEach(header => {
                         header.style.display = display;
                     });
-                    
+
                     cells.forEach(cell => {
                         cell.style.display = display;
                     });
@@ -874,24 +796,59 @@ function loadColumnSettings() {
     }
 }
 
-// ✅ Initialize on page load
+function exportToExcel() {
+    const form = document.querySelector('form[action="/claims"]');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.disabled = true;
+
+    const url = `/claims/export/excel?${params.toString()}`;
+    window.location.href = url;
+
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }, 2000);
+}
+
+function exportToPDF() {
+    const form = document.querySelector('form[action="/claims"]');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
+    button.disabled = true;
+
+    const url = `/claims/export/pdf?${params.toString()}`;
+    window.location.href = url;
+
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }, 2000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Load column settings first
     loadColumnSettings();
-    
-    // Auto-show advanced filters if any parameters are set
+
     const urlParams = new URLSearchParams(window.location.search);
     const advancedParams = ['diagnosis', 'tindakan', 'doctor_name', 'ai_status', 'tarif_cbg_min', 'tarif_cbg_max', 'los_min', 'los_max'];
-    
+
     const hasAdvancedFilters = advancedParams.some(param => urlParams.get(param));
-    
+
     if (hasAdvancedFilters) {
         const advancedSection = document.getElementById('advanced-filters');
         const toggleText = document.getElementById('filter-toggle-text');
         if (advancedSection && advancedSection.classList.contains('hidden')) {
             advancedSection.classList.remove('hidden');
             if (toggleText) {
-                toggleText.textContent = 'Sembunyikan Filter Lanjutan';
+                toggleText.textContent = '- Advanced';
             }
         }
     }

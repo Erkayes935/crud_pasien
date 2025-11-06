@@ -1,341 +1,491 @@
 {% extends "base.html" %}
+{% block title %}Multi-Role Claim Processing{% endblock %}
+
 {% block content %}
-<!-- ================= MULTI-ROLE INTERFACE (DOCTOR + VERIFIKATOR) ================= -->
 <form id="claimForm"
       method="post"
-      action="/claims/{{ record.id }}/finalize"
-      data-claim-id="{{ record.id }}"
+      action="/claims/{{ claim.id }}/combine-finalize"
+      data-claim-id="{{ claim.id }}"
       class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
 
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <meta name="csrf-token" content="{{ csrf_token }}">
 
   <div id="claimRoot"
-     x-data='claimData({
-       role: "{{ current_user.role }}",
-       role_names: {{ current_user.role_names | tojson | safe }},
-       roles: {{ current_user.role_names | tojson | safe }}
-     })'
-     data-claim-id="{{ record.id }}">
+       x-data="claimData({ role: 'combine' })"
+       data-claim-id="{{ claim.id }}"
+       data-stages='{{ stages | tojson | safe }}'
+       class="space-y-4">
 
+    <!-- Header Section -->
+    <div class="flex items-center justify-between mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">🔄 Multi-Role Processing</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Generate AI, Edit ICD Codes, dan Finalize dalam satu halaman</p>
+      </div>
+      <div class="flex space-x-3">
+        <button type="button" onclick="generateAI()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow transition">
+          🤖 Generate AI
+        </button>
+        <button type="submit"
+                class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold shadow transition">
+          ✅ Finalize Claim
+        </button>
+      </div>
+    </div>
 
     <div class="grid grid-cols-5 gap-6">
-      <!-- ================= LEFT PANEL (DOCTOR VIEW - 3 columns) ================= -->
+      <!-- ================= LEFT PANEL: Rekomendasi & Edit ICD ================= -->
       <div class="col-span-3 space-y-4">
-        <div class="p-4 bg-white dark:bg-gray-800 space-y-4 rounded shadow">
-          <!-- Header & Generate AI Button -->
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <h3 class="font-semibold text-lg">Rekomendasi Klaim (Doctor View)</h3>
-              <p class="text-xs text-gray-500 mt-1">Mapping diagnosis & tindakan dari AI</p>
-            </div>
-            <button type="button" onclick="generateAI()" 
-                    class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition-colors shadow-md">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Generate AI
-            </button>
-          </div>
+        <div class="p-4 bg-white dark:bg-gray-800 space-y-4 rounded-lg shadow">
 
           <!-- Tabs -->
           <div class="tabs flex space-x-6 border-b mb-4">
-            <button type="button" class="px-4 py-2 font-medium transition-all" 
-                    :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-                    @click="tab='admission'">Admission</button>
-            <button type="button" class="px-4 py-2 font-medium transition-all" 
-                    :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-                    @click="tab='daily-0'">Daily</button>
-            <button type="button" class="px-4 py-2 font-medium transition-all" 
-                    :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-                    @click="tab='discharge'">Discharge</button>
+            {% if 'admission' in stages %}
+              <button type="button" class="px-4 py-2"
+                      :class="tab==='admission' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='admission'">Admission</button>
+            {% endif %}
+            {% if 'daily' in stages %}
+              <button type="button" class="px-4 py-2"
+                      :class="tab.startsWith('daily') ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='daily-0'">Daily</button>
+            {% endif %}
+            {% if 'discharge' in stages %}
+              <button type="button" class="px-4 py-2"
+                      :class="tab==='discharge' ? 'font-bold border-b-2 border-blue-600' : ''"
+                      @click="tab='discharge'">Discharge</button>
+            {% endif %}
           </div>
 
-          <!-- ADMISSION TAB -->
+          <!-- ================= ADMISSION TAB ================= -->
           <div x-show="tab==='admission'" class="space-y-4">
             <!-- Diagnosis -->
-            <details open class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Diagnosis</span>
-                <span id="count-diagnosis-admission" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-diagnosis-admission"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="diagnosis-admission"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="diagnosis-admission">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
             <!-- Komorbid -->
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Komorbid</span>
-                <span id="count-komorbid-admission" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-komorbid-admission"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="komorbid-admission"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komorbid-admission">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
             <!-- Komplikasi -->
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Komplikasi</span>
-                <span id="count-komplikasi-admission" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-komplikasi-admission"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="komplikasi-admission"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komplikasi-admission">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
-            <!-- Rekam Medis -->
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                Rekam Medis
+            <!-- Tindakan -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Tindakan / Prosedur</span>
+                <span id="count-procedure-admission"
+                      class="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
-              <div class="p-3 space-y-3">
-                {% for field in claim_medical_record_fields if field.record_type == 'admission' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="procedure-admission">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD-9 Dokter</th>
+                      <th class="border p-2 w-40">ICD-9 Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
           </div>
 
-          <!-- DAILY TAB -->
+          <!-- ================= DAILY TAB ================= -->
           <div x-show="tab.startsWith('daily')" class="space-y-4">
             <div class="flex justify-between items-center">
               <h3 class="font-semibold text-lg">Catatan Harian</h3>
               <button type="button"
-                      class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors"
+                      class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
                       @click="addNewDailyDay()">
                 + Tambah Hari Rawat
               </button>
             </div>
 
-            <div class="space-y-2">
-              <details open class="border rounded">
-                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                  <span class="text-sm font-semibold">Diagnosis</span>
-                  <span id="count-diagnosis-daily" 
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                </summary>
-                <div class="p-3 overflow-x-auto">
-                  <table class="w-full text-xs border" id="diagnosis-daily"><tbody></tbody></table>
-                </div>
-              </details>
+            <!-- Diagnosis Daily -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Diagnosis</span>
+                <span id="count-diagnosis-daily"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="diagnosis-daily">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
 
-              <details open class="border rounded">
-                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                  <span class="text-sm font-semibold">Komorbid</span>
-                  <span id="count-komorbid-daily" 
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                </summary>
-                <div class="p-3 overflow-x-auto">
-                  <table class="w-full text-xs border" id="komorbid-daily"><tbody></tbody></table>
-                </div>
-              </details>
+            <!-- Komorbid Daily -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komorbid</span>
+                <span id="count-komorbid-daily"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komorbid-daily">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
 
-              <details open class="border rounded">
-                <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                  <span class="text-sm font-semibold">Komplikasi</span>
-                  <span id="count-komplikasi-daily" 
-                        class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
-                </summary>
-                <div class="p-3 overflow-x-auto">
-                  <table class="w-full text-xs border" id="komplikasi-daily"><tbody></tbody></table>
-                </div>
-              </details>
-            </div>
+            <!-- Komplikasi Daily -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Komplikasi</span>
+                <span id="count-komplikasi-daily"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komplikasi-daily">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
 
-            <div class="mt-4">
-              <h3 class="font-semibold text-lg mb-2">Rekam Medis Harian</h3>
-              <div id="daily-accordion" class="space-y-2"></div>
-            </div>
+            <!-- Tindakan Daily -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Tindakan / Prosedur</span>
+                <span id="count-procedure-daily"
+                      class="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">0</span>
+              </summary>
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="procedure-daily">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD-9 Dokter</th>
+                      <th class="border p-2 w-40">ICD-9 Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
           </div>
 
-          <!-- Template rekam medis daily -->
-          <template id="rekamMedisTemplate">
-            {% for field in claim_medical_record_fields if field.record_type == 'daily' %}
-              {% include "_form_renderer.html" %}
-            {% endfor %}
-          </template>
-
-          <!-- DISCHARGE TAB -->
+          <!-- ================= DISCHARGE TAB ================= -->
           <div x-show="tab==='discharge'" class="space-y-4">
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <!-- Diagnosis Discharge -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Diagnosis</span>
-                <span id="count-diagnosis-discharge" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-diagnosis-discharge"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="diagnosis-discharge"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="diagnosis-discharge">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <!-- Komorbid Discharge -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Komorbid</span>
-                <span id="count-komorbid-discharge" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-komorbid-discharge"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="komorbid-discharge"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komorbid-discharge">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <!-- Komplikasi Discharge -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
                 <span class="font-semibold">Komplikasi</span>
-                <span id="count-komplikasi-discharge" 
-                      class="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
+                <span id="count-komplikasi-discharge"
+                      class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
               <div class="p-3 overflow-x-auto">
-                <table class="w-full text-xs border-collapse border" id="komplikasi-discharge"></table>
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="komplikasi-discharge">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD Dokter</th>
+                      <th class="border p-2 w-40">ICD Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
 
-            <details class="border rounded">
-              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                Rekam Medis
+            <!-- Tindakan Discharge -->
+            <details open class="border rounded-lg">
+              <summary class="cursor-pointer px-3 py-2 bg-gray-200 dark:bg-gray-700 flex items-center justify-between">
+                <span class="font-semibold">Tindakan / Prosedur</span>
+                <span id="count-procedure-discharge"
+                      class="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">0</span>
               </summary>
-              <div class="p-3 space-y-3">
-                {% for field in claim_medical_record_fields if field.record_type == 'discharge' %}
-                  {% include "_form_renderer.html" %}
-                {% endfor %}
+              <div class="p-3 overflow-x-auto">
+                <table class="w-full text-xs border-collapse border border-gray-300 dark:border-gray-700" id="procedure-discharge">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <tr>
+                      <th class="border p-2 w-24">Jenis</th>
+                      <th class="border p-2">Deskripsi</th>
+                      <th class="border p-2 w-32">ICD-9 Dokter</th>
+                      <th class="border p-2 w-40">ICD-9 Final</th>
+                      <th class="border p-2 w-20 text-center">Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
               </div>
             </details>
           </div>
         </div>
       </div>
-      <!-- ================= END LEFT PANEL ================= -->
 
-      <!-- ================= RIGHT PANEL (VERIFIKATOR VIEW - 2 columns) ================= -->
+      <!-- ================= RIGHT PANEL: Simulasi & Evaluasi ================= -->
       <div class="col-span-2 space-y-4">
         <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-6">
-          <div class="border-b pb-2">
-            <h3 class="font-semibold text-xl">Simulasi Klaim (Verifikator View)</h3>
-            <p class="text-xs text-gray-500 mt-1">Review & Finalize - Read Only Mode</p>
-          </div>
+          <h3 class="font-semibold text-xl border-b pb-2">Kombinasi Klaim</h3>
 
           <!-- Diagnosis Section -->
           <div class="space-y-3">
-            <h4 class="font-bold text-lg flex items-center gap-2">
-              <div class="w-1 h-6 bg-blue-600 rounded"></div>
-              Diagnosis
-            </h4>
+            <h4 class="font-bold text-lg">Diagnosis</h4>
 
-            <!-- Primary Claim -->
+            <!-- Primary Diagnosis -->
             <div>
               <label class="text-sm font-medium flex items-center gap-1">
                 Primary Claim
                 <svg xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
+                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     @click="openNoteModal('Primary Diagnosis Note','primary_diagnosis', simulasi[tab].utama)">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path stroke-linecap="round" stroke-linejoin="round"
                         d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
                 </svg>
               </label>
+
               <template x-if="simulasi[tab].utama">
                 <div class="flex items-center gap-2 mt-2">
-                  <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors shadow-sm"
+                  <span class="flex-1 px-3 py-2 rounded-md bg-blue-100 text-blue-800 text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors"
                         @click="showStoredDiagnosisModalVerificator(simulasi[tab].utama.name)"
-                        :title="'Klik untuk detail diagnosis: ' + (simulasi[tab].utama?.name || '-')"
                         x-text="(simulasi[tab].utama?.name || '-') + ' ['+(simulasi[tab].utama?.label||'')+']'"></span>
-                  <button type="button" 
+
+                  <button type="button"
                           @click="showRulesModal(simulasi[tab].utama.name)"
-                          class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm"
-                          title="Lihat Aturan Multilayer">
+                          class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium">
                     📘 Rules
                   </button>
+
+                  <select x-model="simulasi[tab].utama.mapping"
+                          @change="updateSimulasi('diagnosis', $event.target.value, simulasi[tab].utama, '', tab)"
+                          class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                    <option value="Primary">Primary</option>
+                    <option value="Secondary">Secondary</option>
+                    <option value="None">None</option>
+                  </select>
                 </div>
-              </template>
-              <template x-if="!simulasi[tab]?.utama || null">
-                <p class="italic text-gray-400 mt-1 text-sm">Belum ada Primary Claim</p>
               </template>
 
-              <!-- Preview Note -->
-              <template x-if="notes['primary_diagnosis'] && notes['primary_diagnosis'].length">
-                <div class="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border">
-                  <p class="font-mono"
-                    x-text="notes['primary_diagnosis'][notes['primary_diagnosis'].length - 1]"></p>
-                  <template x-if="notes['primary_diagnosis'].length > 1">
-                    <p class="text-blue-600 cursor-pointer mt-1"
-                      @click="openNoteModal('Primary Diagnosis Note','primary_diagnosis', simulasi[tab].utama)">
-                      +<span x-text="notes['primary_diagnosis'].length - 1"></span> more
-                    </p>
-                  </template>
-                </div>
+              <template x-if="!simulasi[tab]?.utama">
+                <p class="italic text-gray-400 mt-1">Belum ada Primary Claim</p>
               </template>
             </div>
 
-            <!-- Secondary Claims -->
+            <!-- Secondary Diagnosis -->
             <div>
               <label class="text-sm font-medium flex items-center gap-1">
                 Secondary Claims
                 <svg xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600 transition-colors"
+                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-blue-600"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     @click="openNoteModal('Secondary Diagnosis Note','secondary_diagnosis', simulasi[tab].sekunder?.[0] || null)">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path stroke-linecap="round" stroke-linejoin="round"
                         d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
                 </svg>
               </label>
+
               <template x-for="(dx,i) in simulasi[tab].sekunder" :key="i">
                 <div class="flex items-center gap-2 mt-2">
-                  <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium cursor-pointer hover:bg-indigo-200 transition-colors shadow-sm"
+                  <span class="flex-1 px-3 py-2 rounded-md bg-indigo-100 text-indigo-800 text-sm font-medium cursor-pointer hover:bg-indigo-200 transition-colors"
                         @click="showStoredDiagnosisModalVerificator(dx.name)"
-                        :title="'Klik untuk detail diagnosis: ' + (dx.name || '-')"
                         x-text="(dx.name||'-')+' ['+(dx.label||'')+']'"></span>
-                  <button type="button" 
+
+                  <button type="button"
                           @click="showRulesModal(dx.name)"
-                          class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors shadow-sm"
-                          title="Lihat Aturan Multilayer">
+                          class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium">
                     📘 Rules
                   </button>
+
+                  <select x-model="dx.mapping"
+                          @change="updateSimulasi('diagnosis', $event.target.value, dx, '', tab)"
+                          class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                    <option value="Secondary">Secondary</option>
+                    <option value="Primary">Primary</option>
+                    <option value="None">None</option>
+                  </select>
                 </div>
               </template>
+
               <template x-if="!(simulasi[tab].sekunder && simulasi[tab].sekunder.length)">
-                <p class="italic text-gray-400 mt-1 text-sm">Belum ada Secondary Claim</p>
+                <p class="italic text-gray-400 mt-1">Belum ada Secondary Claim</p>
               </template>
             </div>
           </div>
 
           <!-- Tindakan Section -->
-          <div class="space-y-3 mt-6 pt-4 border-t">
-            <h4 class="font-bold text-lg flex items-center gap-2">
-              <div class="w-1 h-6 bg-green-600 rounded"></div>
-              Tindakan
-            </h4>
+          <div class="space-y-3 mt-6">
+            <h4 class="font-bold text-lg">Tindakan</h4>
 
             <!-- Primary Action -->
             <div>
               <label class="text-sm font-medium flex items-center gap-1">
                 Primary Action
                 <svg xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600 transition-colors"
+                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     @click="openNoteModal('Primary Action Note','primary_action', simulasi[tab].tindakanUtama || null)">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path stroke-linecap="round" stroke-linejoin="round"
                         d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
                 </svg>
               </label>
+
               <template x-if="simulasi[tab].tindakanUtama">
                 <div class="flex items-center gap-2 mt-2">
-                  <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium cursor-pointer hover:bg-green-200 transition-colors shadow-sm"
+                  <span class="flex-1 px-3 py-2 rounded-md bg-green-100 text-green-800 text-sm font-medium cursor-pointer hover:bg-green-200 transition-colors"
                         @click="showStoredProcedureModalVerificator(simulasi[tab].tindakanUtama?.name)"
-                        :title="'Klik untuk detail tindakan: ' + (simulasi[tab].tindakanUtama?.name || '-')"
                         x-text="simulasi[tab].tindakanUtama?.name"></span>
-                  <button type="button" 
+
+                  <button type="button"
                           @click="showRulesModal(simulasi[tab].tindakanUtama?.name)"
-                          class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors shadow-sm"
-                          title="Lihat Aturan Multilayer">
+                          class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium">
                     📘 Rules
                   </button>
+
+                  <select x-model="simulasi[tab].tindakanUtama.mapping"
+                          @change="updateSimulasi('tindakan', $event.target.value, simulasi[tab].tindakanUtama, '', tab)"
+                          class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                    <option value="Primary">Primary</option>
+                    <option value="Secondary">Secondary</option>
+                    <option value="None">None</option>
+                  </select>
                 </div>
               </template>
+
               <template x-if="!simulasi[tab]?.tindakanUtama">
-                <p class="italic text-gray-400 mt-1 text-sm">Belum ada Primary Action</p>
+                <p class="italic text-gray-400 mt-1">Belum ada Primary Action</p>
               </template>
             </div>
 
@@ -344,79 +494,94 @@
               <label class="text-sm font-medium flex items-center gap-1">
                 Secondary Actions
                 <svg xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600 transition-colors"
+                    class="h-5 w-5 text-gray-500 cursor-pointer hover:text-green-600"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     @click="openNoteModal('Secondary Actions Note','secondary_action', simulasi[tab].tindakanSekunder[0])">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path stroke-linecap="round" stroke-linejoin="round"
                         d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"/>
                 </svg>
               </label>
+
               <template x-for="(tdk,i) in simulasi[tab]?.tindakanSekunder" :key="i">
                 <div class="flex items-center gap-2 mt-2">
-                  <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium cursor-pointer hover:bg-teal-200 transition-colors shadow-sm"
+                  <span class="flex-1 px-3 py-2 rounded-md bg-teal-100 text-teal-800 text-sm font-medium cursor-pointer hover:bg-teal-200 transition-colors"
                         @click="showStoredProcedureModalVerificator(tdk.name)"
-                        :title="'Klik untuk detail tindakan: ' + (tdk.name || '-')"
-                        x-text="(tdk.name || '-')"></span>
-                  <button type="button" 
+                        x-text="tdk.name || '-'"></span>
+
+                  <button type="button"
                           @click="showRulesModal(tdk.name)"
-                          class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors shadow-sm"
-                          title="Lihat Aturan Multilayer">
+                          class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium">
                     📘 Rules
                   </button>
+
+                  <select x-model="tdk.mapping"
+                          @change="updateSimulasi('tindakan', $event.target.value, tdk, '', tab)"
+                          class="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 dark:text-gray-100">
+                    <option value="Secondary">Secondary</option>
+                    <option value="Primary">Primary</option>
+                    <option value="None">None</option>
+                  </select>
                 </div>
               </template>
+
               <template x-if="!(simulasi[tab].tindakanSekunder && simulasi[tab].tindakanSekunder.length)">
-                <p class="italic text-gray-400 mt-1 text-sm">Belum ada Secondary Action</p>
+                <p class="italic text-gray-400 mt-1">Belum ada Secondary Action</p>
               </template>
             </div>
           </div>
 
-          <!-- Hidden inputs -->
-          <input type="hidden" name="csrf_token" id="csrfToken" value="{{ csrf_token }}">
-          <input type="hidden" name="simulasi" id="simulasiField">
-          <input type="hidden" name="summary" id="summaryField">
-
-          <!-- Action Buttons -->
-          <div class="flex flex-col gap-3 pt-6 border-t">
-            <button type="button" id="generateResumeBtn" 
-                    class="w-full bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors shadow-md flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Generate Resume
-            </button>
-            
-            <button type="submit" id="saveFinalBtn"
-                    class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
-              Save Final
+          <!-- Generate Summary Button -->
+          <div class="flex justify-center pt-4">
+            <button type="button" onclick="generateSummary()"
+                    class="bg-info-600 hover:bg-info-700 text-white px-6 py-2 rounded-lg font-semibold shadow"
+                    style="background-color: #17a2b8;">
+              📊 Generate Summary
             </button>
           </div>
-        </div>
-      </div>
-      <!-- ================= END RIGHT PANEL ================= -->
 
-      <!-- Modal untuk Notes -->
-      <div x-show="modalOpen" x-cloak
-          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
-                  class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold transition-colors">
-            ✕
-          </button>
-          <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
-              x-html="modalTitle"></h3>
-          <div class="p-6" x-html="modalContent"></div>
+          <!-- Evaluasi Section -->
+          <div class="p-4 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 space-y-3">
+            <div id="evaluasi-diagnosis" class="text-xs text-gray-400 italic">
+              Belum ada evaluasi diagnosis
+            </div>
+            <div id="evaluasi-procedure" class="text-xs text-gray-400 italic">
+              Belum ada evaluasi tindakan
+            </div>
+            <div id="evaluasi-idrg" class="text-xs text-gray-400 italic">
+              Belum ada prediksi i-DRG
+            </div>
+            <div id="alternatif" class="text-xs text-gray-400 italic">
+              Belum ada alternatif kombinasi
+            </div>
+          </div>
+
+          <!-- Hidden inputs -->
+          <input type="hidden" name="simulasi" id="simulasiField">
+          <input type="hidden" name="summary" id="summaryField">
         </div>
       </div>
     </div>
-  </div>
-</form>
 
+    <!-- Modal Notes -->
+    <div x-show="modalOpen" x-cloak
+         class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <button type="button" @click="modalOpen=false" x-show="!hideDefaultClose"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">✕</button>
+        <h3 class="font-bold text-xl text-center py-3 border-b border-gray-200 dark:border-gray-700"
+            x-html="modalTitle"></h3>
+        <div class="p-6" x-html="modalContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ICD Autocomplete Lists -->
+  <datalist id="icd10_list"></datalist>
+  <datalist id="icd9_list"></datalist>
+</form>
 {% endblock %}
 
 {% block scripts %}
-
-
 <script src="{{ url_for('static', path='js/claim.utils.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.state.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.manual.js') }}"></script>
@@ -426,77 +591,40 @@
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim/claim.resume.js') }}"></script>
 
+<!-- ICD Autocomplete -->
 <script>
-// ================= MULTI-ROLE SPECIFIC HANDLERS =================
-document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('claimForm');
-  const claimId = form.dataset.claimId;
-
-  console.log('🎯 Multi-Role Mode Initialized for Claim:', claimId);
-
-  // Override form submit untuk multi-role bypass (tanpa konfirmasi & tanpa notifikasi)
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    console.log('🚀 Multi-Role Submit: Bypassing coder workflow (silent mode)');
-
+let icdTimer;
+function searchICD(input, version) {
+  const q = input.value.trim();
+  clearTimeout(icdTimer);
+  if (q.length < 2) return;
+  icdTimer = setTimeout(async () => {
     try {
-      // Ambil data form
-      let payload = {};
-      if (typeof window.get_form_as_dict === 'function') {
-        payload = window.get_form_as_dict();
-      } else {
-        const fd = new FormData(this);
-        for (let [key, value] of fd.entries()) {
-          if (key === 'csrf_token') continue;
-          payload[key] = value;
-        }
-      }
-
-      // Siapkan FormData agar CSRF terbaca di backend
-      const formData = new FormData();
-      formData.append('csrf_token', document.getElementById('csrfToken').value);
-
-      for (const [key, value] of Object.entries(payload)) {
-        formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-      }
-
-      // Kirim request finalize
-      const response = await fetch(`/claims/${claimId}/finalize`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-
-      // Baca hasil (jika JSON / HTML)
-      const text = await response.text();
-      let result = null;
-      try {
-        result = JSON.parse(text);
-      } catch {
-        console.warn('⚠️ Response bukan JSON (kemungkinan HTML error page):', text.slice(0, 200));
-      }
-
-      if (!response.ok) {
-        const detail = result?.detail || text || `HTTP ${response.status}`;
-        throw new Error(detail);
-      }
-
-      console.log('✅ Multi-Role Finalize Success:', result);
-      // Tanpa alert — langsung redirect
-      window.location.href = '/claims';
-
-    } catch (error) {
-      console.error('❌ Multi-Role Submit Error:', error);
-      alert('❌ Gagal finalisasi klaim:\n' + error.message);
+      const res = await fetch(`/claims/api/search/icd?q=${encodeURIComponent(q)}&version=${version}`);
+      const json = await res.json();
+      const datalist = document.getElementById(version === 'icd10' ? 'icd10_list' : 'icd9_list');
+      datalist.innerHTML = json.data.map(i => `<option value="${i.code} - ${i.name}">`).join('');
+    } catch (err) {
+      console.error('Gagal cari ICD:', err);
     }
-  });
+  }, 300);
+}
 
-  // ================= MULTILAYER RULES MODAL =================
-  window.showRulesModal = async function(diagnosis) {
-    if (!diagnosis) return alert('❌ Diagnosis tidak ditemukan');
-    console.log('📋 Loading rules for diagnosis:', diagnosis);
+window.showRulesModal = async function(diagnosis) {
+    if (!diagnosis) {
+      alert('Diagnosis tidak ditemukan');
+      return;
+    }
 
-    window.rulesModalData = { open: true, diagnosis, loading: true, rulesData: null };
+    console.log('Loading rules for diagnosis:', diagnosis);
+
+    window.rulesModalData = {
+      open: true,
+      diagnosis: diagnosis,
+      loading: true,
+      rulesData: null
+    };
+
     document.getElementById('rulesModal').style.display = 'flex';
 
     try {
@@ -505,76 +633,37 @@ document.addEventListener('DOMContentLoaded', function() {
         credentials: 'include'
       });
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      const rulesData = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      console.log('✅ Rules loaded:', rulesData);
+      const rulesData = await response.json();
+      console.log('Rules loaded:', rulesData);
+
       window.rulesModalData.loading = false;
       window.rulesModalData.rulesData = rulesData;
+
       renderRulesContent(rulesData);
 
     } catch (error) {
-      console.error('❌ Failed to load rules:', error);
+      console.error('Failed to load rules:', error);
+      window.rulesModalData.loading = false;
+      window.rulesModalData.rulesData = null;
+
       document.getElementById('rulesContent').innerHTML = `
         <div class="text-center py-8 text-red-500">
-          <p>❌ Gagal memuat aturan</p>
+          <p>Gagal memuat aturan</p>
           <p class="text-sm mt-2">${error.message}</p>
-        </div>`;
+        </div>
+      `;
     }
-  };
+};
 
-  // ================= VERIFICATOR READ-ONLY MODALS =================
-  window.showStoredDiagnosisModalVerificator = async function(name) {
-    if (!name) return alert('❌ Diagnosis tidak ditemukan');
-    console.log('🔍 Loading stored diagnosis detail:', name);
-
-    try {
-      const response = await fetch(`/claims/${claimId}/stored-diagnosis-detail/${encodeURIComponent(name)}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-
-      const data = await response.json();
-      console.log('✅ Stored diagnosis data loaded:', data);
-
-      if (typeof window.showDiagnosisDetailModal === 'function')
-        window.showDiagnosisDetailModal(data);
-      else alert(`📋 Diagnosis Detail (Read-Only)\n\n${name}`);
-    } catch (error) {
-      console.error('❌ Failed to load stored diagnosis:', error);
-      alert('❌ Gagal memuat detail diagnosis: ' + error.message);
-    }
-  };
-
-  window.showStoredProcedureModalVerificator = async function(name) {
-    if (!name) return alert('❌ Tindakan tidak ditemukan');
-    console.log('🔍 Loading stored procedure detail:', name);
-
-    try {
-      const response = await fetch(`/claims/${claimId}/stored-procedure-detail/${encodeURIComponent(name)}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-
-      const data = await response.json();
-      console.log('✅ Stored procedure data loaded:', data);
-
-      if (typeof window.showProcedureDetailModal === 'function')
-        window.showProcedureDetailModal(data);
-      else alert(`🔧 Procedure Detail (Read-Only)\n\n${name}`);
-    } catch (error) {
-      console.error('❌ Failed to load stored procedure:', error);
-      alert('❌ Gagal memuat detail tindakan: ' + error.message);
-    }
-  };
-
-  // ================= HELPER RULES RENDER =================
-  function renderRulesContent(rulesData) {
+function renderRulesContent(rulesData) {
     const loadingEl = document.getElementById('rulesLoading');
     const contentEl = document.getElementById('rulesContent');
     const noRulesEl = document.getElementById('noRulesState');
+
     loadingEl.style.display = 'none';
 
     if (!rulesData || !rulesData.rules || Object.keys(rulesData.rules).length === 0) {
@@ -583,124 +672,145 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     contentEl.style.display = 'block';
+
     const rulesByLayer = {};
-    const layerPriority = { permenkes:1, nasional:2, ppk:3, regional:4, rs:5, bridging:6, fraud:7, temporary:8 };
+    const layerPriority = {
+      'permenkes': 1,
+      'nasional': 2,
+      'ppk': 3,
+      'regional': 4,
+      'rs': 5,
+      'bridging': 6,
+      'fraud': 7,
+      'temporary': 8
+    };
 
     Object.values(rulesData.rules).flat().forEach(rule => {
-      if (!rulesByLayer[rule.layer]) rulesByLayer[rule.layer] = [];
+      if (!rulesByLayer[rule.layer]) {
+        rulesByLayer[rule.layer] = [];
+      }
       rulesByLayer[rule.layer].push(rule);
     });
 
-    document.getElementById('rulesSummary').textContent =
-      `Ditemukan ${Object.keys(rulesData.rules).length} kategori field dengan ${Object.keys(rulesByLayer).length} layer aturan aktif`;
+    const fieldsCount = Object.keys(rulesData.rules).length;
+    const layersCount = Object.keys(rulesByLayer).length;
 
-    const sortedLayers = Object.keys(rulesByLayer).sort((a,b)=>(layerPriority[a]||99)-(layerPriority[b]||99));
+    document.getElementById('rulesSummary').textContent =
+      `Ditemukan ${fieldsCount} kategori field dengan ${layersCount} layer aturan aktif`;
+
+    const sortedLayers = Object.keys(rulesByLayer).sort((a, b) =>
+      (layerPriority[a] || 99) - (layerPriority[b] || 99)
+    );
+
     const tabsNav = document.getElementById('rulesTabsNav');
     const tabContent = document.getElementById('rulesTabContent');
-    tabsNav.innerHTML = ''; tabContent.innerHTML = '';
+
+    tabsNav.innerHTML = '';
+    tabContent.innerHTML = '';
 
     sortedLayers.forEach((layer, index) => {
-      const isActive = index===0;
+      const isActive = index === 0;
       const layerLabel = getLayerLabel(layer);
       const rulesCount = rulesByLayer[layer].length;
 
-      const btn = document.createElement('button');
-      btn.className = `py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-        isActive ? 'border-blue-500 text-blue-600' :
-        'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-      }`;
-      btn.textContent = `${layerLabel} (${rulesCount})`;
-      btn.onclick = () => switchTab(layer);
-      btn.id = `tab-${layer}`;
-      tabsNav.appendChild(btn);
+      const tabBtn = document.createElement('button');
+      tabBtn.className = `py-2 px-4 text-sm font-medium border-b-2 ${isActive ?
+        'border-blue-500 text-blue-600' :
+        'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+      tabBtn.textContent = `${layerLabel} (${rulesCount})`;
+      tabBtn.onclick = () => switchTab(layer);
+      tabBtn.id = `tab-${layer}`;
+      tabsNav.appendChild(tabBtn);
 
-      const pane = document.createElement('div');
-      pane.id = `content-${layer}`;
-      pane.style.display = isActive ? 'block' : 'none';
-      pane.innerHTML = generateLayerContent(layer, rulesByLayer[layer]);
-      tabContent.appendChild(pane);
+      const tabPane = document.createElement('div');
+      tabPane.id = `content-${layer}`;
+      tabPane.style.display = isActive ? 'block' : 'none';
+      tabPane.innerHTML = generateLayerContent(layer, rulesByLayer[layer]);
+      tabContent.appendChild(tabPane);
     });
-  }
+}
 
-  function getLayerLabel(layer) {
+function getLayerLabel(layer) {
     const labels = {
-      permenkes:'🏛️ Permenkes', nasional:'🇮🇩 Nasional', ppk:'🏥 PPK RS', regional:'🗺️ Regional',
-      rs:'🏨 RS Lokal', bridging:'🔗 Bridging', fraud:'⚠️ Fraud', temporary:'⏰ Temporary'
+      'permenkes': '🏛️ Permenkes',
+      'nasional': '🇮🇩 Nasional',
+      'ppk': '🏥 PPK RS',
+      'regional': '🗺️ Regional',
+      'rs': '🏨 RS Lokal',
+      'bridging': '🔗 Bridging',
+      'fraud': '⚠️ Fraud',
+      'temporary': '⏰ Temporary'
     };
     return labels[layer] || layer.toUpperCase();
-  }
+}
 
-  function generateLayerContent(layer, rules) {
-    const isOverride = layer==='ppk' || layer==='rs';
+function generateLayerContent(layer, rules) {
+    const isOverride = layer === 'ppk' || layer === 'rs';
     let html = '';
-    if (isOverride)
-      html += `<div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mb-4 border-l-4 border-yellow-500">
-        <p class="text-yellow-800 dark:text-yellow-300 text-sm font-medium">
-          ⭐ <strong>OVERRIDE PRIORITY:</strong> Aturan layer ini akan menimpa aturan layer di atasnya
-        </p></div>`;
+
+    if (isOverride) {
+      html += `
+        <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mb-4 border-l-4 border-yellow-500">
+          <p class="text-yellow-800 dark:text-yellow-300 text-sm font-medium">
+            ⭐ <strong>OVERRIDE PRIORITY:</strong> Aturan layer ini akan menimpa aturan layer di atasnya
+          </p>
+        </div>
+      `;
+    }
 
     rules.forEach(rule => {
-      const color = layer==='ppk'?'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200':
-                    layer==='rs'?'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200':
-                    layer==='nasional'?'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200':
-                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      html += `<div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-4 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="px-2 py-1 text-xs font-semibold rounded-full ${color}">${layer.toUpperCase()}</span>
-          <span class="text-sm font-medium text-gray-900 dark:text-gray-100">📋 ${rule.field || 'General'}</span>
-          ${isOverride?'<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>':''}
-        </div>
-        <div class="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed">${rule.isi}</div>
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span><strong>Sumber:</strong> ${rule.sumber}</span>
-          ${rule.status?`<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${rule.status}</span>`:''}
-        </div>
-        ${rule.pdf_file?`<div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <a href="/claims/rules/${rule.id}/pdf" target="_blank" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm transition-colors">
-            📎 Lihat Dokumen PDF
-          </a></div>`:''}
-      </div>`;
-    });
-    return html;
-  }
+      const layerColor = layer === 'ppk' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' :
+                        layer === 'rs' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200' :
+                        layer === 'nasional' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200' :
+                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 
-  function switchTab(activeLayer) {
-    document.querySelectorAll('#rulesTabsNav button').forEach(b=>{
-      b.className = b.id===`tab-${activeLayer}`?
-        'py-2 px-4 text-sm font-medium border-b-2 border-blue-500 text-blue-600':
+      html += `
+        <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-4">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-1 text-xs font-semibold rounded-full ${layerColor}">${layer.toUpperCase()}</span>
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">📋 ${rule.field || 'General'}</span>
+            ${isOverride ? '<span class="px-2 py-1 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">⭐ OVERRIDE</span>' : ''}
+          </div>
+          <div class="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed">${rule.isi}</div>
+          <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span><strong>Sumber:</strong> ${rule.sumber}</span>
+            ${rule.status ? `<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full">${rule.status}</span>` : ''}
+          </div>
+          ${rule.pdf_file ? `
+            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <a href="/claims/rules/${rule.id}/pdf" target="_blank"
+                 class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm">
+                📎 Lihat Dokumen PDF
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+
+    return html;
+}
+
+function switchTab(activeLayer) {
+    document.querySelectorAll('#rulesTabsNav button').forEach(btn => {
+      btn.className = btn.id === `tab-${activeLayer}` ?
+        'py-2 px-4 text-sm font-medium border-b-2 border-blue-500 text-blue-600' :
         'py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
     });
-    document.querySelectorAll('#rulesTabContent>div').forEach(d=>{
-      d.style.display = d.id===`content-${activeLayer}`?'block':'none';
+
+    document.querySelectorAll('#rulesTabContent > div').forEach(content => {
+      content.style.display = content.id === `content-${activeLayer}` ? 'block' : 'none';
     });
-  }
+}
 
-  window.closeRulesModal = function() {
+window.closeRulesModal = function() {
     document.getElementById('rulesModal').style.display = 'none';
-    window.rulesModalData = { open:false, diagnosis:null, loading:false, rulesData:null };
-  };
-
-  console.log('✅ Multi-Role handlers initialized successfully');
-});
+    window.rulesModalData = { open: false, diagnosis: null, loading: false, rulesData: null };
+};
 </script>
 
-
-
-<script>
-document.addEventListener('alpine:init', () => {
-  console.log('⚙️ Alpine initialized');
-});
-document.addEventListener('DOMContentLoaded', () => {
-  const claimRoot = document.getElementById('claimRoot');
-  if (claimRoot && typeof Alpine !== 'undefined') {
-    window.claimState = Alpine.$data(claimRoot);
-    console.log("📦 [DEBUG] claimState initialized:", window.claimState);
-  }
-});
-</script>
-
-<!-- Enhanced Multilayer Rules Modal -->
-<div id="rulesModal" style="display: none;" 
+<!-- Rules Modal -->
+<div id="rulesModal" style="display: none;"
      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
   <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -708,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         📘 Aturan Multilayer: <span id="selectedDiagnosis"></span>
       </h3>
       <button type="button" onclick="closeRulesModal()"
-              class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold transition-colors">
+              class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-2xl font-bold">
         ✕
       </button>
     </div>
@@ -738,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div id="rulesError" style="display: none;" class="text-center py-8 text-red-500">
-        <p>❌ Gagal memuat aturan</p>
+        <p>Gagal memuat aturan</p>
         <p class="text-sm mt-2">Silakan coba lagi atau hubungi administrator</p>
       </div>
     </div>

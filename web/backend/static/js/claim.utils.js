@@ -11,13 +11,23 @@
     return val;
   }
 
-  function truncateText(text, max) {
-    return (text && text.length > max) ? text.substring(0, max) + "…" : (text || "");
+  function truncateText(text, maxLength = 100) {
+    if (!text || text.length <= maxLength) return text || "";
+    return text.substring(0, maxLength) + "...";
   }
 
-  function formatRupiah(num) {
-    if (!num && num !== 0) return "";
-    return "Rp " + Number(num).toLocaleString("id-ID");
+
+  function formatRupiah(value) {
+    if (value === null || value === undefined || value === "") return "-";
+
+    // Jika sudah berawalan "Rp", kembalikan apa adanya
+    if (typeof value === "string" && value.trim().startsWith("Rp")) return value;
+
+    // Hapus semua karakter non-digit
+    const numeric = Number(String(value).replace(/[^\d]/g, ""));
+    if (isNaN(numeric) || numeric === 0) return "-";
+
+    return "Rp " + numeric.toLocaleString("id-ID");
   }
 
   function confidenceBadge(val) {
@@ -59,6 +69,21 @@
     if (summInput) summInput.value = JSON.stringify(state.summary || {});
   }
 
+  function mergeTextAndRules(baseText, rules) {
+    if (!rules || !rules.items) return baseText || "-";
+    const multilayerHtml = rules.items
+      .map(
+        (r) =>
+          `<li class="ml-5 list-disc text-sm">${r.isi} <span class="text-gray-400 text-xs">(${r.sumber})</span></li>`
+      )
+      .join("");
+    return `
+      <div class="space-y-1">
+        <div>${baseText || "-"}</div>
+        <ul class="list-disc pl-4 text-sm">${multilayerHtml}</ul>
+      </div>`;
+  }
+
   // Tambahan utility functions untuk normalisasi data
 
   // Function untuk normalisasi data array
@@ -90,19 +115,6 @@
 
   // Utility functions untuk rendering iDRG data
 
-  // Function untuk render checklist sebagai HTML
-  window.renderChecklistHtml = function(checklist) {
-    if (!checklist) return '-';
-    
-    if (Array.isArray(checklist) && checklist.length > 0) {
-      return `<ul class="list-disc pl-5 space-y-1">${checklist.map(item => `<li>${item}</li>`).join('')}</ul>`;
-    } else if (typeof checklist === 'string') {
-      return checklist;
-    }
-    
-    return '-';
-  };
-
   // Function untuk render rekomendasi sebagai HTML
   window.renderRekomendasi = function(rekomendasi) {
     if (!rekomendasi) return '-';
@@ -122,4 +134,5 @@
   window.formatRupiah = formatRupiah;
   window.confidenceBadge = confidenceBadge;
   window.syncHiddenInputs = syncHiddenInputs;
+  window.mergeTextAndRules = mergeTextAndRules;
 })();

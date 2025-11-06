@@ -1,128 +1,215 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-6 max-w-3xl mx-auto">
-  <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">
-    Detail Klaim
-  </h1>
+<div class="w-full px-8 py-8">
 
-  <!-- Card detail klaim -->
-  <div class="bg-white dark:bg-gray-800 p-6 shadow rounded-xl">
-    <h2 class="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-100 border-b pb-3">
-      Informasi Klaim
-    </h2>
-    <dl class="divide-y divide-gray-200 dark:divide-gray-700">
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">ID Klaim</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.id }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">ID Pasien</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.patient.id if claim.patient else '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Nama Pasien</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.patient.nama if claim.patient else '-' }}</dd>
-      </div>
-
-      <!-- 🩺 Kunjungan yang Terkait -->
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Kunjungan Terkait</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">
-          {% if claim.visit %}
-            <div class="mb-1">Visit Utama: <span class="font-semibold">{{ claim.visit.id }}</span></div>
+  <!-- Header -->
+  <div class="mb-8 flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Detail Klaim</h1>
+      <p class="text-gray-600 dark:text-gray-400">Informasi lengkap klaim medis pasien</p>
+    </div>
+    <span class="px-4 py-2 rounded-full text-sm font-semibold border
+      {% if claim.status == 'draft' %}
+        bg-amber-100 text-amber-800 border-amber-200
+      {% elif claim.status == 'submitted' %}
+        bg-blue-100 text-blue-800 border-blue-200
+      {% elif claim.status == 'verified' %}
+        bg-emerald-100 text-emerald-800 border-emerald-200
+      {% elif claim.status == 'final' %}
+        bg-green-100 text-green-800 border-green-200
+      {% else %}
+        bg-gray-100 text-gray-800 border-gray-200
+      {% endif %}
+    ">
+      {{ claim.status|upper }}
+    </span>
+  </div>
+  <!-- AI Alerts -->
+  {% if alerts and alerts|length > 0 %}
+  <div class="space-y-3 mb-6">
+    {% for alert in alerts %}
+    <div class="rounded-xl border p-4 shadow-sm
+        {% if alert.severity == 'critical' %} bg-red-50 border-red-200
+        {% elif alert.severity == 'warning' %} bg-amber-50 border-amber-200
+        {% else %} bg-blue-50 border-blue-200 {% endif %}">
+      <div class="flex items-start gap-3">
+        {% if alert.severity == 'critical' %}
+          <span class="text-red-600 text-lg">⚠️</span>
+        {% elif alert.severity == 'warning' %}
+          <span class="text-amber-600 text-lg">⚠️</span>
+        {% else %}
+          <span class="text-blue-600 text-lg">ℹ️</span>
+        {% endif %}
+        <div class="flex-1">
+          <p class="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            {{ alert.category|capitalize }}
+          </p>
+          <p class="text-sm text-gray-700 dark:text-gray-300">{{ alert.message }}</p>
+          {% if alert.suggestion %}
+          <div class="mt-2 p-2 bg-white/50 rounded-lg">
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              💡 {{ alert.suggestion }}
+            </p>
+          </div>
           {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 shadow-sm">
+    <div class="flex items-center gap-3 text-emerald-800">
+      <span class="text-lg">✅</span>
+      <span class="font-medium">Semua aman — tidak ada peringatan AI untuk klaim ini</span>
+    </div>
+  </div>
+  {% endif %}
 
-          {% if claim.visit_links and claim.visit_links|length > 0 %}
-            <ul class="list-disc list-inside text-sm text-gray-700 dark:text-gray-300">
-              {% for link in claim.visit_links %}
-              <li>Visit Tambahan: {{ link.external_visit_id }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <span class="text-gray-500 italic">Tidak ada visit tambahan</span>
-          {% endif %}
-        </dd>
-      </div>
+  <!-- Info Cards -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-slate-200">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Pasien</p>
+      <p class="font-semibold text-slate-800 dark:text-slate-100">{{ claim.patient.nama if claim.patient else '-' }}</p>
+      <p class="text-sm text-slate-600 mt-1">ID: {{ claim.patient.id if claim.patient else '-' }}</p>
+    </div>
 
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">ID RS</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.hospital.id if claim.hospital else '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Dokter</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.doctor_name or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Diagnosis Awal</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.diagnosis_awal or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Diagnosis Akhir</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.diagnosis_akhir or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Kode Diagnosis ICD 10</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.kode_icd or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Tindakan</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.tindakan or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Kode Tindakan ICD 9</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.icd9_tindakan or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Obat</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.obat or '-' }}</dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Status</dt>
-        <dd class="col-span-2">
-          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                        {% if claim.status == 'draft' %}
-                          bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                        {% elif claim.status == 'submitted' %}
-                          bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                        {% elif claim.status == 'verified' %}
-                          bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                        {% else %}
-                          bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200
-                        {% endif %}">
-            {{ claim.status or '-' }}
-          </span>
-        </dd>
-      </div>
-      <div class="py-3 grid grid-cols-3">
-        <dt class="font-medium text-gray-600 dark:text-gray-400">Dibuat</dt>
-        <dd class="col-span-2 text-gray-900 dark:text-gray-100">{{ claim.created_at or '-' }}</dd>
-      </div>
-    </dl>
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-slate-200">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Dokter</p>
+      <p class="font-semibold text-slate-800 dark:text-slate-100">{{ claim.doctor_name or '-' }}</p>
+      <p class="text-sm text-slate-600 mt-1">ID RS: {{ claim.hospital.id if claim.hospital else '-' }}</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-slate-200">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">ID Klaim</p>
+      <p class="font-semibold text-slate-800 dark:text-slate-100">{{ claim.id }}</p>
+      <p class="text-sm text-slate-600 mt-1">{{ claim.created_at }}</p>
+    </div>
   </div>
 
-  <!-- Action -->
-  <div class="mt-6 flex justify-between">
+  <!-- Kunjungan & Diagnosis -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Kunjungan -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+        <h2 class="text-lg font-semibold text-white">Kunjungan</h2>
+      </div>
+      <div class="p-6">
+        {% if claim.visit %}
+        <div class="mb-3">
+          <span class="text-sm text-slate-600">Visit Utama:</span>
+          <span class="ml-2 font-semibold text-slate-800 dark:text-slate-100">{{ claim.visit.id }}</span>
+        </div>
+        {% endif %}
+        {% if claim.visit_links and claim.visit_links|length > 0 %}
+        <p class="text-sm text-slate-600 mb-2">Visit Tambahan:</p>
+        <ul class="space-y-1">
+          {% for link in claim.visit_links %}
+          <li class="text-sm bg-slate-50 dark:bg-slate-700 px-3 py-2 rounded-lg">{{ link.external_visit_id }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-slate-500 italic">Tidak ada visit tambahan</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Diagnosis -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4">
+        <h2 class="text-lg font-semibold text-white">Diagnosis</h2>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Diagnosis Awal</p>
+          <p class="text-slate-800 dark:text-slate-100">{{ claim.medical_record.diagnosis_awal or '-' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Diagnosis Akhir</p>
+          <p class="text-slate-800 dark:text-slate-100">{{ claim.medical_record.diagnosis_akhir or '-' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Kode ICD 10</p>
+          <div class="space-y-1">
+            {% if claim.diagnoses and claim.diagnoses|length > 0 %}
+              <div class="flex flex-col gap-2">
+                {% for d in claim.diagnoses %}
+                  {% if d.icd10_code %}
+                    <span class="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {{ d.icd10_code }} — {{ d.diagnosis_text }}
+                      {% if d.diagnosis_type %}
+                        <span class="ml-1 text-xs text-slate-600">({{ d.diagnosis_type|capitalize }})</span>
+                      {% endif %}
+                    </span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-slate-500 italic">Tidak ada diagnosis</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tindakan & Obat -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+    <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-4">
+      <h2 class="text-lg font-semibold text-white">Tindakan & Obat</h2>
+    </div>
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Tindakan</p>
+        <p class="text-slate-800 dark:text-slate-100 mb-3">{{ claim.medical_record.tindakan or '-' }}</p>
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Kode ICD 9</p>
+        <div class="space-y-1">
+          {% if claim.procedures and claim.procedures|length > 0 %}
+            <div class="flex flex-col gap-2">
+              {% for p in claim.procedures %}
+                {% set icd9 = p.icd9_code_detail or p.icd9_code %}
+                {% if icd9 %}
+                  <span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {{ icd9 }} — {{ p.procedure_text or '-' }}
+                  </span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <span class="text-slate-500 italic">Tidak ada tindakan</span>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Obat</p>
+        <p class="text-slate-800 dark:text-slate-100">{{ claim.medical_record.obat or '-' }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tombol Aksi -->
+  <div class="flex flex-col sm:flex-row justify-between gap-4">
     <a href="/claims"
-       class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow transition">
+       class="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-xl shadow-sm border border-slate-300 transition-all hover:shadow-md font-medium">
       ⬅ Kembali ke Daftar Klaim
     </a>
 
     {% if user and user.role == 'doctor' %}
-    <div class="flex gap-2">
+    <div class="flex gap-3">
       <a href="/claims/{{ claim.id }}/edit"
-         class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition">
+         class="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl shadow-sm transition-all hover:shadow-md font-medium">
         ✏️ Edit
       </a>
-      <form method="post" action="/claims/delete/{{ claim.id }}"
-            onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
+      <form method="post" action="/claims/delete/{{ claim.id }}" onsubmit="return confirm('Yakin ingin menghapus klaim ini?');" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit"
-                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">
+                class="inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl shadow-sm transition-all hover:shadow-md font-medium">
           🗑 Hapus
         </button>
       </form>
     </div>
     {% endif %}
   </div>
+
 </div>
 {% endblock %}

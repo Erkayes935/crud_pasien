@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Dict, Any
 from ... import models
-from .helper import parse_number
+from backend.services.claim_helper import parse_number
 
 # ==================================================
 # AI RECOMMENDATIONS (hasil predict_ddx / analyze_diagnosis / analyze_procedure / regulation)
@@ -69,14 +69,22 @@ def store_ai_recommendations(
                 db.add(sim)
                 db.flush()
 
-            # 🔥 Hapus data lama: rekomendasi & diagnosis hasil AI sebelumnya
-            db.query(models.ClaimAIRecommendation).filter_by(
-                claim_id=claim_id, stage=stage, is_deleted=False
-            ).delete()
+            # Soft-clearing old AI data    
 
-            db.query(models.ClaimDiagnosis).filter_by(
+            print(f"[AI STORAGE] Soft-clearing old AI data for claim {claim_id}")
+            old_recs = db.query(models.ClaimAIRecommendation).filter_by(
+                claim_id=claim_id, stage=stage, is_deleted=False
+            ).all()
+            for rec in old_recs:
+                rec.is_deleted = True
+                rec.updated_at = datetime.utcnow()
+
+            old_diags = db.query(models.ClaimDiagnosis).filter_by(
                 claim_id=claim_id, diagnosis_source="ai", is_deleted=False
-            ).delete()
+            ).all()
+            for diag in old_diags:
+                diag.is_deleted = True
+                diag.updated_at = datetime.utcnow()
 
             db.commit()
 
@@ -315,23 +323,52 @@ def store_ai_recommendations(
                 print(f"[AI STORAGE] ⚠️ Skipped storing procedure because text is empty")
                 return  # jangan insert kalau kosong
 
-            proc = models.ClaimProcedure(
-                claim_id=claim_id,
-                procedure_text=procedure_text.strip(),
-                procedure_source=ai_data.get("procedure_source"),
-                requirement_flag=False,
-                stage=stage,
-                is_deleted=False,
-                is_dummy=False,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-            db.add(proc)
-            db.flush()
+            # ✅ pastikan tidak duplikat & source selalu "ai"
+            existing_proc = db.query(models.ClaimProcedure).filter(
+                models.ClaimProcedure.claim_id == claim_id,
+                models.ClaimProcedure.procedure_text == procedure_text.strip(),
+                models.ClaimProcedure.procedure_source == "ai",
+                models.ClaimProcedure.is_deleted == False,
+            ).first()
 
-            # 🔁 Inject procedure_id ke ai_data agar bisa dipakai saat simpan regulasi
-            ai_data["procedure_id"] = proc.id
-            print(f"[AI STORAGE] Injected procedure_id={proc.id} into ai_data for later use")
+            icd9_code = ai_data.get("icd9_code")
+            if isinstance(icd9_code, str) and "," in icd9_code:
+                icd9_code = icd9_code.split(",")[0].strip()
+            elif isinstance(icd9_code, list):
+                icd9_code = icd9_code[0]
+
+            if not existing_proc:
+                proc = models.ClaimProcedure(
+                    claim_id=claim_id,
+                    procedure_text=procedure_text.strip(),
+                    procedure_source="ai",  # ✅ hardcode AI di sini
+                    icd9_code=icd9_code,
+                    requirement_flag=False,
+                    stage=stage,
+                    is_deleted=False,
+                    is_dummy=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(proc)
+                db.flush()
+                print(f"[AI STORAGE] Inserted new AI procedure: {procedure_text} (ID {proc.id})")
+
+                # Tambahkan detail ICD-9
+                if icd9_code:
+                    db.add(models.ClaimProcedureDetail(
+                        procedure_id=proc.id,
+                        icd9_tindakan=icd9_code,
+                        deskripsi_tindakan=f"ICD-9: {icd9_code}",
+                        is_deleted=False,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                    ))
+            else:
+                existing_proc.icd9_code = icd9_code or existing_proc.icd9_code
+                existing_proc.updated_at = datetime.utcnow()
+                print(f"[AI STORAGE] Updated existing AI procedure: {procedure_text}")
+
 
 
         # ============================================================
@@ -386,6 +423,204 @@ def store_ai_recommendations(
         print(f"[AI STORAGE] ❌ Error storing recommendations: {str(e)}")
         raise
 
+def clear_ai_results(db: Session, claim_id: int):
+    """
+    Hapus seluruh hasil rekomendasi dan evaluasi AI untuk klaim tertentu.
+    Biasanya dipanggil sebelum hasil baru dari core_engine disimpan ulang.
+    """
+    print(f"[AI STORAGE] Clearing AI results for claim {claim_id}")
+    try:
+        print("[AI STORAGE] Removing AI recommendations and evaluations")
+
+        # 🧹 1️⃣ Hapus dulu regulasi yang mengacu ke evaluation lama
+        deleted_regs = db.query(models.ClaimRegulationDetail).filter(
+            models.ClaimRegulationDetail.claim_id == claim_id
+        ).delete(synchronize_session=False)
+        print(f"[AI STORAGE] 🗑️ Deleted {deleted_regs} linked regulation details")
+
+        # 🧹 2️⃣ Baru hapus hasil evaluasi & rekomendasi
+        db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
+        db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).delete()
+
+        db.commit()
+        print(f"[AI STORAGE] ✅ Cleared all AI results for claim {claim_id}")
+
+    except Exception as e:
+        db.rollback()
+        print(f"[AI STORAGE] ❌ Failed to clear AI results: {e}")
+
+# ==================================================
+# 🔄 STORE NESTED ANALYSIS RESULTS (Diagnosis / Procedure)
+# ==================================================
+def _store_nested_analysis_results(db, claim_id: int, result: dict, stage: str = "admission"):
+    from backend.models import (
+        ClaimProcedure, ClaimProcedureDetail,
+        ClaimRegulationDetail, ClaimIDRGDiagnosis, ClaimDiagnosis
+    )
+
+    try:
+        print(f"[_STORE_NESTED_ANALYSIS] 🔍 Processing claim_id={claim_id}, stage={stage}")
+        print(f"[_STORE_NESTED_ANALYSIS] 🔍 Available keys:", list(result.keys()))
+
+        # ======================================================
+        # 1️⃣ Clear old data (safe)
+        # ======================================================
+        old_procs = db.query(ClaimProcedure.id).filter_by(claim_id=claim_id, is_deleted=False).all()
+        old_ids = [p.id for p in old_procs]
+        if old_ids:
+            db.query(ClaimProcedureDetail).filter(
+                ClaimProcedureDetail.procedure_id.in_(old_ids)
+            ).delete(synchronize_session=False)
+        db.query(ClaimProcedure).filter_by(claim_id=claim_id, is_deleted=False).delete()
+        db.commit()
+        print(f"[_STORE_NESTED_ANALYSIS] 🗑️ Cleared {len(old_ids)} old procedures and their details")
+
+        # ======================================================
+        # 2️⃣ Simpan tindakan
+        # ======================================================
+        tindakan_list = result.get("tindakan", [])
+        if not tindakan_list and any(k in result for k in ["icd9", "icd9_code", "status", "ina_cbg"]):
+            tindakan_list = [result]
+
+        if not tindakan_list:
+            print("[_STORE_NESTED_ANALYSIS] ⚠️ Tidak ada tindakan ditemukan")
+        else:
+            for tindakan_item in tindakan_list:
+                # ---- ambil nama tindakan ----
+                name = (
+                    tindakan_item.get("procedure_text") or tindakan_item.get("procedure_name")
+                    or tindakan_item.get("tindakan") or tindakan_item.get("nama")
+                    or tindakan_item.get("name") or tindakan_item.get("procedure") or "-"
+                ).strip()
+                if not name or name == "-":
+                    print("[_STORE_NESTED_ANALYSIS] ⚠️ Skip tindakan tanpa nama")
+                    continue
+
+                # ---- ambil ICD utama ----
+                icd_raw = tindakan_item.get("icd9") or tindakan_item.get("icd9_code") or ""
+                icd9_main = None
+                if isinstance(icd_raw, str):
+                    parts = [p.strip() for p in icd_raw.split(",") if p.strip()]
+                    icd9_main = parts[0] if parts else None
+                elif isinstance(icd_raw, list) and icd_raw:
+                    icd9_main = str(icd_raw[0]).strip()
+
+                if not icd9_main:
+                    icd9_main = "-"  # fallback biar ga null
+
+                # ---- buat procedure record ----
+                proc = ClaimProcedure(
+                    claim_id=claim_id,
+                    procedure_source=tindakan_item.get("procedure_source", "ai"),
+                    procedure_text=name,
+                    icd9_code=icd9_main,
+                    requirement_flag=False,
+                    stage=stage,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=False,
+                )
+                db.add(proc)
+                db.flush()
+
+                # ---- ambil field tambahan ----
+                status_val = tindakan_item.get("status") or tindakan_item.get("status_tindakan")
+                ina_val = tindakan_item.get("ina_cbg_tarif") or tindakan_item.get("ina_cbg")
+
+                # ---- buat deskripsi gabungan ----
+                desc = f"ICD-9 utama: {icd9_main}"
+                if isinstance(icd_raw, str) and "," in icd_raw:
+                    desc += f" (kode lain: {icd_raw})"
+                if status_val:
+                    desc += f", Status: {status_val}"
+                if ina_val:
+                    desc += f", INA-CBG: {ina_val}"
+
+                # ---- insert detail ----
+                detail = ClaimProcedureDetail(
+                    procedure_id=proc.id,
+                    icd9_tindakan=icd9_main,
+                    validitas_tindakan=tindakan_item.get("validitas") or tindakan_item.get("validitas_tindakan"),
+                    status_tindakan=status_val,
+                    ina_cbg_tindakan=ina_val,
+                    faskes_tindakan=tindakan_item.get("faskes"),
+                    rawat_inap_tindakan=tindakan_item.get("rawat_inap"),
+                    syarat_klinis_tindakan=tindakan_item.get("syarat_klinis"),
+                    deskripsi_tindakan=desc,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=False,
+                )
+                db.add(detail)
+
+        # ======================================================
+        # 3️⃣ Simpan multilayer regulasi
+        # ======================================================
+        multilayer_rules = result.get("multilayer_rules") or {}
+        if multilayer_rules:
+            print(f"[_STORE_NESTED_ANALYSIS] 🧩 multilayer_rules: {list(multilayer_rules.keys())}")
+            source_diag = db.query(ClaimDiagnosis).filter_by(claim_id=claim_id).first()
+            diag_id = source_diag.id if source_diag else None
+            source_proc = db.query(ClaimProcedure).filter_by(claim_id=claim_id).first()
+            proc_id = source_proc.id if source_proc else None
+
+            for field, field_data in multilayer_rules.items():
+                for item in field_data.get("items", []):
+                    db.add(ClaimRegulationDetail(
+                        claim_id=claim_id,
+                        entry_field=field,
+                        diagnosis_id=diag_id,
+                        procedure_id=proc_id,
+                        dasar_hukum=item.get("sumber"),
+                        judul_regulasi=item.get("judul_regulasi") or field,
+                        isi=item.get("isi"),
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                        is_deleted=False,
+                        is_dummy=False
+                    ))
+            print("[_STORE_NESTED_ANALYSIS] ✅ Stored multilayer regulation data")
+
+        # ======================================================
+        # 4️⃣ Simpan IDRG (kalau ada)
+        # ======================================================
+        idrg_data = (
+            result.get("idrg_prediction") or result.get("idrg")
+            or result.get("idrg_result") or result.get("idrg_summary")
+            or result.get("idrg_data") or {}
+        )
+        if idrg_data:
+            db.add(ClaimIDRGDiagnosis(
+                claim_id=claim_id,
+                group_idrg=idrg_data.get("group_idrg") or idrg_data.get("code"),
+                severity_index=idrg_data.get("severity_index") or idrg_data.get("severity"),
+                checklist=idrg_data.get("checklist"),
+                ungroupable_alert=idrg_data.get("ungroupable_alert"),
+                faktor_severity=idrg_data.get("faktor_severity"),
+                simulasi_tarif=idrg_data.get("simulasi_tarif"),
+                gap_analysis=idrg_data.get("gap_analysis"),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                is_deleted=False,
+                is_dummy=False,
+            ))
+            print("[_STORE_NESTED_ANALYSIS] ✅ IDRG data stored")
+        else:
+            print("[_STORE_NESTED_ANALYSIS] ⚠️ No IDRG data found")
+
+        db.commit()
+        print(f"[_STORE_NESTED_ANALYSIS] ✅ Commit complete for claim {claim_id}")
+
+    except Exception as e:
+        db.rollback()
+        print(f"[_STORE_NESTED_ANALYSIS] ❌ Error: {e}")
+        import traceback; traceback.print_exc()
+
+
     
 # ==================================================
 # AI EVALUATIONS (hasil generate_claim_combos / summary)
@@ -397,13 +632,10 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
       - ClaimDiagnosisEvaluation
       - ClaimProcedureEvaluation
       - ClaimCombinationAlternative
-
-    Args:
-        db (Session): DB session
-        claim_id (int): ID klaim
-        evaluasi (dict): payload evaluasi dari core_engine
     """
-    # 🔹 Hapus data lama biar tidak numpuk
+    import json
+
+    # 🧹 Bersihkan dulu
     db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
     db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
@@ -417,19 +649,51 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             return "invalid"
         if "warning" in raw_lower or "medium" in raw_lower:
             return "warning"
-        if "valid" in raw_lower:
+        if "valid" in raw_lower or "✅" in raw_lower:
             return "valid"
         return None
 
-    # === Kombinasi Diagnosis ===
+
+    # 🔄 Normalisasi key agar kompatibel
+    if "evaluasi_diagnosis" in evaluasi:
+        evaluasi["kombinasi_diagnosis"] = evaluasi.pop("evaluasi_diagnosis")
+    if "evaluasi_tindakan" in evaluasi:
+        val = evaluasi.pop("evaluasi_tindakan")
+        evaluasi["kombinasi_tindakan"] = [val] if isinstance(val, dict) else val
+    if not evaluasi.get("alternatif"):
+        evaluasi["alternatif"] = evaluasi.get("alternatives", [])
+
+
+    # === Diagnosis ===
     diag = evaluasi.get("kombinasi_diagnosis", {})
+    if isinstance(diag, str):
+        try:
+            diag = json.loads(diag)
+        except Exception:
+            print(f"[AI STORAGE] ⚠️ Failed to parse string diag: {diag}")
+            diag = {}
+
     if diag:
-        diag_eval = models.ClaimDiagnosisEvaluation(
+        # 🧠 Pisahkan validitas dan detail
+        raw_valid = diag.get("validitas", "")
+        parsed_valid = parse_validitas(raw_valid)
+        # Hilangkan emoji/ikon dan sisakan kalimat lengkap
+        clean_detail = (
+            raw_valid.replace("✅", "")
+            .replace("❌", "")
+            .replace("⚠️", "")
+            .strip()
+        )
+
+        # Kalau validitas_detail belum ada, pakai hasil ekstraksi dari validitas
+        validitas_detail = diag.get("validitas_detail") or clean_detail or None
+
+        db.add(models.ClaimDiagnosisEvaluation(
             claim_id=claim_id,
-            validitas=parse_validitas(diag.get("validitas")),
-            validitas_detail=diag.get("validitas_detail"),
+            validitas=parsed_valid,
+            validitas_detail=validitas_detail,
             severity=diag.get("severity"),
-            kode_ina_cbg=diag.get("kode_ina_cbg"),
+            kode_ina_cbg=diag.get("kode_ina_cbg") or diag.get("kode_cbg"),
             estimasi_tarif=parse_number(diag.get("estimasi_tarif")),
             syarat_klinis=diag.get("syarat_klinis"),
             evaluasi_faskes=diag.get("evaluasi_faskes"),
@@ -438,77 +702,63 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(diag_eval)
+        ))
+        print(f"[AI STORAGE] ✅ Stored diagnosis evaluation for claim {claim_id}")
 
-    # === Kombinasi Tindakan ===
+    # === Tindakan ===
+
     for td in evaluasi.get("kombinasi_tindakan", []):
-        proc_eval = models.ClaimProcedureEvaluation(
+        if isinstance(td, str):
+            try:
+                td = json.loads(td)
+            except Exception:
+                td = {}
+
+        db.add(models.ClaimProcedureEvaluation(
             claim_id=claim_id,
-            validitas=parse_validitas(td.get("validitas")),
-            validitas_detail=td.get("validitas_detail"),
-            status_tindakan=td.get("status_tindakan"),
-            tarif_impact=parse_number(td.get("tarif_impact")),
-            faskes=td.get("faskes"),
-            rawat_inap=td.get("rawat_inap"),
-            syarat_klinis=td.get("syarat_klinis"),
+            wajib=td.get("wajib"),
+            validasi=td.get("validasi"),
+            dampak=td.get("dampak"),
+            konflik=td.get("konflik"),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(proc_eval)
+        ))
+        print(f"[AI STORAGE] ✅ Stored procedure evaluation for claim {claim_id}")
 
-    # === Alternatif Kombinasi ===
-    for alt in evaluasi.get("alternatif", []):
-        comb = models.ClaimCombinationAlternative(
+
+    # === Alternatif (with fallback & parsing) ===
+    alt_list = evaluasi.get("alternatif") or evaluasi.get("alternatives") or []
+
+    print(f"[AI STORAGE] 🧩 Alt list length: {len(alt_list)}")
+    for alt in alt_list:
+        if isinstance(alt, str):
+            try:
+                alt = json.loads(alt)
+            except Exception:
+                alt = {}
+
+        db.add(models.ClaimCombinationAlternative(
             claim_id=claim_id,
-            kombinasi_nama=alt.get("kombinasi_nama"),
+            kombinasi_nama=alt.get("kombinasi_nama") or alt.get("nama") or alt.get("judul"),
             severity=alt.get("severity"),
-            kode_ina_cbg=alt.get("kode_ina_cbg"),
+            kode_ina_cbg=alt.get("kode_ina_cbg") or alt.get("kode_cbg"),
             estimasi_tarif=parse_number(alt.get("estimasi_tarif")),
             syarat_klinis=alt.get("syarat_klinis"),
             faskes=alt.get("faskes"),
             rawat_inap=alt.get("rawat_inap"),
             tindakan_wajib=alt.get("tindakan_wajib"),
-            notes=alt.get("notes"),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-        )
-        db.add(comb)
+        ))
+
 
     db.commit()
-
-# ==================================================
-# UTILITIES
-# ==================================================
-
-def clear_ai_results(db: Session, claim_id: int) -> None:
-    """
-    Clear all AI results for a specific claim before generating new ones.
-    Includes validation and logging.
-    """
-    print(f"[AI STORAGE] Clearing AI results for claim {claim_id}")
-    
-    try:
-        # Validate claim exists
-        claim = db.query(models.Claim).filter_by(id=claim_id).first()
-        if not claim:
-            raise ValueError(f"Claim {claim_id} not found")
-            
-        # Clear all related AI data
-        print(f"[AI STORAGE] Removing AI recommendations and evaluations")
-        db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
-        db.query(models.ClaimDiagnosisEvaluation).filter_by(claim_id=claim_id).delete()
-        db.query(models.ClaimProcedureEvaluation).filter_by(claim_id=claim_id).delete()
-        db.commit()
-        
-    except Exception as e:
-        print(f"[AI STORAGE] Error clearing AI results: {str(e)}")
-        db.rollback()
-        raise
+    print(f"[AI STORAGE] ✅ Stored {len(alt_list)} alternatives for claim {claim_id}")
+    print(f"[AI STORAGE] ✅ Successfully stored AI evaluations for claim {claim_id}")
 
 def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) -> None:
     """
@@ -538,7 +788,8 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
             raise ValueError(f"Claim {claim_id} not found")
             
         # Store alternatives
-        for alt in result.get("alternatives", []):
+        alternatives = result.get("alternatif") or result.get("alternatives") or []
+        for alt in alternatives:
             try:
                 db.add(models.ClaimCombinationAlternative(
                     claim_id=claim_id,
@@ -555,6 +806,7 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
                 stored_items["alternatives"] += 1
             except Exception as e:
                 print(f"[AI STORAGE] Error storing alternative: {str(e)}")
+
 
         # Store diagnosis evaluations
         for diag in result.get("diagnosis_evaluations", []):

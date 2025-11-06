@@ -532,9 +532,41 @@
 <script src="{{ url_for('static', path='js/claim.state.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.render.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.manual.js') }}"></script>
-<script src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
+<script type="module" src="{{ url_for('static', path='js/claim.modals.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.api.js') }}"></script>
 <script src="{{ url_for('static', path='js/claim.bootstrap.js') }}"></script>
+<!-- 🌐 Tambahkan inisialisasi role di bawah semua JS -->
+<!-- 🌐 Role Initialization Safe Mode -->
+<script id="userRoleData" type="application/json">
+  {{ {"roles": current_user.role_names if current_user and current_user.role_names else ["verifikator"]} | tojson | safe }}
+</script>
+
+
+<script>
+  try {
+    // Ambil JSON yang dirender Jinja dari tag di atas
+    const roleDataEl = document.getElementById("userRoleData");
+    const roleData = roleDataEl ? JSON.parse(roleDataEl.textContent) : { roles: ["verifikator"] };
+
+    window.claimState = window.claimState || {};
+    window.roles = roleData.roles || ["verifikator"];
+    window.currentUserRole = window.roles[0] || "verifikator";
+
+    window.claimState.roles = window.roles;
+    window.claimState.currentUserRole = window.currentUserRole;
+
+    console.log("🧩 Initialized role:", window.currentUserRole, window.roles);
+  } catch (err) {
+    console.error("Role initialization failed:", err);
+    window.claimState = window.claimState || {};
+    window.roles = ["verifikator"];
+    window.currentUserRole = "verifikator";
+  }
+</script>
+
+
+
+
 
 <script>
 // ================= MULTILAYER RULES MODAL =================

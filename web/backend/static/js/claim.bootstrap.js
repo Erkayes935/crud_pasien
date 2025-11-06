@@ -139,7 +139,9 @@ window.alternatifDropdown = function ({ claimId }) {
 (function () {
   // Panel evaluasi (fungsi render) — tetap di window seperti versi lama
   function renderEvaluasiDiagnosis(data) {
+    const rows = Array.isArray(data) ? data : [data];
     const target = document.getElementById("evaluasi-diagnosis");
+    console.log("🧠 Evaluasi data raw:", data);
     if (!target) return;
     target.innerHTML = "";
 
@@ -148,10 +150,9 @@ window.alternatifDropdown = function ({ claimId }) {
       return;
     }
 
-    // Handle both possible formats from core_engine
+    const evalId = data.id || data.diagnosis_evaluation_id || window.claimState?.diagnosis_eval_id || null;
+
     const validitasIcon = window.statusIcon ? window.statusIcon(data.validitas) : '';
-    
-    // Normalize field names for maximum compatibility
     const validitasText = data.validitas_detail || data.catatan_validitas || "-";
     const severity = data.severity || "-";
     const kodeInaCbg = data.kode_ina_cbg || data.kode_cbg || "-";
@@ -167,19 +168,19 @@ window.alternatifDropdown = function ({ claimId }) {
           <th class="border px-4 py-2">Validitas Klinis Kombinasi</th>
           <td class="border px-4 py-2">
             ${validitasIcon} - <span class="cursor-pointer" title="PNPK Evaluasi Diagnosis 2020"
-               onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${validitasText}</span>
+              onclick="openRegulationDetailModal('validitas_klinis_kombinasi', ${evalId})">${validitasText}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Severity</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${severity}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('severity', ${evalId})">${severity}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Kode INA-CBG</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${kodeInaCbg}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('kode_ina_cbg', ${evalId})">${kodeInaCbg}</span>
           </td>
         </tr>
         <tr>
@@ -189,80 +190,58 @@ window.alternatifDropdown = function ({ claimId }) {
         <tr>
           <th class="border px-4 py-2">Syarat Klinis (Kombinasi)</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${syarat}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('syarat_klinis', ${evalId})">${syarat}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Evaluasi Faskes</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${evaluasiFaskes}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('evaluasi_faskes', ${evalId})">${evaluasiFaskes}</span>
           </td>
         </tr>
         <tr>
           <th class="border px-4 py-2">Rawat Inap</th>
           <td class="border px-4 py-2">
-            <span class="cursor-pointer" onclick="openRegulationDetailModal(${data.id}, 'diagnosis_eval')">${rawatInap}</span>
+            <span class="cursor-pointer" onclick="openRegulationDetailModal('rawat_inap', ${evalId})">${rawatInap}</span>
           </td>
         </tr>
       </table>
     `;
   }
 
+
   function renderEvaluasiProcedure(data) {
+    // 🧠 PATCH: auto-wrap kalau bukan array
     const target = document.getElementById("evaluasi-procedure");
     if (!target) return;
     target.innerHTML = "";
 
-    // Normalisasi data - Jika tidak ada data sama sekali
-    if (!data || (Array.isArray(data) && data.length === 0) || Object.keys(data).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
       target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada evaluasi tindakan</div>`;
       return;
     }
 
-    // Extract rows dari berbagai format data
-    let rows = [];
-    if (Array.isArray(data)) {
-      rows = data;
-    } else if (data.rows && Array.isArray(data.rows)) {
-      rows = data.rows;
-    } else if (data.items && Array.isArray(data.items)) {
-      rows = data.items;
-    } else {
-      rows = [data];
-    }
+    // 🧠 PATCH: auto-wrap kalau bukan array
+    const rows = Array.isArray(data) ? data : [data];
 
-    // Proses rows untuk empat kategori
     const wajib = [], validasi = [], dampak = [], konflik = [];
-    rows.forEach(p => {
-      const icon = window.statusIcon ? window.statusIcon(p.validasi || p.validitas) : '';
-      const tindakan = p.tindakan || p.name || p.validasi_detail || p.status_tindakan || "-";
-      const status = String(p.status_tindakan || p.status || "").toLowerCase();
-
-      if (status.includes("wajib") || status.includes("mandatory")) {
-        wajib.push(`${icon} - <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan}</span>`);
-      } else {
-        validasi.push(`${icon} - ${tindakan}`);
-      }
-
-      if (p.dampak || p.tarif_impact) {
-        dampak.push(`${icon} <span class="cursor-pointer" onclick="openRegulationDetailModal(${p.id}, 'procedure_eval')">${tindakan} → ${p.dampak || p.tarif_impact}</span>`);
-      }
-
-      if (p.konflik || p.syarat_klinis) {
-        konflik.push(`${icon} - ${p.konflik || p.syarat_klinis}`);
-      }
+    rows.forEach((p) => {
+      const safe = (v) => (v && v !== "-" ? v : "-");
+      if (p.wajib) wajib.push(safe(p.wajib));
+      if (p.validasi) validasi.push(safe(p.validasi));
+      if (p.dampak) dampak.push(safe(p.dampak));
+      if (p.konflik) konflik.push(safe(p.konflik));
     });
 
-    // Helper untuk membuat list HTML
-    const listify = arr => arr.length ? arr.map(v => `<div>${v}</div>`).join("") : "-";
+    const listify = (arr) => (arr.length ? arr.map((v) => `<div>${v}</div>`).join("") : "-");
 
     target.innerHTML = `
       <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
       <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-        <tr><th class="border px-4 py-2">Tindakan Wajib Kombinasi</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
-        <tr><th class="border px-4 py-2">Validasi Pilihan Verifikator</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
-        <tr><th class="border px-4 py-2">Dampak INA-CBG / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
-        <tr><th class="border px-4 py-2">Konflik / Duplikasi</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
+        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Validasi</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Konflik / Catatan</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
       </table>
     `;
   }
@@ -348,44 +327,69 @@ window.alternatifDropdown = function ({ claimId }) {
     if (!target) return;
     target.innerHTML = "";
 
-    if (!items || items.length === 0) {
-      target.innerHTML = `<div class="p-2 italic text-gray-500">Tidak ada alternatif kombinasi</div>`;
-      return;
-    }
+    const claimId = document.getElementById("claimRoot")?.dataset.claimId || 0;
 
-    // Debug info
-    console.log("Rendering alternatif with data:", items);
-
-    // === Accordion global untuk semua alternatif ===
     target.innerHTML = `
-      <div class="border rounded-lg shadow-sm bg-white dark:bg-gray-800 mb-4">
-        <div class="cursor-pointer px-4 py-3 flex items-center justify-between bg-yellow-500 text-white font-bold rounded-t"
-            onclick="this.nextElementSibling.classList.toggle('hidden')">
-          <span>Alternatif Kombinasi (${items.length})</span>
-          <span>▼</span>
-        </div>
-        <div class="p-4 text-sm space-y-3 border-t dark:border-gray-600">
-          ${items
-            .map((alt, i) => `
-              <div class="border rounded-lg shadow-sm bg-white dark:bg-gray-800 p-3">
-                <h4 class="font-bold text-yellow-600 mb-2">
-                  Alternatif ${i + 1}: ${alt.judul || alt.nama || "-"}
-                </h4>
-                <div class="text-sm space-y-1">
-                  <div><b>Severity:</b> ${alt.severity_detail || alt.severity_kombinasi || alt.severity || "-"}</div>
-                  <div><b>INA-CBG:</b> ${alt.ina_cbg || "-"}</div>
-                  <div><b>Tarif:</b> ${typeof alt.tarif === 'number' ? `Rp ${alt.tarif.toLocaleString('id-ID')}` : (alt.tarif || alt.estimasi_tarif || "-")}</div>
-                  <div><b>Syarat Klinis:</b> ${alt.syarat || alt.syarat_klinis || "-"}</div>
-                  <div><b>Evaluasi Faskes:</b> ${alt.faskes || alt.evaluasi_faskes || "-"}</div>
-                  <div><b>Rawat Inap:</b> ${alt.rawat_inap || "-"}</div>
-                  <div><b>Tindakan:</b> ${Array.isArray(alt.tindakan) ? alt.tindakan.join(", ") : (alt.tindakan_wajib || "-")}</div>
-                </div>
-              </div>
-            `)
-            .join("")}
+    <div class="mb-5 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden"
+        x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })">
+      <!-- header -->
+      <div class="flex items-center justify-between bg-yellow-400 text-gray-900 dark:bg-yellow-600 dark:text-white px-4 py-2 font-semibold text-[15px] cursor-pointer"
+          @click="toggleDropdown()">
+        <span class="tracking-wide">Alternatif Kombinasi</span>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="italic opacity-80">(klik untuk lihat detail)</span>
+          <span x-show="loading" class="animate-spin h-4 w-4 border-2 border-gray-900 dark:border-white rounded-full border-t-transparent"></span>
+          <span x-text="open ? '▲' : '▼'"></span>
         </div>
       </div>
-    `;
+
+      <!-- body -->
+      <div x-show="open" x-transition class="bg-white dark:bg-gray-900 text-sm leading-relaxed">
+        <template x-if="loading">
+          <div class="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div class="inline-flex items-center">
+              <div class="animate-spin h-4 w-4 mr-2 border-2 border-yellow-600 rounded-full border-t-transparent"></div>
+              <span>Mengambil data alternatif kombinasi...</span>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="!loading && alternatives && alternatives.length">
+          <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            <template x-for="(alt, i) in alternatives" :key="i">
+              <div class="px-5 py-4">
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100 text-[15px] mb-1"
+                    x-text="'Alternatif ' + (i+1) + ': ' + (alt.judul || alt.nama || '-')"></h3>
+                <div class="text-gray-700 dark:text-gray-300 space-y-1 ml-1">
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">Severity:</span> <span x-text="alt.severity || '-'"></span></p>
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">INA-CBG:</span> <span x-text="alt.ina_cbg || '-'"></span></p>
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">Tarif:</span> <span x-text="(alt.tarif || alt.estimasi_tarif) ? 'Rp ' + parseInt(alt.tarif || alt.estimasi_tarif).toLocaleString('id-ID') : '-'"></span></p>
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">Syarat Klinis:</span> <span x-text="alt.syarat || '-'"></span></p>
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">Evaluasi Faskes:</span> <span x-text="alt.faskes || '-'"></span></p>
+                  <p><span class="font-semibold text-gray-600 dark:text-gray-400">Rawat Inap:</span> <span x-text="alt.rawat_inap || '-'"></span></p>
+                  <p class="font-semibold text-gray-600 dark:text-gray-400">Tindakan Wajib:</p>
+                  <template x-if="Array.isArray(alt.tindakan) && alt.tindakan.length">
+                    <ul class="list-disc list-inside ml-4">
+                      <template x-for="(tdk, j) in alt.tindakan" :key="j">
+                        <li x-text="tdk"></li>
+                      </template>
+                    </ul>
+                  </template>
+                  <template x-if="!(Array.isArray(alt.tindakan) && alt.tindakan.length)">
+                    <p class="ml-4" x-text="alt.tindakan_wajib || '-'"></p>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="!loading && (!alternatives || alternatives.length === 0)">
+          <div class="p-3 italic text-gray-500 dark:text-gray-400 text-center">Tidak ada alternatif kombinasi</div>
+        </template>
+      </div>
+    </div>`;
+    if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
   }
 
   // Expose renderer (nama sama persis dg versi lama)
@@ -428,34 +432,42 @@ window.alternatifDropdown = function ({ claimId }) {
     return '-';
   };
 
-  // Custom styling
+  // === i-DRG & Alternatif Table Fix for Light Mode ===
   document.head.insertAdjacentHTML('beforeend', `
-  <style>
-    .grid.grid-cols-2 > div:nth-child(odd) {
-      background-color: #374151; /* dark gray for headers */
-      color: white;
-      padding: 0.5rem 0.75rem;
-    }
-    
-    .grid.grid-cols-2 > div:nth-child(even) {
-      background-color: #1F2937; /* darker for content */
-      padding: 0.5rem 0.75rem;
-      color: #E5E7EB;
-    }
-    
-    /* Add yellow highlight for valid items */
-    [x-text*="valid"]:not(:empty) {
-      color: #FCD34D;
-      font-weight: 500;
-    }
-    
-    /* Add special styling for headers */
-    .bg-yellow-500, .bg-green-600 {
-      font-weight: bold;
-      color: white !important;
-    }
-  </style>
+    <style>
+      /* === i-DRG & Alternatif Table Fix for Light Mode === */
+      .grid.grid-cols-2 > div:nth-child(odd) {
+        background-color: var(--tw-prose-headings, #e6f4ff); /* soft blue for headers */
+        color: #0f172a; /* slate-900 */
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+      }
+
+      .grid.grid-cols-2 > div:nth-child(even) {
+        background-color: #ffffff; /* white for content */
+        color: #1e293b; /* slate-800 */
+        padding: 0.5rem 0.75rem;
+      }
+
+      /* === Dark mode === */
+      html.dark .grid.grid-cols-2 > div:nth-child(odd) {
+        background-color: #334155;
+        color: #f1f5f9;
+      }
+
+      html.dark .grid.grid-cols-2 > div:nth-child(even) {
+        background-color: #1e293b;
+        color: #e2e8f0;
+      }
+
+      /* Header bars (green/yellow) tetap tegas */
+      .bg-yellow-500, .bg-green-600 {
+        font-weight: bold;
+        color: white !important;
+      }
+    </style>
   `);
+
 
   // Helper untuk format angka dan styling
   window.statusIcon = window.statusIcon || function(status) {
@@ -786,182 +798,4 @@ window.renderEvaluasiIDRGSummary = function (data, claimId) {
     </div>
   </div>`;
   if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
-};
-
-
-window.renderAlternatifKombinasi = function (items) {
-  const target = document.getElementById("alternatif");
-  if (!target) return;
-  target.innerHTML = "";
-
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId || 0;
-
-  target.innerHTML = `
-  <div class="mb-5 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden"
-       x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })">
-    <!-- header -->
-    <div class="flex items-center justify-between bg-yellow-400 text-gray-900 dark:bg-yellow-600 dark:text-white px-4 py-2 font-semibold text-[15px] cursor-pointer"
-         @click="toggleDropdown()">
-      <span class="tracking-wide">Alternatif Kombinasi</span>
-      <div class="flex items-center gap-2 text-xs">
-        <span class="italic opacity-80">(klik untuk lihat detail)</span>
-        <span x-show="loading" class="animate-spin h-4 w-4 border-2 border-gray-900 dark:border-white rounded-full border-t-transparent"></span>
-        <span x-text="open ? '▲' : '▼'"></span>
-      </div>
-    </div>
-
-    <!-- body -->
-    <div x-show="open" x-transition class="bg-white dark:bg-gray-900 text-sm leading-relaxed">
-      <template x-if="loading">
-        <div class="p-4 text-center text-gray-500 dark:text-gray-400">
-          <div class="inline-flex items-center">
-            <div class="animate-spin h-4 w-4 mr-2 border-2 border-yellow-600 rounded-full border-t-transparent"></div>
-            <span>Mengambil data alternatif kombinasi...</span>
-          </div>
-        </div>
-      </template>
-
-      <template x-if="!loading && alternatives && alternatives.length">
-        <div class="divide-y divide-gray-200 dark:divide-gray-700">
-          <template x-for="(alt, i) in alternatives" :key="i">
-            <div class="px-5 py-4">
-              <h3 class="font-semibold text-gray-900 dark:text-gray-100 text-[15px] mb-1"
-                  x-text="'Alternatif ' + (i+1) + ': ' + (alt.judul || alt.nama || '-')"></h3>
-              <div class="text-gray-700 dark:text-gray-300 space-y-1 ml-1">
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">Severity:</span> <span x-text="alt.severity || '-'"></span></p>
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">INA-CBG:</span> <span x-text="alt.ina_cbg || '-'"></span></p>
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">Tarif:</span> <span x-text="(alt.tarif || alt.estimasi_tarif) ? 'Rp ' + parseInt(alt.tarif || alt.estimasi_tarif).toLocaleString('id-ID') : '-'"></span></p>
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">Syarat Klinis:</span> <span x-text="alt.syarat || '-'"></span></p>
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">Evaluasi Faskes:</span> <span x-text="alt.faskes || '-'"></span></p>
-                <p><span class="font-semibold text-gray-600 dark:text-gray-400">Rawat Inap:</span> <span x-text="alt.rawat_inap || '-'"></span></p>
-                <p class="font-semibold text-gray-600 dark:text-gray-400">Tindakan Wajib:</p>
-                <template x-if="Array.isArray(alt.tindakan) && alt.tindakan.length">
-                  <ul class="list-disc list-inside ml-4">
-                    <template x-for="(tdk, j) in alt.tindakan" :key="j">
-                      <li x-text="tdk"></li>
-                    </template>
-                  </ul>
-                </template>
-                <template x-if="!(Array.isArray(alt.tindakan) && alt.tindakan.length)">
-                  <p class="ml-4" x-text="alt.tindakan_wajib || '-'"></p>
-                </template>
-              </div>
-            </div>
-          </template>
-        </div>
-      </template>
-
-      <template x-if="!loading && (!alternatives || alternatives.length === 0)">
-        <div class="p-3 italic text-gray-500 dark:text-gray-400 text-center">Tidak ada alternatif kombinasi</div>
-      </template>
-    </div>
-  </div>`;
-  if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
-};
-
-// Perbaikan generateSummary untuk menggabungkan semua perubahan
-window.generateSummary = async function() {
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
-  if (!claimId) return alert("❌ Claim ID tidak ditemukan.");
-
-  try {
-    // Show loading message
-    const loadingMsg = document.createElement('div');
-    loadingMsg.id = 'summary-loading';
-    loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
-    loadingMsg.innerHTML = 'Generating claim summary...';
-    document.body.appendChild(loadingMsg);
-
-    const state = Alpine.$data(document.getElementById("claimRoot"));
-    
-    // Ambil tab aktif
-    const currentTab = state.tab || 'admission';
-    
-    // Ekstrak data diagnosa dan tindakan dari simulasi tab saat ini
-    const simData = state.simulasi[currentTab];
-
-    if (!simData) {
-      throw new Error("Tidak ada data simulasi di tab ini");
-    }
-
-    // Format payload sesuai dengan core_engine
-    const payload = { 
-      claim_id: parseInt(claimId),
-      stage: currentTab,
-      primary_claim: simData.utama?.name || "",
-      secondary_claims: (simData.sekunder || []).map(d => d.name).filter(Boolean),
-      primary_action: simData.tindakanUtama?.name || "",
-      secondary_actions: (simData.tindakanSekunder || [])
-        .filter(t => t && t.name)
-        .map(t => t.name)
-    };
-
-    console.log("📤 Sending payload to generate_claim_combos:", payload);
-
-    const res = await fetch(`/claims/${claimId}/generate_claim_combos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Gagal request summary (${res.status}): ${errorText}`);
-    }
-
-    const data = await res.json();
-    console.log("📥 Summary result:", data);
-
-    if (data.error) {
-      throw new Error(`Error from server: ${data.error}`);
-    }
-
-    // Normalisasi format result untuk konsistensi
-    const resultData = data.result || data;
-    
-    // Ekstrak data yang relevan dari respons dengan logging untuk debug
-    console.log("Extracting evaluasi_diagnosis:", resultData.evaluasi_diagnosis);
-    console.log("Extracting evaluasi_tindakan:", resultData.evaluasi_tindakan);
-    
-    const diagnosisData = resultData.evaluasi_diagnosis || resultData.diagnosis || {};
-    
-    let procedureData = resultData.evaluasi_tindakan || resultData.procedure || {};
-    if (Array.isArray(procedureData)) {
-      // Already an array, use as is
-    } else if (procedureData && typeof procedureData === 'object') {
-      procedureData = procedureData.rows || procedureData.items || [procedureData];
-    }
-
-    // Update UI sections
-    console.log("Rendering evaluasi_diagnosis...");
-    window.renderEvaluasiDiagnosis && window.renderEvaluasiDiagnosis(diagnosisData);
-    
-    console.log("Rendering evaluasi_procedure...");
-    window.renderEvaluasiProcedure && window.renderEvaluasiProcedure(procedureData);
-    
-    // Render i-DRG dan alternatif dengan lazy loading dropdown
-    console.log("Rendering idrg_summary dengan lazy loading...");
-    window.renderEvaluasiIDRGSummary && window.renderEvaluasiIDRGSummary({}, claimId);
-    
-    console.log("Rendering alternatif dengan lazy loading...");
-    window.renderAlternatifKombinasi && window.renderAlternatifKombinasi([]);
-
-    const summaryField = document.getElementById("summaryField");
-    if (summaryField) summaryField.value = JSON.stringify(resultData);
-    
-    if (!window.claimState) window.claimState = {};
-    window.claimState.summary = resultData;
-
-    alert("✅ Summary berhasil digenerate");
-  } catch (err) {
-    console.error("❌ Error generate summary:", err);
-    alert(`❌ Gagal generate summary: ${err.message}`);
-  } finally {
-    // Remove loading message
-    const loadingMsg = document.getElementById('summary-loading');
-    if (loadingMsg) {
-      loadingMsg.remove();
-    }
-    window.syncHiddenInputs && window.syncHiddenInputs();
-  }
 };

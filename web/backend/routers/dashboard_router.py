@@ -39,12 +39,6 @@ def dashboard(
 # =========================
 # ROOT → redirect ke dashboard
 # =========================
-@router.get("/")
-def root_redirect(
-    request: Request,
-    user=Depends(
-        require_roles_session("doctor", "admin_rs", "superadmin", "coder", "verifikator")
-    ),
-):
-    flash(request, "Redirecting to dashboard...", "info")
+@router.get("/", include_in_schema=False)
+def root_redirect():
     return RedirectResponse(url="/dashboard", status_code=303)

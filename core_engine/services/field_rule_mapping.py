@@ -126,10 +126,6 @@ FIELD_RULE_MAP = {
             "source": "Rule", "layers": [2], "type": "rule",
             "desc": "Deskripsi lengkap kode ICD-9-CM."
         },
-        "validitas": {
-            "source": "Hybrid", "layers": [2, 3], "type": "hybrid",
-            "desc": "Validasi relevansi tindakan terhadap diagnosis (AI + Rule)."
-        },
         "status_tindakan": {
             "source": "Rule", "layers": [2, 3, 5], "type": "rule",
             "desc": "Status wajib/opsional/minor tindakan (CP, PPK RS)."

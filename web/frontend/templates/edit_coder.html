@@ -4,7 +4,7 @@
 {% block content %}
 <form id="claimForm"
       method="post"
-      action="/claims/{{ claim.id }}/coder"
+      action="/claims/{{ claim.id }}"
       data-claim-id="{{ claim.id }}"
       class="max-w-7xl mx-auto w-full p-6 bg-gray-100 dark:bg-gray-900 text-sm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -12,6 +12,7 @@
   <div id="claimRoot"
        x-data="claimData({ role: 'coder' })"
        data-claim-id="{{ claim.id }}"
+       data-stages='{{ stages | tojson | safe }}'
        class="space-y-4">
 
     <!-- Header -->
@@ -137,7 +138,7 @@
                          {% if item.verified_at %}bg-green-50 dark:bg-green-900/30{% endif %}">
                 <td class="border p-2 font-medium text-gray-700 dark:text-gray-200">{{ item.type }}</td>
                 <td class="border p-2 text-gray-700 dark:text-gray-300">{{ item.text }}</td>
-                <td class="border p-2 text-blue-700 dark:text-blue-300 font-semibold">{{ item.icd_doctor or '-' }}</td>
+                <td class="border p-2 text-blue-700 dark:text-blue-300 font-semibold">{{ item.icd9_doctor or '-' }}</td>
                 <td class="border p-2">
                   <input type="text"
                          list="icd9_list"

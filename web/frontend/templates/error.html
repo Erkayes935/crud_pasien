@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error {{ status_code }} | AI-Claim</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark')
+    }
+  </script>
+
+  <style>
+    /* 🔒 Nonaktifkan seleksi dan drag gambar */
+    img {
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body class="h-full bg-white flex flex-col items-center justify-center text-center p-6">
+  <div class="max-w-xl">
+    <!-- 🖼️ Gambar besar, tidak bisa diblok -->
+    <img src="{{ url_for('static', path='images/error.png') }}" 
+         alt="Error Illustration" 
+         class="mx-auto w-[28rem] sm:w-[32rem] md:w-[36rem] mb-10 select-none">
+
+    <h1 class="text-4xl font-bold text-gray-800 mb-3">
+      {% if status_code == 404 %}
+        Oops! You are lost
+      {% elif status_code == 500 %}
+        Server Error
+      {% elif status_code == 403 %}
+        Access Denied
+      {% elif status_code == 401 %}
+        Please Login
+      {% else %}
+        Something Went Wrong
+      {% endif %}
+    </h1>
+
+    <p class="text-gray-600 mb-8 text-lg leading-relaxed">
+      {% if message %}
+        {{ message }}
+      {% else %}
+        An unexpected error occurred. Please try again later.
+      {% endif %}
+    </p>
+
+    <!-- 🔙 Tombol Back / Dashboard -->
+    <button id="backButton"
+            class="inline-block px-8 py-4 bg-blue-600 text-white text-lg font-medium rounded-xl shadow hover:bg-blue-700 transition">
+      Back
+    </button>
+  </div>
+
+  <script>
+    const btn = document.getElementById('backButton');
+    btn.addEventListener('click', () => {
+      // Coba kembali ke halaman sebelumnya
+      if (document.referrer && document.referrer !== window.location.href) {
+        window.history.back();
+      } else {
+        // Jika tidak ada referrer (misal buka langsung), ke dashboard
+        window.location.href = '/dashboard';
+      }
+    });
+  </script>
+</body>
+</html>

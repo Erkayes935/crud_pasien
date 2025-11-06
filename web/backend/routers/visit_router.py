@@ -25,19 +25,22 @@ def list_visits(
     poli: Optional[str] = Query(None),
     dokter: Optional[str] = Query(None),
     sumber: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),  # ← Tambahan: parameter halaman
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "admin_rs")),
 ):
+    PAGE_SIZE = 20  # batas 20 data per halaman
+
     visits_query = db.query(models.Visit).filter(models.Visit.is_deleted == False)
 
-    # 🔹 Parsing manual tanggal (jika diisi)
+    # 🔹 Parsing tanggal
     from datetime import date as date_cls
     if tanggal_kunjungan:
         try:
             tanggal_parsed = date_cls.fromisoformat(tanggal_kunjungan)
             visits_query = visits_query.filter(models.Visit.tanggal_kunjungan == tanggal_parsed)
         except ValueError:
-            pass  # abaikan kalau tidak valid
+            pass
 
     if poli:
         visits_query = visits_query.filter(models.Visit.poli.ilike(f"%{poli}%"))
@@ -46,7 +49,18 @@ def list_visits(
     if sumber:
         visits_query = visits_query.filter(models.Visit.sumber == sumber)
 
-    visits = visits_query.order_by(models.Visit.id.desc()).all()
+    # 🔹 Hitung total data
+    total_count = visits_query.count()
+    total_pages = max((total_count + PAGE_SIZE - 1) // PAGE_SIZE, 1)
+    offset = (page - 1) * PAGE_SIZE
+
+    # 🔹 Ambil data sesuai halaman
+    visits = (
+        visits_query.order_by(models.Visit.id.desc())
+        .offset(offset)
+        .limit(PAGE_SIZE)
+        .all()
+    )
 
     csrf_token = issue_csrf_token(request)
     return templates.TemplateResponse("visit_list.html", {
@@ -57,13 +71,15 @@ def list_visits(
         "current_user": user,
         "flow": None,
         "patient": None,
-        # agar form tetap “ingat” filter sebelumnya
         "tanggal_kunjungan": tanggal_kunjungan,
         "poli": poli,
         "dokter": dokter,
         "sumber": sumber,
+        "page": page,
+        "total_pages": total_pages,
+        "total_count": total_count,
+        "page_size": PAGE_SIZE,
     })
-
 
 # =========================
 # ADD VISIT

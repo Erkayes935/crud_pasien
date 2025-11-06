@@ -232,17 +232,28 @@
 
   // state utama (dipasang via x-data="claimData(init)")
   function claimData(init) {
+    let serverStages = {};
+    try {
+      const el = document.getElementById("claimRoot");
+      if (el && el.hasAttribute("data-stages")) {
+        serverStages = JSON.parse(el.getAttribute("data-stages"));
+        console.log("📦 [CLAIM STATE] Loaded stages from server:", serverStages);
+      }
+    } catch (e) {
+      console.warn("⚠️ [CLAIM STATE] Gagal parse data-stages:", e);
+    }
     const state = {
       role: init.role || 'doctor', // doctor, verifikator, coder
       tab: init.tab || 'admission',
+      stages: serverStages,
       form: {},
 
       // simulasi hasil AI
       simulasi: init.sim || {
-        admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-        "daily-0": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-        "daily-1": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
-        discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[], tarifDraft:null },
+        admission: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[] },
+        "daily-0": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[] },
+        "daily-1": { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[] },
+        discharge: { diagnosis: [], komorbid: [], komplikasi: [], utama:null, sekunder:[], tindakanUtama:null, tindakanSekunder:[] },
         daily: { days: [], utama: null, sekunder: [] }
       },
 
@@ -317,6 +328,11 @@
         
         if (this.simulasi.daily.days.length === 0) {
           this.addNewDailyDay();   // bikin Hari 1 kosong
+        }
+
+        // ✅ Tambahan debug
+        if (role === 'coder') {
+          console.log("📋 [CODER INIT] stages loaded:", this.stages);
         }
         
         // 🎯 CRITICAL FIX: Load simulations IMMEDIATELY in init, not setTimeout
@@ -398,6 +414,7 @@
     }
 
     // Diagnosis
+    // Diagnosis
     if (["diagnosis", "komorbid", "komplikasi"].includes(type)) {
       if (finalOpt === "Primary") {
         const oldPrimary = sim.utama;
@@ -405,7 +422,20 @@
 
         // 🩹 set mapping agar dropdown tidak nyangkut
         item.mapping = "Primary";
+        
+        // 🩹 PATCH: Preserve ICD-10 code from original value
+        if (value && value.icd10_code) {
+          item.icd10_code = value.icd10_code;
+          console.log("🩹 [PATCH] Preserving ICD-10 for Primary:", value.icd10_code);
+        }
+        if (value && value.icd10 && value.icd10.kode_icd) {
+          item.icd10 = value.icd10;
+          item.icd10_code = value.icd10.kode_icd;
+          console.log("🩹 [PATCH] Preserving nested ICD-10:", value.icd10.kode_icd);
+        }
+        
         sim.utama = { diagnosis_utama_id: item.id, ...item };
+        console.log("🩹 [PATCH] Set Primary Diagnosis with ICD-10:", sim.utama);
 
         // kalau ada primary lama, ubah mapping-nya jadi secondary biar turun
         if (oldPrimary && oldPrimary.name !== item.name) {
@@ -418,11 +448,22 @@
 
         // 🩹 pastikan mapping tertulis "Secondary"
         item.mapping = "Secondary";
+        
+        // 🩹 PATCH: Preserve ICD-10 code for secondary
+        if (value && value.icd10_code) {
+          item.icd10_code = value.icd10_code;
+          console.log("🩹 [PATCH] Preserving ICD-10 for Secondary:", value.icd10_code);
+        }
+        if (value && value.icd10 && value.icd10.kode_icd) {
+          item.icd10 = value.icd10;
+          item.icd10_code = value.icd10.kode_icd;
+        }
 
         const idx = sim.sekunder.findIndex(dx => dx.name === item.name);
         const secItem = { diagnosis_sekunder_id: item.id, ...item };
         if (idx === -1) sim.sekunder.push(secItem);
         else sim.sekunder[idx] = secItem;
+        console.log("🩹 [PATCH] Set Secondary Diagnosis with ICD-10:", secItem);
 
       } else if (finalOpt === "None") {
         if (sim.utama && sim.utama.name === item.name) sim.utama = null;

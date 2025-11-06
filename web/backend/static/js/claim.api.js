@@ -73,12 +73,14 @@
       if (tindakans.length) manualBackup[tab] = tindakans;
     }
 
-    const loadingMsg = document.createElement("div");
-    loadingMsg.id = "ai-loading";
-    loadingMsg.style.cssText =
-      "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 9999;";
-    loadingMsg.innerHTML = "Generating AI recommendations...";
-    document.body.appendChild(loadingMsg);
+    // ✅ Ganti loading lama dengan modal loading baru
+    if (typeof window.showAiLoadingModal === "function") {
+      window.showAiLoadingModal([
+        "Mengambil data dari core engine...",
+        "Menganalisis hasil diagnosis dan tindakan...",
+        "Menyiapkan rekomendasi AI..."
+      ]);
+    }
 
     try {
       const res = await fetch(`/claims/${claimId}/predict_ddx`, {
@@ -92,6 +94,10 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
+      // 🔧 Normalisasi hasil backend yang punya wrapper {status, data:{...}}
+      while (result && result.data) {
+        result = result.data;
+      }
       console.log("🔍 Core engine result:", result);
 
       const responseData = result.data || result;
@@ -146,18 +152,32 @@
       console.error("❌ Error generate AI:", err);
       showToast("Gagal generate AI", true);
     } finally {
-      document.getElementById("ai-loading")?.remove();
+      // ✅ Tutup modal loading AI
+      if (typeof window.hideAiLoadingModal === "function") {
+        window.hideAiLoadingModal();
+      }
     }
   }
 
   // ============================================================
-  // 🧠 Generate Summary
+  // 🧠 Generate Summary (sinkron BE terbaru + key fallback baru)
   // ============================================================
   async function generateSummary() {
     const claimId = document.getElementById("claimRoot")?.dataset.claimId;
     if (!claimId) return showToast("❌ Claim ID tidak ditemukan.", true);
 
     try {
+      console.log("🚀 generateSummary() dimulai");
+
+      // ✅ Ganti loading lama dengan modal loading baru
+      if (typeof window.showAiLoadingModal === "function") {
+        window.showAiLoadingModal([
+          "Mengambil data dari core engine...",
+          "Menganalisis evaluasi kombinasi diagnosis dan tindakan...",
+          "Menyiapkan rekomendasi AI..."
+        ]);
+      }
+
       const state = Alpine.$data(document.getElementById("claimRoot"));
 
       const payload = {
@@ -174,25 +194,32 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok)
-        throw new Error(`HTTP ${res.status} - Gagal request evaluasi`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} - Gagal request evaluasi`);
 
+      console.log("📡 Response status:", res.status);
       const result = await res.json();
       console.log("🔍 Core engine evaluasi result:", result);
-      const data = result.data || result;
 
-      window.renderEvaluasiDiagnosis &&
-        window.renderEvaluasiDiagnosis(
-          data.evaluasi_diagnosis || data.diagnosis || {}
-        );
-      window.renderEvaluasiProcedure &&
-        window.renderEvaluasiProcedure(
-          data.evaluasi_tindakan || data.procedure || {}
-        );
-      window.renderEvaluasiIDRGSummary &&
-        window.renderEvaluasiIDRGSummary(data.idrg_summary || {});
-      window.renderAlternatifKombinasi &&
-        window.renderAlternatifKombinasi(data.alternatif || []);
+      // ✅ hasil utama ada di result.result (fallback ke format lama jika perlu)
+      const data = result.result || result.data || result;
+      console.log("🧠 Evaluasi diagnosis data:", data.kombinasi_diagnosis || data.evaluasi_diagnosis);
+      console.log("🧠 Evaluasi tindakan data:", data.kombinasi_tindakan || data.evaluasi_tindakan);
+
+
+      // 🔎 debug singkat biar kelihatan mana yang kepakai
+      console.log("➡️ keys:", Object.keys(data || {}));
+
+      // ⬇️⬇️ HANYA 2 BARIS INI YANG PENTING (map ke nama field baru)
+      window.renderEvaluasiDiagnosis?.(
+        data.kombinasi_diagnosis || data.evaluasi_diagnosis || data.diagnosis || {}
+      );
+      window.renderEvaluasiProcedure?.(
+        data.kombinasi_tindakan   || data.evaluasi_tindakan   || data.procedure || {}
+      );
+      // ⬆️⬆️
+
+      window.renderEvaluasiIDRGSummary?.(data.idrg_summary || {});
+      window.renderAlternatifKombinasi?.(data.alternatif || []);
 
       const summaryField = document.getElementById("summaryField");
       if (summaryField) summaryField.value = JSON.stringify(data);
@@ -203,67 +230,96 @@
       console.error("❌ Error generate evaluasi:", err);
       showToast(`❌ Gagal generate evaluasi: ${err.message}`, true);
     } finally {
-      window.syncHiddenInputs && window.syncHiddenInputs();
+      if (typeof window.hideAiLoadingModal === "function") {
+        window.hideAiLoadingModal();
+      }
     }
   }
 
+
+  // util kecil: set token ke input & meta
+  function setCsrfTokenEverywhere(token) {
+    const input = document.querySelector('input[name="csrf_token"]');
+    const meta  = document.querySelector('meta[name="csrf-token"]');
+    if (input) input.value = token;
+    if (meta)  meta.setAttribute("content", token);
+  }
+
   // ============================================================
-  // 💾 Save Draft (with CSRF retry)
+  // 💾 Save Draft (with CSRF refresh & dual sink)
   // ============================================================
   async function saveDraft(claimId, data = null) {
     try {
-      const csrfInput = document.querySelector('input[name="csrf_token"]');
-      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfGeneric = document.querySelector('[name="csrf_token"]');
-      const csrfToken =
-        csrfInput?.value || csrfMeta?.content || csrfGeneric?.value;
+      const claimRoot = document.getElementById("claimRoot");
+      const state = claimRoot ? Alpine.$data(claimRoot) : window.claimState || {};
+
+      const csrfInput  = document.querySelector('input[name="csrf_token"]');
+      const csrfMeta   = document.querySelector('meta[name="csrf-token"]');
+      const csrfGeneric= document.querySelector('[name="csrf_token"]');
+      const csrfToken  = csrfInput?.value || csrfMeta?.content || csrfGeneric?.value;
+
+      if (!csrfToken) throw new Error("CSRF token required");
 
       const payload = data || get_form_as_dict();
+
       const formData = new FormData();
-
-      if (csrfToken) {
-        formData.append("csrf_token", csrfToken);
-      } else {
-        throw new Error("CSRF token required");
-      }
-
+      formData.append("csrf_token", csrfToken);           // ✔️ untuk dependency yang baca dari form field
       formData.append("payload", JSON.stringify(payload));
+
+      // === Inject mapping info sebelum kirim ke backend ===
+      Object.keys(state.simulasi || {}).forEach(tab => {
+        const sim = state.simulasi[tab];
+        if (!sim || typeof sim !== "object") return;
+        ["diagnosis","komorbid","komplikasi","tindakan"].forEach(tp => {
+          const arr = sim[tp];
+          if (Array.isArray(arr)) {
+            arr.forEach(it => {
+              if (sim.utama?.name === it.name) it.mapping = "Primary";
+              else if (sim.sekunder?.some(s => s.name === it.name)) it.mapping = "Secondary";
+              else if (sim.tindakanUtama?.name === it.name) it.mapping = "Primary Action";
+              else if (sim.tindakanSekunder?.some(s => s.name === it.name)) it.mapping = "Secondary Actions";
+              else delete it.mapping; // jgn isi apa2 kalau dokter gak pilih
+            });
+          }
+        });
+      });
 
       const res = await fetch(`/claims/${claimId}/update-draft`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include",                            // ✔️ cookie session ikut
+        headers: { "X-CSRF-Token": csrfToken },           // (opsional) ✔️ untuk dependency yang baca dari header
         body: formData,
       });
 
       if (!res.ok) {
-      // kalau token invalid, coba refresh
-      if (res.status === 403) {
-        showToast("⏳ Refreshing CSRF token...", true);
-        const refresh = await fetch("/claims/csrf/refresh");
-        const data = await refresh.json();
-        document.querySelector('input[name="csrf_token"]').value = data.csrf_token;
-        showToast("🔁 CSRF token diperbarui, silakan simpan lagi");
+        // kalau token invalid, coba refresh
+        if (res.status === 403) {
+          showToast("⏳ Refreshing CSRF token...", true);
+          const refresh = await fetch("/claims/csrf/refresh", { credentials: "include" });
+          const data = await refresh.json();
+          if (data?.csrf_token) {
+            setCsrfTokenEverywhere(data.csrf_token);
+            showToast("🔁 CSRF token diperbarui, silakan simpan lagi");
+          }
+        }
+        throw new Error(`HTTP ${res.status}`);
       }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
+
       const result = await res.json();
       console.log("📥 Draft saved successfully:", result);
       showToast("✅ Draft berhasil disimpan");
-      // after success save
-      const newTokenRes = await fetch("/claims/csrf/refresh");
+
+      // Setelah sukses, perbarui token lagi (rotating token)
+      const newTokenRes = await fetch("/claims/csrf/refresh", { credentials: "include" });
       const newToken = await newTokenRes.json();
-      document.querySelector('input[name="csrf_token"]').value = newToken.csrf_token;
+      if (newToken?.csrf_token) setCsrfTokenEverywhere(newToken.csrf_token);
 
       return result;
-      // after success save
     } catch (err) {
       console.error("❌ Error save draft:", err);
       showToast(`Gagal menyimpan draft: ${err.message}`, true);
     }
   }
-  window.saveDraft = saveDraft;
-  window.get_form_as_dict = get_form_as_dict;
 
   // ============================================================
   // Helper: Form Extractor
@@ -293,7 +349,7 @@
           const transformedSimulasi = transformSimulasiForBackend(state.simulasi);
           console.log("🔄 [SAVE_DEBUG] Transformed simulasi:", transformedSimulasi);
           
-          result.simulasi = JSON.stringify(transformedSimulasi);
+          result.simulasi = transformedSimulasi
         }
         if (window.claimState && window.claimState.summary)
           result.summary = JSON.stringify(window.claimState.summary);
@@ -309,100 +365,97 @@
   // Utilities (Search, Load)
   // ============================================================
   async function loadSimulations(claimId) {
-    try {
-      const res = await fetch(`/claims/${claimId}/simulations`);
-      if (!res.ok) return;
-      const body = await res.json();
-      const sims = body.data || [];
+  try {
+    const res = await fetch(`/claims/${claimId}/simulations`);
+    if (!res.ok) return;
+    const body = await res.json();
+    let sims = Array.isArray(body.data) ? body.data : [];
 
-      console.log(`🔄 [LOAD_SIMULATIONS] Loading ${sims.length} simulation records for claim ${claimId}`);
-
-      sims.forEach((s, index) => {
-        console.log(`📄 Processing simulation ${index + 1}:`, {
-          stage: s.stage,
-          primary_diag: s.diagnosis_utama_name,
-          secondary_diag: s.diagnosis_sekunder_name,
-          primary_action: s.tindakan_utama_name,
-          secondary_action: s.tindakan_sekunder_name
-        });
-
-        // 🎯 PRIMARY DIAGNOSIS
-        if (s.diagnosis_utama_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading PRIMARY diagnosis: ${s.diagnosis_utama_name} (stage: ${s.stage})`);
-              window.updateSimulasi("diagnosis", "Primary", {
-                id: s.diagnosis_utama_id,
-                name: s.diagnosis_utama_name || "(tanpa nama)",
-                mapping: "Primary",
-              }, true, s.stage);
-            },
-            index * 10 // Stagger timing to avoid conflicts
-          );
-        }
-
-        // 🎯 SECONDARY DIAGNOSIS  
-        if (s.diagnosis_sekunder_id) {
-          setTimeout(
-            () => {
-              console.log(`✅ Loading SECONDARY diagnosis: ${s.diagnosis_sekunder_name} (stage: ${s.stage})`);
-              window.updateSimulasi("diagnosis", "Secondary", {
-                id: s.diagnosis_sekunder_id,
-                name: s.diagnosis_sekunder_name || "(tanpa nama)",
-                mapping: "Secondary",
-              }, true, s.stage);
-            },
-            index * 10 + 5
-          );
-        }
-
-        // 🎯 PRIMARY ACTION
-        if (s.tindakan_utama_id) {
-          window.updateSimulasi("tindakan", "Primary Action", {
-            id: s.tindakan_utama_id,
-            name: s.tindakan_utama_name || "(tanpa nama)",
-            mapping: "Primary Action",
-          }, true, s.stage);
-        }
-
-        // 🎯 SECONDARY ACTION
-        if (s.tindakan_sekunder_id) {
-          window.updateSimulasi("tindakan", "Secondary Actions", {
-            id: s.tindakan_sekunder_id,
-            name: s.tindakan_sekunder_name || "(tanpa nama)",
-            mapping: "Secondary Actions",
-          }, true, s.stage);
-        }
-
-      });
-      // 🩹 PATCH KOMPATIBILITAS UNTUK STRUKTUR BARU
-      const state =
-        Alpine?.$data(document.getElementById("claimRoot")) ||
-        window.claimState ||
-        {};
-
-      Object.keys(state.simulasi || {}).forEach(tab => {
-        const sim = state.simulasi[tab];
-        if (!sim || typeof sim !== "object") return;
-
-        // kalau partner menaruh semua tindakan di array `tindakan`
-        if (Array.isArray(sim.tindakan)) {
-          const primary = sim.tindakan.find(t => (t.mapping || '').toLowerCase().includes('primary'));
-          const secondary = sim.tindakan.filter(t => (t.mapping || '').toLowerCase().includes('secondary'));
-          sim.tindakanUtama = primary || null;
-          sim.tindakanSekunder = secondary || [];
-        }
-
-        // fallback agar field tetap ada
-        if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
-        if (!("tindakanSekunder" in sim)) sim.tindakanSekunder = [];
-      });
-
-      console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);
-    } catch (e) {
-      console.error("❌ [LOAD_SIMULATIONS] Gagal load simulations:", e);
+    // 🧩 kompatibilitas: kalau formatnya dict of stages (verifikator)
+    if (!sims.length && body.data?.stages) {
+      sims = [];
+      for (const [stage, groups] of Object.entries(body.data.stages)) {
+        const diag = (groups.diagnosis || []).map(i => ({
+          stage,
+          diagnosis_utama_id: i.id,
+          diagnosis_utama_name: i.name,
+        }));
+        const proc = (groups.procedure || []).map(i => ({
+          stage,
+          tindakan_utama_id: i.id,
+          tindakan_utama_name: i.name,
+        }));
+        sims.push(...diag, ...proc);
+      }
     }
+
+    console.log(`🔄 [LOAD_SIMULATIONS] Loading ${sims.length} simulation records for claim ${claimId}`);
+
+    sims.forEach((s, index) => {
+      // Diagnosis utama
+      if (s.diagnosis_utama_id) {
+        setTimeout(() => {
+          window.updateSimulasi(
+            "diagnosis",
+            "Primary",
+            {
+              id: s.diagnosis_utama_id,
+              name: s.diagnosis_utama_name || "(tanpa nama)",
+              mapping: "Primary",
+            },
+            true,
+            s.stage
+          );
+        }, index * 10);
+      }
+
+      // Tindakan utama
+      if (s.tindakan_utama_id) {
+        setTimeout(() => {
+          window.updateSimulasi(
+            "tindakan",
+            "Primary Action",
+            {
+              id: s.tindakan_utama_id,
+              name: s.tindakan_utama_name || "(tanpa nama)",
+              mapping: "Primary Action",
+            },
+            true,
+            s.stage
+          );
+        }, index * 10 + 5);
+      }
+    });
+
+    // 🔧 patch struktur lama agar tetap lengkap
+    const state =
+      Alpine?.$data(document.getElementById("claimRoot")) ||
+      window.claimState ||
+      {};
+
+    Object.keys(state.simulasi || {}).forEach(tab => {
+      const sim = state.simulasi[tab];
+      if (!sim || typeof sim !== "object") return;
+      if (Array.isArray(sim.tindakan)) {
+        const primary = sim.tindakan.find(t =>
+          (t.mapping || "").toLowerCase().includes("primary")
+        );
+        const secondary = sim.tindakan.filter(t =>
+          (t.mapping || "").toLowerCase().includes("secondary")
+        );
+        sim.tindakanUtama = primary || null;
+        sim.tindakanSekunder = secondary || [];
+      }
+      if (!("tindakanUtama" in sim)) sim.tindakanUtama = null;
+      if (!("tindakanSekunder" in sim)) sim.tindakanSekunder = [];
+    });
+
+    console.log(`🎉 [LOAD_SIMULATIONS] Completed loading simulations for claim ${claimId}`);
+  } catch (e) {
+    console.error("❌ [LOAD_SIMULATIONS] Gagal load simulations:", e);
   }
+}
+
 
   async function searchDiagnosis(query) {
     const res = await fetch(`/claims/search/diagnosis?query=${query}`);
@@ -428,50 +481,40 @@
 
 
   // ============================================================
-// 🧾 Submit Verification (Coder)
-// ============================================================
-async function submitCoderVerification(claimId, payload) {
-  try {
-    const csrfToken =
-      document.querySelector('input[name="csrf_token"]')?.value ||
-      document.querySelector('meta[name="csrf-token"]')?.content;
+  // 🧾 Submit Verification (Coder)
+  // ============================================================
+  async function submitCoderVerification(claimId, payload) {
+    try {
+      const csrfToken =
+        document.querySelector('input[name="csrf_token"]')?.value ||
+        document.querySelector('meta[name="csrf-token"]')?.content;
 
-    const headers = { "Content-Type": "application/json" };
-    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      const headers = { "Content-Type": "application/json" };
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
 
-    const res = await fetch(`/claims/${claimId}/coder`, {
-      method: "POST",
-      headers,
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch(`/claims/${claimId}/coder`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("❌ Verification failed:", errText);
-      showToast("Gagal verifikasi klaim", true);
-      return null;
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("❌ Verification failed:", errText);
+        showToast("Gagal verifikasi klaim", true);
+        return null;
+      }
+
+      const data = await res.json();
+      console.log("✅ Verification success:", data);
+      showToast("✅ Verifikasi berhasil dikirim");
+      return data;
+    } catch (err) {
+      console.error("❌ Error submit verification:", err);
+      showToast("❌ Gagal kirim verifikasi", true);
     }
-
-    const data = await res.json();
-    console.log("✅ Verification success:", data);
-    showToast("✅ Verifikasi berhasil dikirim");
-    return data;
-  } catch (err) {
-    console.error("❌ Error submit verification:", err);
-    showToast("❌ Gagal kirim verifikasi", true);
   }
-}
-
-window.submitCoderVerification = submitCoderVerification;
-
-
-  // ============================================================
-  // Exports
-  // ============================================================
-  window.generateAI = generateAI;
-  window.generateSummary = generateSummary;
-  window.loadSimulations = loadSimulations;
   // ============================================================
   // � Rules Functions
   // ============================================================
@@ -605,23 +648,21 @@ window.submitCoderVerification = submitCoderVerification;
         });
       }
       
-      // 🎯 LEGACY: Also include arrays from original structure if they exist
-      ['diagnosis', 'komorbid', 'komplikasi', 'tindakan'].forEach(category => {
-        if (Array.isArray(stageData[category])) {
-          stageData[category].forEach(item => {
-            if (item && typeof item === 'object' && !transformed[stage][category].some(existing => existing.name === item.name)) {
-              transformed[stage][category].push(item);
-              console.log(`🔄 [TRANSFORM] Added legacy ${category}: ${item.name}`);
-            }
-          });
-        }
-      });
     }
     
     console.log(`🎉 [TRANSFORM] Transformation complete for ${Object.keys(transformed).length} stages`);
     return transformed;
   }
 
+  // ============================================================
+  // Exports
+  // ============================================================
+  window.generateAI = generateAI;
+  window.generateSummary = generateSummary;
+  window.loadSimulations = loadSimulations;
+  window.saveDraft = saveDraft;
+  window.get_form_as_dict = get_form_as_dict;
+  window.submitCoderVerification = submitCoderVerification;
   window.searchDiagnosis = searchDiagnosis;
   window.getDiagnosisDetail = getDiagnosisDetail;
   window.searchTindakan = searchTindakan;
