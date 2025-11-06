@@ -5,4 +5,4 @@ httpx
 python-dotenv
 OpenAI
 sqlalchemy
-psycopg2-binary
+psycopg2-binaryrapidfuzz==3.10.1

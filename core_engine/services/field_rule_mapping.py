@@ -55,11 +55,11 @@ FIELD_RULE_MAP = {
             "source": "Hybrid", "layers": [2, 4, 5], "type": "hybrid",
             "desc": "Durasi rawat berdasarkan CP nasional + kebijakan RS."
         },
-        "indikasi": {
+        "indikasi_rawat_inap": {
             "source": "Rule", "layers": [2, 3], "type": "rule",
             "desc": "Indikasi medis rawat inap."
         },
-        "kriteria": {
+        "kriteria_rawat_inap": {
             "source": "Rule", "layers": [4, 5], "type": "rule",
             "desc": "Kriteria klinis rawat inap."
         },
@@ -73,10 +73,18 @@ FIELD_RULE_MAP = {
             "source": "AI", "layers": [], "type": "ai",
             "desc": "Penjelasan AI mengapa perlu di faskes tertentu."
         },
+        "faskes_kompetensi": {
+            "source": "AI", "layers": [1], "type": "rule",
+            "desc": "Penjelasan AI mengapa perlu di faskes tertentu."
+        },
 
         # --- Rujukan ---
+        "rujukan_indikasi": {
+            "source": "Rule", "layers": [1, 2, 4, 5], "type": "rule",
+            "desc": "Syarat rujukan ke faskes lebih tinggi."
+        },
         "rujukan_kriteria": {
-            "source": "Rule", "layers": [2, 4, 5], "type": "rule",
+            "source": "Rule", "layers": [1, 2, 4, 5], "type": "rule",
             "desc": "Syarat rujukan ke faskes lebih tinggi."
         },
         "rujukan_tujuan": {
@@ -352,15 +360,15 @@ FIELD_NAME_ALIAS = {
     # ======================================================
     # 🩺 DIAGNOSIS
     # ======================================================
-    "justifikasi": ["justifikasi", "diagnosis.justifikasi", "diagnosis.terapi", "diagnosis.validitas"],
-    "syarat_klinis": ["syarat_klinis", "diagnosis.syarat_klinis", "pemeriksaan.laboratorium", "pemeriksaan.ct_scan"],
+    "justifikasi": ["justifikasi", "justifikasi_klinis", "diagnosis.justifikasi", "diagnosis.terapi", "diagnosis.validitas"],
+    "syarat_klinis": ["syarat_klinis", "syarat_klinis_tindakan", "diagnosis.syarat_klinis", "pemeriksaan.laboratorium", "pemeriksaan.ct_scan"],
     "bukti_klinis": ["bukti_klinis", "diagnosis.bukti_klinis", "diagnosis.pemeriksaan", "pemeriksaan.radiologi", "pemeriksaan.penunjang", "bukti"],
     # ICD-10
-    "kode_icd": ["utama", "who", "kode", "icd10_kode"],
+    "kode_icd": ["kode_icd10", "utama", "who", "kode", "icd10_kode"],
     "struktur_icd10": ["struktur", "nama", "desc", "deskripsi"],
-    "kode_ganda": ["kode_tambahan", "komorbid", "secondary"],
-    "z_code": ["z_codes", "z"],
-    "kode_bpjs_khusus": ["bpjs", "khusus", "kode_bpjs"],
+    "kode_ganda": ["kode_ganda","kode_tambahan", "komorbid", "secondary"],
+    "z_code": ["z_code","z_codes", "z"],
+    "kode_bpjs_khusus": ["kode_bpjs_khusus","bpjs", "khusus", "kode_bpjs"],
     # Rawat Inap
     "lama_rawat": [
         "lama_rawat", 
@@ -372,18 +380,21 @@ FIELD_NAME_ALIAS = {
         "days",
         "rawat.lama"  # Additional possible path
     ],
-    "indikasi": ["indikasi", "rawat_inap.indikasi"],
-    "kriteria": ["kriteria", "rawat_inap.kriteria", "rawat_inap.monitoring"],
+    # Rawat Inap fields (shared names)
+    "indikasi": ["indikasi", "indikasi_rawat_inap", "rawat_inap.indikasi", "indikasi_rujukan", "alasan", "sebab"],
+    "kriteria": ["kriteria_rawat_inap", "kriteria", "rawat_inap.kriteria", "rawat_inap.monitoring", "rujukan_kriteria", "kriteria_rujukan", "syarat", "indikasi_rujuk"],
     # Faskes
-    "faskes_tingkat": ["faskes_tingkat", "faskes.tipe_rs", "faskes.kewenangan"],
-    "faskes_justifikasi": ["faskes_justifikasi", "faskes.kesesuaian"],
+    "tingkat": ["tingkat", "faskes_tingkat", "faskes.tipe_rs", "faskes.kewenangan", "level"],
+    "justifikasi": ["justifikasi", "faskes_justifikasi", "justifikasi_faskes", "faskes.kesesuaian"],
+    "kompetensi": ["kompetensi", "faskes_kompetensi", "kompetensi_faskes", "faskes.kualifikasi"],
     # Rujukan
-    "rujukan_kriteria": ["kriteria", "syarat", "indikasi_rujuk"],
-    "rujukan_tujuan": ["tujuan", "kelayakan", "destinasi"],
-    "indikasi_rujukan": ["indikasi", "alasan", "sebab"],
+    "rujukan_indikasi": ["rujukan_indikasi", "indikasi_rujukan", "rujukan.indikasi", "indikasi", "alasan_rujukan", "sebab_rujukan"],
+    "rujukan_kriteria": ["rujukan_kriteria", "kriteria_rujukan", "rujukan.kriteria", "kriteria", "syarat_rujukan", "indikasi_rujuk"],
+    "rujukan_tujuan": ["rujukan_tujuan", "tujuan_rujukan", "tujuan", "rujukan.tujuan", "kelayakan", "destinasi"],
     # INA-CBG / Tarif
-    "ina_cbg_kode": ["ina_cbg_kode", "ina_cbg.kode", "grouper.kode"],
-    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "kode": ["kode", "kode_inacbg", "ina_cbg_kode", "ina_cbg.kode", "grouper.kode"],
+    "tarif": ["tarif", "tarif_inacbg", "ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "deskripsi": ["deskripsi", "desc", "nama", "ina_cbg.deskripsi"],
     # Fraud & Temporary
     "fraud_alert": ["fraud_alert", "fraud.los_anomaly", "validasi.anomali", "fraud.pattern_detection"],
     "temporary_policy": ["temporary_policy", "temporary.emergency_extension", "temporary.pandemic_protocol"],
@@ -391,19 +402,20 @@ FIELD_NAME_ALIAS = {
     # ======================================================
     # 💊 TINDAKAN / PROCEDURE
     # ======================================================
-    "kode_icd9": ["kode_icd9", "tindakan.kode_icd9", "teknis.kode_icd"],
-    "deskripsi_icd9": ["deskripsi_icd9", "tindakan.deskripsi", "deskripsi"],
+    "kode_icd9": ["kode_icd9", "icd9_code", "tindakan.kode_icd9", "teknis.kode_icd"],
+    "deskripsi_icd9": ["deskripsi_icd9", "icd9_desc", "tindakan.deskripsi", "deskripsi"],
     "validitas": ["validitas", "tindakan.validitas", "pemeriksaan.kultur"],
     "status_tindakan": ["status_tindakan", "tindakan.status", "terapi.standar"],
     "syarat_klinis_tindakan": [
-        "syarat_klinis_tindakan", 
+        "syarat_klinis_tindakan",
+        "syarat_klinis",  # ✅ Tambahkan alias ini!
         "rawat_inap.lama_rawat", 
         "tindakan.syarat_klinis", 
         "pemeriksaan.kultur"
     ],
     "faskes": ["faskes", "faskes.tipe_rs", "faskes.kewenangan"],
-    "rawat_inap": ["rawat_inap", "rawat_inap.indikasi", "rawat_inap.lama_rawat"],
-    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "rawat_inap": ["rawat_inap", "indikasi", "kriteria", "lama_rawat", "rawat_inap.indikasi", "rawat_inap.lama_rawat"],
+    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif", "ina_cbg", "tarif.ina_cbg", "tarif.idrg"],
     "ai_reason": ["ai_reason", "ai.reasoning", "alasan_ai"],
     "ai_confidence": ["ai_confidence", "confidence_ai"],
     "fraud_check": ["fraud_check", "fraud.los_anomaly", "validasi.anomali"],

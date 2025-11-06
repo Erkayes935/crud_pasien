@@ -3511,6 +3511,8 @@ async def get_stored_procedure_detail(
                 "mode": "stored_data",
                 "claim_id": claim_id,
                 "procedure_text": procedure_text,
+                "name": procedure.procedure_text,  # ✅ Tambahkan field 'name' untuk frontend
+                "id": procedure.id,  # ✅ Tambahkan ID juga
                 "procedure_detail": {
                     "procedure_text": procedure.procedure_text,
                     "procedure_source": procedure.procedure_source,

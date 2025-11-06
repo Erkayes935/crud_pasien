@@ -56,8 +56,8 @@
     'ina_cbg_impact': true,           // ✅ Perlu regulasi (Casemix INA-CBG)
     
     // Rawat Inap
-    'indikasi': true,             // ✅ Perlu regulasi (CP/PNPK)
-    'kriteria': true,             // ✅ Perlu regulasi (CP/PNPK)
+    'indikasi_rawat_inap': true,  // ✅ Perlu regulasi (CP/PNPK)
+    'kriteria_rawat_inap': true,  // ✅ Perlu regulasi (CP/PNPK)
     'lama_rawat': true,           // ✅ Perlu regulasi (INA-CBG)
     
     // Faskes
@@ -442,12 +442,22 @@
         "";
 
       // 🔹 Determine procedure name if this is a tindakan scope
+      // ✅ Fallback: name → procedure_text → DOM selector
       const procedureName =
-        (procedureId && (window.claimState?.currentProcedure?.name ||
-          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()))
+        (procedureId && (
+          window.claimState?.currentProcedure?.name ||
+          window.claimState?.currentProcedure?.procedure_text ||
+          document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()
+        ))
         || window.claimState?.currentProcedure?.name
+        || window.claimState?.currentProcedure?.procedure_text
         || document.querySelector(`[data-procid="${procedureId}"] .cursor-pointer`)?.textContent?.trim()
         || "";
+      
+      // 🔍 DEBUG: Log untuk cek procedureName
+      console.log("🔍 [REGULATION] procedureId:", procedureId);
+      console.log("🔍 [REGULATION] currentProcedure:", window.claimState?.currentProcedure);
+      console.log("🔍 [REGULATION] procedureName:", procedureName);
 
       // Decide scope
       let scope = procedureId ? "tindakan" : "diagnosis";
@@ -493,6 +503,7 @@
       // jika tindakan, sertakan nama procedure di payload (key 'procedure' untuk konsistensi backend)
       if (procedureId || procedureName) {
         payload.procedure = procedureName || "";
+        payload.procedure_name = procedureName || "";  // Tambahkan ini untuk filter di regulation_service
         // keep item_id for procedure context
         if (procedureId) payload.item_id = procedureId;
       }
@@ -512,6 +523,9 @@
       if (scope === "tindakan" && normalizedProcedureId) {
         payload.procedure_id = normalizedProcedureId;
       }
+      // ✅ Force refresh untuk bypass cache (temporary untuk testing)
+      payload.force_refresh = true;
+      
       console.log("[REGULATION] Payload sent to backend:", payload);
 
       const response = await fetch(`/claims/${claimId}/regulation_detail`, {
@@ -808,78 +822,6 @@ function updateRingkasanFromRow(itemId, dx) {
     `;
   }
 
-  function renderFieldMultilayer(fieldData, label, fieldName = "syarat_klinis", diagnosisId = null) {
-  if (!fieldData) {
-    return `
-      <div class="grid grid-cols-2 align-top">
-        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
-        <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 align-top">-</div>
-      </div>
-    `;
-  }
-
-  const isi = typeof fieldData === 'string' 
-    ? fieldData 
-    : (fieldData?.isi !== undefined ? fieldData.isi : "-");
-
-  const isMultiline = typeof isi === "string" && (isi.includes("•") || isi.includes("["));
-
-  if (isMultiline) {
-    const lines = isi.split(/\n|(?=•)/).filter(line => line.trim() !== "");
-    const itemsHtml = lines.map(line => {
-      const match = line.match(/(?:•\s*)?\[(.*?)\]\s*([^:]+):\s*(.*?)(?:\((.+?)\))?$/);
-      if (match) {
-        const layer = match[1].trim().toLowerCase();
-        const title = match[2].trim();
-        const detail = match[3].trim();
-        const sumber = match[4] ? `(${match[4].trim()})` : "";
-
-        const colorClass = getLayerColorClass(layer)
-          .replace(/bg\-\w+\-\d+\s?/g, '')
-          .replace(/dark\:bg\-\w+\-\d+\s?/g, '');
-
-        return `
-          <li class="mb-2 leading-snug">
-            <span class="font-semibold ${colorClass} cursor-pointer hover:underline regulation-field"
-                  title="📋 Klik untuk melihat regulasi ${label}"
-                  data-field="${fieldName}"
-                  data-layer="${layer}"
-                  data-diagnosis-id="${diagnosisId || ''}"
-                  onclick="window.openRegulationDetailModal('${fieldName}', '${diagnosisId || ''}', null, '${layer}')">
-              ${title}:
-            </span>
-            <span class="ml-1">${detail}</span>
-            ${sumber ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-1">${sumber}</span>` : ""}
-          </li>
-        `;
-      } else {
-        return `<li class="mb-2 leading-snug">${line.trim().replace(/^•\s*/, '')}</li>`;
-      }
-    }).join("");
-
-    return `
-      <div class="grid grid-cols-2 align-top">
-        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
-        <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 align-top">
-          <ul class="list-disc pl-4 space-y-1">${itemsHtml}</ul>
-          ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-2 italic">${fieldData.label_multilayer}</div>` : ""}
-        </div>
-      </div>
-    `;
-  }
-
-  // fallback jika bukan multilayer
-  return `
-    <div class="grid grid-cols-2 align-top">
-      <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 align-top font-medium">${label}</div>
-      <div class="bg-white text-gray-800 dark:bg-slate-700 dark:text-gray-100 px-3 py-2 text-sm align-top whitespace-pre-line">
-        ${isi}
-        ${fieldData.label_multilayer ? `<div class="text-xs text-blue-500 dark:text-blue-300 mt-1 italic">${fieldData.label_multilayer}</div>` : ""}
-      </div>
-    </div>
-  `;
-  }
-
   // 🔹 Fungsi render utama modal detail diagnosis
   function renderDiagnosisDetail(it) {
     console.log("📋 renderDiagnosisDetail data:", it);
@@ -954,19 +896,7 @@ function updateRingkasanFromRow(itemId, dx) {
             ${renderNotificationBox("klinis", notifications)}
             ${safeRender(() => renderBox("Justifikasi", klinis.justifikasi, klinis.status, diagnosisId, "justifikasi"))}
             ${safeRender(() => renderBox("Bukti Klinis", klinis.bukti_klinis, null, diagnosisId, "bukti_klinis"))}
-            ${safeRender(() => {console.log("📋 KLINIS - syarat_klinis:", klinis.syarat_klinis);
-              const hasMultilayers = typeof klinis.syarat_klinis === "string" && (
-                klinis.syarat_klinis.includes("[Nasional]") ||
-                klinis.syarat_klinis.includes("[PNPK]") ||
-                klinis.syarat_klinis.includes("•")
-              );
-              if (hasMultilayers) {
-                return renderFieldMultilayer(
-                  { isi: klinis.syarat_klinis },"Syarat Klinis","syarat_klinis",diagnosisId);
-              } else {
-                return renderBox("Syarat Klinis",klinis.syarat_klinis,klinis.status,diagnosisId,"syarat_klinis");
-              }
-            })}
+            ${safeRender(() => renderBox("Syarat Klinis", klinis.syarat_klinis, klinis.status, diagnosisId, "syarat_klinis"))}
           </div>
         </section>
 
@@ -976,23 +906,11 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("icd", notifications)}
             ${safeRender(() => renderBox("Kode ICD", icd10.kode_icd, icd10.status_icd, diagnosisId, "kode_icd"))}
-            ${safeRender(() => {console.log("📋 ICD10 - kode_ganda:", icd10.kode_ganda);
-              const hasMultilayers = typeof icd10.kode_ganda === "string" && (icd10.kode_ganda.includes("[Nasional]") || icd10.kode_ganda.includes("[PNPK]") || icd10.kode_ganda.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: icd10.kode_ganda}, "Kode Ganda", "kode_ganda", diagnosisId)
-                                    : renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda");
-            })}
+            ${safeRender(() => renderBox("Kode Ganda", icd10.kode_ganda, icd10.status_icd, diagnosisId, "kode_ganda"))}
 
-            ${safeRender(() => {console.log("📋 ICD10 - z_code:", icd10.z_code);
-              const hasMultilayers = typeof icd10.z_code === "string" && (icd10.z_code.includes("[Nasional]") || icd10.z_code.includes("[PNPK]") || icd10.z_code.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: icd10.z_code}, "Z-Code", "z_code", diagnosisId)
-                                    : renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code");
-            })}
+            ${safeRender(() => renderBox("Z-Code", icd10.z_code, icd10.status_icd, diagnosisId, "z_code"))}
 
-            ${safeRender(() => {console.log("📋 ICD10 - kode_bpjs_khusus:", icd10.kode_bpjs_khusus);
-              const hasMultilayers = typeof icd10.kode_bpjs_khusus === "string" && (icd10.kode_bpjs_khusus.includes("[Nasional]") || icd10.kode_bpjs_khusus.includes("[PNPK]") || icd10.kode_bpjs_khusus.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: icd10.kode_bpjs_khusus}, "Kode BPJS Khusus", "kode_bpjs_khusus", diagnosisId)
-                                    : renderBox("Kode BPJS Khusus", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus");
-            })}
+            ${safeRender(() => renderBox("Kode BPJS Khusus", icd10.kode_bpjs_khusus, icd10.status_icd, diagnosisId, "kode_bpjs_khusus"))}
         </section>
 
         <!-- 📊 i-DRG -->
@@ -1012,18 +930,10 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-teal-500 to-teal-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RAWAT INAP</div>
           <div class="space-y-3 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rawat", notifications)}
-            ${safeRender(() => {console.log("📋 RAWAT - indikasi:", rawat.indikasi);
-              const hasMultilayers = typeof rawat.indikasi === "string" && (rawat.indikasi.includes("[Nasional]") || rawat.indikasi.includes("[PNPK]") || rawat.indikasi.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: rawat.indikasi}, "Indikasi", "indikasi", diagnosisId)
-                                    : renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi");
-            })}
+            ${safeRender(() => renderBox("Indikasi", rawat.indikasi, rawat.status_indikasi, diagnosisId, "indikasi_rawat_inap"))}
 
-            ${safeRender(() => renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria"))}
-            ${safeRender(() => {console.log("📋 RAWAT - lama_rawat:", rawat.lama_rawat);
-              const hasMultilayers = typeof rawat.lama_rawat === "string" && (rawat.lama_rawat.includes("[Nasional]") || rawat.lama_rawat.includes("[PNPK]") || rawat.lama_rawat.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: rawat.lama_rawat}, "Lama Rawat", "lama_rawat", diagnosisId)
-                                    : renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat");
-            })}
+            ${safeRender(() => renderBox("Kriteria", rawat.kriteria, rawat.status_kriteria, diagnosisId, "kriteria_rawat_inap"))}
+            ${safeRender(() => renderBox("Lama Rawat", rawat.lama_rawat, rawat.status_lama, diagnosisId, "lama_rawat"))}
 
           </div>
         </section>
@@ -1033,12 +943,8 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">FASKES</div>
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("faskes", notifications)}
-            ${safeRender(() => {console.log("📋 FASKES - tingkat:", faskes.tingkat);
-              const hasMultilayers = typeof faskes.tingkat === "string" && (faskes.tingkat.includes("[Nasional]") || faskes.tingkat.includes("[PNPK]") || faskes.tingkat.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: faskes.tingkat}, "Tingkat", "tingkat", diagnosisId)
-                                    : renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat");
-            })}
-            ${safeRender(() => renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi_faskes"))}
+            ${safeRender(() => renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat"))}
+            ${safeRender(() => renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi"))}
             ${safeRender(() => renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi"))}
           </div>
         </section>
@@ -1048,11 +954,7 @@ function updateRingkasanFromRow(itemId, dx) {
           <div class="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">RUJUKAN</div>
           <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
             ${renderNotificationBox("rujukan", notifications)}
-            ${safeRender(() => {console.log("📋 RUJUKAN - indikasi:", rujukan.indikasi);
-              const hasMultilayers = typeof rujukan.indikasi === "string" && (rujukan.indikasi.includes("[Nasional]") || rujukan.indikasi.includes("[PNPK]") || rujukan.indikasi.includes("•"));
-              return hasMultilayers ? renderFieldMultilayer({isi: rujukan.indikasi}, "Indikasi", "indikasi_rujukan", diagnosisId)
-                                    : renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan");
-            })}
+            ${safeRender(() => renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan"))}
             ${safeRender(() => renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan"))}
             ${safeRender(() => renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan"))}
           </div>
@@ -1102,7 +1004,7 @@ window.getSeverityLabel = function(index) {
 window.renderChecklistHtml = function(checklist) {
   if (!checklist) return '-';
 
-  // Jika string, split menjadi array baris bila ada newline
+  // Jika string menjadi array baris bila ada newline
   let items = [];
   if (typeof checklist === 'string') {
     items = checklist.split(/\r?\n/).map(s => s.trim()).filter(Boolean);

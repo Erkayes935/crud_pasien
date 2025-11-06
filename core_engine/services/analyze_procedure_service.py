@@ -2,10 +2,14 @@ import os, json
 from datetime import date
 from typing import Any, Dict
 from openai import OpenAI
+from dotenv import load_dotenv
 from .rules_loader import load_rules_for_diagnosis
 from .field_rule_mapping import FIELD_RULE_MAP
 from .field_rule_mapping import match_field_alias
+from .icd9_mapping_service import map_icd9_smart
 
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def _sv(x: Any, default: str = "-") -> str:
@@ -117,7 +121,8 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     Keluarkan hasil akhir ringkas seperti contoh berikut:
     {{
       "procedure": "{procedure}",
-      "icd9_code": "Kode ICD-9-CM yang akurat sesuai WHO/BPJS",
+      "procedure_standard": "Nama prosedur standar WHO/ICD-9-CM (English)",
+      "icd9_code": "Kode ICD-9-CM yang akurat (akan divalidasi sistem)",
       "icd9_desc": "Deskripsi lengkap ICD-9-CM Indonesia",
       "deskripsi": "Ringkasan singkat: Kode ICD-9, Status, INA-CBG",
       "validitas": "VALID/TIDAK VALID/PERLU REVIEW + alasan klinis yang jelas",
@@ -139,7 +144,28 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     }}
 
     PEDOMAN ANALISIS:
-    - ICD-9-CM harus sesuai standar internasional dan mapping BPJS
+    - "procedure_standard" HARUS nama prosedur standar ICD-9-CM Indonesia dalam bahasa Inggris
+      GUNAKAN TERMINOLOGI YANG PERSIS SESUAI ICD-9-CM, contoh:
+      
+      ✅ CORRECT (gunakan exact phrase ini):
+      - "Routine chest x-ray, so described" → 87.44 (BUKAN "Radiography of chest")
+      - "Other chest x-ray" → 87.49
+      - "Continuous invasive mechanical ventilation for less than 96 consecutive hours" → 96.71
+      - "Injection of antibiotic" → 99.21 (BUKAN "Intravenous infusion of antibiotic")
+      - "Venous catheterization, not elsewhere classified" → 38.93
+      - "Non-invasive mechanical ventilation" → 93.90
+      - "Computerized axial tomography of thorax" → 87.41 (untuk CT scan)
+      - "Arterial blood gases" → 89.65 (untuk AGD)
+      - "Microscopic examination of specimen from trachea, bronchus, pleura,lung,and other thoracic specimen, and of sputum, Culture and sensitivity" → 90.43
+      
+      ❌ WRONG (jangan gunakan parafrase):
+      - "Radiography of chest" → TIDAK ada di ICD-9-CM Indonesia
+      - "Intravenous infusion of antibiotic" → terlalu spesifik
+      - "Chest X-ray" → tidak formal
+      
+      TIPS: Gunakan frasa umum jika ragu (contoh: "Other chest x-ray" lebih aman dari variasi lain)
+    
+    - ICD-9-CM akan divalidasi otomatis oleh sistem menggunakan mapping ICD-9-CM Indonesia official
     - Validitas berdasarkan kesesuaian dengan diagnosis dan indikasi medis
     - Status tindakan mengacu pada CP/PNPK dan panduan klinis nasional
     - Tarif mengacu pada INA-CBG terbaru dan realitas biaya RS Indonesia
@@ -179,11 +205,32 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
         ai_data = {}
     
     # ================================================================
-    # 3️⃣ BUILD RESPONSE (tetap sama + tambahan multilayer)
+    # 3️⃣ APPLY ICD-9 MAPPING (Smart Validation)
+    # ================================================================
+    procedure_standard = ai_data.get("procedure_standard", procedure)
+    icd9_code_ai = _sv(ai_data.get("icd9_code", ""))
+    
+    # 🔥 Smart ICD-9 Mapping dengan multi-strategy
+    print(f"[ANALYZE_PROCEDURE] 🔍 Mapping ICD-9 for: {procedure_standard}")
+    icd9_mapped = map_icd9_smart(
+        procedure_name=procedure_standard or procedure,
+        ai_code=icd9_code_ai,
+        use_fuzzy=True,
+        threshold=85
+    )
+    
+    # Log hasil mapping
+    if icd9_mapped["valid"]:
+        print(f"[ANALYZE_PROCEDURE] ✅ ICD-9 Mapped: {icd9_mapped['kode']} (confidence: {icd9_mapped['confidence']}%)")
+    else:
+        print(f"[ANALYZE_PROCEDURE] ⚠️ ICD-9 Not Found: Using AI fallback")
+    
+    # ================================================================
+    # 4️⃣ BUILD RESPONSE (dengan validated ICD-9)
     # ================================================================
     
     # Extract fields for description formatting
-    icd9_code = _sv(ai_data.get("icd9_code", ""))
+    icd9_code = icd9_mapped["kode"]  # Use mapped code
     status = _sv(ai_data.get("status_tindakan", ""))
     ina_cbg_tarif = _sv(ai_data.get("ina_cbg_tarif", ""))
     
@@ -209,9 +256,13 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
     # We'll only set it to deskripsi when explicitly viewing procedure details
     result = {
         "procedure": _sv(ai_data.get("procedure", procedure), procedure or "-"),
-        "icd9_code": icd9_code,
+        "procedure_standard": procedure_standard,  # WHO standard name
+        "icd9_code": icd9_code,  # ✅ Validated code
         "icd9": icd9_code,
-        "icd9_desc": _sv(ai_data.get("icd9_desc", "")),
+        "icd9_desc": icd9_mapped["deskripsi"],  # ✅ WHO official description
+        "icd9_valid": icd9_mapped["valid"],  # ✅ Validation flag
+        "icd9_confidence": icd9_mapped["confidence"],  # ✅ Match confidence
+        "icd9_source": icd9_mapped["source"],  # ✅ Mapping source info
         "deskripsi": formatted_description if is_explicit_procedure_request else "",
         "validitas": _sv(ai_data.get("validitas", "")),
         "status_tindakan": _sv(ai_data.get("status_tindakan", "")),
@@ -223,7 +274,7 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
         "syarat_klinis": _sv(ai_data.get("syarat_klinis", "")),
         "source": "AI reasoning (rule-based)",
         "data_completeness": "100%" if ai_data else "0%",
-        "engine_version": f"rule_based_analyze_procedure@{date.today().isoformat()}",
+        "engine_version": f"rule_based_analyze_procedure_v2_icd9_mapping@{date.today().isoformat()}",
         "notification": ai_data.get("notification", {
             "status": "info",
             "message": "Belum ada notifikasi untuk bagian TINDAKAN."

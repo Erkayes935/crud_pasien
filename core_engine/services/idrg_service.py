@@ -1,9 +1,12 @@
 import os, json
 from datetime import date
 from openai import OpenAI
+from dotenv import load_dotenv
 from .rules_loader import load_rules_multilayer
 from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
 
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 

@@ -1,9 +1,12 @@
 import os, json
 from datetime import date
 from openai import OpenAI
+from dotenv import load_dotenv
 from .rules_loader import load_rules_multilayer
 from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
 
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -26,8 +29,10 @@ def process_generate_claim_combos(payload: dict) -> dict:
     return {
         "evaluasi_diagnosis": evaluation_result["evaluasi_diagnosis"],
         "evaluasi_tindakan": evaluation_result["evaluasi_tindakan"],
+        "notification": evaluation_result.get("notification", {"status": "info", "message": "Evaluasi selesai."}),
         "alternatif": [],  # akan diisi lewat request terpisah
-        "engine_version": evaluation_result["engine_version"]
+        "engine_version": evaluation_result["engine_version"],
+        "rules_used": evaluation_result.get("rules_used", {})
     }
 
 
@@ -49,13 +54,16 @@ def process_generate_evaluations(payload: dict) -> dict:
     diagnoses = [primary_claim] + secondary_claims
 
     # ============================================================
-    # 1️⃣ Ambil multilayer rules dari DB (dua scope: diagnosis & tindakan)
+    # 1️⃣ Ambil multilayer rules dari DB (tiga scope: diagnosis, tindakan, kombinasi)
     # ============================================================
     try:
         rules_diag = load_rules_multilayer(diagnoses, rs_id, region_id, scope="diagnosis")
         rules_tdk  = load_rules_multilayer(diagnoses, rs_id, region_id, scope="tindakan")
+        rules_combo = load_rules_multilayer(diagnoses, rs_id, region_id, scope="kombinasi")
+        
+        print(f"[COMBO] 📊 Loaded rules: diagnosis={len(rules_diag)}, tindakan={len(rules_tdk)}, kombinasi={len(rules_combo)}")
     except Exception as e:
-        rules_diag, rules_tdk = {}, {}
+        rules_diag, rules_tdk, rules_combo = {}, {}, {}
         print(f"[COMBO] ⚠️ Gagal load multilayer rules: {e}")
 
     def get_rule_text(rules: dict, field_key: str) -> str:
@@ -65,72 +73,190 @@ def process_generate_evaluations(payload: dict) -> dict:
                 if isinstance(rule_list, list) and rule_list:
                     isi = rule_list[0].get("isi")
                     sumber = rule_list[0].get("sumber", "")
+                    layer = rule_list[0].get("layer", "")
                     if isi:
-                        return f"{isi} ({sumber})"
-        return ""
+                        return {"isi": isi, "sumber": sumber, "layer": layer}
+        return None
+
+    def get_rule_with_priority(field_key: str) -> dict:
+        """
+        Cari rule dengan prioritas cascade:
+        1. rules_combo (paling spesifik untuk kombinasi diagnosis+tindakan)
+        2. rules_diag atau rules_tdk (fallback ke scope individual)
+        3. None (jika tidak ada rule)
+        
+        Returns:
+            dict dengan keys: isi, sumber, layer, scope_used
+        """
+        # 1️⃣ Prioritas tertinggi: rules_combo (khusus kombinasi)
+        combo_result = get_rule_text(rules_combo, field_key)
+        if combo_result:
+            combo_result["scope_used"] = "kombinasi"
+            return combo_result
+        
+        # 2️⃣ Fallback: rules_diag atau rules_tdk tergantung field
+        # Field yang terkait diagnosis
+        if field_key in ["validitas", "validitas_klinis", "severity", "kode_icd", "kode_cbg", 
+                         "kode_ina_cbg", "tarif", "estimasi_tarif", "syarat_klinis", 
+                         "syarat_klinis_kombinasi", "faskes", "faskes.kewenangan", 
+                         "evaluasi_faskes", "rawat_inap", "rawat_inap.lama_rawat"]:
+            diag_result = get_rule_text(rules_diag, field_key)
+            if diag_result:
+                diag_result["scope_used"] = "diagnosis"
+                return diag_result
+        
+        # Field yang terkait tindakan
+        if field_key in ["tindakan.status", "tindakan_wajib", "tindakan_wajib_kombinasi",
+                         "tindakan.validasi", "validasi_pilihan", "fraud", "konflik", 
+                         "konflik_duplikasi", "dampak_tarif", "tarif"]:
+            tdk_result = get_rule_text(rules_tdk, field_key)
+            if tdk_result:
+                tdk_result["scope_used"] = "tindakan"
+                return tdk_result
+        
+        # 3️⃣ Tidak ada rule ditemukan
+        return None
 
     # ============================================================
-    # 2️⃣ Bangun struktur rule dasar untuk evaluasi diagnosis
+    # 2️⃣ Kumpulkan rules untuk setiap field dengan prioritas cascade
     # ============================================================
-    eval_diagnosis = {
-        "validitas": get_rule_text(rules_diag, "validitas") or "✅ Valid kombinasi diagnosis berdasarkan aturan RS.",
-        "severity": get_rule_text(rules_diag, "severity") or "Moderate (default rule).",
-        "kode_cbg": get_rule_text(rules_diag, "kode_icd") or "Kode INA-CBG: E-4-10 (Pneumonia & Respiratory Infections)",
-        "estimasi_tarif": get_rule_text(rules_diag, "tarif") or "Rp 4.800.000",
-        "syarat_klinis": get_rule_text(rules_diag, "syarat_klinis") or "Gejala mayor: demam, batuk, sesak. Minor: ronki basah.",
-        "evaluasi_faskes": get_rule_text(rules_diag, "faskes.kewenangan") or "RS C – sesuai kewenangan.",
-        "rawat_inap": get_rule_text(rules_diag, "rawat_inap.lama_rawat") or "LOS ≥ 3 hari (valid)."
+    # Field yang PERLU regulasi (akan di-cite oleh AI)
+    fields_with_regulation = {
+        "diagnosis": [
+            "validitas", "validitas_klinis", "severity", "kode_cbg", "kode_ina_cbg",
+            "syarat_klinis", "syarat_klinis_kombinasi", "evaluasi_faskes", "rawat_inap"
+        ],
+        "tindakan": [
+            "tindakan_wajib", "tindakan_wajib_kombinasi", "dampak_tarif"
+        ]
     }
-
-    # ============================================================
-    # 3️⃣ Bangun struktur rule dasar untuk evaluasi tindakan
-    # ============================================================
-    eval_tindakan = {
-        "wajib": get_rule_text(rules_tdk, "tindakan.status") or "Tindakan wajib: Radiologi / Antibiotik sesuai CP.",
-        "validasi": get_rule_text(rules_tdk, "tindakan.validasi") or "Disetujui menurut CP/PNPK.",
-        "dampak": get_rule_text(rules_tdk, "tarif") or "Dampak terhadap tarif sesuai INA-CBG (naik 10–15%).",
-        "konflik": get_rule_text(rules_tdk, "fraud") or "Tidak ada konflik atau duplikasi tindakan."
+    
+    # Field yang TIDAK perlu regulasi (pure AI reasoning)
+    fields_without_regulation = {
+        "diagnosis": ["estimasi_tarif"],
+        "tindakan": ["validasi_pilihan", "konflik", "konflik_duplikasi"]
     }
+    
+    # Kumpulkan semua rules yang tersedia untuk context AI
+    available_rules = {
+        "kombinasi": {},
+        "diagnosis": {},
+        "tindakan": {}
+    }
+    
+    # Scan semua field yang perlu regulasi
+    all_fields = fields_with_regulation["diagnosis"] + fields_with_regulation["tindakan"]
+    for field in all_fields:
+        rule_data = get_rule_with_priority(field)
+        if rule_data:
+            scope = rule_data.get("scope_used", "unknown")
+            available_rules[scope][field] = {
+                "isi": rule_data["isi"],
+                "sumber": rule_data["sumber"],
+                "layer": rule_data["layer"]
+            }
 
     # ============================================================
-    # 4️⃣ Minta AI phrasing untuk merapikan hasil (natural & faktual)
+    # 3️⃣ Bangun context summary untuk logging
+    # ============================================================
+    rules_summary = {
+        "total_kombinasi": len(available_rules["kombinasi"]),
+        "total_diagnosis": len(available_rules["diagnosis"]),
+        "total_tindakan": len(available_rules["tindakan"]),
+        "fields_kombinasi": list(available_rules["kombinasi"].keys()),
+        "fields_diagnosis": list(available_rules["diagnosis"].keys()),
+        "fields_tindakan": list(available_rules["tindakan"].keys())
+    }
+    print(f"[COMBO] 📋 Rules summary: {rules_summary}")
+
+    # ============================================================
+    # 4️⃣ Minta AI untuk reasoning dengan cite regulasi
     # ============================================================
     try:
-        rules_context = {
-            "diagnosis_rules": list(rules_diag.keys())[:15],
-            "tindakan_rules": list(rules_tdk.keys())[:15],
-        }
-
         ai_prompt = f"""
-        Kamu adalah AI medis konsultan verifikator BPJS.
-        Tugasmu adalah menyusun hasil evaluasi kombinasi klaim (diagnosis + tindakan)
-        dengan bahasa medis formal namun ringkas, berbasis multilayer rules (CP, PNPK, RS, Regional).
+Kamu adalah AI medis konsultan verifikator BPJS Indonesia.
 
-        Data kontekstual:
-        - Diagnosis Utama: {primary_claim}
-        - Diagnosis Sekunder: {secondary_claims}
-        - Tindakan Utama: {primary_action}
-        - Tindakan Sekunder: {secondary_actions}
-        - Context RS: {rs_id or '-'}, Region: {region_id or '-'}
+TUGAS:
+Evaluasi kombinasi klaim (diagnosis + tindakan) dengan reasoning yang cite regulasi resmi.
 
-        Rule multilayer yang tersedia: {json.dumps(rules_context, ensure_ascii=False)}
+📋 INPUT DATA:
+- Diagnosis Utama: {primary_claim}
+- Diagnosis Sekunder: {secondary_claims}
+- Tindakan Utama: {primary_action}
+- Tindakan Sekunder: {secondary_actions}
+- RS ID: {rs_id or 'N/A'}
+- Region: {region_id or 'N/A'}
 
-        Diagnosis Combination Raw Data:
-        {json.dumps(eval_diagnosis, ensure_ascii=False)}
+📚 REGULASI TERSEDIA (gunakan untuk reasoning):
 
-        Tindakan Combination Raw Data:
-        {json.dumps(eval_tindakan, ensure_ascii=False)}
+REGULASI KOMBINASI (prioritas tertinggi):
+{json.dumps(available_rules['kombinasi'], ensure_ascii=False, indent=2)}
 
-        Keluarkan hasil dalam JSON valid:
-        {{
-          "evaluasi_diagnosis": {{"message": "Kalimat evaluasi diagnosis."}},
-          "evaluasi_tindakan": {{"message": "Kalimat evaluasi tindakan."}}
-        }}
+REGULASI DIAGNOSIS (fallback):
+{json.dumps(available_rules['diagnosis'], ensure_ascii=False, indent=2)}
 
-        Format bahasa seperti laporan medis, contoh:
-        - "Kombinasi diagnosis valid berdasarkan CP Nasional dan aturan RS lokal."
-        - "Semua tindakan sesuai standar CP dan tidak menimbulkan konflik tarif."
-        """
+REGULASI TINDAKAN (fallback):
+{json.dumps(available_rules['tindakan'], ensure_ascii=False, indent=2)}
+
+🎯 INSTRUKSI OUTPUT:
+
+1. FIELD YANG WAJIB CITE REGULASI:
+   - validitas: Cite regulasi validitas_klinis atau validitas
+   - severity: Cite regulasi severity dari kombinasi/diagnosis
+   - kode_cbg: Cite regulasi kode_ina_cbg atau kode_cbg
+   - syarat_klinis: Cite regulasi syarat_klinis_kombinasi atau syarat_klinis
+   - evaluasi_faskes: Cite regulasi evaluasi_faskes atau faskes
+   - rawat_inap: Cite regulasi rawat_inap
+   - wajib: Cite regulasi tindakan_wajib_kombinasi atau tindakan_wajib
+   - dampak: Cite regulasi dampak_tarif
+
+   Format: "[Reasoning] berdasarkan [Nama Sumber Regulasi]"
+   Contoh: "✅ Valid kombinasi diagnosis berdasarkan CP Pneumonia 2021 dan PNPK Komorbid DM 2023"
+
+2. FIELD YANG TIDAK PERLU CITE REGULASI (pure AI reasoning):
+   - estimasi_tarif: Estimasi berdasarkan kompleksitas kasus (tanpa cite)
+   - validasi: Proses administratif verifikator (tanpa cite)
+   - konflik: Deteksi AI rule engine (tanpa cite)
+
+3. PRIORITAS REGULASI:
+   - Gunakan regulasi KOMBINASI jika tersedia (paling spesifik)
+   - Fallback ke regulasi DIAGNOSIS/TINDAKAN jika kombinasi tidak ada
+   - Jika tidak ada regulasi sama sekali, buat reasoning umum tanpa cite
+
+4. FORMAT OUTPUT:
+   - Bahasa medis formal tapi ringkas (maks 2 kalimat per field)
+   - Jangan gunakan bullet points atau numbering
+   - Langsung ke inti tanpa pembukaan panjang
+
+📤 OUTPUT JSON (WAJIB LENGKAP):
+{{
+  "evaluasi_diagnosis": {{
+    "validitas": "string dengan cite regulasi",
+    "severity": "string dengan cite regulasi",
+    "kode_cbg": "string dengan cite regulasi (format: Kode X-XX-XX - Deskripsi)",
+    "estimasi_tarif": "string tanpa cite (format: Rp X.XXX.XXX)",
+    "syarat_klinis": "string dengan cite regulasi",
+    "evaluasi_faskes": "string dengan cite regulasi",
+    "rawat_inap": "string dengan cite regulasi (format: LOS ≥ X hari)"
+  }},
+  "evaluasi_tindakan": {{
+    "wajib": "string dengan cite regulasi",
+    "validasi": "string tanpa cite (proses administratif)",
+    "dampak": "string dengan cite regulasi",
+    "konflik": "string tanpa cite (deteksi AI)"
+  }},
+  "notification": {{
+    "status": "success/warning/info/error",
+    "message": "Ringkasan evaluasi keseluruhan (1-2 kalimat)"
+  }}
+}}
+
+PENTING:
+- SEMUA field WAJIB diisi
+- Jangan kosongkan field apapun
+- Jika tidak ada regulasi, buat reasoning umum yang masuk akal
+- Output HARUS valid JSON tanpa teks tambahan di luar JSON
+"""
         ai_resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -140,22 +266,67 @@ def process_generate_evaluations(payload: dict) -> dict:
             temperature=0.3
         )
         ai_result = json.loads(ai_resp.choices[0].message.content)
-        dx_msg = ai_result.get("evaluasi_diagnosis", {}).get("message", "")
-        tdk_msg = ai_result.get("evaluasi_tindakan", {}).get("message", "")
+        
+        # Extract hasil AI
+        eval_diagnosis = ai_result.get("evaluasi_diagnosis", {})
+        eval_tindakan = ai_result.get("evaluasi_tindakan", {})
+        notification = ai_result.get("notification", {"status": "info", "message": "Evaluasi kombinasi selesai."})
+        
+        print(f"[COMBO] ✅ AI reasoning completed successfully")
+        
+    except json.JSONDecodeError as e:
+        print(f"[COMBO] ⚠️ AI response bukan JSON valid: {e}")
+        # Fallback dengan default values
+        eval_diagnosis = {
+            "validitas": "✅ Valid kombinasi diagnosis (AI fallback).",
+            "severity": "Moderate (default).",
+            "kode_cbg": "Kode INA-CBG: Perlu verifikasi manual.",
+            "estimasi_tarif": "Rp 5.000.000 (estimasi)",
+            "syarat_klinis": "Sesuai standar praktik klinis.",
+            "evaluasi_faskes": "RS sesuai kewenangan.",
+            "rawat_inap": "LOS sesuai kondisi klinis."
+        }
+        eval_tindakan = {
+            "wajib": "Tindakan sesuai indikasi klinis.",
+            "validasi": "Memerlukan review verifikator.",
+            "dampak": "Dampak tarif sesuai INA-CBG.",
+            "konflik": "Tidak terdeteksi konflik."
+        }
+        notification = {"status": "warning", "message": f"AI parsing error: {e}"}
+        
     except Exception as e:
-        dx_msg = f"AI phrasing gagal: {e}"
-        tdk_msg = dx_msg
+        print(f"[COMBO] ❌ AI error: {e}")
+        # Fallback dengan default values
+        eval_diagnosis = {
+            "validitas": "⚠️ Evaluasi memerlukan review manual.",
+            "severity": "Tidak dapat ditentukan.",
+            "kode_cbg": "Kode INA-CBG: Perlu verifikasi manual.",
+            "estimasi_tarif": "Rp 0 (tidak tersedia)",
+            "syarat_klinis": "Perlu review manual.",
+            "evaluasi_faskes": "Perlu review manual.",
+            "rawat_inap": "Perlu review manual."
+        }
+        eval_tindakan = {
+            "wajib": "Perlu review manual.",
+            "validasi": "Memerlukan review verifikator.",
+            "dampak": "Perlu review manual.",
+            "konflik": "Perlu review manual."
+        }
+        notification = {"status": "error", "message": f"AI service error: {str(e)}"}
 
     # ============================================================
     # 5️⃣ Kembalikan format siap pakai UI
     # ============================================================
-    eval_diagnosis["notification"] = {"status": "info", "message": dx_msg or "Hasil evaluasi multilayer (AI phrased)."}
-    eval_tindakan["notification"] = {"status": "info", "message": tdk_msg or "Hasil evaluasi multilayer (AI phrased)."}
-
     return {
         "evaluasi_diagnosis": eval_diagnosis,
         "evaluasi_tindakan": eval_tindakan,
-        "engine_version": f"generate_claim_combos@{date.today().isoformat()}"
+        "notification": notification,
+        "engine_version": f"generate_claim_combos_hybrid@{date.today().isoformat()}",
+        "rules_used": {
+            "kombinasi_count": len(available_rules["kombinasi"]),
+            "diagnosis_count": len(available_rules["diagnosis"]),
+            "tindakan_count": len(available_rules["tindakan"])
+        }
     }
 
 

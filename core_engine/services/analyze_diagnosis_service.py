@@ -16,6 +16,9 @@ from services.rules_loader import (
     inacbg_rules, cp_pnpk_rules, load_diagnosis_rule, load_rules_for_diagnosis
 )
 
+# Import ICD-9 mapping service
+from services.icd9_mapping_service import map_icd9_smart
+
 # ===========================================================
 # HELPER TAMBAHAN (baru)
 # ===========================================================
@@ -74,8 +77,8 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
       }},
       "tindakan": [
         {{
-          "nama": "Nama tindakan medis",
-          "icd9": "Kode ICD-9-CM jika ada",
+          "nama": "Nama tindakan medis standar WHO/ICD-9-CM (English)",
+          "nama_indonesia": "Nama tindakan dalam bahasa Indonesia untuk UI",
           "status": "wajib/opsional",
           "kategori": "diagnostik/terapi/supportive",
           "regulasi": "Rujukan CP/PNPK yang relevan"
@@ -117,6 +120,37 @@ def gpt_analyze_diagnosis(disease_name: str, rekam_medis: list):
         REKAM MEDIS: ["Batuk berdahak", "Demam 38°C", "Rontgen menunjukkan infiltrat"]
         Output:
         "bukti_klinis": ["Batuk berdahak", "Demam 38°C", "Infiltrat pada rontgen paru"]
+    - Untuk "tindakan", field "nama" HARUS berisi nama prosedur standar WHO/ICD-9-CM dalam bahasa Inggris.
+        GUNAKAN TERMINOLOGI YANG PERSIS SESUAI ICD-9-CM INDONESIA, contoh:
+        
+        ✅ CORRECT (gunakan ini):
+        - "Routine chest x-ray, so described" → code 87.44 (BUKAN "Radiography of chest")
+        - "Other chest x-ray" → code 87.49
+        - "Continuous invasive mechanical ventilation for less than 96 consecutive hours" → 96.71
+        - "Injection or infusion of oxazolidinone class of antibiotics" → 00.14
+        - "Venous catheterization, not elsewhere classified" → 38.93
+        - "Injection of antibiotic" → 99.21
+        - "Non-invasive mechanical ventilation" → 93.90
+        - "Computerized axial tomography of thorax" → 87.41 (untuk CT scan)
+        - "Arterial blood gases" → 89.65 (untuk pemeriksaan AGD)
+        - "Microscopic examination of specimen from trachea, bronchus, pleura,lung,and other thoracic specimen, and of sputum, Culture and sensitivity" → 90.43
+        
+        ❌ WRONG (jangan gunakan):
+        - "Radiography of chest" → TIDAK ADA di ICD-9-CM Indonesia
+        - "Intravenous infusion of antibiotic" → terlalu spesifik, gunakan "Injection of antibiotic"
+        - "X-ray thorax" → tidak formal
+        - "Rontgen paru" → bahasa Indonesia (harus English)
+        
+        PEDOMAN NAMING:
+        1. Gunakan exact phrase dari ICD-9-CM Indonesia (cek mapping file)
+        2. Untuk chest x-ray → "Routine chest x-ray, so described" (87.44) atau "Other chest x-ray" (87.49)
+        3. Untuk antibiotik → "Injection of antibiotic" (99.21)
+        4. Untuk ventilator → "Continuous invasive mechanical ventilation..." (96.7x) atau "Non-invasive mechanical ventilation" (93.90)
+        5. Untuk lab kultur → "Microscopic examination of specimen from trachea, bronchus, pleura,lung,and other thoracic specimen, and of sputum, Culture and sensitivity" (90.43)
+        6. Jika ragu, gunakan frasa yang lebih umum/general (contoh: "Other chest x-ray" lebih aman dari "Routine chest x-ray")
+    
+    - "nama_indonesia" tetap bahasa Indonesia untuk tampilan UI (contoh: "Rontgen Thorax", "Antibiotik IV")
+    - Nama prosedur harus sesuai terminologi ICD-9-CM official Indonesia untuk memudahkan mapping otomatis 100%.
     """
 
     try:
@@ -164,6 +198,59 @@ def ensure_default_gpt_structure(gpt_result, disease_name):
 
     return gpt_result
 
+def map_icd10_who_to_bpjs(kode_who: str) -> dict:
+    """
+    Mapping kode ICD-10 WHO (internasional) ke kode BPJS Indonesia.
+    
+    Flow:
+    1. GPT menghasilkan kode WHO (standar internasional)
+    2. Cari di icd10_mapping.json untuk mendapatkan kode BPJS
+    3. Return kode BPJS + catatan jika ada
+    
+    Args:
+        kode_who: Kode ICD-10 dari WHO/GPT (contoh: "J18.9")
+    
+    Returns:
+        dict: {"kode": "J18.9", "catatan": "...", "who_original": "J18.9", "deskripsi": "..."}
+    """
+    if not kode_who or kode_who == "-":
+        return {"kode": "-", "catatan": "", "who_original": "-", "deskripsi": ""}
+    
+    # Load mapping file
+    mapping_path = Path(__file__).parent.parent / "rules" / "icd10_mapping.json"
+    
+    try:
+        with open(mapping_path, encoding="utf-8") as f:
+            mapping_data = json.load(f)
+        
+        # Cari kode WHO di mapping
+        # Format mapping dari file: {"J18.9": {"who": "Pneumonia, unspecified", "bpjs": "J18.9", "catatan_bpjs": "..."}}
+        if kode_who in mapping_data:
+            mapped = mapping_data[kode_who]
+            return {
+                "kode": mapped.get("bpjs", kode_who),  # Kode BPJS
+                "catatan": mapped.get("catatan_bpjs", ""),
+                "who_original": kode_who,  # Simpan kode WHO asli
+                "deskripsi": mapped.get("who", "")  # Deskripsi dari WHO
+            }
+        else:
+            # Jika tidak ada mapping, anggap WHO = BPJS (sama)
+            print(f"[ICD10_MAPPING] ⚠️ Kode {kode_who} tidak ditemukan di mapping, menggunakan kode asli")
+            return {
+                "kode": kode_who,
+                "catatan": "Kode WHO standar (belum ada mapping BPJS spesifik)",
+                "who_original": kode_who,
+                "deskripsi": ""
+            }
+    
+    except FileNotFoundError:
+        print(f"[ICD10_MAPPING] ❌ File {mapping_path} tidak ditemukan")
+        return {"kode": kode_who, "catatan": "File mapping tidak tersedia", "who_original": kode_who, "deskripsi": ""}
+    except Exception as e:
+        print(f"[ICD10_MAPPING] ❌ Error mapping ICD-10: {e}")
+        return {"kode": kode_who, "catatan": f"Error: {str(e)}", "who_original": kode_who, "deskripsi": ""}
+
+
 def summarize_multilayer_text(text: str) -> str:
     """
     Ringkas isi regulasi menjadi kalimat medis pendek (maks 180 karakter).
@@ -183,24 +270,98 @@ def summarize_multilayer_text(text: str) -> str:
     return t
 
 
+def gpt_summarize_multilayer_rules(rule_list, field_name: str):
+    """
+    Gunakan GPT untuk meringkas multilayer rules menjadi output yang:
+    - Ringkas (max 2-3 kalimat)
+    - Konsisten dan terstruktur (bukan seperti chatbot)
+    - Fokus pada poin penting regulasi
+    - TIDAK menyebutkan sumber (sumber ditampilkan di modal detail)
+    """
+    if not rule_list or not isinstance(rule_list, list):
+        return "-"
+    
+    # Jika hanya 1 rule, langsung ringkas tanpa GPT
+    if len(rule_list) == 1:
+        isi = rule_list[0].get("isi", "-")
+        return summarize_multilayer_text(isi)
+    
+    # Susun context dari semua rules
+    rules_context = []
+    for r in rule_list:
+        layer = r.get("layer", "-").capitalize()
+        sumber = r.get("sumber", "-")
+        isi = r.get("isi", "-").strip()
+        rules_context.append(f"[{layer} - {sumber}]: {isi}")
+    
+    rules_text = "\n".join(rules_context)
+    
+    # Prompt khusus untuk meringkas multilayer
+    prompt = f"""
+Anda adalah sistem peringkas regulasi medis BPJS. Tugas Anda adalah meringkas beberapa regulasi multilayer menjadi output yang RINGKAS, KONSISTEN, dan TERSTRUKTUR.
+
+FIELD: {field_name}
+
+REGULASI MULTILAYER:
+{rules_text}
+
+INSTRUKSI:
+1. Ringkas menjadi maksimal 2-3 kalimat pendek
+2. Fokus pada poin penting: kriteria/syarat/nilai/standar
+3. Gunakan bahasa formal medis, BUKAN gaya chatbot
+4. JANGAN sebutkan sumber regulasi (CP/PNPK/layer) karena sudah ditampilkan di tempat lain
+5. Format: langsung tulis kriteria/syarat/nilai tanpa label
+6. Jangan gunakan kata-kata seperti "berdasarkan", "menurut", "dapat disimpulkan"
+7. Langsung ke poin inti
+
+Contoh output yang BENAR:
+"Lama rawat 3-5 hari untuk kasus tanpa komplikasi, 7-10 hari dengan komplikasi."
+
+Contoh output yang SALAH (terlalu verbose):
+"Berdasarkan CP Pneumonia 2023, dapat disimpulkan bahwa lama rawat untuk kasus ini berkisar antara..."
+
+OUTPUT (langsung tulis ringkasannya, tanpa penjelasan tambahan):
+"""
+    
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,  # Lebih rendah untuk konsistensi
+            max_tokens=150  # Batasi output agar ringkas
+        )
+        summary = resp.choices[0].message.content.strip()
+        # Bersihkan jika ada quotes atau formatting tidak perlu
+        summary = summary.strip('"').strip("'")
+        return summary
+    except Exception as e:
+        print(f"⚠️ GPT summarize error for {field_name}: {e}")
+        # Fallback ke format manual jika GPT gagal
+        return summarize_multilayer_rules(rule_list)
+
+
 def summarize_multilayer_rules(rule_list):
     """
-    Bentuk bullet point ringkas untuk tiap layer regulasi.
-    Label depan diambil dari kolom 'layer', bukan 'sumber'.
+    Bentuk ringkasan manual untuk multilayer rules (fallback jika GPT gagal).
+    Fokus pada konten saja, tanpa menyebutkan layer/sumber.
     """
     if not rule_list or not isinstance(rule_list, list):
         return "-"
 
-    points = []
+    # Ambil rule dengan prioritas tertinggi (biasanya index 0)
+    # atau gabungkan poin-poin penting dari semua layer
+    if len(rule_list) == 1:
+        return summarize_multilayer_text(rule_list[0].get("isi", "-"))
+    
+    # Jika multiple rules, gabungkan poin penting
+    combined = []
     for r in rule_list:
-        layer = r.get("layer", "-").capitalize()  # ← pakai layer
-        src = r.get("sumber", "-")
         isi = summarize_multilayer_text(r.get("isi", "-"))
-
-        # Format: [Layer] Isi (Sumber)
-        points.append(f"• [{layer}] {isi} ({src})")
-
-    return "\n".join(points)
+        if isi and isi != "-":
+            combined.append(isi)
+    
+    # Gabung dengan separator yang rapi
+    return " ".join(combined[:2]) if combined else "-"  # Max 2 poin untuk ringkas
 
 
 # ==============================
@@ -326,7 +487,8 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
                                 })
 
                 if multilayer_rules:
-                    formatted = summarize_multilayer_rules(multilayer_rules)
+                    # Gunakan GPT untuk meringkas multilayer rules secara terstruktur
+                    formatted = gpt_summarize_multilayer_rules(multilayer_rules, field_name)
                     merged[field_name] = formatted
                 else:
                     merged[field_name] = val_ai or "-"
@@ -353,12 +515,27 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     rujukan = smart_merge("rujukan", rule_data, gpt_result, rule_data_db)
     ina_cbg_info = rule_data.get("ina_cbg", {})
 
-    # Penyesuaian khusus untuk ICD-10
+    # Penyesuaian khusus untuk ICD-10 dengan mapping WHO → BPJS
     if gpt_result and gpt_result.get("icd10", {}).get("utama"):
         # Jika ICD-10 masih kosong, gunakan dari GPT
         if not icd10_data.get("kode_icd") or icd10_data.get("kode_icd") == "-":
-            icd10_data["kode_icd"] = gpt_result["icd10"]["utama"]
-            print(f"[ANALYZE_DIAGNOSIS] 🔄 Using ICD-10 from AI: {icd10_data['kode_icd']}")
+            kode_who = gpt_result["icd10"]["utama"]
+            
+            # Mapping WHO → BPJS menggunakan icd10_mapping.json
+            kode_bpjs = map_icd10_who_to_bpjs(kode_who)
+            
+            # Simpan kode BPJS (yang akan ditampilkan di frontend)
+            icd10_data["kode_icd"] = kode_bpjs["kode"]
+            
+            # Jika ada deskripsi dari mapping, gunakan untuk struktur_icd10
+            if kode_bpjs.get("deskripsi") and (not icd10_data.get("struktur_icd10") or icd10_data.get("struktur_icd10") == "-"):
+                icd10_data["struktur_icd10"] = kode_bpjs["deskripsi"]
+            
+            print(f"[ANALYZE_DIAGNOSIS] 🔄 ICD-10 WHO: {kode_who} → BPJS: {kode_bpjs['kode']}")
+            
+            # Optional: simpan catatan mapping jika ada
+            if kode_bpjs.get("catatan"):
+                print(f"[ANALYZE_DIAGNOSIS] 📝 Catatan mapping: {kode_bpjs['catatan']}")
 
     # Penyesuaian khusus untuk Rujukan
     if gpt_result and gpt_result.get("rujukan"):
@@ -373,25 +550,14 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
             print(f"[ANALYZE_DIAGNOSIS] 🔄 Using rujukan destination from AI: {rujukan['rujukan_tujuan']}")
 
     # =====================================================
-    # ✅ FORMAT MULTILAYER RULES (bullet points untuk UI)
+    # ✅ FORMAT MULTILAYER RULES (GPT-based summarization)
     # =====================================================
-    def format_multilayer_points(field_rules):
-        """Ubah list rule multilayer jadi string bullet points"""
-        if not field_rules or not isinstance(field_rules, list):
-            return "-"
-        formatted = []
-        for r in field_rules:
-            layer = r.get("layer", "-").capitalize()
-            src = r.get("sumber", "-")
-            isi = r.get("isi", "-").strip()
-            formatted.append(f"• [{layer}] {isi} ({src})")
-        return "\n".join(formatted)
-
     # Loop semua field hasil load multilayer dari DB
     for field_key, rule_list in rule_data_db.items():
         if len(rule_list) > 1:  # hanya kalau punya lebih dari satu layer
             section, subfield = extract_field_path(field_key)
-            formatted_text = summarize_multilayer_rules(rule_list)
+            # Gunakan GPT untuk meringkas multilayer rules
+            formatted_text = gpt_summarize_multilayer_rules(rule_list, field_key)
 
             if section not in rule_data:
                 rule_data[section] = {}
@@ -587,27 +753,99 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
             notifications[key] = {"status": status, "message": text}
         result["notifications"] = notifications
 
-    # Proses tindakan dari GPT atau rules
+    # ============================================================
+    # 8️⃣ Proses Tindakan dengan ICD-9 Mapping
+    # ============================================================
+    # Proses tindakan: AI sebagai primary (context-aware), JSON sebagai enrichment
     tindakan_rules = rule_data.get("tindakan", [])
     tindakan_ai = gpt_result.get("tindakan", []) if gpt_result else []
-    tindakan = tindakan_rules if tindakan_rules else tindakan_ai
-
+    
+    # HYBRID APPROACH: Merge AI + JSON
     result["tindakan"] = []
     import time
-    for t in tindakan:
-        if isinstance(t, dict):
-            result["tindakan"].append({
-                "nama": t.get("nama", "-"),
-                "tindakan": t.get("nama", "-"),
-                "deskripsi": t.get("deskripsi", t.get("nama", "-")),
-                "icd9_code": t.get("icd9", t.get("icd9_code", "-")),
-                "status": t.get("status", "-"),
-                "kategori": t.get("kategori", "-"),
-                "regulasi": t.get("regulasi", "-"),
-                "syarat_klinis": t.get("syarat_klinis", "-"),
-                "ina_cbg_impact": t.get("ina_cbg_impact", "-"),
-                "id": int(time.time() * 1000) + len(result["tindakan"])
-            })
+    
+    # Process AI tindakan first (context-aware)
+    for ai_t in tindakan_ai:
+        if not isinstance(ai_t, dict):
+            continue
+        
+        nama_standar = ai_t.get("nama", "")  # WHO standard name
+        nama_indonesia = ai_t.get("nama_indonesia", nama_standar)  # Fallback ke nama standar
+        
+        # 🔥 APPLY ICD-9 MAPPING
+        icd9_mapped = map_icd9_smart(
+            procedure_name=nama_standar,
+            ai_code=ai_t.get("icd9"),  # Jika AI kasih kode, validasi juga
+            use_fuzzy=True,
+            threshold=85
+        )
+        
+        # Cari enrichment dari JSON rules (regulasi, fornas, dll)
+        matching_rule = None
+        if tindakan_rules:
+            nama_lower = nama_standar.lower()
+            for rule in tindakan_rules:
+                if isinstance(rule, dict):
+                    rule_nama = rule.get("nama", "").lower()
+                    if rule_nama and (rule_nama in nama_lower or nama_lower in rule_nama):
+                        matching_rule = rule
+                        break
+        
+        # Build result dengan mapping + enrichment
+        tindakan_item = {
+            "nama": nama_indonesia,  # Display name (Indonesia)
+            "tindakan": nama_indonesia,  # Alias
+            "deskripsi": f"ICD-9: {icd9_mapped['kode']}, Status: {ai_t.get('status', '-')}",
+            "icd9_code": icd9_mapped["kode"],  # ✅ Validated code
+            "icd9_desc": icd9_mapped["deskripsi"],  # ✅ WHO official description
+            "icd9_valid": icd9_mapped["valid"],  # ✅ Validation flag
+            "icd9_confidence": icd9_mapped["confidence"],  # ✅ Match confidence
+            "icd9_source": icd9_mapped["source"],  # ✅ Source info
+            "status": ai_t.get("status", "-"),
+            "kategori": ai_t.get("kategori", "-"),
+            "regulasi": matching_rule.get("regulasi", "-") if matching_rule else ai_t.get("regulasi", "-"),
+            "fornas": matching_rule.get("fornas", []) if matching_rule else [],
+            "syarat_klinis": ai_t.get("syarat_klinis", "-"),
+            "ina_cbg_impact": ai_t.get("ina_cbg_impact", "-"),
+            "id": int(time.time() * 1000) + len(result["tindakan"])
+        }
+        
+        result["tindakan"].append(tindakan_item)
+        
+        print(f"[TINDAKAN] ✅ Mapped: {nama_indonesia} → ICD-9: {icd9_mapped['kode']} (confidence: {icd9_mapped['confidence']}%)")
+    
+    # Jika AI tidak menghasilkan tindakan, fallback ke rules
+    if not result["tindakan"] and tindakan_rules:
+        print("[TINDAKAN] ⚠️ AI tidak menghasilkan tindakan, menggunakan rules dari JSON")
+        for rule_t in tindakan_rules:
+            if isinstance(rule_t, dict):
+                nama = rule_t.get("nama", "-")
+                
+                # Map ICD-9
+                icd9_mapped = map_icd9_smart(
+                    procedure_name=nama,
+                    ai_code=rule_t.get("icd9"),
+                    use_fuzzy=True,
+                    threshold=85
+                )
+                
+                result["tindakan"].append({
+                    "nama": nama,
+                    "tindakan": nama,
+                    "deskripsi": f"ICD-9: {icd9_mapped['kode']}, Status: {rule_t.get('status', '-')}",
+                    "icd9_code": icd9_mapped["kode"],
+                    "icd9_desc": icd9_mapped["deskripsi"],
+                    "icd9_valid": icd9_mapped["valid"],
+                    "icd9_confidence": icd9_mapped["confidence"],
+                    "icd9_source": icd9_mapped["source"],
+                    "status": rule_t.get("status", "-"),
+                    "kategori": rule_t.get("kategori", "-"),
+                    "regulasi": rule_t.get("regulasi", "-"),
+                    "fornas": rule_t.get("fornas", []),
+                    "syarat_klinis": rule_t.get("syarat_klinis", "-"),
+                    "ina_cbg_impact": rule_t.get("ina_cbg_impact", "-"),
+                    "id": int(time.time() * 1000) + len(result["tindakan"])
+                })
 
     # Tambahkan transformasi format data untuk field tertentu seperti tarif
     if "tarif" in result["inaCbg"] and result["inaCbg"]["tarif"] != "-":

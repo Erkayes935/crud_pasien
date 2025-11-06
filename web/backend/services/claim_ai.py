@@ -66,6 +66,14 @@ async def regulation_detail(payload: dict):
         if not field:
             return {"error": "Field is required"}
         
+        # ✅ Inject procedure_name dari procedure_text jika ada
+        # Ini untuk backward compatibility karena DB pakai procedure_text
+        # tapi regulation_service.py expect procedure_name
+        if not payload.get("procedure_name") and payload.get("procedure_text"):
+            payload["procedure_name"] = payload["procedure_text"]
+            payload["procedure"] = payload["procedure_text"]
+            print(f"[REGULATION] 💉 Injected procedure_name from procedure_text: {payload['procedure_text']}")
+        
         result = await proxy_core_engine("/regulation_detail", payload)
         return result
     except Exception as e:
