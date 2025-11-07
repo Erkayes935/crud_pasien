@@ -20,12 +20,10 @@
     for (const file of MODULE_LIST) {
       try {
         await import(`/static/js/claim/${file}?v=${Date.now()}`);
-        console.log(`✅ [AI-Claim] Loaded ${file}`);
       } catch (err) {
         console.error(`❌ [AI-Claim] Gagal load ${file}`, err);
       }
     }
-    console.log("✅ Semua modul modal dimuat (ESM).");
   })();
 
   // ============================================================
@@ -34,6 +32,5 @@
   if (typeof window !== "undefined") {
     window.AIClaim = window.AIClaim || {};
     window.AIClaim.loadedModals = MODULE_LIST;
-    console.log("🧩 [AI-Claim] Window shim aktif:", MODULE_LIST);
   }
 })();

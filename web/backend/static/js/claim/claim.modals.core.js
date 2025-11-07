@@ -90,12 +90,25 @@ export function openModal(title, content, options = {}) {
     `;
   }
 
-  modalContent.innerHTML = options.disableAutoTitle
-    ? content || "<p>Tidak ada konten.</p>"
-    : `
-      ${modalTitle.outerHTML}
-      <div class="modal-body pt-3">${content || "<p>Tidak ada konten.</p>"}</div>
+  if (options.disableAutoTitle) {
+    modalContent.innerHTML = content || "<p>Tidak ada konten.</p>";
+  } else {
+    modalTitle.innerHTML = `
+      <div class="relative w-full bg-blue-600/90 dark:bg-blue-700 text-white rounded-t-xl py-2">
+        <h2 class="text-xl font-bold text-center">${title || "(Untitled Modal)"}</h2>
+        ${closeButton}
+      </div>
     `;
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "modal-body pt-3";
+    bodyEl.innerHTML = content || "<p>Tidak ada konten.</p>";
+
+    // kosongkan isi content lalu append title & body
+    modalContent.innerHTML = "";
+    modalContent.appendChild(modalTitle);
+    modalContent.appendChild(bodyEl);
+  }
+
 
   // animasi fade-in
   modalContent.classList.add("modal-fade-enter");

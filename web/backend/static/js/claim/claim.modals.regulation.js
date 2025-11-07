@@ -83,11 +83,11 @@ export function normalizeId(id) {
 
 export const REGULATION_FIELDS = {
   diagnosis: [
-    "justifikasi", "syarat_klinis",
+    "justifikasi", "justifikasi_faskes", "syarat_klinis",
     "kode_icd", "kode_ganda", "z_code", "kode_bpjs_khusus",
     "indikasi", "kriteria", "lama_rawat",
-    "tingkat", "kompetensi",
-    "indikasi_rujukan", "kriteria_rujukan", "tujuan",
+    "tingkat_faskes", "kompetensi_faskes",
+    "indikasi_rujukan", "kriteria_rujukan", "tujuan_rujukan",
     "kode", "deskripsi", "tarif"
   ],
   procedure: [

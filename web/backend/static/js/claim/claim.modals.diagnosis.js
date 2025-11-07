@@ -350,7 +350,6 @@ export function buildModalContent(it) {
 // 🔹 Fungsi render utama modal detail diagnosis (Lossless)
 // ======================================================
 export function renderDiagnosisDetail(it) {
-  console.log("📋 renderDiagnosisDetail data:", it);
 
   // 🧠 Tambahkan deteksi bila hasil punya nested key "data"
   const src = it.data ? it.data : it;
@@ -375,29 +374,25 @@ export function renderDiagnosisDetail(it) {
     }
   };
 
-  console.log("🧩 [DEBUG] Simulasi tindakan saat render ulang:",
-    window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan
-  );
-
   const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
     let colorClass = "bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100";
     if (status === "valid") colorClass = "bg-green-50 text-green-800 dark:bg-green-600 dark:text-white";
     if (status === "invalid") colorClass = "bg-red-600 text-white";
 
     const safeValue = value || "-";
-    console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
 
     const hasRegulation = checkFieldHasRegulation(fieldName);
 
     let content = safeValue;
-    if (hasRegulation && diagnosisId && safeValue !== "") {
-      // Changed @click Alpine directive to onclick standard DOM event
+    if (hasRegulation && safeValue !== "" && safeValue !== "-") {
+      const diagId = diagnosisId || null;
       content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
-                  title="📋 Klik untuk melihat regulasi ${fieldName}"
-                  data-field="${fieldName}"
-                  data-diagnosis-id="${diagnosisId}"
-                  onclick="window.openRegulationDetailModal('${fieldName}', ${diagnosisId})">${safeValue}</span>`;
+                      title="📋 Klik untuk melihat regulasi ${fieldName}"
+                      data-field="${fieldName}"
+                      data-diagnosis-id="${diagId}"
+                      onclick="window.openRegulationDetailModal('${fieldName}', ${diagId})">${safeValue}</span>`;
     }
+
 
     const boxHtml = `
       <div class="grid grid-cols-2">
@@ -405,6 +400,8 @@ export function renderDiagnosisDetail(it) {
         <div class="${colorClass} px-3 py-2">${content}</div>
       </div>
     `;
+    console.log("[CHECK]", fieldName, { hasRegulation, diagnosisId, safeValue });
+
     return boxHtml;
   };
 
@@ -463,9 +460,9 @@ export function renderDiagnosisDetail(it) {
         <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">FASKES</div>
         <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
           ${renderNotificationBox("faskes", notifications)}
-          ${safeRender(() => renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat"))}
+          ${safeRender(() => renderBox("Tingkat", faskes.tingkat, faskes.status_tingkat, diagnosisId, "tingkat_faskes"))}
           ${safeRender(() => renderBox("Justifikasi", faskes.justifikasi, faskes.status_justifikasi, diagnosisId, "justifikasi_faskes"))}
-          ${safeRender(() => renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi"))}
+          ${safeRender(() => renderBox("Kompetensi", faskes.kompetensi, faskes.status_kompetensi, diagnosisId, "kompetensi_faskes"))}
         </div>
       </section>
 
@@ -475,7 +472,7 @@ export function renderDiagnosisDetail(it) {
         <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
           ${renderNotificationBox("rujukan", notifications)}
           ${safeRender(() => renderBox("Indikasi", rujukan.indikasi, rujukan.status_indikasi, diagnosisId, "indikasi_rujukan"))}
-          ${safeRender(() => renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan"))}
+          ${safeRender(() => renderBox("Tujuan", rujukan.tujuan, rujukan.status_tujuan, diagnosisId, "tujuan_rujukan"))}
           ${safeRender(() => renderBox("Kriteria", rujukan.kriteria, rujukan.status_kriteria, diagnosisId, "kriteria_rujukan"))}
         </div>
       </section>
