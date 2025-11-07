@@ -13,6 +13,8 @@ export let claimState = (window.claimState = window.claimState || {});
 // 🪟 OPEN MODAL
 // ======================================================
 export function openModal(title, content, options = {}) {
+  // 🩹 PATCH: pastikan flag modalClosing reset supaya tombol close aktif
+  window.modalClosing = false;
   // pastikan claimState tersedia
   window.claimState = window.claimState || {};
   const state = window.claimState;
@@ -128,6 +130,7 @@ export function openModal(title, content, options = {}) {
     console.log("🔧 Reset suppress flag setelah modal dibuka");
     window.__suppressModalStack = false;
   }
+  window.claimState.modalOpen = true;
 }
 
 // ======================================================
@@ -198,188 +201,248 @@ export function openOverlayModal(title, htmlContent, sourceType = null, sourceId
 
 export function closeOverlayModal() {
   const overlay = document.getElementById("overlayRegulasi");
-  if (!overlay) return;
+    if (!overlay) return;
 
-  console.log("🧩 [CLOSE OVERLAY] Mulai tutup overlay regulasi…");
+    // ✨ Tambahkan animasi fade-out
+    overlay.classList.remove("visible");
 
-  // 🩹 Pastikan flag modalOpen dimatikan lebih awal
-  window.claimState.modalOpen = false;
-  document.body.classList.remove("modal-open");
+    // Kunci scroll balik normal
+    document.body.classList.remove("modal-open");
 
-  overlay.classList.remove("visible");
-
-  setTimeout(() => {
-    overlay.remove();
-
-    // Pastikan modal utama terlihat lagi
-    const modalContainer = document.querySelector("#modalContainer");
-    if (modalContainer) modalContainer.classList.remove("hidden");
-
-    // Reset flag lagi sesudah overlay benar-benar hilang
-    window.claimState.modalOpen = false;
-
-    const src = window.claimState?.regulationSource || {};
-    const lastType = src.type;
-    console.log("🔻 closeOverlayModal triggered:", src);
-
-    // Bersihkan sumber supaya gak ketarik ulang
-    window.claimState.regulationSource = null;
-    window.claimState.pendingRestoreDiagnosis = false;
-
-    // ⚙️ Tambah sedikit delay biar DOM settle
+    // Tunggu 250ms (selama animasi fade-out), lalu hapus overlay
     setTimeout(() => {
+      overlay.remove();
+
+      const src = window.claimState?.regulationSource || {};
+      console.log("🔻 closeOverlayModal triggered:", src);
+
+      const lastType = src.type;
+      window.claimState.regulationSource = null;
+
+      // ❌ Reset flag agar tidak ada restore diagnosis ganda
+      window.claimState.pendingRestoreDiagnosis = false;
+
       if (lastType === "procedure" && window.claimState?.currentProcedure?.id) {
-        console.log("🩵 [RESTORE] Modal tindakan:", window.claimState.currentProcedure);
-        window.openProcedureModal(
+        console.log("🩵 Restore modal tindakan:", window.claimState.currentProcedure);
+        if (window.claimState.modalOpen) {
+          console.warn("⛔ Skip restore tindakan karena modal masih terbuka");
+          return;
+        }
+        openProcedureModal(
           window.claimState.currentProcedure.id,
           window.claimState.currentProcedure.name
         );
-      } else if (lastType === "diagnosis" && window.claimState?.currentDiagnosis) {
-        console.log("🩵 [RESTORE] Modal diagnosis (force-open):", window.claimState.currentDiagnosis);
-        const diag = window.claimState.currentDiagnosis;
-        const title = window.claimState.currentDiagnosisTitle || "Diagnosis";
+      } 
+      else if (lastType === "diagnosis" && window.claimState?.currentDiagnosis) {
+        console.log("🩵 Restore modal diagnosis:", window.claimState.currentDiagnosis);
+        if (window.claimState.modalOpen) {
+          console.warn("⛔ Skip restore diagnosis karena modal masih terbuka");
+          return;
+        }
+        window.__suppressModalStack = true;
         openModal(
           `<div class="flex flex-col items-center">
             <span class="text-lg font-bold">Detail Diagnosis</span>
-            <span class="font-bold text-2xl mb-2 text-yellow-500">${title}</span>
+            <span class="font-bold text-2xl mb-2 text-yellow-500">
+              ${window.claimState.currentDiagnosisTitle || "Diagnosis"}
+            </span>
           </div>`,
-          window.renderDiagnosisDetail
-            ? window.renderDiagnosisDetail(diag)
-            : "<p>Diagnosis detail tidak tersedia.</p>",
+          renderDiagnosisDetail(window.claimState.currentDiagnosis),
           { hideDefaultClose: false }
         );
-      } else {
-        console.log("ℹ️ Tidak ada modal untuk direstore.");
+        window.__suppressModalStack = false;
       }
-    }, 150); // 150ms delay cukup
-  }, 150);
+    }, 250); // delay sesuai durasi animasi CSS
 }
 
 // ======================================================
 // 🔹 Close Nested Modal (Dokter / Verifikator Flow)
 // ======================================================
-export function closeNestedModal() {
+export async function closeNestedModal() {
   if (modalClosing) {
-    console.log("⚠️ [DEBUG] closeNestedModal double trigger prevented");
+      console.log("⚠️ [DEBUG] closeNestedModal double trigger prevented");
+      return;
+  }
+  // 🔒 reset flag otomatis 600 ms biar gak keburu stuck
+  setTimeout(() => (modalClosing = false), 600);
+
+  modalClosing = true;
+
+  // ====================================================
+  // 🩹 PATCH: Reset & arahkan close sesuai konteks modal
+  // ====================================================
+  try {
+    // Bersihkan event listener lama biar gak double trigger
+    document.querySelectorAll(".regulation-field").forEach(el => {
+      const clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+    });
+    console.log("♻️ [CLEANUP] regulation-field listeners dibersihkan.");
+  } catch (err) {
+      console.warn("⚠️ cleanup regulation-field gagal:", err);
+  }
+
+  // Tutup regulasi → balik ke tindakan
+  if (window.claimState.fromRegulation && typeof window.openProcedureModal === "function") {
+    console.log("🔙 [FLOW] Tutup regulasi → kembali ke modal tindakan.");
+    window.claimState.fromRegulation = false;
+    setTimeout(() => {
+      const proc = window.claimState.currentProcedure;
+      if (proc) window.openProcedureModal(proc.id, proc.name);
+    }, 300);
     return;
   }
-  modalClosing = true;
+
+  // Tutup tindakan → balik ke diagnosis
+  if (window.claimState.fromProcedure && window.claimState.currentDiagnosis) {
+    console.log("🔙 [FLOW] Tutup tindakan → kembali ke modal diagnosis.");
+    window.claimState.fromProcedure = false;
+    setTimeout(() => {
+      const diag = window.claimState.currentDiagnosis;
+      const title = window.claimState.currentDiagnosisTitle || "Diagnosis";
+      if (typeof window.renderDiagnosisDetail === "function") {
+        openModal(
+          `<div class='flex flex-col items-center'>
+            <span class='text-lg font-bold'>Detail Diagnosis</span>
+            <span class='font-bold text-2xl mb-2 text-yellow-500'>${title}</span>
+          </div>`,
+          renderDiagnosisDetail(diag),
+          { hideDefaultClose: false }
+        );
+      }
+    }, 300);
+    return;
+  }
+
+  console.log("🩹 [FLOW] Tutup modal biasa (diagnosis utama).");
+
 
   document.body.classList.remove("modal-open");
 
-  // 🚫 VERIFIKATOR MODE
-  if (window.currentUserRole === "verifikator") {
-    const modalContainer = document.getElementById("modalContainer");
-    if (modalContainer) {
-      modalContainer.classList.add("hidden");
-      modalContainer.innerHTML = "";
-    }
-    window.claimState.modalOpen = false;
-    modalClosing = false;
-    console.log("✅ [VERIFIKATOR] Modal closed cleanly.");
-    return;
-  }
-
-  try {
-    window.persistManualTindakanBeforeClose &&
-      window.persistManualTindakanBeforeClose();
-  } catch (e) {
-    console.warn("⚠️ Gagal persist manual tindakan sebelum close:", e);
-  }
-
-  let modalContainer = document.getElementById("modalContainer");
-  let modalContent = document.querySelector(".modal-content");
-  let modalTitle = document.querySelector(".modal-title");
-  const stack = window.claimState?.modalStack || [];
-
-  if (!modalContainer) {
-    modalContainer = document.createElement("div");
-    modalContainer.id = "modalContainer";
-    document.body.appendChild(modalContainer);
-  }
-  if (!modalContent) {
-    modalContent = document.createElement("div");
-    modalContent.className =
-      "modal-content relative bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white p-6 rounded-2xl max-h-[90vh] overflow-y-auto shadow-2xl w-[90%] max-w-4xl border border-slate-200 dark:border-slate-700";
-    modalContainer.appendChild(modalContent);
-  }
-  if (!modalTitle) {
-    modalTitle = document.createElement("div");
-    modalTitle.className = "modal-title font-bold text-lg mb-2";
-    modalContent.prepend(modalTitle);
-  }
-
-  modalContent.classList.add("modal-fade-exit");
-  setTimeout(() => modalContent.classList.add("modal-fade-exit-active"), 10);
-
-  setTimeout(() => {
-    modalContent.classList.remove("modal-fade-exit", "modal-fade-exit-active");
-
-    // Restore ke diagnosis?
-    if (
-      window.claimState?.pendingRestoreDiagnosis &&
-      window.claimState?.currentDiagnosis
-    ) {
-        // 🩹 Re-render diagnosis modal dengan data terbaru
-        try {
-          const stage = window.claimState.tab || "admission";
-          const tindakanBaru = window.claimState.simulasi?.[stage]?.tindakan || [];
-          if (Array.isArray(tindakanBaru)) {
-            window.claimState.currentDiagnosis.tindakan = tindakanBaru;
-          }
-
-          const diag = window.claimState.currentDiagnosis;
-          const title = window.claimState.currentDiagnosisTitle || "Diagnosis";
-
-          // Bersihkan isi modal lama
-          const modalContainer = document.getElementById("modalContainer");
-          if (modalContainer) {
-            modalContainer.innerHTML = "";
-            modalContainer.classList.remove("hidden");
-          }
-
-          // 🔁 Render ulang diagnosis dari data terbaru
-          if (typeof window.renderDiagnosisDetail === "function") {
-            const html = window.renderDiagnosisDetail(diag);
-            openModal(
-              `<div class="flex flex-col items-center">
-                <span class="text-lg font-bold">Detail Diagnosis</span>
-                <span class="font-bold text-2xl mb-2 text-yellow-500">${title}</span>
-              </div>`,
-              html,
-              { hideDefaultClose: false }
-            );
-            console.log("🩵 [RENDER] Modal diagnosis di-refresh dengan tindakan terbaru");
-          } else {
-            console.warn("⚠️ renderDiagnosisDetail() tidak ditemukan di window.");
-          }
-
-          window.claimState.pendingRestoreDiagnosis = false;
-          modalClosing = false;
-          return;
-        } catch (e) {
-          console.error("❌ Gagal re-render modal diagnosis:", e);
-          modalClosing = false;
-          return;
-        }
-    }
-
-    // Default restore modal
-    if (stack.length > 0) {
-      const prev = stack.pop();
-      console.log("🧩 restore modal:", prev);
-      modalTitle.innerHTML = prev.title || "(Untitled)";
-      modalContent.innerHTML = prev.content || "<p>Tidak ada konten sebelumnya</p>";
-    } else {
-      modalContainer.classList.add("hidden");
+    // 🚫 MODE VERIFIKATOR: close langsung, tanpa stack restore & Alpine
+    if (window.currentUserRole === "verifikator") {
+      const modalContainer = document.getElementById("modalContainer");
+      if (modalContainer) {
+        modalContainer.classList.add("hidden");
+        modalContainer.innerHTML = "";
+      }
       window.claimState.modalOpen = false;
-      modalContent.innerHTML = "";
-      modalTitle.innerHTML = "";
+      modalClosing = false;
+      console.log("✅ [VERIFICATOR] Modal closed cleanly.");
+      return;
     }
 
-    setTimeout(() => window.Alpine && Alpine.initTree(modalContent), 100);
-    modalClosing = false;
-  }, 250);
+
+    // 🧩 MODE DOKTER (flow lama utuh)
+    try {
+      window.persistManualTindakanBeforeClose && window.persistManualTindakanBeforeClose();
+    } catch (e) {
+      console.warn("⚠️ Gagal persist manual tindakan sebelum close:", e);
+    }
+
+    console.log(
+      "🧩 [DEBUG] Simulasi tindakan sebelum close:",
+      window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan
+    );
+
+    let modalContainer = document.getElementById("modalContainer");
+    let modalContent = document.querySelector(".modal-content");
+    let modalTitle = document.querySelector(".modal-title");
+    const stack = window.claimState?.modalStack || [];
+
+    if (!modalContainer) {
+      console.warn("⚠️ closeNestedModal: modalContainer tidak ditemukan, membuat ulang.");
+      modalContainer = document.createElement("div");
+      modalContainer.id = "modalContainer";
+      document.body.appendChild(modalContainer);
+    }
+    if (!modalContent) {
+      console.warn("⚠️ closeNestedModal: modalContent hilang, membuat ulang.");
+      modalContent = document.createElement("div");
+      modalContent.className =
+        "modal-content relative bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white p-6 rounded-2xl max-h-[90vh] overflow-y-auto shadow-2xl w-[90%] max-w-4xl border border-slate-200 dark:border-slate-700";
+      modalContainer.appendChild(modalContent);
+    }
+    if (!modalTitle) {
+      modalTitle = document.createElement("div");
+      modalTitle.className = "modal-title font-bold text-lg mb-2";
+      modalContent.prepend(modalTitle);
+    }
+
+    modalContent.classList.add("modal-fade-exit");
+    setTimeout(() => modalContent.classList.add("modal-fade-exit-active"), 10);
+
+    setTimeout(() => {
+      modalContent.classList.remove("modal-fade-exit", "modal-fade-exit-active");
+
+      if (stack.length > 0) {
+        const prev = stack.pop();
+        console.log("🧩 restore modal:", prev);
+        modalTitle.innerHTML = prev.title || "(Untitled)";
+        modalContent.innerHTML = prev.content || "<p>Tidak ada konten sebelumnya</p>";
+      } else {
+        modalContainer.classList.add("hidden");
+        window.claimState.modalOpen = false;
+        modalContent.innerHTML = "";
+        modalTitle.innerHTML = "";
+      }
+
+      document
+        .querySelectorAll('ul[x-teleport="body"]')
+        .forEach(el => el?._cleanup && el._cleanup());
+
+      setTimeout(() => {
+        Alpine.initTree(modalContent);
+        setTimeout(() => {
+          try {
+            if (typeof window.renderManualTindakanList === "function") {
+              const tab = window.claimState?.tab || "admission";
+              console.log("🧩 Re-render manual tindakan setelah Alpine reinit:", tab);
+              window.renderManualTindakanList(tab);
+            }
+          } catch (e) {
+            console.warn("⚠️ Gagal renderManualTindakanList setelah restore:", e);
+          }
+        }, 150);
+      }, 50);
+
+      modalClosing = false;
+    }, 250);
+
+    // ✅ Balik ke modal diagnosis hanya jika sebelumnya memang dari tindakan
+    // =====================================================
+    // 🩹 PATCH: Restore ke diagnosis hanya jika sebelumnya dari tindakan,
+    // dan tunggu modal lama benar-benar bersih dulu (500 ms)
+    // =====================================================
+    if (window.claimState?.pendingRestoreDiagnosis) {
+      const fromProcedure = !!window.claimState.fromProcedure;
+      const hasDiagnosis = !!window.claimState.currentDiagnosis;
+
+      // matikan flag biar gak dobel
+      const shouldRestore = fromProcedure && hasDiagnosis;
+      window.claimState.pendingRestoreDiagnosis = false;
+      window.claimState.fromProcedure = false;
+
+    if (shouldRestore) {
+      console.log("🩵 Balik ke modal diagnosis setelah tindakan ditutup");
+       setTimeout(() => {
+         if (!modalClosing) {               // 👉 hanya buka kalau modal bener-bener udah bersih
+           openModal(
+             `<div class="flex flex-col items-center">
+               <span class="text-lg font-bold">Detail Diagnosis</span>
+               <span class="font-bold text-2xl mb-2 text-yellow-500">
+                 ${window.claimState.currentDiagnosisTitle || "Diagnosis"}
+              </span>
+            </div>`,
+            renderDiagnosisDetail(window.claimState.currentDiagnosis),
+            { hideDefaultClose: false }
+          );
+        }
+      }, 500);
+    } else {
+      console.log("ℹ️ Tutup modal biasa, tidak restore diagnosis");
+    }
+  }
 }
 
 // ======================================================

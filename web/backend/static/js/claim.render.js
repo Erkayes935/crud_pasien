@@ -406,12 +406,6 @@
   function renderTable(targetId, items, type, tab, dayId = null, skipManualRow = false) {
     if (tab === "daily") tab = "daily-global";
     const state = Alpine.$data(document.getElementById("claimRoot"));
-    
-    console.groupCollapsed("🧩 renderTable DEBUG");
-    console.log("targetId:", targetId);
-    console.log("tab:", tab, "type:", type);
-    console.log("state.simulasi[tab][type] sebelum render:", state.simulasi?.[tab]?.[type]);
-    console.groupEnd();
 
     if (!state.simulasi[tab]) state.simulasi[tab] = { diagnosis: [], komorbid: [], komplikasi: [] };
 
@@ -500,13 +494,6 @@
       );
     }
 
-    // 🔍 log tambahan
-    console.groupCollapsed("🧩 renderTable MERGE DEBUG");
-    console.log("tab:", tab, "type:", type);
-    console.log("manuals:", keepManuals);
-    console.log("aiItems(new):", newAIs);
-    console.groupEnd();
-
     let target = document.getElementById(targetId);
     if (!target && targetId.includes("daily-global")) {
       const fallbackId = targetId.replace("daily-global", "daily");
@@ -519,7 +506,6 @@
     }
 
     target.innerHTML = "";
-    console.log("🧾 Rendering into target:", targetId, "data:", state.simulasi[tab][type]);
 
     // 🧩 Group parent/child for rendering - rebuild hierarchy (fix manual)
     let grouped = [];
@@ -884,15 +870,4 @@
     console.log("🎭 [DEBUG_ROLES] Active user roles detected:", getUserRoles());
   }
 
-
-  // Log initialization
-  console.log("✅ claim.render.js loaded - Multi-role support enabled");
-  console.log("📋 Available functions:", {
-    hasRole: "Check single role",
-    hasAnyRole: "Check multiple roles (OR)",
-    hasAllRoles: "Check multiple roles (AND)",
-    getUserRoles: "Get all user roles",
-    renderAI: "Render AI recommendations",
-    renderTable: "Render diagnosis/procedure tables"
-  });
 })();

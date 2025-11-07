@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from openpyxl import Workbook
 from reportlab.lib import colors
@@ -36,9 +36,8 @@ router = APIRouter(tags=["Claim Export"])
 
 
 # ==================================================
-# 🧾 EXPORT EXCEL
+# 🧾 EXPORT EXCEL (Optimized Lossless)
 # ==================================================
-
 @router.get("/export/excel", name="export_claims_excel")
 def export_claims_excel(
     status: Optional[str] = Query(None),
@@ -58,136 +57,135 @@ def export_claims_excel(
     db: Session = Depends(get_db),
     user=Depends(require_roles_session("doctor", "coder", "verifikator", "admin_rs", "superadmin")),
 ):
-    """
-    Export data klaim ke Excel (openpyxl)
-    Menggunakan filter dan role-based query sama seperti list_claims.
-    """
-    try:
-        # Normalisasi input
-        status = normalize_str(status)
-        tanggal_kunjungan = normalize_str(tanggal_kunjungan)
-        patient_name = normalize_str(patient_name)
-        claim_id = normalize_str(claim_id)
-        visit_id = normalize_str(visit_id)
-        workflow_status = normalize_str(workflow_status)
-        diagnosis = normalize_str(diagnosis)
-        tindakan = normalize_str(tindakan)
-        doctor_name = normalize_str(doctor_name)
-        ai_status = normalize_str(ai_status)
 
-        tarif_cbg_min = parse_int(tarif_cbg_min)
-        tarif_cbg_max = parse_int(tarif_cbg_max)
-        los_min = parse_int(los_min)
-        los_max = parse_int(los_max)
+    """Export data klaim ke Excel dengan filter yang sama seperti list view"""
+    status = normalize_str(status); print(f"  - status: {status}")
+    tanggal_kunjungan = normalize_str(tanggal_kunjungan); print(f"  - tanggal_kunjungan: {tanggal_kunjungan}")
+    patient_name = normalize_str(patient_name); print(f"  - patient_name: {patient_name}")
+    claim_id = normalize_str(claim_id); print(f"  - claim_id: {claim_id}")
+    visit_id = normalize_str(visit_id); print(f"  - visit_id: {visit_id}")
+    workflow_status = normalize_str(workflow_status); print(f"  - workflow_status: {workflow_status}")
+    diagnosis = normalize_str(diagnosis); print(f"  - diagnosis: {diagnosis}")
+    tindakan = normalize_str(tindakan); print(f"  - tindakan: {tindakan}")
+    doctor_name = normalize_str(doctor_name); print(f"  - doctor_name: {doctor_name}")
+    ai_status = normalize_str(ai_status); print(f"  - ai_status: {ai_status}")
+    tarif_cbg_min = parse_int(tarif_cbg_min); print(f"  - tarif_cbg_min: {tarif_cbg_min}")
+    tarif_cbg_max = parse_int(tarif_cbg_max); print(f"  - tarif_cbg_max: {tarif_cbg_max}")
+    los_min = parse_int(los_min); print(f"  - los_min: {los_min}")
+    los_max = parse_int(los_max); print(f"  - los_max: {los_max}")
 
-        # Query base
-        joined_patient = joined_visit = joined_diagnosis = joined_procedure = joined_user = False
-        query = db.query(models.Claim)
+    joined_patient = joined_visit = joined_diagnosis = joined_procedure = joined_user = False
+    query = db.query(models.Claim)
 
-        # Role-based filter
-        roles = user.role_names or []
-        if "verifikator" in roles and "coder" not in roles and "doctor" not in roles:
-            query = query.filter(models.Claim.workflow_status.in_(
-                ["coder_verified", "verifikator_review", "finalized"]))
-        elif "coder" in roles and "verifikator" not in roles and "doctor" not in roles:
-            query = query.filter(models.Claim.workflow_status.in_(
-                ["doctor_submitted", "coder_review", "coder_verified"]))
-        elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
-            query = query.filter(models.Claim.doctor_id == user.id)
+    # Role filter
+    roles = user.role_names or []
+    if "verifikator" in roles and "coder" not in roles and "doctor" not in roles:
+        query = query.filter(models.Claim.workflow_status.in_(["coder_verified", "verifikator_review", "finalized"]))
+    elif "coder" in roles and "verifikator" not in roles and "doctor" not in roles:
+        query = query.filter(models.Claim.workflow_status.in_(["doctor_submitted", "coder_review", "coder_verified"]))
+    elif "doctor" in roles and "coder" not in roles and "verifikator" not in roles:
+        query = query.filter(models.Claim.doctor_id == user.id)
 
-        # Filters
-        if status:
-            query = query.filter(models.Claim.status == status)
-        if workflow_status:
-            query = query.filter(models.Claim.workflow_status == workflow_status)
-        if patient_name:
-            if not joined_patient:
-                query = query.join(models.Patient, models.Claim.patient_id == models.Patient.id)
-                joined_patient = True
-            query = query.filter(models.Patient.nama.ilike(f"%{patient_name}%"))
-        if tanggal_kunjungan:
-            if not joined_visit:
-                query = query.join(models.Visit, models.Claim.visit_id == models.Visit.id)
-                joined_visit = True
-            query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
-        if claim_id and str(claim_id).isdigit():
-            query = query.filter(models.Claim.id == int(claim_id))
-        if visit_id and str(visit_id).isdigit():
-            query = query.filter(models.Claim.visit_id == int(visit_id))
-        if diagnosis:
-            if not joined_diagnosis:
-                query = query.join(models.ClaimDiagnosis, models.Claim.id == models.ClaimDiagnosis.claim_id)
-                joined_diagnosis = True
-            query = query.filter(
-                or_(
-                    models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis}%"),
-                    models.ClaimDiagnosis.icd10_code.ilike(f"%{diagnosis}%")
-                ),
-                models.ClaimDiagnosis.is_deleted == False
-            )
-        if tindakan:
-            if not joined_procedure:
-                query = query.join(models.ClaimProcedure, models.Claim.id == models.ClaimProcedure.claim_id)
-                joined_procedure = True
-            query = query.filter(
-                or_(
-                    models.ClaimProcedure.procedure_text.ilike(f"%{tindakan}%"),
-                    models.ClaimProcedure.icd9_final_by_coder.ilike(f"%{tindakan}%")
-                ),
-                models.ClaimProcedure.is_deleted == False
-            )
-        if doctor_name:
-            if not joined_user:
-                query = query.outerjoin(models.User, models.Claim.doctor_id == models.User.id)
-                joined_user = True
-            query = query.filter(
-                or_(
-                    models.Claim.doctor_name.ilike(f"%{doctor_name}%"),
-                    models.User.name.ilike(f"%{doctor_name}%")
-                )
-            )
-
-        if not joined_patient:
-            query = query.options(joinedload(models.Claim.patient))
-        if not joined_visit:
-            query = query.options(joinedload(models.Claim.visit))
-        query = query.options(
-            joinedload(models.Claim.hospital),
-            joinedload(models.Claim.group),
-            joinedload(models.Claim.diagnoses),
-            joinedload(models.Claim.procedures),
-            joinedload(models.Claim.tariffs),
-            joinedload(models.Claim.ai_recommendations),
+    # Filters
+    if status: query = query.filter(models.Claim.status == status)
+    if workflow_status: query = query.filter(models.Claim.workflow_status == workflow_status)
+    if patient_name:
+        query = query.join(models.Patient, models.Claim.patient_id == models.Patient.id)
+        joined_patient = True
+        query = query.filter(models.Patient.nama.ilike(f"%{patient_name}%"))
+    if tanggal_kunjungan:
+        query = query.join(models.Visit, models.Claim.visit_id == models.Visit.id)
+        joined_visit = True
+        query = query.filter(models.Visit.tanggal_kunjungan == tanggal_kunjungan)
+    if claim_id and str(claim_id).isdigit(): query = query.filter(models.Claim.id == int(claim_id))
+    if visit_id and str(visit_id).isdigit(): query = query.filter(models.Claim.visit_id == int(visit_id))
+    if diagnosis:
+        query = query.join(models.ClaimDiagnosis, models.Claim.id == models.ClaimDiagnosis.claim_id)
+        joined_diagnosis = True
+        query = query.filter(
+            or_(
+                models.ClaimDiagnosis.diagnosis_text.ilike(f"%{diagnosis}%"),
+                models.ClaimDiagnosis.icd10_code.ilike(f"%{diagnosis}%")
+            ),
+            models.ClaimDiagnosis.is_deleted == False
         )
-        if joined_diagnosis or joined_procedure:
-            query = query.distinct()
+    if tindakan:
+        query = query.join(models.ClaimProcedure, models.Claim.id == models.ClaimProcedure.claim_id)
+        joined_procedure = True
+        query = query.filter(
+            or_(
+                models.ClaimProcedure.procedure_text.ilike(f"%{tindakan}%"),
+                models.ClaimProcedure.icd9_final_by_coder.ilike(f"%{tindakan}%")
+            ),
+            models.ClaimProcedure.is_deleted == False
+        )
+    if doctor_name:
+        query = query.outerjoin(models.User, models.Claim.doctor_id == models.User.id)
+        joined_user = True
+        query = query.filter(
+            or_(
+                models.Claim.doctor_name.ilike(f"%{doctor_name}%"),
+                models.User.name.ilike(f"%{doctor_name}%")
+            )
+        )
+    if joined_diagnosis or joined_procedure: query = query.distinct()
 
-        claims = query.all()
+    # =====================================================
+    # ⚡ OPTIMIZED HYBRID EXPORT (batch cepat & aman)
+    # =====================================================
+    BATCH_SIZE = 500
+    offset = 0
+    total_rows = 0
 
-        # Build Excel workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Laporan Klaim"
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Laporan Klaim")
+    headers = [
+        "ID Klaim", "Tanggal Klaim", "Nama Pasien", "No. RM",
+        "Dokter", "Status", "Workflow Status",
+        "Diagnosis Utama", "Jumlah Sekunder", "Tindakan Utama",
+        "Tarif INA-CBG", "Tarif RS", "Length of Stay",
+        "AI Status", "Total AI Notif", "Dibuat"
+    ]
+    ws.append(headers)
 
-        headers = [
-            "ID Klaim", "Tanggal Klaim", "Nama Pasien", "No. RM",
-            "Dokter", "Status", "Workflow Status",
-            "Diagnosis Utama", "Jumlah Sekunder", "Tindakan Utama",
-            "Tarif INA-CBG", "Tarif RS", "Length of Stay",
-            "AI Status", "Total AI Notif", "Dibuat"
-        ]
-        ws.append(headers)
+    # Ambil total klaim dulu
+    total_count = query.count()
 
-        for claim in claims:
+    while True:
+        t_batch = time()
+        batch_query = (
+            query.options(
+                joinedload(models.Claim.patient),
+                joinedload(models.Claim.visit),
+                joinedload(models.Claim.hospital),
+                joinedload(models.Claim.group),
+                joinedload(models.Claim.medical_record),
+                selectinload(models.Claim.diagnoses),
+                selectinload(models.Claim.procedures)
+                    .selectinload(models.ClaimProcedure.procedure_details),
+                selectinload(models.Claim.tariffs),
+                selectinload(models.Claim.ai_recommendations),
+                selectinload(models.Claim.diagnosis_evaluations),
+                selectinload(models.Claim.procedure_evaluations),
+                selectinload(models.Claim.regulation_details),
+            )
+            .offset(offset)
+            .limit(BATCH_SIZE)
+        )
+
+        batch = batch_query.all()
+        if not batch:
+            break
+
+        for claim in batch:
             ai_agg = aggregate_ai_notifications(claim)
             tarif_cbg, tarif_rs = get_tariffs_optimized(claim)
-
             ws.append([
                 claim.id,
-                claim.tanggal_klaim.strftime("%Y-%m-%d") if claim.tanggal_klaim else "-",
+                claim.claim_date.strftime("%Y-%m-%d") if claim.claim_date else "-",
                 claim.patient.nama if claim.patient else "-",
                 claim.patient.no_rm if claim.patient else "-",
-                claim.doctor.username if claim.doctor else "-",
+                getattr(claim.doctor, "username", "-") if hasattr(claim, "doctor") else "-",
                 claim.status or "-",
                 claim.workflow_status or "-",
                 get_primary_diagnosis(claim),
@@ -196,25 +194,24 @@ def export_claims_excel(
                 tarif_cbg,
                 tarif_rs,
                 calculate_length_of_stay(claim),
-                ai_agg["max_severity"],
-                ai_agg["total_count"],
+                ai_agg.get("max_severity", "-"),
+                ai_agg.get("total_count", 0),
                 claim.created_at.strftime("%Y-%m-%d %H:%M") if claim.created_at else "-"
             ])
+            total_rows += 1
 
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
+        offset += BATCH_SIZE
+    # =====================================================
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    filename = f"laporan_klaim_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
-        filename = f"laporan_klaim_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return StreamingResponse(
-            buffer,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-
-    except Exception as e:
-        print(f"[EXPORT_EXCEL] ❌ Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Gagal export Excel: {e}")
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ==================================================
@@ -246,7 +243,7 @@ def export_claims_pdf(
             table_data.append([
                 c.id,
                 c.patient.nama if c.patient else "-",
-                c.doctor.username if c.doctor else "-",
+                c.doctor.name if c.doctor else "-",
                 c.status or "-",
                 c.workflow_status or "-",
                 ai_agg["status_icon"],

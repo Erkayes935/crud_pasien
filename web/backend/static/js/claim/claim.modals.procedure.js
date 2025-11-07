@@ -13,255 +13,316 @@ import { checkFieldHasRegulation } from "./claim.modals.regulation.js";
 // 🔹 OPEN PROCEDURE MODAL (versi kamu, lossless)
 // ============================================================
 export async function openProcedureModal(procId, procedureName) {
-  // 🩹 FIX: Simpan konteks prosedur agar bisa direstore dari modal regulasi
-  window.claimState.currentProcedure = { id: procId, name: procedureName };
+  window.claimState.fromProcedure = true;
+  window.claimState.fromRegulation = false;
+  console.log("🧭 [STATE] Buka modal tindakan dari diagnosis.");
 
   const isDark = document.documentElement.classList.contains("dark");
-  const modalBg = isDark ? "bg-slate-800 text-white" : "bg-gray-50 text-gray-900";
-  const titleColor = isDark ? "text-yellow-400" : "text-amber-600";
+    const modalBg = isDark ? "bg-slate-800 text-white" : "bg-gray-50 text-gray-900";
+    const titleColor = isDark ? "text-yellow-400" : "text-amber-600";
 
-  const claimId = document.getElementById("claimRoot")?.dataset.claimId;
+    const claimId = document.getElementById("claimRoot")?.dataset.claimId;
 
-  // Ambil nama tindakan dari DOM jika belum dikirim
-  if (!procedureName) {
-    const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
-    procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
-  }
-
-  console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
-
-  // Check if this is a manual procedure - if so, use openManualDetailModal instead
-  const state = Alpine.$data(document.getElementById("claimRoot"));
-  const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
-  const manualTindakan = allTindakan.find(
-    t => t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
-  );
-
-  if (manualTindakan) {
-    console.log("🔧 Detected manual procedure, using openManualDetailModal");
-    openManualDetailModal(manualTindakan);
-    return;
-  }
-
-  try {
-    // Request ke core_engine /analyze_procedure
-    showAiLoadingModal([
-      "Mengambil data detail tindakan...",
-      "Memuat regulasi multilayer terkait...",
-      "Menyiapkan tampilan modal..."
-    ]);
-    console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_text: procedureName });
-    const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        claim_id: parseInt(claimId),
-        procedure_text: procedureName,
-        rekam_medis: [],
-        scope: "tindakan"
-      })
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    showAiLoadingModal([
-      "Mengambil data detail tindakan...",
-      "Memuat regulasi multilayer terkait...",
-      "Menyiapkan tampilan modal..."
-    ]);
-    const result = await res.json();
-
-    // 🧩 Simpan ID DB hasil analyze_procedure
-    if (result && result.procedure_id) {
-      window.claimState.currentProcedure = window.claimState.currentProcedure || {};
-      window.claimState.currentProcedure.id = result.procedure_id;
+    // Ambil nama tindakan dari DOM jika belum dikirim
+    if (!procedureName) {
+      const procElement = document.querySelector(`[data-procid="${procId}"] .cursor-pointer`);
+      procedureName = procElement?.textContent?.trim() || "Unknown Procedure";
     }
-    if (result && result.procedure_text) {
-      const actions = window.claimState?.simulasi?.[window.currentStage]?.tindakan || [];
-      const idx = actions.findIndex(a => a.procedure_text === result.procedure_text);
-      if (idx !== -1) {
-        actions[idx].analyzed = true;
-        window.claimState.simulasi[window.currentStage].tindakan = [...actions];
+
+    console.log("🔥 openProcedureModal called", { procId, procedureName, claimId });
+
+    // Check if this is a manual procedure - if so, use openManualDetailModal instead
+    const state = Alpine.$data(document.getElementById('claimRoot'));
+    const allTindakan = Object.values(state.simulasi || {}).flatMap(stage => stage.tindakan || []);
+    const manualTindakan = allTindakan.find(t =>
+      t.isManual && (t.nama === procedureName || t.procedure_text === procedureName)
+    );
+
+    if (manualTindakan) {
+      console.log("🔧 Detected manual procedure, using openManualDetailModal");
+      openManualDetailModal(manualTindakan);
+      return;
+    }
+
+    try {
+      // Request ke core_engine /analyze_procedure
+      showAiLoadingModal([
+        "Mengambil data detail tindakan...",
+        "Memuat regulasi multilayer terkait...",
+        "Menyiapkan tampilan modal..."
+      ]);
+      console.log("[REQ] POST /analyze_procedure", { claim_id: claimId, procedure_text: procedureName });
+      const res = await fetch(`/claims/${claimId}/analyze_procedure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          claim_id: parseInt(claimId),
+          procedure_text: procedureName,
+          rekam_medis: [],
+          scope: "tindakan"
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      showAiLoadingModal([
+        "Mengambil data detail tindakan...",
+        "Memuat regulasi multilayer terkait...",
+        "Menyiapkan tampilan modal..."
+      ]);
+      const result = await res.json();
+
+      // 🧩 Simpan ID DB hasil analyze_procedure
+      if (result && result.procedure_id) {
+        window.claimState.currentProcedure = window.claimState.currentProcedure || {};
+        window.claimState.currentProcedure.id = result.procedure_id;
       }
-    }
-
-    console.log("[RESP] /analyze_procedure", result);
-    // 🩵 Tandai bahwa setelah modal tindakan ditutup harus kembali ke diagnosis
-    if (window.currentUserRole === "doctor" && window.claimState?.currentDiagnosis) {
-      window.claimState.pendingRestoreDiagnosis = true;
-      console.log("🩵 Flag pendingRestoreDiagnosis diaktifkan (dokter mode)");
-    }
-
-    const d = result.data || result;
-    console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
-
-    const renderProcBox = (label, value, fieldName = null) => {
-      const multilayer = d.multilayer_rules?.[fieldName] || null;
-      const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
-      let safeValue = value || "";
-
-      // 💰 Format tarif INA-CBG
-      if (fieldName === "ina_cbg" && value && value !== "") {
-        const numericValue = parseInt(value);
-        if (!isNaN(numericValue)) {
-          safeValue = `Rp ${Number(numericValue).toLocaleString("id-ID")}`;
-        } else {
-          safeValue = value;
+      if (result && result.procedure_text) {
+        const actions = window.claimState?.simulasi?.[window.currentStage]?.tindakan || [];
+        const idx = actions.findIndex(a => a.procedure_text === result.procedure_text);
+        if (idx !== -1) {
+          actions[idx].analyzed = true;
+          window.claimState.simulasi[window.currentStage].tindakan = [...actions];
         }
       }
 
-      const hasRegulation = checkFieldHasRegulation(fieldName);
-      let content = `<span class="text-gray-900 dark:text-white">${safeValue}</span>`;
+      console.log("[RESP] /analyze_procedure", result);
+      const d = result.data || result;
+      console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
 
-      if (hasRules) {
-        const listItems = multilayer.items
-          .map(
-            r => `
+      const renderProcBox = (label, value, fieldName = null) => {
+        const multilayer = d.multilayer_rules?.[fieldName] || null;
+        const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
+        let safeValue = value || "";
+
+        // 💰 Format tarif INA-CBG
+        if (fieldName === "ina_cbg" && value && value !== "") {
+          const numericValue = parseInt(value);
+          if (!isNaN(numericValue)) {
+            safeValue = `Rp ${Number(numericValue).toLocaleString('id-ID')}`;
+          } else {
+            safeValue = value;
+          }
+        }
+
+        const hasRegulation = checkFieldHasRegulation(fieldName);
+        let content = `<span class="text-gray-900 dark:text-white">${safeValue}</span>`;
+
+        if (hasRules) {
+          const listItems = multilayer.items
+            .map((r) => `
               <li class="ml-5 list-disc marker:text-blue-400 dark:marker:text-blue-300 text-sm leading-snug">
                 ${r.isi} <span class="text-gray-400 dark:text-gray-500">(${r.sumber})</span>
               </li>`
-          )
-          .join("");
-        const combinedLabel = multilayer.combined_label
-          ? `<div class="text-xs italic text-blue-400 mt-1">Gabungan aturan: ${multilayer.combined_label}</div>`
-          : "";
-        content = `<ul class="space-y-1 list-outside">${listItems}</ul>${combinedLabel}`;
-      } else {
-        content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
+            )
+            .join("");
+          const combinedLabel = multilayer.combined_label
+            ? `<div class="text-xs italic text-blue-400 mt-1">Gabungan aturan: ${multilayer.combined_label}</div>`
+            : "";
+          content = `<ul class="space-y-1 list-outside">${listItems}</ul>${combinedLabel}`;
+        } else {
+          content = `<div class="whitespace-pre-line leading-relaxed">${safeValue}</div>`;
+        }
+
+        if (hasRegulation && fieldName && safeValue !== "") {
+          content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+                      title="📋 Klik untuk melihat regulasi ${fieldName}"
+                      data-field="${fieldName}"
+                      data-procedure-id="${procId}"
+                      onclick="window.openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
+        }
+
+        return `
+          <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 rounded-lg font-semibold">
+            <b>${label}:</b>
+          </div>
+          <div class="bg-white text-gray-800 dark:bg-gray-800 dark:text-white px-3 py-2 rounded">${content}</div>
+        `;
+      };
+
+      // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
+      const notifications = d.notifications || {
+        tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
+      };
+      console.log("📋 Notifications (procedure):", notifications);
+
+      // hanya simpan 1 kode ICD-9 utama
+      if (Array.isArray(d.icd9_code)) {
+        d.icd9_code = d.icd9_code[0];
+      } else if (typeof d.icd9_code === "string" && d.icd9_code.includes(",")) {
+        d.icd9_code = d.icd9_code.split(",")[0].trim();
       }
 
-      if (hasRegulation && fieldName && safeValue !== "") {
-        content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
-                    title="📋 Klik untuk melihat regulasi ${fieldName}"
-                    data-field="${fieldName}"
-                    data-procedure-id="${procId}"
-                    onclick="window.openRegulationDetailModal('${fieldName}', null, '${procId}')">${safeValue}</span>`;
-      }
-
-      return `
-        <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 rounded-lg font-semibold">
-          <b>${label}:</b>
+      // 🔹 Konten modal utama
+      const content = `
+        <div class="${modalBg} flex flex-col items-center animate-fade-in">
+          <h2 class="text-center text-xl font-bold ${titleColor} mb-4">Detail Tindakan</h2>
+          <h3 class="text-center text-2xl font-extrabold text-${isDark ? "yellow-300" : "amber-500"} mb-6">
+            ${procedureName}
+          </h3>
+          <button type="button"
+                  onclick="closeNestedModal()"
+                  class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">✕</button>
         </div>
-        <div class="bg-white text-gray-800 dark:bg-gray-800 dark:text-white px-3 py-2 rounded">${content}</div>
+
+        ${renderNotificationBox("tindakan", notifications)}
+
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9 || "-", "icd9_code")}
+          ${renderProcBox("Deskripsi", `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`, "deskripsi")}
+          ${renderProcBox("Validitas", d.validitas, "validitas")}
+          ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
+          ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
+          ${renderProcBox("Faskes", d.faskes, "faskes")}
+          ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
+          ${renderProcBox(
+            "Syarat Klinis",
+            d.multilayer_rules?.syarat_klinis
+              ? mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
+              : d.syarat_klinis,
+            "syarat_klinis"
+          )}
+        </div>
       `;
-    };
 
-    // 🔔 Ambil notifikasi dari core_engine (atau fallback dummy)
-    const notifications = d.notifications || {
-      tindakan: { status: "info", message: "Analisis AI: tindakan ini memerlukan verifikasi tambahan." }
-    };
-    console.log("📋 Notifications (procedure):", notifications);
-
-    // hanya simpan 1 kode ICD-9 utama
-    if (Array.isArray(d.icd9_code)) {
-      d.icd9_code = d.icd9_code[0];
-    } else if (typeof d.icd9_code === "string" && d.icd9_code.includes(",")) {
-      d.icd9_code = d.icd9_code.split(",")[0].trim();
-    }
-
-    // 🔹 Konten modal utama
-    const content = `
-      <div class="${modalBg} flex flex-col items-center animate-fade-in">
-        <h2 class="text-center text-xl font-bold ${titleColor} mb-4">Detail Tindakan</h2>
-        <h3 class="text-center text-2xl font-extrabold text-${isDark ? "yellow-300" : "amber-500"} mb-6">
-          ${procedureName}
-        </h3>
-        <button type="button"
-                onclick="closeNestedModal()"
-                class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">✕</button>
-      </div>
-
-      ${renderNotificationBox("tindakan", notifications)}
-
-      <div class="grid grid-cols-2 gap-2 mt-3">
-        ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9 || "-", "icd9_code")}
-        ${renderProcBox("Deskripsi", `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`, "deskripsi")}
-        ${renderProcBox("Validitas", d.validitas)}
-        ${renderProcBox("Status", d.status_tindakan || d.status, "status")}
-        ${renderProcBox("Tarif INA-CBG", d.ina_cbg_tarif || d.ina_cbg, "ina_cbg")}
-        ${renderProcBox("Faskes", d.faskes, "faskes")}
-        ${renderProcBox("Rawat Inap", d.rawat_inap, "rawat_inap")}
-        ${renderProcBox(
-          "Syarat Klinis",
-          d.multilayer_rules?.syarat_klinis
-            ? window.mergeTextAndRules(d.syarat_klinis, d.multilayer_rules?.syarat_klinis)
-            : d.syarat_klinis,
-          "syarat_klinis"
-        )}
-      </div>
-    `;
-
-    // 🩺 Update kolom deskripsi di daftar tindakan utama
-    const procRow = document.querySelector(`[data-procid="${procId}"]`);
-    if (procRow) {
-      const descCell = procRow.querySelector("span[title], span.block");
-      if (descCell) {
-        const newDesc = `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`;
-        descCell.textContent = newDesc;
-        descCell.setAttribute("title", newDesc);
+      let newDesc = "";
+      const procRow = document.querySelector(`[data-procid="${procId}"]`);
+      if (procRow) {
+        const descCell = procRow.querySelector("span[title], span.block");
+        if (descCell) {
+          newDesc = `ICD-9: ${d.icd9_code || d.icd9 || "-"}, Status: ${d.status_tindakan || d.status || "-"}, INA-CBG: ${d.ina_cbg_tarif || d.ina_cbg || "-"}`;
+          descCell.textContent = newDesc;
+          descCell.setAttribute("title", newDesc);
+        }
       }
-    }
+      d.deskripsi = newDesc;
 
-    openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
-    hideAiLoadingModal();
-
-    // 🩹 Pastikan ID DB valid
-    let numericProcId = parseInt(procId);
-    if (numericProcId > 9999999999) {
-      console.warn("⚠️ Detected temporary timestamp ID, trying to resolve from DB...");
-      const foundProc = Object.values(window.claimState.simulasi || {})
-        .flatMap(s => s.tindakan || [])
-        .find(t =>
-          (t.nama === procedureName ||
-            t.procedure_text === procedureName ||
-            t.tindakan === procedureName) &&
-          t.procedure_id && t.procedure_id < 9999999999
-        );
-      if (foundProc) {
-        numericProcId = foundProc.procedure_id;
-        console.log("✅ Resolved procedure_id from simulation data:", numericProcId);
-      } else {
-        console.warn("❌ No valid procedure_id found, fallback to null");
-        numericProcId = null;
-      }
-    }
-
-    // 🔹 Sinkronkan hasil analisis ke simulasi (agar deskripsi muncul tanpa reload)
-    if (window.claimState?.simulasi) {
-      Object.values(window.claimState.simulasi).forEach(stage => {
-        const tindakan = stage.tindakan || [];
-        tindakan.forEach(t => {
-          if (t.procedure_text === procedureName) {
-            const newDesc = d.deskripsi || d.icd9_desc || d.icd9_description || d.icd9_code || "-";
+      // 🩹 Simpan juga ke objek tindakan agar renderTindakan() bisa baca
+      try {
+        const stage = window.claimState.tab || "admission";
+        const tindakanList = window.claimState.simulasi?.[stage]?.tindakan || [];
+        tindakanList.forEach(t => {
+          if (t.procedure_text === procedureName || t.nama === procedureName) {
             t.deskripsi = newDesc;
-            t.deskripsi_tindakan = newDesc; // 🩹 sinkronkan juga ke field lama
             t.analyzed = true;
           }
         });
-      });
-    }
+        // update diagnosis kalau sudah ada
+        if (window.claimState.currentDiagnosis?.tindakan?.length) {
+          window.claimState.currentDiagnosis.tindakan.forEach(td => {
+            if (td.procedure_text === procedureName || td.nama === procedureName) {
+              td.deskripsi = newDesc;
+              td.analyzed = true;
+            }
+          });
+        }
+        console.log("🩵 [SYNC] Deskripsi tindakan disimpan ke data & diagnosis.");
+      } catch (err) {
+        console.warn("⚠️ [SYNC] gagal simpan deskripsi tindakan ke objek:", err);
+      }
 
-    // 🔄 [PATCH v2 - refined] Update deskripsi tindakan di diagnosis tanpa render ulang penuh
-    try {
-      if (window.claimState?.currentDiagnosis) {
-        const tindakanBaru = d.deskripsi || d.icd9_desc || d.icd9_description || d.icd9_code || "-";
-        const procName = procedureName?.trim()?.toLowerCase();
 
-        document.querySelectorAll("#modalContainer [data-procid] span, #modalContainer .tindakan-list span").forEach(span => {
-          const spanText = span.textContent.trim().toLowerCase();
-          if (procName && spanText.includes(procName)) {
-            span.textContent = tindakanBaru;
-            span.setAttribute("title", tindakanBaru);
-            console.log("🩵 [PATCH v2] Deskripsi tindakan di modal diagnosis diupdate:", tindakanBaru);
-          }
+      openModal(`Detail Tindakan: ${procedureName}`, content, { hideDefaultClose: true, disableAutoTitle: true });
+      hideAiLoadingModal();
+
+      // 🩹 Pastikan ID DB valid
+      let numericProcId = parseInt(procId);
+      if (numericProcId > 9999999999) {
+        console.warn("⚠️ Detected temporary timestamp ID, trying to resolve from DB...");
+        const foundProc = Object.values(window.claimState.simulasi || {})
+          .flatMap(s => s.tindakan || [])
+          .find(t =>
+            (t.nama === procedureName ||
+            t.procedure_text === procedureName ||
+            t.tindakan === procedureName) &&
+            t.procedure_id && t.procedure_id < 9999999999
+          );
+        if (foundProc) {
+          numericProcId = foundProc.procedure_id;
+          console.log("✅ Resolved procedure_id from simulation data:", numericProcId);
+        } else {
+          console.warn("❌ No valid procedure_id found, fallback to null");
+          numericProcId = null;
+        }
+      }
+
+      // 🔹 Sinkronkan hasil analisis ke simulasi (agar deskripsi muncul tanpa reload)
+      if (window.claimState?.simulasi) {
+        Object.values(window.claimState.simulasi).forEach(stage => {
+          const tindakan = stage.tindakan || [];
+          tindakan.forEach(t => {
+            if (t.procedure_text === procedureName) {
+              t.deskripsi = d.deskripsi || d.icd9_desc || d.icd9_description || d.icd9_code || "-";
+              t.analyzed = true;
+            }
+          });
         });
       }
-    } catch (e) {
-      console.warn("⚠️ Gagal update deskripsi tindakan di modal diagnosis:", e);
+
+      // ============================================================
+      // 🩹 PATCH: update deskripsi tindakan di diagnosis tanpa hapus daftar lama
+      // ============================================================
+      try {
+        const stage = window.claimState.tab || "admission";
+        const semuaTindakan = window.claimState.simulasi?.[stage]?.tindakan || [];
+        const diagnosis = window.claimState.currentDiagnosis;
+
+        if (Array.isArray(semuaTindakan) && diagnosis?.tindakan?.length) {
+          diagnosis.tindakan.forEach(tDx => {
+            const match = semuaTindakan.find(
+              tSim =>
+                tSim.procedure_text === tDx.procedure_text ||
+                tSim.nama === tDx.nama
+            );
+            if (match) {
+              tDx.deskripsi =
+                match.deskripsi ||
+                match.icd9_desc ||
+                match.icd9_description ||
+                match.icd9_code ||
+                tDx.deskripsi ||
+                "-";
+              tDx.analyzed = true;
+            }
+          });
+          console.log("🩵 [SYNC] Deskripsi tindakan diperbarui tanpa hapus list diagnosis.");
+        } else {
+          console.warn("⚠️ [SYNC] Tidak ada tindakan untuk disinkronkan.");
+        }
+      } catch (err) {
+        console.warn("⚠️ [SYNC] Gagal sinkronisasi deskripsi tindakan:", err);
+      }
+
+      // ============================================================
+      // 🩹 FINAL PATCH: perbarui diagnosis dengan hasil tindakan terkini
+      // ============================================================
+      try {
+        const stage = window.claimState.tab || "admission";
+        const semuaTindakan = window.claimState.simulasi?.[stage]?.tindakan || [];
+        const diagnosis = window.claimState.currentDiagnosis;
+
+        if (Array.isArray(semuaTindakan) && diagnosis?.tindakan?.length) {
+          diagnosis.tindakan.forEach(td => {
+            const match = semuaTindakan.find(
+              tSim => tSim.nama === td.nama || tSim.procedure_text === td.procedure_text
+            );
+            if (match) {
+              // hanya update kalau deskripsi lengkap (hasil analisis)
+              if (match.deskripsi && match.deskripsi.includes("ICD-9:")) {
+                td.deskripsi = match.deskripsi;
+                td.analyzed = true;
+              }
+            }
+          });
+          console.log("🩵 [FINAL PATCH] Diagnosis diperbarui dengan deskripsi tindakan terkini");
+        }
+      } catch (e) {
+        console.warn("⚠️ [FINAL PATCH] gagal update diagnosis:", e);
+      }
+
+    } catch (err) {
+      console.error("❌ Gagal load detail tindakan:", err);
     }
-  } catch (err) {
-    console.error("❌ Gagal load detail tindakan:", err);
   }
-}
 
 // ============================================================
 // 🔹 OPEN MANUAL DETAIL MODAL (lossless)
@@ -291,7 +352,19 @@ export async function openManualDetailModal(it, tab, idx) {
           <span class="text-2xl font-bold text-yellow-500">${detail.procedure_text}</span>
         </div>
         <button type="button"
-                onclick="closeNestedModal()"
+                onclick="
+                  try {
+                    const stage = window.claimState.tab || 'admission';
+                    const list = window.claimState.simulasi?.[stage]?.tindakan || [];
+                    if (Array.isArray(list) && window.claimState.currentDiagnosis) {
+                      window.claimState.currentDiagnosis.tindakan = list;
+                      console.log('🩵 [SYNC] tindakan disalin ke diagnosis');
+                    }
+                  } catch (err) {
+                    console.warn('⚠️ [SYNC] gagal sinkronisasi:', err);
+                  }
+                  window.closeNestedModal();
+                "
                 class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">
           ✕
         </button>
@@ -328,8 +401,11 @@ export function renderTindakan(list) {
             const procId = td.procedure_id || td.id || "";
 
             const description = td.analyzed
-            ? td.deskripsi || td.deskripsi_tindakan || td.icd9 || "&nbsp;"
-            : "&nbsp;";
+              ? td.deskripsi || td.deskripsi_tindakan || td.icd9 || "&nbsp;"
+              : "&nbsp;";
+
+
+
 
 
             return `

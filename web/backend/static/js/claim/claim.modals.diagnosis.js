@@ -5,6 +5,7 @@
 // ============================================================
 
 import { openModal, showAiLoadingModal, hideAiLoadingModal } from "./claim.modals.core.js";
+import { checkFieldHasRegulation } from "./claim.modals.regulation.js";
 
 // =====================================================
 // UPDATE RINGKASAN FROM ROW (lossless, dari file lama)
@@ -138,6 +139,9 @@ export function updateRingkasanFromRow(itemId, dx) {
 // BUKA MODAL DARI KLIK KATEGORI (Lossless)
 // =====================================================
 export async function openModalFromAttr(el, type) {
+  window.claimState.fromProcedure = false;
+  window.claimState.fromRegulation = false;
+  console.log("🧭 [STATE] Buka modal diagnosis langsung, bukan dari tindakan/regulasi.");
   const tr = el.closest("tr");
   const dbId = tr?.dataset.dbId;
   const uiId = tr?.dataset.id;
@@ -371,19 +375,9 @@ export function renderDiagnosisDetail(it) {
     }
   };
 
-  console.log("📋 Parsed notifications:", notifications);
-  console.log("📋 Parsed klinis:", klinis);
-  console.log("📋 Parsed icd10:", icd10);
-  console.log("📋 Parsed tindakan count:", tindakan.length);
   console.log("🧩 [DEBUG] Simulasi tindakan saat render ulang:",
     window.claimState?.simulasi?.[window.claimState?.tab || "admission"]?.tindakan
   );
-
-  // 🔥 Debug specific field values
-  console.log("📋 klinis.justifikasi:", klinis.justifikasi);
-  console.log("📋 klinis.bukti_klinis:", klinis.bukti_klinis);
-  console.log("📋 icd10.kode_icd:", icd10.kode_icd);
-  console.log("📋 rawat.indikasi:", rawat.indikasi);
 
   const renderBox = (label, value, status = "default", diagnosisId = null, fieldName = null) => {
     let colorClass = "bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100";
@@ -393,7 +387,7 @@ export function renderDiagnosisDetail(it) {
     const safeValue = value || "-";
     console.log(`📋 renderBox(${label}): value="${value}", safeValue="${safeValue}"`);
 
-    const hasRegulation = window.checkFieldHasRegulation(fieldName);
+    const hasRegulation = checkFieldHasRegulation(fieldName);
 
     let content = safeValue;
     if (hasRegulation && diagnosisId && safeValue !== "") {
