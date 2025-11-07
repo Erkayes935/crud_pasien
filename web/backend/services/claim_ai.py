@@ -6,11 +6,12 @@ from backend import config
 async def proxy_core_engine(endpoint: str, payload: dict):
     """
     Proxy request ke core_engine dengan:
-    - timeout 120 detik (sesuai main.py lama)
+    - timeout 300 detik untuk GPT + fuzzy matching processing
     - logging payload (print pretty JSON)
     - mapping error httpx -> HTTPException FastAPI
     """
-    timeout = httpx.Timeout(120.0)
+    # Set connect timeout 10s, read timeout 300s untuk GPT processing
+    timeout = httpx.Timeout(300.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             # Logging payload (dev)

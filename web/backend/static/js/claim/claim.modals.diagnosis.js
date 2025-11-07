@@ -411,6 +411,7 @@ export function renderDiagnosisDetail(it) {
         <div class="${colorClass} px-3 py-2">${content}</div>
       </div>
     `;
+    console.log(`🔍 renderBox HTML for ${label}:`, boxHtml);
     return boxHtml;
   };
 

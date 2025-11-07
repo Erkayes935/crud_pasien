@@ -11,6 +11,7 @@ from .visit import Visit
 from .medical_record import MedicalRecord, MedicalRecordLog
 from .user_management import User, Role, UserRole
 from .rule_engine import RulesMaster, RegionalReports
+from .inacbg import INACBGTariff
 from .claim import *  # noqa
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "UserRole",
     "RulesMaster",
     "RegionalReports",
+    "INACBGTariff",
 ]

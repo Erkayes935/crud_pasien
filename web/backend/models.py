@@ -35,3 +35,6 @@ from .claim import (
     ClaimIDRGSummary,
     ClaimTariff,
 )
+
+# INA-CBG models
+from .inacbg import INACBGTariff
