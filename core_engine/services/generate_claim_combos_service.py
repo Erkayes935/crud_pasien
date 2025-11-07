@@ -26,11 +26,20 @@ def process_generate_claim_combos(payload: dict) -> dict:
     """
     evaluation_result = process_generate_evaluations(payload)
 
+    # 🔹 Coba panggil generator alternatif
+    try:
+        alt_result = process_generate_alternatives(payload)
+        alternatif_list = alt_result.get("alternatif", [])
+        print(f"[COMBOS] ✅ Generated {len(alternatif_list)} alternatif")
+    except Exception as e:
+        print(f"[COMBOS] ⚠️ Gagal generate alternatif: {e}")
+        alternatif_list = []
+
     return {
         "evaluasi_diagnosis": evaluation_result["evaluasi_diagnosis"],
         "evaluasi_tindakan": evaluation_result["evaluasi_tindakan"],
         "notification": evaluation_result.get("notification", {"status": "info", "message": "Evaluasi selesai."}),
-        "alternatif": [],  # akan diisi lewat request terpisah
+        "alternatif": alternatif_list,
         "engine_version": evaluation_result["engine_version"],
         "rules_used": evaluation_result.get("rules_used", {})
     }

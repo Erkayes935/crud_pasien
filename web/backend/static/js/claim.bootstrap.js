@@ -221,6 +221,7 @@ window.alternatifDropdown = function ({ claimId }) {
       return;
     }
 
+    const evalId = data.id || data.procedure_evaluation_id || window.claimState?.procedure_eval_id || null;
     // 🧠 PATCH: auto-wrap kalau bukan array
     const rows = Array.isArray(data) ? data : [data];
 
@@ -238,9 +239,9 @@ window.alternatifDropdown = function ({ claimId }) {
     target.innerHTML = `
       <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
       <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
+        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2"><span class="cursor-pointer" onclick="openRegulationDetailModal('tindakan_wajib', ${evalId})">${listify(wajib)}</span></td></tr>
         <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Validasi</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
-        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2"><span class="cursor-pointer" onclick="openRegulationDetailModal('dampak', ${evalId})">${listify(dampak)}</span></td></tr>
         <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Konflik / Catatan</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
       </table>
     `;
@@ -328,10 +329,17 @@ window.alternatifDropdown = function ({ claimId }) {
     target.innerHTML = "";
 
     const claimId = document.getElementById("claimRoot")?.dataset.claimId || 0;
+    const initialData = Array.isArray(items) ? items : [];
+
+    // 👉 Convert JSON ke string aman (replace tanda kutip ganda)
+    const safeJson = JSON.stringify(initialData)
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
 
     target.innerHTML = `
     <div class="mb-5 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden"
-        x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })">
+        x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })"
+        x-init="alternatives = ${safeJson}; open = false;">
       <!-- header -->
       <div class="flex items-center justify-between bg-yellow-400 text-gray-900 dark:bg-yellow-600 dark:text-white px-4 py-2 font-semibold text-[15px] cursor-pointer"
           @click="toggleDropdown()">

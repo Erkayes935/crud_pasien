@@ -170,7 +170,12 @@ async def generate_claim_combos(db: Session, claim_id: int, payload: dict):
     result = await claim_ai.proxy_core_engine("/generate_claim_combos", core_payload)
 
     try:
-        ai.clear_ai_results(db, cid)
+        # Skip hapus regulasi kalau user role adalah verifikator atau coder
+        user_role = getattr(payload, "user_role", None) or payload.get("role")
+        if user_role in ["verifikator", "coder"]:
+            ai.clear_ai_results(db, cid, skip_regulation=True)
+        else:
+            ai.clear_ai_results(db, cid)
         ai.bulk_store_ai_results_from_core(db, cid, result)
         ai.store_ai_evaluations(db, cid, result)
         db.commit()

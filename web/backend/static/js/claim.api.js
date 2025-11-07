@@ -220,6 +220,10 @@
 
       window.renderEvaluasiIDRGSummary?.(data.idrg_summary || {});
       window.renderAlternatifKombinasi?.(data.alternatif || []);
+      console.log("🧾 Alternatif kombinasi data:", data.alternatif || []);
+      console.log("✅ Evaluasi dan alternatif berhasil dirender");
+
+      // Simpan ke hidden field & global state
 
       const summaryField = document.getElementById("summaryField");
       if (summaryField) summaryField.value = JSON.stringify(data);

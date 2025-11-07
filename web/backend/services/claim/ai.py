@@ -423,7 +423,7 @@ def store_ai_recommendations(
         print(f"[AI STORAGE] ❌ Error storing recommendations: {str(e)}")
         raise
 
-def clear_ai_results(db: Session, claim_id: int):
+def clear_ai_results(db: Session, claim_id: int, skip_regulation: bool = False):
     """
     Hapus seluruh hasil rekomendasi dan evaluasi AI untuk klaim tertentu.
     Biasanya dipanggil sebelum hasil baru dari core_engine disimpan ulang.
@@ -432,11 +432,14 @@ def clear_ai_results(db: Session, claim_id: int):
     try:
         print("[AI STORAGE] Removing AI recommendations and evaluations")
 
-        # 🧹 1️⃣ Hapus dulu regulasi yang mengacu ke evaluation lama
-        deleted_regs = db.query(models.ClaimRegulationDetail).filter(
-            models.ClaimRegulationDetail.claim_id == claim_id
-        ).delete(synchronize_session=False)
-        print(f"[AI STORAGE] 🗑️ Deleted {deleted_regs} linked regulation details")
+        # 🧹 1️⃣ Hapus dulu regulasi (kecuali kalau disuruh skip)
+        if not locals().get("skip_regulation", False):
+            deleted_regs = db.query(models.ClaimRegulationDetail).filter(
+                models.ClaimRegulationDetail.claim_id == claim_id
+            ).delete(synchronize_session=False)
+            print(f"[AI STORAGE] 🗑️ Deleted {deleted_regs} linked regulation details")
+        else:
+            print("[AI STORAGE] ⚠️ Skipping deletion of regulation details (preserved for verifier/coder)")
 
         # 🧹 2️⃣ Baru hapus hasil evaluasi & rekomendasi
         db.query(models.ClaimCombinationAlternative).filter_by(claim_id=claim_id).delete()
@@ -619,8 +622,6 @@ def _store_nested_analysis_results(db, claim_id: int, result: dict, stage: str =
         db.rollback()
         print(f"[_STORE_NESTED_ANALYSIS] ❌ Error: {e}")
         import traceback; traceback.print_exc()
-
-
     
 # ==================================================
 # AI EVALUATIONS (hasil generate_claim_combos / summary)
@@ -743,17 +744,51 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             claim_id=claim_id,
             kombinasi_nama=alt.get("kombinasi_nama") or alt.get("nama") or alt.get("judul"),
             severity=alt.get("severity"),
-            kode_ina_cbg=alt.get("kode_ina_cbg") or alt.get("kode_cbg"),
-            estimasi_tarif=parse_number(alt.get("estimasi_tarif")),
-            syarat_klinis=alt.get("syarat_klinis"),
+            kode_ina_cbg=alt.get("kode_ina_cbg") or alt.get("kode_cbg") or alt.get("ina_cbg"),
+            estimasi_tarif=parse_number(alt.get("estimasi_tarif") or alt.get("tarif")),
+            syarat_klinis=alt.get("syarat_klinis") or alt.get("syarat"),
             faskes=alt.get("faskes"),
             rawat_inap=alt.get("rawat_inap"),
-            tindakan_wajib=alt.get("tindakan_wajib"),
+            tindakan_wajib=alt.get("tindakan_wajib") or json.dumps(alt.get("tindakan") or []),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         ))
+
+
+    # === iDRG Summary (hasil predict_combo_idrg) ===
+    try:
+        idrg_summary = (
+            evaluasi.get("idrg_summary")
+            or evaluasi.get("idrg_prediction")
+            or evaluasi.get("data")
+            or {}
+        )
+        if idrg_summary:
+            db.query(models.ClaimIDRGSummary).filter_by(claim_id=claim_id).delete(synchronize_session=False)
+
+            db.add(models.ClaimIDRGSummary(
+                claim_id=claim_id,
+                group_idrg_kombinasi=idrg_summary.get("group_idrg_kombinasi") or idrg_summary.get("group_idrg"),
+                severity_kombinasi=idrg_summary.get("severity_kombinasi") or idrg_summary.get("severity"),
+                checklist_kombinasi=json.dumps(idrg_summary.get("checklist_kombinasi") or [], ensure_ascii=False),
+                faktor_severity=json.dumps(idrg_summary.get("faktor_severity_kombinasi") or [], ensure_ascii=False),
+                risiko_ungroupable=idrg_summary.get("risiko_ungroupable"),
+                estimasi_tarif=idrg_summary.get("estimasi_tarif"),
+                gap_inacbg_vs_idrg=idrg_summary.get("gap_vs_cbg") or idrg_summary.get("gap_analysis"),
+                rekomendasi_ai=idrg_summary.get("rekomendasi_ai") or idrg_summary.get("notification", {}).get("message"),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                is_deleted=False,
+                is_dummy=False
+            ))
+            print(f"[AI STORAGE] ✅ Stored iDRG summary for claim {claim_id}")
+        else:
+            print(f"[AI STORAGE] ⚠️ No iDRG summary found in evaluation payload")
+
+    except Exception as e:
+        print(f"[AI STORAGE] ❌ Error storing ClaimIDRGSummary: {e}")
 
 
     db.commit()
@@ -772,7 +807,8 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
     stored_items = {
         "alternatives": 0,
         "diagnosis_evaluations": 0,
-        "procedure_evaluations": 0
+        "procedure_evaluations": 0,
+        "idrg_summary": 0
     }
     
     try:
@@ -801,7 +837,10 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
                     faskes=alt.get("faskes"),
                     rawat_inap=alt.get("rawat_inap"),
                     tindakan_wajib=alt.get("tindakan_wajib"),
-                    notes=alt.get("notes"),
+                    is_dummy=False,
+                    is_deleted=False,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
                 ))
                 stored_items["alternatives"] += 1
             except Exception as e:
@@ -843,6 +882,24 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
             except Exception as e:
                 print(f"[AI STORAGE] Error storing procedure evaluation: {str(e)}")
 
+        # Store iDRG summary
+        idrg_summary = result.get("idrg_summary") or {}
+        try:
+            if idrg_summary:
+                db.add(models.ClaimIDRGSummary(
+                    claim_id=claim_id,
+                    group_idrg_kombinasi=idrg_summary.get("group_idrg_kombinasi"),
+                    severity_kombinasi=idrg_summary.get("severity_kombinasi"),
+                    checklist_kombinasi=json.dumps(idrg_summary.get("checklist_kombinasi") or [], ensure_ascii=False),
+                    faktor_severity=json.dumps(idrg_summary.get("faktor_severity_kombinasi") or [], ensure_ascii=False),
+                    risiko_ungroupable=idrg_summary.get("risiko_ungroupable"),
+                    estimasi_tarif=idrg_summary.get("estimasi_tarif"),
+                    gap_inacbg_vs_idrg=idrg_summary.get("gap_inacbg_vs_idrg"),
+                    rekomendasi_ai=idrg_summary.get("rekomendasi_ai"),
+                ))
+                stored_items["idrg_summary"] = 1
+        except Exception as e:
+            print(f"[AI STORAGE] Error storing iDRG summary: {str(e)}")
         # Commit changes and log results
         db.commit()
         print(f"[AI STORAGE] Successfully stored AI results:")

@@ -5,6 +5,7 @@ Source: pindahan langsung dari claim_router.py (versi lama).
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Body
+from datetime import datetime
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.auth import require_roles_session
@@ -145,7 +146,8 @@ async def predict_idrg_combo_endpoint(
             print(f"[PREDICT_IDRG_COMBO] Error from core_engine: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
 
-        if isinstance(result, dict) and result.get("idrg_prediction"):
+        if isinstance(result, dict) and (result.get("idrg_prediction") or result.get("data")):
+            idrg_data = result.get("idrg_prediction") or result.get("data") or {}
             try:
                 print(f"[PREDICT_IDRG_COMBO] Storing i-DRG combo results for claim {claim_id}")
 
@@ -153,17 +155,18 @@ async def predict_idrg_combo_endpoint(
                     claim_id=claim_id, is_deleted=False
                 ).update({"is_deleted": True})
 
-                idrg_data = result["idrg_prediction"]
                 idrg_summary = models.ClaimIDRGSummary(
                     claim_id=claim_id,
                     group_idrg_kombinasi=idrg_data.get("group_idrg_kombinasi"),
                     severity_kombinasi=idrg_data.get("severity_kombinasi"),
-                    checklist_kombinasi=json.dumps(idrg_data.get("checklist_dokumentasi", [])),
-                    faktor_severity=json.dumps(idrg_data.get("faktor_penentu_severity", [])),
+                    checklist_kombinasi=json.dumps(idrg_data.get("checklist_kombinasi") or idrg_data.get("checklist_dokumentasi") or [], ensure_ascii=False),
+                    faktor_severity=json.dumps(idrg_data.get("faktor_severity_kombinasi") or idrg_data.get("faktor_penentu_severity") or [], ensure_ascii=False),
                     risiko_ungroupable=idrg_data.get("risiko_ungroupable"),
-                    estimasi_tarif=str(idrg_data.get("estimasi_tarif", "")),
-                    gap_inacbg_vs_idrg=str(idrg_data.get("gap_inacbg_vs_idrg", "")),
+                    estimasi_tarif=str(idrg_data.get("estimasi_tarif") or ""),
+                    gap_inacbg_vs_idrg=str(idrg_data.get("gap_vs_cbg") or idrg_data.get("gap_inacbg_vs_idrg") or ""),
                     rekomendasi_ai=idrg_data.get("rekomendasi_ai"),
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
                     is_deleted=False,
                     is_dummy=False
                 )

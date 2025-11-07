@@ -61,7 +61,7 @@ async def get_stored_diagnosis_detail(
         if is_empty:
             try:
                 print("[STORED_DIAGNOSIS_DETAIL] ⚠️ Empty record, requesting AI fallback...")
-                from ..services import claim_ai
+                from ...services import claim_ai
 
                 payload = {
                     "claim_id": claim_id,
