@@ -400,8 +400,6 @@ export function renderDiagnosisDetail(it) {
         <div class="${colorClass} px-3 py-2">${content}</div>
       </div>
     `;
-    console.log("[CHECK]", fieldName, { hasRegulation, diagnosisId, safeValue });
-
     return boxHtml;
   };
 

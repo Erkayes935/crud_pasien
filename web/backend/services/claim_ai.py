@@ -6,11 +6,12 @@ from backend import config
 async def proxy_core_engine(endpoint: str, payload: dict):
     """
     Proxy request ke core_engine dengan:
-    - timeout 120 detik (sesuai main.py lama)
+    - timeout 300 detik untuk GPT + fuzzy matching processing
     - logging payload (print pretty JSON)
     - mapping error httpx -> HTTPException FastAPI
     """
-    timeout = httpx.Timeout(120.0)
+    # Set connect timeout 10s, read timeout 300s untuk GPT processing
+    timeout = httpx.Timeout(300.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             # Logging payload (dev)
@@ -61,6 +62,14 @@ async def regulation_detail(payload: dict):
         field = payload.get("field", "")
         if not field:
             return {"error": "Field is required"}
+        
+        # ✅ Inject procedure_name dari procedure_text jika ada
+        # Ini untuk backward compatibility karena DB pakai procedure_text
+        # tapi regulation_service.py expect procedure_name
+        if not payload.get("procedure_name") and payload.get("procedure_text"):
+            payload["procedure_name"] = payload["procedure_text"]
+            payload["procedure"] = payload["procedure_text"]
+            print(f"[REGULATION] 💉 Injected procedure_name from procedure_text: {payload['procedure_text']}")
         
         result = await proxy_core_engine("/regulation_detail", payload)
         return result

@@ -402,7 +402,7 @@ def store_ai_recommendations(
                 entry_field=regulation_data.get("entry_field") or ai_data.get("field"),
                 dasar_hukum=regulation_data.get("dasar_hukum", ""),
                 judul_regulasi=regulation_data.get("judul_regulasi", "") or regulation_data.get("judul", ""),
-                bab_pasal=regulation_data.get("bab_pasal", "") or regulation_data.get("sumber", ""),
+                # bab_pasal removed - column deleted from database
                 isi=isi,
                 is_deleted=False,
                 created_at=datetime.utcnow(),

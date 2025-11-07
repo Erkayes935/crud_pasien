@@ -258,7 +258,7 @@ def make_modal(icd: str, db: Session, claim_id: int, stage: str):
             for det in d["detail_dummy"]:
                 det_model = models.ClaimProcedureDetail(
                     procedure_id=proc.id,
-                    claim_simulation_id=sim.id,   # jangan lupa isi biar NOT NULL
+                    # claim_simulation_id removed - not in database schema
                     icd9_tindakan=det.get("icd9"),
                     validitas_tindakan=det.get("validitas"),
                     status_tindakan=det.get("status"),
@@ -441,7 +441,7 @@ def make_dummy_idrg_regulasi(context: str, field: str):
         return {
             "judul_regulasi": f"Aturan i-DRG Diagnosis - {label}",
             "dasar_hukum": "Permenkes",
-            "bab_pasal": "Bab I Pasal 3",
+            # "bab_pasal": removed - column deleted from database
             "isi": f"Regulasi terkait {label} pada i-DRG Diagnosis (dummy).",
             "is_dummy": True,
             "is_deleted": False,
@@ -452,7 +452,7 @@ def make_dummy_idrg_regulasi(context: str, field: str):
         return {
             "judul_regulasi": f"Aturan i-DRG Summary - {label}",
             "dasar_hukum": "Permenkes",
-            "bab_pasal": "Bab II Pasal 6",
+            # "bab_pasal": removed - column deleted from database
             "isi": f"Regulasi terkait {label} pada i-DRG Summary (dummy).",
             "is_dummy": True,
             "is_deleted": False,
@@ -463,7 +463,7 @@ def make_dummy_idrg_regulasi(context: str, field: str):
         return {
             "judul_regulasi": "Aturan i-DRG (Unknown Context)",
             "dasar_hukum": "Permenkes",
-            "bab_pasal": "-",
+            # "bab_pasal": removed - column deleted from database
             "isi": f"Context {context} tidak dikenali (dummy).",
             "is_dummy": True,
             "is_deleted": False,
