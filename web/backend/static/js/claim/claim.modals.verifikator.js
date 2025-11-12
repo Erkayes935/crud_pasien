@@ -188,6 +188,7 @@ export function renderDiagnosisDetailReadOnly(data) {
   const inacbg = detail.inaCbg || {};
   const idrg = detail.idrg_prediction || {};
   const regulasi = detail.regulasi || [];
+  const aspek_lainnya = detail.aspek_lainnya || {};
 
   const fieldRow = (label, value, fieldName = null, context = "diagnosis", diagnosisId = null) => {
     const safeValue = value && value !== "" ? value : "-";
@@ -262,6 +263,10 @@ export function renderDiagnosisDetailReadOnly(data) {
         ${fieldRow("Tarif", inacbg.tarif)}
       `)}
 
+      ${section("ASPEK LAINNYA", `
+        ${fieldRow("Aspek Lainnya", detail.aspek_lainnya || "-")}
+      `)}
+
       ${idrg && Object.keys(idrg).length ? section("i-DRG", `
         ${fieldRow("Group i-DRG", idrg.group_idrg)}
         ${fieldRow("Severity Index", idrg.severity_index)}
@@ -318,6 +323,7 @@ export function renderProcedureDetailReadOnly(data) {
         ${renderProcBox("Faskes", analysis.faskes_tindakan || detail.faskes_tindakan, "faskes")}
         ${renderProcBox("Rawat Inap", analysis.rawat_inap_tindakan || detail.rawat_inap_tindakan, "rawat_inap_tindakan")}
         ${renderProcBox("Syarat Klinis", analysis.syarat_klinis || detail.syarat_klinis, "syarat_klinis")}
+        ${renderProcBox("Aspek Lainnya", analysis.aspek_lainnya || detail.aspek_lainnya, "aspek_lainnya")}
       </div>
     </div>`;
 }

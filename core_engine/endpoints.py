@@ -74,7 +74,7 @@ async def analyze_diagnosis(payload: dict):
     Expects: { "claim_id": int, "disease_name": str, "rekam_medis": [ {...} ] }
     Returns: JSON detail + engine_version
     """
-    out = process_analyze_diagnosis(payload)
+    out = await process_analyze_diagnosis(payload)
     from datetime import date
     out["engine_version"] = f"analyze_diagnosis@{date.today().isoformat()}"
     return out

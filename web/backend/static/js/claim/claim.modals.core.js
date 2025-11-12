@@ -65,9 +65,6 @@ export function openModal(title, content, options = {}) {
     }
   }
 
-  console.log("🔍 Opening modal with title:", title);
-  console.log("🔍 Modal content length:", content?.length || 0);
-
   // Clear existing content
   modalContent.innerHTML = "";
 
@@ -118,7 +115,6 @@ export function openModal(title, content, options = {}) {
   }, 10);
 
   state.modalOpen = true;
-  console.log("🔍 Modal container display:", getComputedStyle(modalContainer).display);
 
   // Alpine init & regulation events
   setTimeout(() => {
@@ -134,8 +130,6 @@ export function openModal(title, content, options = {}) {
           window.openRegulationDetailModal(field, diagnosisId, procedureId);
       });
     });
-
-    console.log("🔍 Event handlers attached to regulation fields");
   }, 50);
 
   // reset suppress flag

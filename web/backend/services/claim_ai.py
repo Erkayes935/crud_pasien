@@ -1,41 +1,34 @@
-import json
+import orjson
 import httpx
 from fastapi import HTTPException
 from backend import config
 
 async def proxy_core_engine(endpoint: str, payload: dict):
     """
-    Proxy request ke core_engine dengan:
-    - timeout 300 detik untuk GPT + fuzzy matching processing
-    - logging payload (print pretty JSON)
-    - mapping error httpx -> HTTPException FastAPI
+    Proxy request ke core_engine (optimized)
+    - pakai http2 + orjson untuk speed
+    - timeout 300 detik untuk GPT/fuzzy
     """
-    # Set connect timeout 10s, read timeout 300s untuk GPT processing
     timeout = httpx.Timeout(300.0, connect=10.0)
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    async with httpx.AsyncClient(http2=True, timeout=timeout) as client:
         try:
-            # Logging payload (dev)
-            print("=== PROXY PAYLOAD ===")
-            print(json.dumps(payload, indent=2, ensure_ascii=False))
-            print("======================")
-
             url = f"{config.CORE_ENGINE_URL}{endpoint}"
-            resp = await client.post(url, json=payload)
-            resp.raise_for_status()
-            return resp.json()
+            async with client.stream("POST", url, json=payload) as resp:
+                resp.raise_for_status()
+                data = await resp.aread()          # streaming read
+                return orjson.loads(data)
 
         except httpx.HTTPStatusError as e:
-            # Teruskan status code dari core_engine + body error-nya
             raise HTTPException(
                 status_code=e.response.status_code,
                 detail={
                     "error": str(e),
-                    "detail": e.response.text
+                    "detail": e.response.text,
                 },
             )
         except httpx.RequestError as e:
-            # Koneksi/timeout/DNS dll.
             raise HTTPException(status_code=500, detail=f"Core Engine error: {str(e)}")
+
 
 
 async def predict_ddx(payload: dict):

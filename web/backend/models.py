@@ -34,6 +34,7 @@ from .claim import (
     ClaimIDRGDiagnosis,
     ClaimIDRGSummary,
     ClaimTariff,
+    ClaimComboEvaluation,
 )
 
 # INA-CBG models

@@ -5,7 +5,7 @@ SQLAlchemy==2.0.35
 psycopg2-binary==2.9.10
 python-jose==3.3.0
 requests==2.31.0
-httpx==0.24.1
+httpx[http2]==0.28.1
 Jinja2==3.1.2
 openpyxl==3.1.2
 reportlab==4.0.4
@@ -14,4 +14,5 @@ alembic==1.13.1
 itsdangerous==2.1.2
 python-multipart==0.0.6
 aiofiles==23.1.0
+orjson==3.9.15
 openai

@@ -38,6 +38,7 @@ class ClaimDiagnosis(Base, HousekeepingMixin):
     indikasi_rujukan = Column(Text)
     kriteria_rujukan = Column(Text)
     tujuan_rujukan = Column(Text)
+    aspek_lainnya = Column(Text)
 
     claim = relationship("Claim", back_populates="diagnoses")
 

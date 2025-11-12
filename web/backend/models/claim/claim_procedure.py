@@ -60,6 +60,7 @@ class ClaimProcedureDetail(Base, HousekeepingMixin):
     rawat_inap_tindakan = Column(Text)
     syarat_klinis_tindakan = Column(Text)
     deskripsi_tindakan = Column(Text)
+    aspek_lainnya = Column(Text)
 
     procedure = relationship("ClaimProcedure", back_populates="procedure_details")
 

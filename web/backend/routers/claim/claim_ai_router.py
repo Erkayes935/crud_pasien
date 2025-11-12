@@ -50,8 +50,17 @@ async def analyze_diagnosis(
     db=Depends(get_db),
     user=Depends(require_roles_session("doctor")),
 ):
+    import time
+    start_time = time.time()
     try:
         result = await ai_service.analyze_diagnosis(db, claim_id, payload)
+        # 🩵 kalau FE kirim aspek_lainnya, simpan juga langsung di sini
+        if payload.get("aspek_lainnya"):
+            from backend.services.claim import ai
+            ai.store_aspek_lainnya(db, claim_id, payload["aspek_lainnya"], payload.get("stage", "admission"))
+
+        elapsed_time = time.time() - start_time
+        print(f"[ANALYZE_DIAGNOSIS] 🧩 analyze_diagnosis for claim {claim_id} took {elapsed_time:.2f} seconds")
         return {"status": "success", "data": result}
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -69,6 +78,11 @@ async def analyze_procedure(
 ):
     try:
         result = await ai_service.analyze_procedure(db, claim_id, payload)
+        # 🩵 simpan aspek_lainnya kalau dikirim
+        if payload.get("aspek_lainnya"):
+            from backend.services.claim import ai
+            ai.store_aspek_lainnya(db, claim_id, payload["aspek_lainnya"], payload.get("stage", "admission"))
+
         return {"status": "success", "data": result}
     except Exception as e:
         import traceback; traceback.print_exc()

@@ -19,6 +19,9 @@ from services.rules_loader import (
 # Import ICD-9 mapping service
 from services.icd9_mapping_service import map_icd9_smart
 
+# Import aspek_lainnya service
+from services.aspek_lainnya_service import generate_aspek_lainnya
+
 # ===========================================================
 # HELPER TAMBAHAN (baru)
 # ===========================================================
@@ -29,16 +32,26 @@ def extract_field_path(field_name: str):
 
 
 def get_field_info(section: str, field: str) -> dict:
-    """Ambil mapping sumber field dari FIELD_RULE_MAP"""
-    domain = FIELD_RULE_MAP.get("diagnosis", {})
-    return domain.get(field, {"source": "AI", "layers": [], "type": "ai"})
+    """Ambil mapping sumber field dari FIELD_RULE_MAP dengan fallback dinamis"""
+    # Ambil domain sesuai section, fallback ke diagnosis
+    domain = FIELD_RULE_MAP.get(section, FIELD_RULE_MAP.get("diagnosis", {}))
+    info = domain.get(field)
+
+    if not info:
+        # fallback dinamis kalau field belum didefinisikan
+        return {"source": "AI", "layers": [], "type": "ai"}
+    return info
 
 
 def should_use_ai(section: str, field: str) -> bool:
     """Tentukan apakah field butuh AI"""
     info = get_field_info(section, field)
-    return info["type"] in ["ai", "hybrid"]
+    return info.get("type") in ["ai", "hybrid"]
 
+def should_use_rule(section: str, field: str) -> bool:
+    """Tentukan apakah field butuh rule"""
+    info = get_field_info(section, field)
+    return info.get("type") in ["rule", "hybrid"]
 
 def format_multilayer_rules(rule_list: list):
     """Gabungkan beberapa layer menjadi poin-poin (string multi-baris)"""
@@ -363,11 +376,10 @@ def summarize_multilayer_rules(rule_list):
     # Gabung dengan separator yang rapi
     return " ".join(combined[:2]) if combined else "-"  # Max 2 poin untuk ringkas
 
-
 # ==============================
 # INTEGRATOR GPT + RULES (HYBRID APPROACH)
 # ==============================
-def process_analyze_diagnosis(input_data: dict) -> dict:
+async def process_analyze_diagnosis(input_data: dict) -> dict:
     """
     Hybrid multilayer analyzer untuk diagnosis
     - Ambil rule dari DB (rules_master)
@@ -375,7 +387,8 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     - Tambah AI hanya bila perlu (AI/Hybrid)
     - Hasil akhir disusun sesuai struktur UI (claim.modals.js)
     """
-
+    import time
+    t0 = time.time()
     claim_id = input_data.get("claim_id")
     disease_name = input_data.get("disease_name", "")
     rekam_medis = input_data.get("rekam_medis", [])
@@ -385,7 +398,9 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     print(f"[DIAGNOSIS] Mulai analisis multilayer untuk {disease_name}")
 
     # 1️⃣ Ambil rule multilayer dari DB
+    t1 = time.time()
     multilayer = load_rules_for_diagnosis(disease_name, rs_id=rs_id, region_id=region_id, scope="diagnosis")
+    print(f"[DIAGNOSIS] Ambil rule multilayer: {time.time() - t1:.2f}s")
     rule_data_db = multilayer.get("rules", {})
 
     # 2️⃣ Ambil rule nasional (JSON)
@@ -425,7 +440,9 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
     # 5️⃣ Panggil AI bila perlu
     gpt_result = None
     print("[DIAGNOSIS] Memanggil GPT untuk melengkapi data hybrid...")
+    t_gpt = time.time()
     gpt_result = gpt_analyze_diagnosis(disease_name, rekam_medis)
+    print(f"[DIAGNOSIS] GPT selesai: {time.time() - t_gpt:.2f}s")
     # Pastikan struktur GPT selalu lengkap
     gpt_result = ensure_default_gpt_structure(gpt_result, disease_name)
 
@@ -508,11 +525,23 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
                 merged[field_name] = val_ai or val_rule or "-"
         return merged
 
-    aspek_klinis = smart_merge("aspek_klinis", rule_data, gpt_result, rule_data_db)
-    icd10_data = smart_merge("icd10", rule_data, gpt_result, rule_data_db)
-    rawat_inap = smart_merge("rawat_inap", rule_data, gpt_result, rule_data_db)
-    faskes = smart_merge("faskes", rule_data, gpt_result, rule_data_db)
-    rujukan = smart_merge("rujukan", rule_data, gpt_result, rule_data_db)
+    import asyncio
+
+    tasks = [
+        asyncio.to_thread(smart_merge, "aspek_klinis", rule_data, gpt_result, rule_data_db),
+        asyncio.to_thread(smart_merge, "icd10", rule_data, gpt_result, rule_data_db),
+        asyncio.to_thread(smart_merge, "rawat_inap", rule_data, gpt_result, rule_data_db),
+        asyncio.to_thread(smart_merge, "faskes", rule_data, gpt_result, rule_data_db),
+        asyncio.to_thread(smart_merge, "rujukan", rule_data, gpt_result, rule_data_db),
+    ]
+
+    t_smart_merge = time.time()
+    aspek_klinis, icd10_data, rawat_inap, faskes, rujukan = await asyncio.gather(*tasks)
+    print(f"[DIAGNOSIS] Smart merge: {time.time() - t_smart_merge:.2f}s")
+
+    # ============================================================
+    # Penyesuaian khusus untuk INA-CBG
+    # ============================================================
     ina_cbg_info = rule_data.get("ina_cbg", {})
 
     # Penyesuaian khusus untuk ICD-10 dengan mapping WHO → BPJS
@@ -910,5 +939,42 @@ def process_analyze_diagnosis(input_data: dict) -> dict:
             # kalau list, gabung jadi string rapi
             result["klinis"]["bukti_klinis"] = ", ".join(bukti_text)
 
-    print(f"[DIAGNOSIS] ✅ Analisis selesai ({result['data_completeness']} lengkap)")
+    # ============================================================
+    # 🔹 Tambahkan Aspek Lainnya
+    # ============================================================
+    aspek_lainnya_resp = generate_aspek_lainnya({
+        "diagnosis": disease_name,
+        "rs_id": rs_id,
+        "region_id": region_id,
+    })
+    result["aspek_lainnya"] = aspek_lainnya_resp.get("aspek_lainnya", {})
+
+    # 🔹 ambil notifikasi dengan format sama seperti section lain
+    notif_obj = aspek_lainnya_resp.get("notifications", {}).get("lainnya", {})
+    notif_text = ""
+    if isinstance(notif_obj, dict):
+        notif_text = notif_obj.get("message", "")
+    else:
+        notif_text = str(notif_obj or "")
+
+    if notif_text:
+        status = notif_obj.get("status", "info") if isinstance(notif_obj, dict) else "info"
+        txt_lower = notif_text.lower()
+        if any(w in txt_lower for w in ["tidak sesuai", "kurang", "belum", "perlu", "review"]):
+            status = "warning"
+        elif any(w in txt_lower for w in ["salah", "tidak valid", "keliru"]):
+            status = "error"
+        elif any(w in txt_lower for w in ["baik", "lengkap", "sesuai"]):
+            status = "success"
+
+        result.setdefault("notifications", {})["lainnya"] = {
+            "status": status,
+            "message": notif_text
+        }
+
+    # ============================================================
+
+    print(f"[ANALYZE_DIAGNOSIS] ✅ Analisis diagnosis selesai untuk {disease_name}")
+    print(f"[ANALYZE_DIAGNOSIS] Result: {result}")
+
     return result

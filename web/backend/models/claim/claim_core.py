@@ -65,6 +65,8 @@ class Claim(Base, HousekeepingMixin):
     group_id = Column(Integer, ForeignKey("claim_groups.id"), nullable=True)
     group = relationship("ClaimGroup", back_populates="claims")
 
+    combo_evaluations = relationship("ClaimComboEvaluation", back_populates="claim", cascade="all, delete-orphan")
+
     # ==== Helper Property ====
     @property
     def external_visits(self):

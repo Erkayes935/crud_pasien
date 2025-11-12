@@ -11981,3 +11981,1363 @@ Traceback:   + Exception Group Traceback (most recent call last):
 2025-11-07 18:47:12,535 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
 2025-11-07 18:48:03,339 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
 2025-11-07 18:48:25,762 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-07 19:03:31,512 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-07 19:03:31,732 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-07 19:03:51,834 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-07 19:05:00,776 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-07T19:05:00.769800', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-07 19:05:45,204 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-07 19:05:52,824 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-07 19:06:45,359 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 01:59:17,247 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 01:59:33,794 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 02:03:24,348 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 02:06:47,819 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 02:09:55,585 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 02:11:14,957 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 02:12:12,903 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:10:20,919 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:11:27,094 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:12:12,645 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:16:42,190 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:18:00,295 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:20:28,286 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:22:12,122 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:36:28,342 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 03:36:31,570 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T03:36:31.570124', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 03:36:41,437 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 03:38:45,606 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 03:39:12,297 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 03:51:34,841 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T03:51:34.841355', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 03:51:43,522 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 03:53:41,724 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 03:53:56,105 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 03:54:40,087 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T03:54:40.086703', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 03:57:04,282 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 03:57:06,255 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T03:57:06.254760', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_procedure', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 03:59:55,494 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T03:59:55.486836', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:01:58,999 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:01:58.998989', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:02:10,359 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-08 04:02:10,571 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-08 04:02:15,978 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column claim_procedure_details.aspek_lainnya does not exist
+LINE 1: ...an AS claim_procedure_details_deskripsi_tindakan, claim_proc...
+                                                             ^
+
+[SQL: SELECT claim_procedure_details.id AS claim_procedure_details_id, claim_procedure_details.procedure_id AS claim_procedure_details_procedure_id, claim_procedure_details.icd9_tindakan AS claim_procedure_details_icd9_tindakan, claim_procedure_details.validitas_tindakan AS claim_procedure_details_validitas_tindakan, claim_procedure_details.status_tindakan AS claim_procedure_details_status_tindakan, claim_procedure_details.ina_cbg_tindakan AS claim_procedure_details_ina_cbg_tindakan, claim_procedure_details.faskes_tindakan AS claim_procedure_details_faskes_tindakan, claim_procedure_details.rawat_inap_tindakan AS claim_procedure_details_rawat_inap_tindakan, claim_procedure_details.syarat_klinis_tindakan AS claim_procedure_details_syarat_klinis_tindakan, claim_procedure_details.deskripsi_tindakan AS claim_procedure_details_deskripsi_tindakan, claim_procedure_details.aspek_lainnya AS claim_procedure_details_aspek_lainnya, claim_procedure_details.created_at AS claim_procedure_details_created_at, claim_procedure_details.updated_at AS claim_procedure_details_updated_at, claim_procedure_details.is_deleted AS claim_procedure_details_is_deleted, claim_procedure_details.is_dummy AS claim_procedure_details_is_dummy 
+FROM claim_procedure_details 
+WHERE %(param_1)s = claim_procedure_details.procedure_id]
+[parameters: {'param_1': 1449283}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /claims/172/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column claim_procedure_details.aspek_lainnya does not exist
+LINE 1: ...an AS claim_procedure_details_deskripsi_tindakan, claim_proc...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim/claim_management_router.py", line 403, in edit_claim_form
+    existing_mappings = load_existing_mappings(db, claim_id)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/services/claim/simulation.py", line 604, in load_existing_mappings
+    if hasattr(proc, 'procedure_details') and proc.procedure_details:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/attributes.py", line 566, in __get__
+    return self.impl.get(state, dict_)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/attributes.py", line 1086, in get
+    value = self._fire_loader_callables(state, key, passive)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/attributes.py", line 1121, in _fire_loader_callables
+    return self.callable_(state, passive)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/strategies.py", line 967, in _load_for_state
+    return self._emit_lazyload(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/strategies.py", line 1130, in _emit_lazyload
+    result = session.execute(
+             ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column claim_procedure_details.aspek_lainnya does not exist
+LINE 1: ...an AS claim_procedure_details_deskripsi_tindakan, claim_proc...
+                                                             ^
+
+[SQL: SELECT claim_procedure_details.id AS claim_procedure_details_id, claim_procedure_details.procedure_id AS claim_procedure_details_procedure_id, claim_procedure_details.icd9_tindakan AS claim_procedure_details_icd9_tindakan, claim_procedure_details.validitas_tindakan AS claim_procedure_details_validitas_tindakan, claim_procedure_details.status_tindakan AS claim_procedure_details_status_tindakan, claim_procedure_details.ina_cbg_tindakan AS claim_procedure_details_ina_cbg_tindakan, claim_procedure_details.faskes_tindakan AS claim_procedure_details_faskes_tindakan, claim_procedure_details.rawat_inap_tindakan AS claim_procedure_details_rawat_inap_tindakan, claim_procedure_details.syarat_klinis_tindakan AS claim_procedure_details_syarat_klinis_tindakan, claim_procedure_details.deskripsi_tindakan AS claim_procedure_details_deskripsi_tindakan, claim_procedure_details.aspek_lainnya AS claim_procedure_details_aspek_lainnya, claim_procedure_details.created_at AS claim_procedure_details_created_at, claim_procedure_details.updated_at AS claim_procedure_details_updated_at, claim_procedure_details.is_deleted AS claim_procedure_details_is_deleted, claim_procedure_details.is_dummy AS claim_procedure_details_is_dummy 
+FROM claim_procedure_details 
+WHERE %(param_1)s = claim_procedure_details.procedure_id]
+[parameters: {'param_1': 1449283}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-08 04:06:38,334 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:07:32,012 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:07:54,253 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: OperationalError - (psycopg2.OperationalError) connection to server at "103.179.56.158", port 5434 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Path: /claims/172/edit
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+    return dialect.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "103.179.56.158", port 5434 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 263, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 586, in solve_dependencies
+    solved = await run_in_threadpool(call, **sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/auth.py", line 136, in _dep
+    user = db.query(models.User).get(uid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in get
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/deprecations.py", line 386, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 1127, in get
+    return self._get_impl(ident, loading.load_on_pk_identity)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 1136, in _get_impl
+    return self.session._get_impl(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 3873, in _get_impl
+    return db_load_fn(
+           ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/loading.py", line 694, in load_on_pk_identity
+    session.execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2237, in _execute_internal
+    conn = self._connection_for_bind(bind)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2106, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 2, in _connection_for_bind
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1189, in _connection_for_bind
+    conn = bind.connect()
+           ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3278, in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 148, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2442, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3302, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 449, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 308, in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/create.py", line 643, in connect
+    return dialect.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 621, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "103.179.56.158", port 5434 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+2025-11-08 04:08:56,297 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-08 04:14:13,566 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:14:16,310 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:14:16.310301', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:14:40,444 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-08 04:15:10,033 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:15:10.033530', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:17:11,828 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-08 04:17:12,051 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-08 04:17:28,519 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 04:19:19,842 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 04:19:24,863 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 04:19:53,585 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 04:35:20,860 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:35:22,677 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:35:22.677241', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:35:32,373 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 04:37:44,591 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:39:22,048 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 04:39:28,823 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 04:42:32,400 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:43:07,062 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:43:43,325 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:43:46,030 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:43:46.029943', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:43:53,915 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 04:45:40,745 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 04:45:47,176 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 04:48:33,330 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:49:45,421 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:50:39,875 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:50:45,269 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:50:45.269511', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:51:03,549 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 04:53:07,625 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 04:53:14,496 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 04:55:08,968 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:55:20,760 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 04:55:37,215 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T04:55:37.215590', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 04:55:50,630 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 04:57:53,083 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 04:58:02,800 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 05:04:42,273 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 05:14:53,985 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 05:14:57,920 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:14:57.920135', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:15:07,544 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 05:17:23,456 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 05:17:33,098 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 05:18:38,757 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 05:19:14,014 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 05:19:26,283 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 05:21:56,187 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 05:22:02,384 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 05:23:32,794 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:23:32.794010', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:33:24,007 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 05:33:29,868 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:33:29.868129', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:33:39,408 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 05:34:30,532 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:34:30.532173', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:34:44,908 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:34:44.908234', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:36:36,453 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 05:36:44,706 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 05:37:15,495 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:15,644 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:21,427 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:21,711 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:26,436 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:26,657 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:34,496 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:34,637 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:45,728 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:37:45,850 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 05:38:19,754 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 05:40:24,170 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:40:24.170151', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:45:21,693 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 05:59:27,358 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 05:59:30,070 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T05:59:30.070550', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 05:59:38,647 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 06:02:16,731 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 06:02:16,881 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T06:02:16.880798', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:02:31,391 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T06:02:31.390439', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:03:30,932 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T06:03:30.931503', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:04:38,182 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 06:04:38,250 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T06:04:38.250470', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:07:40,187 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 06:07:44,831 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T06:07:44.831338', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:07:56,400 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 06:10:00,885 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 06:10:01,026 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T06:10:01.026388', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:10:52,542 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 06:11:17,486 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-08T06:11:17.486015', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:11:33,867 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 06:13:21,562 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 06:13:21,641 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T06:13:21.641764', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:15:10,102 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 06:15:11,186 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T06:15:11.186806', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 06:16:21,905 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-08 06:16:42,513 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-08 06:18:28,076 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 06:18:35,017 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 06:21:31,068 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-08 14:49:53,576 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-08 14:49:54,098 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-08T14:49:54.090786', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-11-08 14:52:11,621 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-08 14:52:22,592 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-08 14:58:11,321 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 14:58:11,858 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 14:59:32,864 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 14:59:33,207 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 14:59:58,396 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 14:59:59,471 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 15:01:17,214 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 15:01:17,911 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-08 15:13:46,870 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-09 18:38:00,741 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-09T18:38:00.733777', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 01:59:28,732 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 01:59:32,253 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T01:59:32.253149', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 01:59:46,276 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 02:02:02,527 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 02:02:09,693 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 02:12:04,845 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 02:12:24,422 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T02:12:24.422036', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 02:19:30,297 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 02:19:33,735 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T02:19:33.735871', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 02:19:41,924 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 02:21:47,735 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 02:21:54,249 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 02:50:27,240 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 02:50:33,254 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T02:50:33.254313', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 02:50:43,116 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 02:53:01,921 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 02:53:08,463 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 02:56:39,211 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 02:56:42,188 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T02:56:42.188118', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 02:56:49,803 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 02:59:12,808 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 02:59:20,086 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 03:03:23,135 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 03:06:17,062 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 03:10:34,951 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:10:34.949676', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:12:24,699 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 03:12:30,820 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:12:30.819998', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:13:38,614 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 03:13:41,041 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:13:41.041734', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:13:47,516 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 03:31:44,038 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 03:41:10,045 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:41:10.045512', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:41:21,019 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 03:43:19,937 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 03:43:25,501 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 03:43:47,738 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: OperationalError - (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Path: /claims/123/analyze_diagnosis
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1127, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 699, in do_rollback
+    dbapi_connection.rollback()
+psycopg2.OperationalError: SSL SYSCALL error: EOF detected
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 14, in __call__
+    async with AsyncExitStack() as stack:
+  File "/usr/local/lib/python3.11/contextlib.py", line 745, in __aexit__
+    raise exc_details[1]
+  File "/usr/local/lib/python3.11/contextlib.py", line 728, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/contextlib.py", line 217, in __aexit__
+    await anext(self.gen)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/concurrency.py", line 38, in contextmanager_in_threadpool
+    await anyio.to_thread.run_sync(
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/app/web/backend/auth.py", line 20, in get_db
+    db.close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2518, in close
+    self._close_impl(invalidate=False)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2587, in _close_impl
+    transaction.close(invalidate)
+  File "<string>", line 2, in close
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1419, in close
+    transaction.close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2588, in close
+    self._do_close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2726, in _do_close
+    self._close_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2712, in _close_impl
+    self._connection_rollback_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2704, in _connection_rollback_impl
+    self.connection._rollback_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1129, in _rollback_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1127, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 699, in do_rollback
+    dbapi_connection.rollback()
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+2025-11-10 03:44:47,107 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 03:47:00,868 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:47:00.867366', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:48:47,340 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 03:48:49,527 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T03:48:49.526998', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 03:48:57,262 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 03:50:58,921 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 03:51:07,001 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 03:52:54,616 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 03:58:24,926 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 03:58:30,731 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 03:58:42,887 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 03:59:58,774 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 04:01:13,093 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 04:01:26,899 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T04:01:26.899015', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 05:02:05,437 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 05:02:11,333 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T05:02:11.333332', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 05:02:20,709 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 05:03:00,517 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-10 05:03:00,881 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-10T05:03:00.880716', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 05:03:28,863 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-10 05:03:28,978 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-10T05:03:28.978677', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 05:09:50,062 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 05:09:53,266 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T05:09:53.266714', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 05:10:02,898 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 05:11:58,987 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 05:12:04,969 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 05:12:16,986 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:12:22,770 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:12:28,047 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:12:32,169 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:12:37,919 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:13:05,175 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 05:14:43,789 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 05:16:12,661 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 06:47:32,855 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 06:47:38,095 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T06:47:38.095375', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 06:47:47,762 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 06:49:39,516 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-10 06:49:39,859 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-10T06:49:39.858605', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 06:51:24,692 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-10 06:51:24,764 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-10T06:51:24.763907', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:05:06,338 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 07:05:29,501 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 07:07:19,148 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T07:07:19.148518', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:08:04,491 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 07:08:19,887 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T07:08:19.887031', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:09:53,176 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 07:10:00,223 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 07:10:04,233 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 07:10:40,700 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:10:49,381 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:10:55,941 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:11:05,818 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:11:06,220 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:11:28,529 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 500 Internal Server Error"
+2025-11-10 07:11:28,688 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-10T07:11:28.687527', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/123/analyze_procedure', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:13:45,980 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 07:13:49,991 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T07:13:49.991124', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:14:17,065 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 07:16:16,030 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 07:16:21,654 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 07:17:05,583 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 07:18:08,325 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:32:17,299 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 07:32:33,717 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T07:32:33.717369', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 07:33:24,917 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 07:35:16,638 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 07:35:22,599 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 07:35:46,450 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:35:52,150 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:35:55,860 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:35:56,817 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 07:36:17,342 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 08:07:38,190 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:15:05,613 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:15:39,920 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:23:14,616 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:23:21,274 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T08:23:21.274391', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 08:23:31,975 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 08:25:28,235 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 08:25:34,559 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 08:28:58,530 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 08:29:09,911 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:29:15,298 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:29:20,105 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:42:25,074 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:42:51,777 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:44:07,964 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T08:44:07.964735', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 08:44:18,930 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 08:46:36,741 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 08:46:44,729 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 08:48:45,318 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 08:48:59,362 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T08:48:59.362412', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 08:49:31,317 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:49:39,909 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:50:01,419 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:50:27,755 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 08:58:41,191 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:58:52,748 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 08:59:12,008 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T08:59:12.008002', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 08:59:19,218 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 09:02:13,290 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 09:02:18,819 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 09:04:21,279 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 09:04:41,530 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 09:55:47,659 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 09:56:05,587 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T09:56:05.587372', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 09:56:16,532 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 09:58:12,938 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 09:58:18,616 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 09:59:22,882 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 09:59:30,562 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:00:03,465 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-10 10:00:14,837 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:00:19,705 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:05,237 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:10,355 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:10,539 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:21,818 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:21,979 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:34,166 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:03:51,329 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:04:24,533 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 10:05:13,484 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T10:05:13.483826', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 10:05:23,747 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 10:08:02,018 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 10:08:08,254 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 23:19:37,644 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T23:19:37.628079', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 23:49:36,824 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-10 23:49:41,571 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-10T23:49:41.571756', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-10 23:49:51,603 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-10 23:51:49,143 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-10 23:51:55,863 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-10 23:52:35,256 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:52:43,050 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:52:46,761 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:52:57,284 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:53:13,368 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:53:13,955 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:53:21,913 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:53:22,612 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-10 23:57:43,320 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 00:00:49,755 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:00:54,829 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:29:24,231 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 00:29:26,569 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:29:26.569467', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 00:29:35,228 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 00:31:17,827 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 00:31:27,214 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 00:31:58,323 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:31:58.322959', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 00:33:05,850 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 00:33:09,047 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:33:09.046934', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 00:33:17,369 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 00:35:07,211 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 00:35:20,871 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 00:35:44,606 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:35:50,812 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:36:02,189 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:36:17,715 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:36:17.715453', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 00:36:47,921 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 00:36:50,299 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:36:50.299201', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 00:36:59,340 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 00:38:50,952 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 00:38:57,428 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 00:39:16,195 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 00:39:30,433 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:40:33,930 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:41:59,276 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:42:09,896 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:42:15,767 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 00:48:42,524 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T00:48:42.524301', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 01:54:16,563 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:17,196 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:23,543 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:24,683 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:31,241 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:32,273 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:37,267 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:37,873 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:43,944 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:44,958 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:54:49,126 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T01:54:49.125386', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 01:55:11,335 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 01:57:19,187 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 01:57:24,911 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 01:57:48,295 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:57:48,761 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:57:57,635 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 01:57:58,011 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:01:45,791 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:01:46,367 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:05:40,380 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:06:12,866 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:06:21,376 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:09:40,142 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:14:27,085 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:14:36,975 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T02:14:36.975604', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 02:14:46,401 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 02:16:52,575 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 02:16:57,528 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 02:18:35,430 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T02:18:35.430057', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 02:19:18,623 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:19:38,442 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:26:02,251 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:26:31,791 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T02:26:31.791431', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 02:26:42,831 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 02:28:41,493 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 02:28:50,421 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 02:29:21,572 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:38:18,244 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:41:22,080 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:41:26,016 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T02:41:26.016323', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 02:41:35,152 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 02:43:48,416 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 02:43:55,224 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 02:44:23,783 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:51:38,910 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 02:51:52,216 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T02:51:52.216589', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 02:51:59,038 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 02:53:45,540 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 02:53:54,034 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 02:54:16,970 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 02:54:27,354 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:07,762 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:08,534 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:13,231 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:14,127 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:14,675 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:15,298 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:23,357 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:23,855 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:30,409 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:31,712 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:36,184 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:37,258 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:45,493 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:46,262 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:49,455 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:49,810 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:53,803 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:55:54,478 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:03,507 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:04,708 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:13,425 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:14,333 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:18,038 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:19,469 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:23,877 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:56:24,917 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:58:18,755 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:58:19,306 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 02:58:34,986 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:05:05,311 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:05:13,288 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:06:32,963 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:33,350 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:38,467 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:38,840 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:49,326 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:49,702 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:54,854 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:06:56,025 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:07:04,130 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:07:04,758 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:07:20,916 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 03:13:31,125 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 03:13:34,905 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:13:34.905226', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:13:44,028 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 03:15:58,705 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:16:06,611 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:16:33,481 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 03:16:56,558 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:16:56.558712', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:17:16,900 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:17:17,441 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:17:21,166 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:17:21,888 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 03:24:42,480 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 03:24:47,543 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:24:47.543146', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:25:04,416 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 03:27:01,813 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:27:09,443 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:27:36,940 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 03:29:09,331 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:29:09.331356', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:29:14,595 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 03:31:06,582 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:31:14,699 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:33:22,125 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 03:38:27,700 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:38:27.700521', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:38:35,909 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 03:40:25,368 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:40:31,793 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:40:52,484 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 03:41:38,636 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T03:41:38.636252', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 03:41:46,889 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 03:43:35,355 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 03:43:42,027 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 03:55:55,914 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:01:10,698 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 04:01:13,835 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:01:13.835351', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:01:23,463 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:03:24,753 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 04:03:32,601 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 04:03:56,194 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:04:22,619 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:09:26,583 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:09:26.583597', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:24:25,699 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 04:24:33,720 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:24:33.720848', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:24:40,168 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:24:57,986 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:26:53,718 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 04:27:00,009 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 04:27:17,399 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:27:50,475 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:28:22,652 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:28:22.652695', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:32:12,296 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:32:32,903 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:32:32.903577', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:39:26,446 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 04:39:33,222 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:39:33.222843', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:39:41,520 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:41:41,721 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 04:41:50,782 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 04:42:40,768 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:43:26,761 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:52:12,989 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 04:52:14,961 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:52:14.961740', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:52:23,251 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:54:12,735 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 04:54:18,587 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 04:54:43,562 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:56:30,539 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 04:56:35,123 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:56:35.123474', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:56:42,561 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 04:58:32,608 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 04:58:39,345 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 04:59:05,610 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 04:59:33,279 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:59:33.279668', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 04:59:42,437 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T04:59:42.437793', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:01:50,466 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:01:50.466329', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:02:56,291 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:02:56.291756', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:06:40,615 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:06:40.615206', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:06:44,009 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:06:44.009171', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:06:44,634 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:06:44.634042', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:07:05,504 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 05:10:08,219 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 05:10:16,133 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 05:11:29,022 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 05:11:45,064 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 05:11:59,282 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:11:59.281972', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:12:07,058 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 05:14:03,626 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 05:14:10,764 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 05:14:32,693 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 05:15:33,386 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:15:33.385938', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:16:28,838 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 05:17:49,287 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 05:18:01,330 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T05:18:01.330127', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 05:18:09,861 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 05:20:11,319 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 05:20:17,997 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 05:20:36,449 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 06:18:21,005 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 06:18:25,146 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:18:25.146731', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:18:36,575 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 06:20:40,396 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 06:20:47,374 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 06:21:11,711 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 06:21:24,165 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:24,446 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:24,694 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:29,398 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:30,001 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:35,063 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:21:35,604 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:22:52,082 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 06:23:34,231 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-11 06:23:34,450 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-11 06:24:01,272 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 06:24:55,827 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:25:05,642 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 06:28:26,445 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 06:28:48,454 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 06:29:42,680 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:29:42.680779', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:30:27,799 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 06:32:11,032 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 06:32:24,885 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 06:32:31,200 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 06:33:09,539 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:33:09.539544', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:40:18,530 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 06:48:18,253 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:48:18.253086', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:48:34,399 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 06:48:36,253 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:48:36.253602', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:48:59,468 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 06:51:08,199 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:51:08.198874', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:52:00,611 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:52:00.611320', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:59:21,287 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 06:59:28,111 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:59:28.111613', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 06:59:33,171 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T06:59:33.171837', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:00:08,377 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:01:02,791 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:01:07,908 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:01:07.908735', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:01:34,353 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:05:03,184 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:05:03.184107', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:05:31,166 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:06:58,638 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:07:01,801 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:07:01.801325', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:07:29,627 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:11:15,565 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:12:22,700 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:12:38,870 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ClientDisconnect - 
+Path: /claims/116/finalize
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 263, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 584, in solve_dependencies
+    solved = await call(**sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/auth.py", line 188, in require_csrf_dep
+    form = await request.form()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 275, in _get_form
+    self._form = await form_parser.parse()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/formparsers.py", line 95, in parse
+    async for chunk in self.stream:
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 230, in stream
+    raise ClientDisconnect()
+starlette.requests.ClientDisconnect
+
+2025-11-11 07:12:38,888 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ClientDisconnect - 
+Path: /claims/116/finalize
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 263, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 584, in solve_dependencies
+    solved = await call(**sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/auth.py", line 188, in require_csrf_dep
+    form = await request.form()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 275, in _get_form
+    self._form = await form_parser.parse()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/formparsers.py", line 95, in parse
+    async for chunk in self.stream:
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 230, in stream
+    raise ClientDisconnect()
+starlette.requests.ClientDisconnect
+
+2025-11-11 07:12:38,897 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ClientDisconnect - 
+Path: /claims/116/finalize
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 263, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 584, in solve_dependencies
+    solved = await call(**sub_values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/auth.py", line 188, in require_csrf_dep
+    form = await request.form()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 275, in _get_form
+    self._form = await form_parser.parse()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/formparsers.py", line 95, in parse
+    async for chunk in self.stream:
+  File "/usr/local/lib/python3.11/site-packages/starlette/requests.py", line 230, in stream
+    raise ClientDisconnect()
+starlette.requests.ClientDisconnect
+
+2025-11-11 07:15:28,166 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:28:56,269 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:28:56.268163', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:29:16,779 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:29:44,774 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:29:44.773888', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:34:49,826 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:34:54,814 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:34:58,243 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:38:09,766 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:38:09.766599', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:38:37,109 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:40:43,878 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:40:43.878062', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:41:09,991 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:43:58,585 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:43:58.585760', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:48:39,383 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:48:41,329 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:48:41.329466', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:49:09,831 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:49:19,543 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:49:26,116 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:49:31,962 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:49:31.962353', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:53:00,357 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:55:26,058 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 07:55:29,042 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:55:29.042488', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:55:52,085 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 07:56:04,762 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:56:08,789 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:56:20,966 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 07:56:31,880 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 07:58:41,674 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:58:41.673904', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 07:58:55,718 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T07:58:55.718247', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:00:35,620 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:00:35.620789', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:00:56,479 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-11 08:01:42,380 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-11 08:01:42,799 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-11 08:02:04,466 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:05:00,825 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:05:06,881 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:07:31,149 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:07:31.149531', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:07:39,095 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:09:32,670 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:09:39,910 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:11:41,055 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:11:47,530 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:13:02,692 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 08:13:05,358 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:13:05.358773', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:13:13,801 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:14:58,722 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:15:04,692 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:15:21,118 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:15:21.118215', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:15:28,568 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:17:34,579 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:17:44,753 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:18:16,647 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 08:18:35,627 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:18:35,929 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:18:36,200 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:18:59,806 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:18:59.806211', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:20:34,095 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:20:34.095430', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:20:42,777 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:22:33,384 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:22:40,991 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:23:35,269 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 08:25:38,661 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:25:59,983 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-11T08:25:59.983166', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:27:45,460 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:27:51,919 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:28:41,188 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 08:31:44,041 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:31:44.041651', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:34:06,214 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:34:13,063 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:35:15,362 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:35:17,008 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:50:34,914 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:50:43,040 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:53:44,256 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 08:54:04,474 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T08:54:04.474889', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 08:54:12,508 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 08:55:57,639 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 08:56:04,430 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 08:56:27,567 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:56:27,569 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:56:32,389 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:56:32,391 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:56:37,170 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 08:56:37,175 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:00:53,033 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:00:55,609 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-11T09:00:55.609287', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-11 09:01:04,729 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-11 09:03:01,365 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-11 09:03:08,415 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-11 09:03:21,991 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:22,148 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:28,572 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:29,080 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:31,296 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:34,345 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:34,825 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:35,303 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:38,255 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:40,469 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:40,939 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:45,066 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:03:45,430 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:04:14,019 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-11 09:04:19,883 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:04:20,448 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:04:20,877 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:04:24,756 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:04:25,055 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-11 09:26:33,829 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:28:11,542 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:28:32,938 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:28:57,067 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:33:17,546 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-11 09:33:30,773 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 00:21:59,536 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 00:21:59,910 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:12:29,902 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 02:31:18,111 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 02:31:21,881 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:31:21.881125', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:31:31,321 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 02:33:23,005 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 02:33:30,559 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 02:33:51,606 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:33:51.606057', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:35:09,451 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:35:09,784 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:36:24,577 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:36:24.577371', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:37:01,932 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:37:01.932669', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:37:10,283 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:37:10,829 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:37:13,561 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 02:40:26,560 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:40:26.560867', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:42:33,092 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:42:33.092222', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:50:20,491 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 02:50:23,639 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:50:23.639070', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:50:31,788 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 02:52:32,361 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 02:52:38,036 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 02:52:58,789 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:52:58.789192', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:57:48,226 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 02:57:52,301 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T02:57:52.301083', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 02:58:00,090 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 03:00:16,549 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 03:00:26,553 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 03:00:39,100 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:00:39.100004', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:09:53,067 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:09:55,746 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:09:55.746796', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:10:05,270 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 03:12:03,332 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 03:12:10,908 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 03:12:43,023 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:12:43.023139', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:19:18,919 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:19:33,080 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:19:57,124 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:20:00,760 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:20:00.760532', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:20:11,184 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 03:21:58,844 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 03:22:07,546 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 03:22:16,155 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:22:16.155682', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:30:41,481 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:37:35,257 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:37:38,634 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:37:38.634308', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:37:42,048 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:37:42.048232', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:37:43,846 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:37:43.846037', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:37:55,851 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:37:55.851340', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:37:59,439 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:37:59.439146', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:38:00,060 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:38:00.060534', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:38:35,481 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 03:40:21,203 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 03:40:27,516 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 03:50:09,455 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:51:25,735 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 03:51:28,024 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T03:51:28.023798', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 03:51:36,120 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 03:53:48,553 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 03:53:55,130 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 04:03:35,696 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 04:03:38,128 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:03:38.128245', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:03:52,110 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 04:04:19,033 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-12 04:04:19,211 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T04:04:19.211625', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:04:34,039 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-12 04:04:34,097 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T04:04:34.097420', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:09:02,726 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 04:09:06,439 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:09:06.439062', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:09:16,603 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 04:09:22,073 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-12 04:09:22,174 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T04:09:22.174012', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:09:22,707 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-12 04:09:22,764 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T04:09:22.764361', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_diagnosis', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:11:58,922 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 04:12:02,781 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:12:02.781820', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:12:12,358 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 04:13:43,421 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 04:13:51,183 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 04:14:48,782 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:14:48.782307', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:28:43,216 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 04:28:52,701 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:28:52.701617', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:28:59,562 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 04:30:08,747 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 04:30:15,633 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 04:31:52,178 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T04:31:52.178813', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 04:41:20,211 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 04:41:26,874 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 05:01:20,728 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 05:03:10,346 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T05:03:10.346854', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 05:03:18,735 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T05:03:18.735234', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/predict_ddx', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 05:03:22,263 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-12T05:03:22.262925', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/predict_ddx', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 05:12:22,857 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 05:12:36,020 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 05:13:48,305 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 05:13:54,661 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 05:15:27,151 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T05:15:27.150670', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 06:25:12,758 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 06:25:32,426 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T06:25:32.426241', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 06:25:41,635 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 06:27:59,204 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 06:28:06,480 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 06:30:05,453 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T06:30:05.452364', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 06:44:43,860 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 06:48:03,161 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 06:48:23,328 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T06:48:23.327857', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 06:48:31,839 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 06:49:41,074 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 06:49:47,062 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 06:49:49,509 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T06:49:49.509066', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 06:50:01,383 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 06:51:14,337 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 06:51:21,144 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 06:51:36,832 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T06:51:36.832403', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 07:17:48,201 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 07:30:04,938 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 07:33:29,512 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 07:36:00,004 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 07:36:05,922 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T07:36:05.922665', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 07:36:15,148 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 07:38:00,687 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 07:38:15,793 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 07:39:05,793 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 07:39:09,987 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T07:39:09.986838', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 07:39:13,162 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 07:42:29,675 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T07:42:29.675648', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 07:53:10,439 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 07:53:13,925 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T07:53:13.925812', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 07:53:22,397 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 07:54:36,207 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 07:54:42,264 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 08:03:03,340 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 08:04:35,145 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 08:04:39,350 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T08:04:39.350603', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 08:04:57,683 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 08:06:19,257 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 08:06:28,015 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 08:23:41,889 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T08:23:41.889126', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}

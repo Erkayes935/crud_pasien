@@ -12,8 +12,9 @@ requests
 jinja2
 python-multipart
 openpyxl
-httpx
+httpx[http2]
 itsdangerous
 openpyxl
 python-multipart
+orjson
 openai

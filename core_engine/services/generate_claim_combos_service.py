@@ -4,6 +4,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from .rules_loader import load_rules_multilayer
 from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
+from .aspek_lainnya_service import generate_aspek_lainnya
 
 # Load environment variables
 load_dotenv()
@@ -21,12 +22,9 @@ def _sv(x, default="-"):
 # 🔹 FUNGSI UTAMA KOMBINASI KLAIM
 # ============================================================
 def process_generate_claim_combos(payload: dict) -> dict:
-    """
-    Evaluasi kombinasi klaim berdasarkan diagnosis & tindakan (hybrid multilayer).
-    """
     evaluation_result = process_generate_evaluations(payload)
 
-    # 🔹 Coba panggil generator alternatif
+    # 🔹 Generate alternatif
     try:
         alt_result = process_generate_alternatives(payload)
         alternatif_list = alt_result.get("alternatif", [])
@@ -35,14 +33,33 @@ def process_generate_claim_combos(payload: dict) -> dict:
         print(f"[COMBOS] ⚠️ Gagal generate alternatif: {e}")
         alternatif_list = []
 
+    # 🔹 Generate aspek lainnya
+    try:
+        aspek_ctx = {
+            "diagnosis": payload.get("primary_claim"),
+            "procedure": payload.get("primary_action"),
+            "rs_id": payload.get("rs_id"),
+            "region_id": payload.get("region_id"),
+            "stage": "kombinasi"
+        }
+        aspek_result = generate_aspek_lainnya(aspek_ctx)
+        print(f"[COMBOS] ✅ Generated aspek_lainnya: {len(aspek_result.get('aspek_lainnya', {}))} items")
+    except Exception as e:
+        print(f"[COMBOS] ⚠️ Gagal generate aspek_lainnya: {e}")
+        aspek_result = {"aspek_lainnya": {}, "notifications": {"lainnya": {"status": "error", "message": str(e)}}}
+
+    # 🔹 Return final result
     return {
         "evaluasi_diagnosis": evaluation_result["evaluasi_diagnosis"],
         "evaluasi_tindakan": evaluation_result["evaluasi_tindakan"],
         "notification": evaluation_result.get("notification", {"status": "info", "message": "Evaluasi selesai."}),
         "alternatif": alternatif_list,
+        "aspek_lainnya": aspek_result.get("aspek_lainnya", {}),
+        "notifications": aspek_result.get("notifications", {}),
         "engine_version": evaluation_result["engine_version"],
         "rules_used": evaluation_result.get("rules_used", {})
     }
+
 
 
 # ============================================================
@@ -337,7 +354,6 @@ PENTING:
             "tindakan_count": len(available_rules["tindakan"])
         }
     }
-
 
 # ============================================================
 # 🔹 FUNGSI ALTERNATIF KOMBINASI (AI SIMULATION)

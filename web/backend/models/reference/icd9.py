@@ -1,15 +1,17 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, text
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, text
 from ..base import Base
 
-class ICD9(Base):
-    __tablename__ = "icd9"
+class ICD9Procedures(Base):
+    __tablename__ = "icd9_procedures"
 
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String(10), unique=True, nullable=False)
-    name = Column(Text, nullable=False)
-    category = Column(String(255), nullable=True)
-    description = Column(Text, nullable=True)
-    version = Column(String(50), nullable=True, default="ICD-9-CM 2024")
-
-    created_at = Column(DateTime, nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime, nullable=False, server_default=text("now()"), onupdate=text("now()"))
+    code = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    description_id = Column(Text, nullable=True)
+    is_pharmacologic = Column(Boolean, nullable=True)
+    pharmacologic_confidentiality = Column(String, nullable=True)
+    drug_category = Column(String, nullable=True)
+    detection_method = Column(String, nullable=True)
+    fornas_required = Column(Boolean, nullable=True)
+    created_at = Column(DateTime, nullable=True, server_default=text("now()"))
+    updated_at = Column(DateTime, nullable=True, server_default=text("now()"), onupdate=text("now()"))

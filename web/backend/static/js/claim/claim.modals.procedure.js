@@ -6,13 +6,42 @@
 // ============================================================
 
 import { openModal, showAiLoadingModal, hideAiLoadingModal } from "./claim.modals.core.js";
-import { renderNotificationBox } from "./claim.modals.diagnosis.js";
 import { checkFieldHasRegulation } from "./claim.modals.regulation.js";
+
+export function renderNotificationBoxProcedure(section, notifications = {}) {
+  const colorMap = {
+    success: "bg-emerald-50/70 border-emerald-400 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-500/70 dark:text-emerald-100",
+    warning: "bg-amber-50/70 border-amber-400 text-amber-800 dark:bg-amber-900/40 dark:border-amber-500/70 dark:text-amber-100",
+    error: "bg-rose-50/70 border-rose-400 text-rose-800 dark:bg-rose-900/40 dark:border-rose-500/70 dark:text-rose-100",
+    info: "bg-blue-50/70 border-blue-400 text-blue-800 dark:bg-blue-900/40 dark:border-blue-500/70 dark:text-blue-100",
+    default: "bg-slate-100/60 border-slate-300 text-slate-700 dark:bg-slate-800/50 dark:border-slate-600 dark:text-slate-200"
+  };
+
+  const allNotes = [];
+  for (const [key, note] of Object.entries(notifications)) {
+    if (!note) continue;
+    const status = note.status || "default";
+    const msg = note.message || `Belum ada notifikasi untuk bagian ${key.toUpperCase()}.`;
+    const cls = colorMap[status] || colorMap.default;
+    allNotes.push(`
+      <div class="notification-box ${cls} border-l-4 p-3 rounded-lg mb-2 text-sm shadow-sm backdrop-blur-sm transition-colors duration-200">
+        <div>
+          <strong class="font-semibold">Notifikasi AI (${key.toUpperCase()})</strong>
+          <div class="text-xs leading-snug mt-1">${msg}</div>
+        </div>
+      </div>
+    `);
+  }
+
+  return allNotes.join("");
+}
 
 // ============================================================
 // 🔹 OPEN PROCEDURE MODAL (versi kamu, lossless)
 // ============================================================
 export async function openProcedureModal(procId, procedureName) {
+
+  window.currentProcedureName = procedureName;
   window.claimState.fromProcedure = true;
   window.claimState.fromRegulation = false;
   console.log("🧭 [STATE] Buka modal tindakan dari diagnosis.");
@@ -87,12 +116,15 @@ export async function openProcedureModal(procId, procedureName) {
 
       console.log("[RESP] /analyze_procedure", result);
       const d = result.data || result;
-      console.log("INA-CBG tarif raw:", d.ina_cbg_tarif, "| ina_cbg:", d.ina_cbg);
+      d.aspek_lainnya = d.aspek_lainnya || result.aspek_lainnya || {};
 
       const renderProcBox = (label, value, fieldName = null) => {
         const multilayer = d.multilayer_rules?.[fieldName] || null;
         const hasRules = multilayer && multilayer.items && multilayer.items.length > 0;
         let safeValue = value || "";
+        if (!safeValue || safeValue === "-" || safeValue.trim() === "") {
+          safeValue = "<i class='text-gray-400'>Tidak ada data.</i>";
+        }
 
         // 💰 Format tarif INA-CBG
         if (fieldName === "ina_cbg" && value && value !== "") {
@@ -124,7 +156,7 @@ export async function openProcedureModal(procId, procedureName) {
         }
 
         if (hasRegulation && fieldName && safeValue !== "") {
-          content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+          content = `<span class="cursor-pointer dark:text-white hover:text-blue-400 regulation-field underline-offset-2 hover:underline transition-all duration-200"
                       title="📋 Klik untuk melihat regulasi ${fieldName}"
                       data-field="${fieldName}"
                       data-procedure-id="${procId}"
@@ -135,7 +167,7 @@ export async function openProcedureModal(procId, procedureName) {
           <div class="bg-gray-100 text-gray-900 dark:bg-slate-700 dark:text-white px-3 py-2 rounded-lg font-semibold">
             <b>${label}:</b>
           </div>
-          <div class="bg-white text-gray-800 dark:bg-gray-800 dark:text-white px-3 py-2 rounded">${content}</div>
+          <div class="bg-white text-gray-800 dark:bg-gray-800 dark:text-white px-3 py-1.5 rounded">${content}</div>
         `;
       };
 
@@ -152,9 +184,29 @@ export async function openProcedureModal(procId, procedureName) {
         d.icd9_code = d.icd9_code.split(",")[0].trim();
       }
 
+      // 🧩 Normalisasi notifikasi agar cocok dengan format renderNotificationBox dari diagnosis.js
+      const notifNormalized = (() => {
+        const n = d.notification || d.notifications || {};
+        // Kalau object tunggal {status, message}, bungkus jadi { tindakan:{...} }
+        if (n.status && n.message) return { tindakan: n };
+        // Kalau sudah punya key tindakan, biarkan
+        if (n.tindakan) return n;
+        // Kalau malah punya key procedure, pakai itu sebagai tindakan
+        if (n.procedure) return { tindakan: n.procedure };
+        // Kalau tidak ada sama sekali, fallback default
+        if (!n || Object.keys(n).length === 0)
+          return { tindakan: { status: "info", message: "Belum ada notifikasi untuk bagian TINDAKAN." } };
+      })();
+      // pastikan window.currentProcedure.id sudah diset sebelum render onclick
+      if (!window.claimState?.currentProcedure?.id && d.procedure_id) {
+        window.claimState.currentProcedure = { id: d.procedure_id };
+      }
+
       // 🔹 Konten modal utama
       const content = `
-        <div class="${modalBg} flex flex-col items-center animate-fade-in">
+        <div class="${modalBg} flex flex-col items-center animate-fade-in"
+          data-procedure-name="${procedureName}"
+          data-procid="${procId}">
           <h2 class="text-center text-xl font-bold ${titleColor} mb-4">Detail Tindakan</h2>
           <h3 class="text-center text-2xl font-extrabold text-${isDark ? "yellow-300" : "amber-500"} mb-6">
             ${procedureName}
@@ -164,7 +216,7 @@ export async function openProcedureModal(procId, procedureName) {
                   class="absolute top-0 right-0 text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded">✕</button>
         </div>
 
-        ${renderNotificationBox("tindakan", notifications)}
+        ${renderNotificationBoxProcedure("tindakan", notifNormalized)}
 
         <div class="grid grid-cols-2 gap-2 mt-3">
           ${renderProcBox("Kode ICD-9", d.icd9_code || d.icd9 || "-", "icd9_code")}
@@ -181,6 +233,66 @@ export async function openProcedureModal(procId, procedureName) {
               : d.syarat_klinis,
             "syarat_klinis"
           )}
+          ${(() => {
+            const aspek = d.aspek_lainnya || {};
+            const validEntries = Object.entries(aspek).filter(([key, val]) => {
+              if (key.startsWith("status_")) return false;
+              if (!val || String(val).trim() === "-" || String(val).trim() === "") return false;
+              return true;
+            });
+
+            // kalau kosong
+            if (validEntries.length === 0)
+              return renderProcBox(
+                "Aspek Lainnya",
+                `<i class='text-gray-400'>Tidak ada aspek lainnya yang relevan.</i>`,
+                "aspek_lainnya"
+              );
+
+            // 🧩 format list UL/LI tapi gaya tetap field tindakan
+            const merged = (() => {
+              const items = validEntries.map(([key, val]) => {
+                const cleanKey = key.replace(/_/g, " ").toUpperCase();
+                return `
+                  <li class="list-disc ml-5 marker:text-blue-400 dark:marker:text-blue-300 leading-snug text-sm">
+                    <b>${cleanKey}</b>: ${val}
+                  </li>
+                `;
+              });
+              return `<ul class="space-y-1 list-outside">${items.join("")}</ul>`;
+            })();
+
+            // 🎨 tampilkan dalam format field (renderProcBox)
+            return `
+              ${renderProcBox(
+                "Aspek Lainnya",
+                `<ul class='list-disc ml-5 marker:text-blue-400 dark:marker:text-blue-300 leading-snug text-sm'>
+                  ${validEntries
+                    .map(([key, val]) => {
+                      const cleanKey = key.replace(/_/g, " ").toUpperCase();
+                      const fieldName = key;
+                      const hasRegulation =
+                      checkFieldHasRegulation(fieldName) ||
+                      checkFieldHasRegulation("aspek_lainnya");
+                      const valueHtml = hasRegulation
+                        ? `<span class='cursor-pointer hover:text-blue-400 underline-offset-2 hover:underline transition-all duration-200'
+                            title='📋 Klik untuk melihat regulasi ${cleanKey}'
+                            onclick="window.openRegulationDetailModal('${fieldName}', null, window.claimState?.currentProcedure?.id || '${procId}')">
+                            <b>${cleanKey}</b>: ${val}
+                          </span>`
+                        : `<b>${cleanKey}</b>: ${val}`;
+                      return `<li>${valueHtml}</li>`;
+                    })
+                    .join("")}
+                </ul>`,
+                "aspek_lainnya"
+              )}
+            `;
+
+
+          })()}
+
+
         </div>
       `;
 
@@ -404,16 +516,12 @@ export function renderTindakan(list) {
               ? td.deskripsi || td.deskripsi_tindakan || td.icd9 || "&nbsp;"
               : "&nbsp;";
 
-
-
-
-
             return `
               <div class="grid grid-cols-3 gap-4 items-center ${
                 isDark ? "bg-slate-800 text-white border-slate-700" : "bg-white text-gray-900 border-slate-200"
               } p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border mb-3"
                   data-procid="${procId}">
-                <div class="font-semibold text-blue-600 underline cursor-pointer truncate"
+                <div class="font-semibold dark:text-white hover:text-blue-600 cursor-pointer truncate"
                     onclick="openProcedureModal('${procId}', '${nama}')">${nama}</div>
                 <div>
                   <span class="block px-3 py-1 text-sm font-medium ${
@@ -522,7 +630,7 @@ export function renderProcedureDetail(it) {
 
     const hasRegulation = typeof checkFieldHasRegulation === "function" && checkFieldHasRegulation(field);
     if (hasRegulation && field && safeVal !== "-") {
-      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+      content = `<span class="cursor-pointer text-white hover:text-blue-400 regulation-field underline-offset-2 hover:underline transition-all duration-200"
                       title="📋 Klik untuk melihat regulasi ${field}"
                       data-field="${field}"
                       data-procedure-id="${it.id || it.procedure_id || ''}"
@@ -539,7 +647,7 @@ export function renderProcedureDetail(it) {
 
   return `
     <div class="${bgBox} text-sm p-3 rounded-xl space-y-4">
-      ${renderNotificationBox("tindakan", notif)}
+      ${renderNotificationBoxProcedure("tindakan", it.notifications || it.notification)}
 
       ${renderBox("Kode ICD-9", it.icd9 || it.icd9_code, "icd9_code")}
       ${renderBox("Deskripsi", it.deskripsi || it.icd9_desc || "-", "deskripsi")}
@@ -549,6 +657,7 @@ export function renderProcedureDetail(it) {
       ${renderBox("Faskes", it.faskes, "faskes")}
       ${renderBox("Rawat Inap", it.rawat_inap, "rawat_inap")}
       ${renderBox("Syarat Klinis", it.syarat_klinis, "syarat_klinis")}
+      ${renderBox("Aspek Lainnya", it.aspek_lainnya, "aspek_lainnya")}
     </div>
   `;
 }
@@ -557,6 +666,7 @@ export function renderProcedureDetail(it) {
 // 🔗 Window shim (kompatibilitas lama)
 // ============================================================
 if (typeof window !== "undefined") {
+  window.renderNotificationBoxProcedure = renderNotificationBoxProcedure;
   window.openProcedureModal = openProcedureModal;
   window.openManualDetailModal = openManualDetailModal;
   window.renderProcedureDetail = renderProcedureDetail;

@@ -1,6 +1,4 @@
 // ============================================================
-// claim.modals.diagnosis.js (Lossless Refactor – Part 1/2)
-// ============================================================
 // Semua logika diagnosis dipertahankan 100% dari file lama
 // ============================================================
 
@@ -139,9 +137,11 @@ export function updateRingkasanFromRow(itemId, dx) {
 // BUKA MODAL DARI KLIK KATEGORI (Lossless)
 // =====================================================
 export async function openModalFromAttr(el, type) {
+  console.time("🕐 Diagnosis Modal Full Load");
+
   window.claimState.fromProcedure = false;
   window.claimState.fromRegulation = false;
-  console.log("🧭 [STATE] Buka modal diagnosis langsung, bukan dari tindakan/regulasi.");
+
   const tr = el.closest("tr");
   const dbId = tr?.dataset.dbId;
   const uiId = tr?.dataset.id;
@@ -183,7 +183,9 @@ export async function openModalFromAttr(el, type) {
 
       let result;
       try {
+        console.time("⏳ Fetch diagnosis detail");
         result = await fetchDiagnosisDetail();
+        console.timeEnd("⏳ Fetch diagnosis detail");
         // 🔧 Normalisasi hasil backend yang punya wrapper {status, data:{...}}
         while (result && typeof result === "object" && result.data) {
           result = result.data;
@@ -198,7 +200,9 @@ export async function openModalFromAttr(el, type) {
         ]);
 
         try {
+          console.time("⏳ Fetch diagnosis detail");
           result = await fetchDiagnosisDetail();
+          console.timeEnd("⏳ Fetch diagnosis detail");
           // 🔧 Normalisasi hasil backend yang punya wrapper {status, data:{...}}
           while (result && typeof result === "object" && result.data) {
             result = result.data;
@@ -253,6 +257,7 @@ export async function openModalFromAttr(el, type) {
 
       hideAiLoadingModal();
       updateRingkasanFromRow(uiId, dx);
+      console.timeEnd("🕐 Diagnosis Modal Full Load");
       return;
     }
 
@@ -355,6 +360,7 @@ export function renderDiagnosisDetail(it) {
   const src = it.data ? it.data : it;
 
   const diagnosisId = src.diagnosis_id || src.id;
+  const lainnya = src.aspek_lainnya || src.lainnya || src.aspekLainnya || {};
 
   const klinis = src.klinis || {};
   const icd10 = src.icd10 || {};
@@ -386,7 +392,7 @@ export function renderDiagnosisDetail(it) {
     let content = safeValue;
     if (hasRegulation && safeValue !== "" && safeValue !== "-") {
       const diagId = diagnosisId || null;
-      content = `<span class="cursor-pointer hover:underline hover:text-blue-600 regulation-field border-b border-dashed border-gray-400 hover:border-blue-600 transition-all duration-200"
+      content = `<span class="cursor-pointer dark:text-white hover:text-blue-400 regulation-field underline-offset-2 hover:underline transition-all duration-200"
                       title="📋 Klik untuk melihat regulasi ${fieldName}"
                       data-field="${fieldName}"
                       data-diagnosis-id="${diagId}"
@@ -486,6 +492,37 @@ export function renderDiagnosisDetail(it) {
         </div>
       </section>
 
+      <!-- 📝 ASPEK LAINNYA -->
+      <section class="rounded-xl shadow-md overflow-hidden border border-slate-200 dark:border-slate-700">
+        <div class="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 text-white px-4 py-3 font-bold rounded-t-xl shadow-sm">ASPEK LAINNYA</div>
+        <div class="space-y-2 p-3 bg-gray-50 dark:bg-slate-700">
+          ${renderNotificationBox("lainnya", notifications)}
+          ${(() => {
+            const validEntries = Object.entries(lainnya)
+              .filter(([key, val]) => {
+                // ❌ sembunyikan field status_*
+                if (key.startsWith("status_")) return false;
+                // ❌ sembunyikan kosong
+                if (!val || String(val).trim() === "-" || String(val).trim() === "") return false;
+                return true;
+              });
+
+
+            if (validEntries.length === 0) return "";
+
+            const merged = validEntries.map(([key, val]) => `
+              <span class="cursor-pointer hover:underline dark:text-white hover:text-blue-600"
+                    onclick="window.openRegulationDetailModal('${key}', ${diagnosisId || "null"}, null, 'lainnya')">
+                • ${key.replace(/_/g, " ").toUpperCase()}: ${val}
+              </span>
+            `).join("<br>");
+
+            return renderBox("Aspek Lainnya", merged, klinis.status, diagnosisId, "aspek_lainnya");
+          })()}
+        </div>
+      </section>
+
+      <!-- Akhir modal -->
     </div>
   `;
 }

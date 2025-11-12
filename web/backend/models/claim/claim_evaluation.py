@@ -58,3 +58,13 @@ class ClaimProcedureEvaluation(Base, HousekeepingMixin):
 
     def __repr__(self):
         return f"<ClaimProcedureEvaluation(claim_id={self.claim_id})>"
+
+# =========================================
+# COMBO EVALUATION
+# =========================================
+class ClaimComboEvaluation(Base):
+    __tablename__ = "claim_combo_evaluations"
+    id = Column(Integer, primary_key=True)
+    claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)
+    aspek_lainnya = Column(Text)
+    claim = relationship("Claim", back_populates="combo_evaluations")

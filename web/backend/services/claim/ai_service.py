@@ -43,9 +43,21 @@ async def predict_ddx(db: Session, claim_id: int, payload: dict):
 # ==================================================
 async def analyze_diagnosis(db: Session, claim_id: int, payload: dict):
     """Analisis diagnosis via AI + simpan semua hasil"""
-    result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
-    stage = payload.get("stage", "admission")
+    import time
+    start_time = time.time()
     diagnosis_name = payload.get("disease_name", "")
+
+    # ✅ Cek cache dulu
+    cached = load_cache(diagnosis_name)
+    if cached:
+        print(f"[CACHE] ✅ Loaded cached result for {diagnosis_name}")
+        return cached
+
+    # 🔹 Kalau belum ada cache, panggil core_engine
+    result = await claim_ai.proxy_core_engine("/analyze_diagnosis", payload)
+    print(f"[AI_SERVICE] 🧩 core engine call analyze_diagnosis for claim {claim_id} took {time.time() - start_time:.2f} seconds")
+
+    stage = payload.get("stage", "admission")
 
     try:
         print(f"[AI_SERVICE] 🧩 analyze_diagnosis storing for claim {claim_id}")
@@ -56,11 +68,31 @@ async def analyze_diagnosis(db: Session, claim_id: int, payload: dict):
         ai.store_ai_recommendations(db, claim_id, result, "diagnosis", stage)
 
         # simpan tindakan / regulasi / IDRG jika ada di response
-        print("[DEBUG] CoreEngine result keys:", list(result.keys()))
-        print("[DEBUG] CoreEngine IDRG section:", result.get("idrg") or result.get("idrg_prediction"))
-
         ai._store_nested_analysis_results(db, claim_id, result, stage)
+
+        # 🩵 Simpan aspek lainnya (jika ada)
+        aspek_data = result.get("aspek_lainnya")
+        if aspek_data:
+            if isinstance(aspek_data, dict) and "aspek_lainnya" in aspek_data:
+                aspek_value = aspek_data["aspek_lainnya"]
+            else:
+                aspek_value = aspek_data
+            ai.store_aspek_lainnya(db, claim_id, aspek_value, stage)
+
         db.commit()
+
+        # ==================================================
+        # 🔹 SIMPAN CACHE SETELAH HASIL SUKSES DISIMPAN
+        # ==================================================
+        try:
+            if diagnosis_name:
+                save_cache(diagnosis_name, result)
+                print(f"[CACHE] 💾 Saved cache for {diagnosis_name}")
+            else:
+                print("[CACHE] ⚠️ Tidak ada diagnosis_name, cache dilewati.")
+        except Exception as e:
+            print(f"[CACHE] ❌ Gagal menyimpan cache: {e}")
+            
     except Exception as e:
         db.rollback()
         print(f"[AI_SERVICE] ❌ Error analyze_diagnosis: {e}")
@@ -135,10 +167,17 @@ async def analyze_procedure(db: Session, claim_id: int, payload: dict):
         ai.store_ai_recommendations(db, cid, result, "procedure", stage)
 
         # ✅ lalu simpan detail-detailnya
-        print("[DEBUG] CoreEngine result keys:", list(result.keys()))
-        print("[DEBUG] CoreEngine IDRG section:", result.get("idrg") or result.get("idrg_prediction"))
-
         ai._store_nested_analysis_results(db, cid, result, stage)
+
+        # 🩵 Simpan aspek lainnya (jika ada)
+        aspek_data = result.get("aspek_lainnya")
+        if aspek_data:
+            if isinstance(aspek_data, dict) and "aspek_lainnya" in aspek_data:
+                aspek_value = aspek_data["aspek_lainnya"]
+            else:
+                aspek_value = aspek_data
+            ai.store_aspek_lainnya(db, claim_id, aspek_value, stage)
+
 
         db.commit()
         print(f"[AI_SERVICE] ✅ Stored analyze_procedure for {procedure_text}")
@@ -178,6 +217,14 @@ async def generate_claim_combos(db: Session, claim_id: int, payload: dict):
             ai.clear_ai_results(db, cid)
         ai.bulk_store_ai_results_from_core(db, cid, result)
         ai.store_ai_evaluations(db, cid, result)
+        # 🩵 Tambahkan ini:
+        aspek_data = result.get("aspek_lainnya") or result.get("data", {}).get("aspek_lainnya")
+        if aspek_data:
+            if isinstance(aspek_data, dict) and "aspek_lainnya" in aspek_data:
+                aspek_value = aspek_data["aspek_lainnya"]
+            else:
+                aspek_value = aspek_data
+            ai.store_aspek_lainnya(db, cid, aspek_value, stage="admission")
         db.commit()
         print(f"[AI_SERVICE] ✅ Stored claim_combos for claim {cid}")
     except Exception as e:
@@ -247,3 +294,25 @@ async def save_regulation_detail(db: Session, claim_id: int, payload: dict):
     db.commit()
     print(f"[AI_SERVICE] ✅ Stored {saved} regulation(s) for claim {claim_id}")
     return {"status": "success", "total_saved": saved, "data": rules}
+
+# ==================================================
+# 🔹 Simple file cache untuk hasil reasoning diagnosis
+# ==================================================
+import os, orjson
+
+def get_cache_path(diagnosis_name):
+    os.makedirs("tmp", exist_ok=True)  # buat folder kalau belum ada
+    safe_name = diagnosis_name.replace(" ", "_").lower()
+    return f"tmp/cache_diagnosis_{safe_name}.json"
+
+def load_cache(diagnosis_name):
+    path = get_cache_path(diagnosis_name)
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return orjson.loads(f.read())
+    return None
+
+def save_cache(diagnosis_name, data):
+    path = get_cache_path(diagnosis_name)
+    with open(path, "wb") as f:
+        f.write(orjson.dumps(data))

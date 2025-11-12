@@ -57,13 +57,21 @@ FIELD_REGULATION_MAP = {
     "kode": ["INA-CBG resmi"],
     "deskripsi": ["INA-CBG resmi"],
     "tarif": ["INA-CBG Casemix"],
+
+    # ASPEK LAINNYA
+    "program_nasional": ["PNPK", "INA-CBG"],
+    "kewenangan_dokter": ["PNPK", "INA-CBG"],
+    "pelaporan_wajib": ["PNPK", "INA-CBG"],
     
     # Detail Prosedur
     "icd9_code": ["ICD-9-CM resmi"],
     "icd9_desc": ["ICD-9-CM resmi"],
-    "validitas": [],  # tidak perlu regulasi
     "faskes": ["Permenkes RS"],  # faskes_proc di frontend
     "rawat_inap": ["PNPK", "INA-CBG"],  # rawat_inap_proc di frontend
+    "kewenangan_pelaksana": ["SKDI", "Permenkes"],
+    "syarat_fasilitas": ["Permenkes 14/2021", "PPK RS"],
+    "kombinasi_eksklusi": ["Panduan Casemix", "BPJS"],
+
     
     # i-DRG
     "group_idrg": ["i-DRG", "INA-CBG"],
@@ -231,7 +239,13 @@ def collect_regulations_for_field(payload: dict, field: str):
         procedure_name = payload.get("procedure_name") or payload.get("procedure") or None
         rs_id = payload.get("rs_id")
         region_id = payload.get("region_id")
-        scope = payload.get("scope") or ("tindakan" if procedure_name else "diagnosis")
+        scope = payload.get("scope") or (
+            "tindakan" if procedure_name else 
+            ("lainnya" if field in ["program_nasional", "kewenangan_dokter", "pelaporan_wajib",
+                                    "kebijakan_pembiayaan", "ketentuan_rujukan", "catatan_admin",
+                                    "risiko_fraud", "kebijakan_rs"] else "diagnosis")
+        )
+
 
         print(f"\n[REGULATION] 🔍 ===== collect_regulations_for_field =====")
         print(f"[REGULATION] 🔍 Payload: {payload}")
@@ -389,6 +403,39 @@ def collect_regulations_for_field(payload: dict, field: str):
                 "status": "Default",
                 "color": "#9ca3af"
             }]
+
+        # 🔹 Fallback untuk field dinamis tapi tetap coba LIKE query global
+        if not formatted or (len(formatted) == 1 and formatted[0]["layer"] == "default"):
+            print(f"[REGULATION] ⚠️ No exact rule for '{field}', trying global LIKE search before fallback.")
+            db = SessionLocal()
+            like_conditions = [RulesMaster.field.ilike(f"%{field}%")]
+            global_rules = db.query(RulesMaster).filter(
+                or_(*like_conditions),
+                RulesMaster.status.in_(["official", "active"])
+            ).limit(3).all()
+            db.close()
+
+            if global_rules:
+                formatted = [{
+                    "layer": r.layer,
+                    "sumber": r.sumber or f"Aturan {r.layer.upper()}",
+                    "judul_regulasi": f"{r.layer.upper()} {r.field}",
+                    "isi": r.isi,
+                    "status": r.status.capitalize(),
+                    "color": get_layer_color(r.layer),
+                } for r in global_rules]
+            else:
+                formatted = [{
+                    "layer": "default",
+                    "sumber": "AI / Dinamis",
+                    "judul_regulasi": f"Regulasi Dinamis: {field}",
+                    "isi": (
+                        f"Tidak ditemukan aturan spesifik untuk '{field}'. "
+                        f"Sistem akan menampilkan referensi multilayer umum yang relevan."
+                    ),
+                    "status": "Dinamis",
+                    "color": "#9ca3af"
+                }]
 
         return formatted
 

@@ -93,21 +93,30 @@ export const REGULATION_FIELDS = {
   procedure: [
     "syarat_klinis", "status",
     "ina_cbg", "faskes", "rawat_inap"
+  ],
+  lainnya: [
+    "program_nasional",
+    "kewenangan_dokter",
+    "pelaporan_wajib",
+    "kewenangan_pelaksana",
+    "syarat_fasilitas",
+    "kombinasi_eksklusi",
+    "aspek_lainnya",
+    "mnt"
   ]
 };
 
 export function checkFieldHasRegulation(field) {
   try {
-    const allFields = [
-      ...REGULATION_FIELDS.diagnosis,
-      ...REGULATION_FIELDS.procedure
-    ];
-    return allFields.includes(field);
+    if (!field) return false;
+    // Semua field dianggap valid untuk kategori 'lainnya'
+    return true;
   } catch (err) {
     console.warn("⚠️ checkFieldHasRegulation error:", err);
     return false;
   }
 }
+
 
 // ============================================================
 // 🧩 Renderer
@@ -174,14 +183,22 @@ export function renderRegulationDetailReadOnly(field, rules) {
 // 🔍 Modal Handler
 // ============================================================
 
-export async function openRegulationDetailModal(field, diagnosisId = null, procedureId = null, layer = null) {
+export async function openRegulationDetailModal(
+  field,
+  diagnosisId = null,
+  procedureId = null,
+  layer = null
+) {
   try {
+    // --------------------------------------------------------
+    // 🔹 Ambil konteks klaim & identitas RS
+    // --------------------------------------------------------
     const rsId = window.claimState?.rs_id || "rs_notopuro";
     const regionId = window.claimState?.region_id || "jatim";
     const root = document.getElementById("claimRoot");
     const claimId =
-      root?.dataset.claimId ||                     // baca dari elemen HTML (pasti ada)
-      document.getElementById("claimForm")?.dataset.claimId ||  // fallback dari form
+      root?.dataset.claimId ||
+      document.getElementById("claimForm")?.dataset.claimId ||
       window.claimState?.currentClaimId ||
       window.claimState?.id ||
       null;
@@ -189,59 +206,99 @@ export async function openRegulationDetailModal(field, diagnosisId = null, proce
     console.log("[DEBUG] claimId detected:", claimId);
     const userRole = window.claimState?.role || "doctor";
 
-    // 🧠 deteksi konteks otomatis
-    const isDiagnosisField = REGULATION_FIELDS.diagnosis.includes(field);
-    const isProcedureField = REGULATION_FIELDS.procedure.includes(field);
-
-    let scope;
-    if (["verifikator", "admin_rs", "superadmin"].includes(userRole)) {
-      // untuk verifikator
-      scope = isDiagnosisField ? "diagnosis_eval" : "procedure_eval";
-    } else {
-      // untuk doctor/coder
-      scope = isDiagnosisField ? "diagnosis" : "procedure";
+    // --------------------------------------------------------
+    // 🔹 Deteksi konteks field secara dinamis (tanpa hardcode)
+    // --------------------------------------------------------
+    let scope = "lainnya"; // default fallback
+    if (field) {
+      const f = field.toLowerCase();
+      if (REGULATION_FIELDS.diagnosis.some(k => f.includes(k))) scope = "diagnosis";
+      else if (REGULATION_FIELDS.procedure.some(k => f.includes(k))) scope = "procedure";
+      else scope = "lainnya";
     }
+
+    // Role-based override
+    if (["verifikator", "admin_rs", "superadmin"].includes(userRole)) {
+      scope = scope + "_eval";
+    }
+
+    // --------------------------------------------------------
+    // 🔹 Siapkan payload ke backend
+    // --------------------------------------------------------
+    // 🩵 Tambahan penting:
+    const currentDiagnosis = window.currentDiagnosisName 
+      || window.selectedDiagnosisName 
+      || document.querySelector("[data-diagnosis-name]")?.dataset.diagnosisName 
+      || null;
+
+    const currentProcedure = window.currentProcedureName 
+      || window.selectedProcedureName 
+      || document.querySelector("[data-procedure-name]")?.dataset.procedureName 
+      || null;
+
 
     const payload = {
       claim_id: claimId,
-      kategori: "Regulasi Umum",
       field,
       scope,
+      diagnosis_id: diagnosisId,
+      procedure_id: procedureId,
+      diagnosis_name: currentDiagnosis,
+      procedure_name: currentProcedure,
       rs_id: rsId,
       region_id: regionId,
-      layer
+      layer,
     };
 
     console.log("[REGULATION_DETAIL] 🔄 Payload:", payload);
 
+    // --------------------------------------------------------
+    // 🔹 Fetch regulasi dari backend
+    // --------------------------------------------------------
     const res = await fetch("/claims/regulation/detail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
     const json = await res.json();
-    const rules = json?.data || [];
+
+    // beberapa endpoint backend kirim data di `data`, kadang langsung array
+    const rules = Array.isArray(json?.data) ? json.data : json || [];
     console.log("[REGULATION_DETAIL] ✅ Diterima:", rules);
 
+    // --------------------------------------------------------
+    // 🔹 Render hasil regulasi multilayer
+    // --------------------------------------------------------
     const content = renderRegulationDetailMultilayer(field, rules);
     const title = `Regulasi: ${field}`;
-    const sourceType = isDiagnosisField ? "diagnosis" : isProcedureField ? "procedure" : "unknown";
-    const sourceId = diagnosisId || procedureId;
+
+    // Gunakan scope yang sudah ditentukan di atas, tanpa variabel lama
+    const sourceType = scope?.replace("_eval", "") || "lainnya";
+    const sourceId = diagnosisId || procedureId || null;
+
     openOverlayModal(title, content, sourceType, sourceId);
+
   } catch (err) {
     console.error("❌ Gagal memuat detail regulasi:", err);
     const fallback = `
       <div class="p-6 text-center">
-        <p class="text-red-500 font-semibold mb-2">Gagal Memuat Detail Regulasi</p>
-        <p class="text-gray-600 dark:text-gray-300 mb-3">Terjadi kesalahan saat mengambil data dari server.</p>
-        <button onclick="window.closeOverlayModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Tutup</button>
+        <p class="text-red-500 font-semibold mb-2">
+          Gagal Memuat Detail Regulasi
+        </p>
+        <p class="text-gray-600 dark:text-gray-300 mb-3">
+          Terjadi kesalahan saat mengambil data dari server.
+        </p>
+        <button onclick="window.closeOverlayModal()"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          Tutup
+        </button>
       </div>`;
     openOverlayModal("Error", fallback, "error", null);
   }
 }
+
 
 
 // ============================================================

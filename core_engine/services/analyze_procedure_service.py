@@ -7,6 +7,7 @@ from .rules_loader import load_rules_for_diagnosis
 from .field_rule_mapping import FIELD_RULE_MAP
 from .field_rule_mapping import match_field_alias
 from .icd9_mapping_service import map_icd9_smart
+from .aspek_lainnya_service import generate_aspek_lainnya
 
 # Load environment variables
 load_dotenv()
@@ -198,6 +199,20 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         raw = (response.choices[0].message.content or "").strip()
         ai_data = json.loads(raw)
+        # 🔧 Normalisasi notifikasi agar frontend tidak kena fallback
+        notif = ai_data.get("notification") or ai_data.get("notifications")
+        if isinstance(notif, dict):
+            ai_data["notifications"] = {"tindakan": notif}
+        elif isinstance(notif, list) and len(notif) > 0:
+            ai_data["notifications"] = {"tindakan": notif[0]}
+        else:
+            ai_data["notifications"] = {
+                "tindakan": {
+                    "status": "info",
+                    "message": "AI tidak menghasilkan notifikasi eksplisit."
+                }
+            }
+
         print(f"[ANALYZE_PROCEDURE] ✅ OpenAI JSON parsed successfully")
 
     except Exception as e:
@@ -275,15 +290,57 @@ def process_analyze_procedure(payload: Dict[str, Any]) -> Dict[str, Any]:
         "source": "AI reasoning (rule-based)",
         "data_completeness": "100%" if ai_data else "0%",
         "engine_version": f"rule_based_analyze_procedure_v2_icd9_mapping@{date.today().isoformat()}",
-        "notification": ai_data.get("notification", {
+        "notification": ai_data.get("notifications", {}).get("tindakan", {
             "status": "info",
             "message": "Belum ada notifikasi untuk bagian TINDAKAN."
         }),
         "multilayer_rules": multilayer_output,
     }
 
+    # ================================================================
+    # 4️⃣ BUILD RESPONSE ASPEK_LAINNYA
+    # ================================================================
+    aspek_lainnya_resp = generate_aspek_lainnya({
+        "diagnosis": dx_pri,
+        "procedure": procedure,
+        "rs_id": rs_id,
+        "region_id": region_id,
+        "scope": "tindakan",
+        "stage": stage
+    })
+
+    result["aspek_lainnya"] = aspek_lainnya_resp.get("aspek_lainnya", {})
+
+    # 🔹 Ambil notifikasi dengan format sama seperti section lain
+    notif_obj = aspek_lainnya_resp.get("notifications", {}).get("lainnya", {})
+    notif_text = ""
+    if isinstance(notif_obj, dict):
+        notif_text = notif_obj.get("message", "")
+    else:
+        notif_text = str(notif_obj or "")
+
+    if notif_text:
+        status = notif_obj.get("status", "info") if isinstance(notif_obj, dict) else "info"
+        txt_lower = notif_text.lower()
+        if any(w in txt_lower for w in ["tidak sesuai", "kurang", "belum", "perlu", "review"]):
+            status = "warning"
+        elif any(w in txt_lower for w in ["salah", "tidak valid", "keliru"]):
+            status = "error"
+        elif any(w in txt_lower for w in ["baik", "lengkap", "sesuai"]):
+            status = "success"
+
+        result.setdefault("notifications", {})["lainnya"] = {
+            "status": status,
+            "message": notif_text
+        }
+
+    # ================================================================
+    # 5️⃣ RETURN RESPONSE
+    # ================================================================
     print(f"[ANALYZE_PROCEDURE] ✅ Response built successfully for: {procedure}")
     print(f"[ANALYZE_PROCEDURE] Diagnosis: {dx_pri}")
     print(f"[ANALYZE_PROCEDURE] All rule fields from DB: {list(all_rules.keys())}")
     print(f"[ANALYZE_PROCEDURE] Matched multilayer fields: {list(multilayer_output.keys())}")
+    print(f"[ANALYZE_PROCEDURE] Result: {result}")
+
     return result

@@ -259,7 +259,7 @@ window.alternatifDropdown = function ({ claimId }) {
 
     target.innerHTML = `
       <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-900 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-bold cursor-pointer"
+        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-900 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-semibold cursor-pointer"
             @click="open = !open">
           <span>Prediksi i-DRG</span>
           <span class="text-xs text-gray-500 dark:text-gray-300">(klik untuk lihat detail)</span>
@@ -400,12 +400,63 @@ window.alternatifDropdown = function ({ claimId }) {
     if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
   }
 
+  // ============================================================
+  // 🩺 RENDER ASPEK LAINNYA
+  // ============================================================
+  function renderAspekLainnya(data) {
+    const aspek = data?.aspek_lainnya ? data.aspek_lainnya : data;
+    const target = document.getElementById("aspek-lainnya");
+    if (!target) return;
+
+    if (!aspek || Object.keys(aspek).length === 0) {
+      target.innerHTML = `<div class="p-3 italic text-gray-400 bg-slate-800/40 rounded">Tidak ada aspek lainnya</div>`;
+      return;
+    }
+
+    let items = "";
+    for (const [key, val] of Object.entries(aspek)) {
+      const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()); // kapitalisasi dinamis
+      items += `
+        <div class="grid grid-cols-2 gap-3 border-b border-slate-700/40 py-2">
+          <div class="font-semibold text-slate-200">${label}</div>
+          <div
+            class="text-sm leading-snug text-slate-300 cursor-pointer hover:text-blue-400 underline-offset-2 hover:underline transition-all duration-200"
+            title="Klik untuk lihat regulasi ${label}"
+            onclick="window.openRegulationDetailModal('${key}', null, null, 'lainnya')"
+          >
+            ${val}
+          </div>
+        </div>
+      `;
+    }
+
+    target.innerHTML = `
+      <div x-data="{ open: false }" class="mt-4 border border-slate-700/70 rounded-lg overflow-hidden font-semibold text-[15px]">
+        <button type="button"
+                @click="open = !open"
+                class="w-full bg-gradient-to-r from-blue-700 to-blue-600 text-white font-semibold px-4 py-2 flex justify-between items-center hover:from-blue-600 hover:to-blue-500 transition-all duration-200">
+          <span class="tracking-wide italic opacity-90">Aspek Lainnya</span>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="italic opacity-90">(klik untuk lihat detail)</span>
+            <span x-show="loading" class="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+            <span x-text="open ? '▲' : '▼'"></span>
+          </div>
+        </button>
+        <div x-show="open" x-transition class="bg-white dark:bg-slate-800/70 p-4 space-y-2 text-sm text-gray-900 dark:text-slate-100 border border-gray-200 dark:border-slate-700 rounded-b-lg">
+          ${items}
+        </div>
+      </div>`;
+  }
+
+
+
+
   // Expose renderer (nama sama persis dg versi lama)
   window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
   window.renderEvaluasiProcedure = renderEvaluasiProcedure;
   window.renderEvaluasiIDRGSummary = renderEvaluasiIDRGSummary;
   window.renderAlternatifKombinasi = renderAlternatifKombinasi;
-
+  window.renderAspekLainnya = renderAspekLainnya;
 
   // Format utilities
   window.formatRupiah = function(number) {

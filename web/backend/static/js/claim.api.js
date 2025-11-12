@@ -222,7 +222,10 @@
       window.renderAlternatifKombinasi?.(data.alternatif || []);
       console.log("🧾 Alternatif kombinasi data:", data.alternatif || []);
       console.log("✅ Evaluasi dan alternatif berhasil dirender");
-
+      if (data.aspek_lainnya) {
+        window.renderAspekLainnya?.(data.aspek_lainnya || {});
+        console.log("🧾 Aspek Lainnya data:", data.aspek_lainnya || {});
+      }
       // Simpan ke hidden field & global state
 
       const summaryField = document.getElementById("summaryField");

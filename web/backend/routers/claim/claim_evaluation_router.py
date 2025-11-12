@@ -94,6 +94,15 @@ async def generate_claim_combos(
                 print("[DEBUG] Raw result keys:", list(core_data.keys()))
                 ai.store_ai_evaluations(db, cid, core_data)
                 print(f"[GENERATE_CLAIM_COMBOS] ✅ AI evaluations stored successfully")
+                # 🔹 Step 3.1: Simpan aspek_lainnya ke claim_combo_evaluations jika ada
+                if "aspek_lainnya" in result:
+                    try:
+                        print(f"[GENERATE_CLAIM_COMBOS] 💾 Storing aspek_lainnya for claim_combo_evaluations ({cid})")
+                        ai.store_aspek_lainnya(db, cid, result["aspek_lainnya"], stage="kombinasi")
+                        print(f"[GENERATE_CLAIM_COMBOS] ✅ Aspek Lainnya stored successfully")
+                    except Exception as e:
+                        print(f"[GENERATE_CLAIM_COMBOS] ⚠️ Failed to store aspek_lainnya for combo: {e}")
+
             except Exception as e:
                 import traceback
 
@@ -106,6 +115,11 @@ async def generate_claim_combos(
             result["diagnosis"] = result["evaluasi_diagnosis"]
         if "evaluasi_tindakan" in result:
             result["procedure"] = result["evaluasi_tindakan"]
+        if "alternatif" in result:
+            result["alternatives"] = result["alternatif"]
+        # Tambah alias untuk aspek_lainnya (jika ada)
+        if "aspek_lainnya" in result:
+            result["aspek_lainnya"] = result["aspek_lainnya"]
 
         # 🔹 Step 5: Commit global
         db.commit()
