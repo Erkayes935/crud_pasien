@@ -14,7 +14,7 @@ from .routers import (
     dashboard_router, auth_router, patient_router, user_router,
     hospital_router, medical_record_router, claim_router,
     visit_router, resume_router, regulation_router,
-    claim_note_router, ai_meta_router, export_router
+    claim_note_router, ai_meta_router, export_router, datahub_router
 )
 
 # 🧱 Import error handler terpusat
@@ -70,6 +70,7 @@ app.include_router(resume_router.router, tags=["resumes"])
 app.include_router(regulation_router.router, tags=["regulations"])
 app.include_router(ai_meta_router.router, tags=["ai-meta"])
 app.include_router(export_router.router, tags=["export"])
+app.include_router(datahub_router.router, tags=["datahub"])
 
 # ======================================================
 # Global Error Handlers

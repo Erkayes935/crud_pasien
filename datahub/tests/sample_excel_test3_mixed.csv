@@ -1,0 +1,4 @@
+penyakit,tindakan_medis,perawatan,tanggal masuk rs,jumlah_hari,gejala_klinis,anamnesa,medication,nama_lengkap,nomor_ktp,no_hp
+Bronkitis Akut,Nebulizer,Rawat Inap,2024-10-28,4,Sesak napas,Asma,Ventolin,Fitri Handayani,3801234567890129,0812-3456-7890
+Appendisitis,Operasi Appendiktomi,Rawat Inap,2024-10-27,7,Nyeri perut kanan bawah,Sehat,Antibiotik,Hendra Gunawan,3901234567890130,+62 813 5678 9012
+Demam Berdarah,Infus Cairan,Rawat Inap,2024-10-26,5,Demam tinggi 3 hari,Tidak ada,Paracetamol IV,Indah Permata,4001234567890131,081398765432

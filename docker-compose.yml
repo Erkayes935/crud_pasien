@@ -6,15 +6,18 @@ services:
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgresql://postgres:user@27.112.78.243:5434/patients
-
+      DATABASE_URL: postgresql://postgres:user@103.179.56.158:5434/patients
       CORE_ENGINE_URL: http://core_engine:8002
+      DATAHUB_URL: http://datahub:8000
     env_file:
       - .env
     working_dir: /app/web
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001
     depends_on:
       - core_engine
+      - datahub
+    networks:
+      - crud_pasien_network
 
   core_engine:
     build: ./core_engine
@@ -24,3 +27,61 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8002
     env_file:
       - ./core_engine/.env
+    networks:
+      - crud_pasien_network
+
+  datahub:
+    build: ./datahub
+    container_name: crud_pasien-datahub
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./datahub/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CORE_ENGINE_URL=http://core_engine:8002
+    depends_on:
+      - redis
+      - core_engine
+    volumes:
+      - ./datahub/app:/app/app
+      - ./datahub/alembic:/app/alembic
+      - ./datahub/scripts:/app/scripts
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - crud_pasien_network
+
+  celery:
+    build: ./datahub
+    container_name: crud_pasien-celery
+    env_file:
+      - ./datahub/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CORE_ENGINE_URL=http://core_engine:8002
+    depends_on:
+      - redis
+      - datahub
+    volumes:
+      - ./datahub/app:/app/app
+    command: celery -A app.celery_app worker --loglevel=info
+    networks:
+      - crud_pasien_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: crud_pasien-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - crud_pasien_network
+
+networks:
+  crud_pasien_network:
+    driver: bridge
+
+volumes:
+  redis_data:

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Data Hub - Standarisasi Data{% endblock %}
+
+{% block content %}
+<div class="w-full" style="height: calc(100vh - 80px);">
+  <iframe 
+    src="{{ datahub_url }}/dashboard" 
+    class="w-full h-full border-0 rounded-lg shadow-sm"
+    title="Data Hub Management System"
+    frameborder="0"
+    allowfullscreen>
+  </iframe>
+</div>
+
+<!-- Optional: Back button for mobile -->
+<div class="fixed bottom-4 right-4 md:hidden z-50">
+  <a href="/admin-rs/dashboard" 
+     class="px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+    Back
+  </a>
+</div>
+{% endblock %}

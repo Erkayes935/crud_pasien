@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Data Hub Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+</head>
+<body class="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+  <!-- Navbar -->
+  <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-slate-200/60 dark:border-gray-700/60 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <a href="/dashboard" class="group">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+          </a>
+          <div>
+            <h1 class="text-xl font-bold text-slate-800 dark:text-gray-100">
+              <a href="/dashboard" class="no-underline hover:underline">AI CLAIM Data Hub Center</a>
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-gray-400">🧠 Powered by AI Claim</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-6">
+          <button onclick="app.toggleTheme()" class="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <svg id="iconLight" class="w-5 h-5 text-slate-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+            <svg id="iconDark" class="w-5 h-5 text-slate-600 dark:text-gray-300 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="flex-1 max-w-7xl mx-auto p-8 space-y-8">
+    <!-- Statistik -->
+    <div class="grid md:grid-cols-3 gap-6" id="statsContainer">
+      <!-- Stats will be rendered here -->
+    </div>
+
+    <!-- FASE 1.1: Duplicate Warning Panel -->
+    <div id="duplicateWarning" class="hidden bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-l-4 border-yellow-500 dark:border-yellow-600 rounded-xl p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <div class="flex items-start space-x-4">
+          <div class="flex-shrink-0">
+            <svg class="w-8 h-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-bold text-yellow-800 dark:text-yellow-300">⚠️ Duplicate Records Detected</h3>
+            <p class="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+              <span id="duplicateCount" class="font-semibold">0</span> duplicate group(s) pending review
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button onclick="app.showDuplicatesModal()" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 text-sm font-medium">
+                🔍 View Details
+              </button>
+              <button onclick="app.refreshDuplicateStats()" class="px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-600 rounded-lg shadow-md transition-all duration-200 text-sm font-medium">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+        <button onclick="app.hideDuplicateWarning()" class="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tombol aksi -->
+    <div class="flex flex-wrap gap-4">
+      <button onclick="app.showManualForm()" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:scale-105">📝 Input Manual</button>
+      <button onclick="document.getElementById('fileInput').click()" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl shadow-lg shadow-green-500/30 transition-all duration-200 transform hover:scale-105">📤 Upload Excel</button>
+      <button onclick="app.syncGateway()" class="px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl shadow-lg shadow-yellow-500/30 transition-all duration-200 transform hover:scale-105">🔗 Sinkron Gateway</button>
+      <input type="file" id="fileInput" onchange="app.uploadExcel(event)" class="hidden" accept=".xlsx,.xls">
+    </div>
+
+    <!-- Notifikasi -->
+    <div id="alertBox" class="hidden p-4 rounded-xl text-white shadow-lg"></div>
+
+    <!-- Tabel ringkasan -->
+    <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 dark:border-gray-700/60 overflow-hidden">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 uppercase text-xs">
+          <tr>
+            <th class="px-6 py-4">Source</th>
+            <th class="px-6 py-4">Valid</th>
+            <th class="px-6 py-4">Error</th>
+            <th class="px-6 py-4">Duplicate</th>
+            <th class="px-6 py-4 text-right">Last Update</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTable">
+          <!-- Table rows will be rendered here -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Audit Log Panel -->
+    <div class="mt-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/60 dark:border-gray-700/60 p-4">
+      <div class="flex justify-between items-center border-b border-slate-200 dark:border-gray-700 pb-2 mb-3">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">🧾 Audit Log Terbaru</h3>
+        <button onclick="app.refreshLogs()" class="text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded px-3 py-1 transition-colors">🔄 Refresh</button>
+      </div>
+
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 uppercase text-xs">
+          <tr>
+            <th class="p-2">Waktu</th>
+            <th class="p-2">Source</th>
+            <th class="p-2">Level</th>
+            <th class="p-2">Pesan</th>
+          </tr>
+        </thead>
+        <tbody id="logsTable">
+          <!-- Logs will be rendered here -->
+        </tbody>
+      </table>
+
+      <div id="emptyLogs" class="text-center text-gray-400 dark:text-gray-500 py-4 hidden">
+        Belum ada aktivitas yang tercatat.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Input Manual -->
+  <div id="manualModal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg p-8 rounded-xl w-full max-w-lg shadow-2xl border border-slate-200/60 dark:border-gray-700/60">
+      <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-gray-100">📝 Input Manual Record</h2>
+      <form onsubmit="app.submitManual(event)">
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <input type="text" id="record_id" placeholder="Record ID" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="text" id="hospital_id" placeholder="Hospital ID" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="text" id="jenis_rawat" placeholder="Jenis Rawat" value="Rawat Inap" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="text" id="tanggal_masuk" placeholder="Tanggal Masuk (YYYY-MM-DD)" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="number" id="lama_rawat" placeholder="Lama Rawat (hari)" value="1" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="text" id="gejala" placeholder="Gejala" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          <input type="text" id="diagnosis" placeholder="Diagnosis" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition col-span-2">
+          <input type="text" id="tindakan" placeholder="Tindakan" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition col-span-2">
+          <input type="text" id="obat" placeholder="Obat" class="border border-slate-300 dark:border-gray-600 p-3 rounded-lg bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition col-span-2">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="app.hideManualForm()" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700 transition">Batal</button>
+          <button type="submit" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-200 transform hover:scale-105">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FASE 1.1: Modal Duplicate Management -->
+  <div id="duplicatesModal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-gray-800 backdrop-blur-lg rounded-xl w-full max-w-6xl max-h-[90vh] shadow-2xl border border-slate-200/60 dark:border-gray-700/60 overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <span>Duplicate Groups Management</span>
+        </h2>
+        <button onclick="app.hideDuplicatesModal()" class="text-white hover:text-gray-200">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Statistics Bar -->
+      <div class="bg-gray-50 dark:bg-gray-900 px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div class="grid grid-cols-4 gap-4 text-center text-sm">
+          <div>
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="statTotal">0</div>
+            <div class="text-gray-600 dark:text-gray-400">Total Groups</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400" id="statPending">0</div>
+            <div class="text-gray-600 dark:text-gray-400">Pending</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400" id="statMerged">0</div>
+            <div class="text-gray-600 dark:text-gray-400">Merged</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-gray-600 dark:text-gray-400" id="statIgnored">0</div>
+            <div class="text-gray-600 dark:text-gray-400">Ignored</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center space-x-4">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Filter Status:</label>
+          <select id="filterStatus" onchange="app.filterDuplicates()" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:ring-2 focus:ring-yellow-500">
+            <option value="">All</option>
+            <option value="pending" selected>Pending</option>
+            <option value="merged">Merged</option>
+            <option value="ignored">Ignored</option>
+          </select>
+          <button onclick="app.refreshDuplicates()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors">
+            🔄 Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto px-6 py-4">
+        <div id="duplicatesContent" class="space-y-4">
+          <!-- Duplicate groups will be rendered here -->
+        </div>
+        <div id="emptyDuplicates" class="text-center text-gray-400 dark:text-gray-500 py-12 hidden">
+          <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-lg">No duplicate groups found</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data dari Backend -->
+  <script id="initialData" type="application/json">
+    {{ summary | tojson | safe }}
+  </script>
+
+  <!-- Main Application Script -->
+  <script>
+    (function() {
+      'use strict';
+      
+      // Parse initial data from backend
+      const initialDataElement = document.getElementById('initialData');
+      let initialSummary = [];
+      
+      try {
+        initialSummary = JSON.parse(initialDataElement.textContent);
+      } catch (e) {
+        console.error('Failed to parse initial data:', e);
+        initialSummary = [];
+      }
+
+      // Dashboard App
+      window.app = {
+        summary: initialSummary,
+        logs: [],
+        isDark: false,
+        duplicateGroups: [],
+        duplicateStats: null,
+
+        init: function() {
+          this.isDark = localStorage.getItem('theme') === 'dark';
+          this.applyTheme();
+          this.renderStats();
+          this.renderSummaryTable();
+          this.refreshLogs();
+          this.refreshDuplicateStats(); // FASE 1.1: Check for duplicates on load
+        },
+
+        toggleTheme: function() {
+          this.isDark = !this.isDark;
+          localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+          this.applyTheme();
+        },
+
+        applyTheme: function() {
+          document.documentElement.classList.toggle('dark', this.isDark);
+          const lightIcon = document.getElementById('iconLight');
+          const darkIcon = document.getElementById('iconDark');
+          if (this.isDark) {
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+          } else {
+            lightIcon.classList.remove('hidden');
+            darkIcon.classList.add('hidden');
+          }
+        },
+
+        renderStats: function() {
+          const container = document.getElementById('statsContainer');
+          const html = this.summary.map(function(item) {
+            const borderColorMap = {
+              'manual': 'border-blue-500/50',
+              'import_excel': 'border-green-500/50',
+              'gateway': 'border-yellow-500/50'
+            };
+            const borderColor = borderColorMap[item.source] || '';
+
+            return `
+              <div class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-slate-200/60 dark:border-gray-700/60 hover:shadow-xl transition-shadow ${borderColor}">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-lg font-semibold capitalize text-slate-800 dark:text-gray-100">${item.source.replace('_', ' ')}</h3>
+                    <p class="text-3xl font-bold mt-2 text-blue-600 dark:text-blue-400">${item.total}</p>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Total Data</p>
+                  </div>
+                  <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          container.innerHTML = html;
+        },
+
+        renderSummaryTable: function() {
+          const tbody = document.getElementById('summaryTable');
+          const html = this.summary.map(function(row) {
+            return `
+              <tr class="border-b border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td class="px-6 py-4 capitalize font-medium text-slate-800 dark:text-gray-100">${row.source.replace('_', ' ')}</td>
+                <td class="px-6 py-4 text-green-600 dark:text-green-400 font-semibold">${row.valid}</td>
+                <td class="px-6 py-4 text-red-600 dark:text-red-400 font-semibold">${row.error}</td>
+                <td class="px-6 py-4 text-yellow-600 dark:text-yellow-400 font-semibold">${row.duplicate}</td>
+                <td class="px-6 py-4 text-right text-slate-500 dark:text-gray-400">${row.last_update || '-'}</td>
+              </tr>
+            `;
+          }).join('');
+          tbody.innerHTML = html;
+        },
+
+        refreshSummary: function() {
+          return fetch('/dashboard')
+            .then(function() {
+              location.reload();
+            })
+            .catch(function(e) {
+              console.error("❌ Gagal memuat summary:", e);
+            });
+        },
+
+        refreshLogs: function() {
+          const self = this;
+          return fetch('/api/logs?limit=10')
+            .then(function(res) {
+              if (res.ok) {
+                return res.json();
+              }
+              throw new Error('Failed to fetch logs');
+            })
+            .then(function(data) {
+              self.logs = data;
+              self.renderLogs();
+            })
+            .catch(function(e) {
+              console.error("❌ Gagal memuat log:", e);
+              document.getElementById('emptyLogs').classList.remove('hidden');
+            });
+        },
+
+        renderLogs: function() {
+          const tbody = document.getElementById('logsTable');
+          const emptyDiv = document.getElementById('emptyLogs');
+          
+          if (this.logs.length === 0) {
+            emptyDiv.classList.remove('hidden');
+            tbody.innerHTML = '';
+            return;
+          }
+
+          emptyDiv.classList.add('hidden');
+          const html = this.logs.map(function(log) {
+            const levelColorsMap = {
+              'info': 'text-green-600 dark:text-green-400',
+              'error': 'text-red-600 dark:text-red-400',
+              'duplicate': 'text-yellow-600 dark:text-yellow-400'
+            };
+            const levelColor = levelColorsMap[log.level] || '';
+            
+            return `
+              <tr class="border-b border-slate-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="p-2 text-slate-700 dark:text-gray-300">${log.created_at}</td>
+                <td class="p-2 capitalize text-slate-700 dark:text-gray-300">${log.source}</td>
+                <td class="p-2 font-semibold ${levelColor}">${log.level}</td>
+                <td class="p-2 text-slate-700 dark:text-gray-300">${log.message}</td>
+              </tr>
+            `;
+          }).join('');
+          tbody.innerHTML = html;
+        },
+
+        showAlert: function(msg, type, timeout) {
+          type = type || 'success';
+          timeout = timeout || 2500;
+          
+          const alertBox = document.getElementById('alertBox');
+          alertBox.textContent = msg;
+          alertBox.className = 'p-4 rounded-xl text-white shadow-lg ' + 
+            (type === 'success' 
+              ? 'bg-gradient-to-r from-green-500 to-green-600' 
+              : 'bg-gradient-to-r from-red-500 to-red-600');
+          alertBox.classList.remove('hidden');
+          
+          setTimeout(function() {
+            alertBox.classList.add('hidden');
+          }, timeout);
+        },
+
+        showManualForm: function() {
+          document.getElementById('manualModal').classList.remove('hidden');
+        },
+
+        hideManualForm: function() {
+          document.getElementById('manualModal').classList.add('hidden');
+        },
+
+        submitManual: function(e) {
+          e.preventDefault();
+          const self = this;
+          
+          const formData = {
+            record_id: document.getElementById('record_id').value,
+            hospital_id: document.getElementById('hospital_id').value,
+            source: 'manual',
+            jenis_rawat: document.getElementById('jenis_rawat').value,
+            tanggal_masuk: document.getElementById('tanggal_masuk').value,
+            lama_rawat: parseInt(document.getElementById('lama_rawat').value),
+            gejala: document.getElementById('gejala').value,
+            diagnosis: document.getElementById('diagnosis').value,
+            tindakan: document.getElementById('tindakan').value,
+            obat: document.getElementById('obat').value,
+            status: 'ready_for_ai'
+          };
+
+          fetch('/ingestion/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          })
+          .then(function(res) {
+            if (!res.ok) {
+              return res.text().then(function(text) {
+                throw new Error(text);
+              });
+            }
+            return res.json();
+          })
+          .then(function() {
+            self.hideManualForm();
+            self.showAlert('✅ Record berhasil disimpan', 'success');
+            setTimeout(function() {
+              location.reload();
+            }, 1000);
+          })
+          .catch(function(err) {
+            console.error(err);
+            self.showAlert('❌ Gagal menyimpan record: ' + err.message, 'error');
+          });
+        },
+
+        uploadExcel: function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const self = this;
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('hospital_id', 'RS_UPLOAD');
+
+          this.showAlert('⏳ Mengupload file...', 'success', 5000);
+          
+          fetch('/ingestion/import_excel', {
+            method: 'POST',
+            body: formData
+          })
+          .then(function(res) {
+            if (!res.ok) {
+              return res.text().then(function(text) {
+                throw new Error(text);
+              });
+            }
+            return res.json();
+          })
+          .then(function(data) {
+            self.showAlert('✅ ' + (data.rows || 0) + ' data berhasil diupload', 'success');
+            setTimeout(function() {
+              location.reload();
+            }, 1500);
+          })
+          .catch(function(err) {
+            console.error(err);
+            self.showAlert('❌ Upload gagal: ' + err.message, 'error');
+          })
+          .finally(function() {
+            document.getElementById('fileInput').value = '';
+          });
+        },
+
+        syncGateway: function() {
+          const self = this;
+          const payload = {
+            record_id: "GW_" + Date.now(),
+            hospital_id: "RS_DUMMY",
+            source: "gateway",
+            jenis_rawat: "Rawat Jalan",
+            tanggal_masuk: new Date().toISOString().slice(0, 10),
+            lama_rawat: 1,
+            gejala: "Demam, Batuk",
+            diagnosis: "Pneumonia",
+            tindakan: "Pemberian antibiotik",
+            obat: "Ceftriaxone",
+            status: "ready_for_ai"
+          };
+
+          fetch('/ingestion/gateway', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+          .then(function(res) {
+            if (!res.ok) {
+              return res.text().then(function(text) {
+                throw new Error(text);
+              });
+            }
+            return res.json();
+          })
+          .then(function() {
+            self.showAlert('✅ Sinkronisasi Gateway berhasil', 'success');
+            setTimeout(function() {
+              location.reload();
+            }, 1000);
+          })
+          .catch(function(err) {
+            console.error(err);
+            self.showAlert('❌ Sinkronisasi Gateway gagal: ' + err.message, 'error');
+          });
+        },
+
+        // ========== FASE 1.1: DUPLICATE MANAGEMENT FUNCTIONS ==========
+
+        refreshDuplicateStats: function() {
+          const self = this;
+          return fetch('/monitor/duplicates/statistics')
+            .then(function(res) {
+              if (res.ok) return res.json();
+              throw new Error('Failed to fetch duplicate stats');
+            })
+            .then(function(data) {
+              self.duplicateStats = data.statistics;
+              self.updateDuplicateWarning();
+            })
+            .catch(function(e) {
+              console.error("❌ Failed to fetch duplicate stats:", e);
+            });
+        },
+
+        updateDuplicateWarning: function() {
+          if (!this.duplicateStats) return;
+          
+          const warningPanel = document.getElementById('duplicateWarning');
+          const countSpan = document.getElementById('duplicateCount');
+          
+          if (this.duplicateStats.pending > 0) {
+            countSpan.textContent = this.duplicateStats.pending;
+            warningPanel.classList.remove('hidden');
+          } else {
+            warningPanel.classList.add('hidden');
+          }
+        },
+
+        hideDuplicateWarning: function() {
+          document.getElementById('duplicateWarning').classList.add('hidden');
+        },
+
+        showDuplicatesModal: function() {
+          document.getElementById('duplicatesModal').classList.remove('hidden');
+          this.refreshDuplicates();
+        },
+
+        hideDuplicatesModal: function() {
+          document.getElementById('duplicatesModal').classList.add('hidden');
+        },
+
+        refreshDuplicates: function() {
+          const self = this;
+          const status = document.getElementById('filterStatus').value;
+          const url = status 
+            ? '/monitor/duplicates?status=' + status + '&limit=100'
+            : '/monitor/duplicates?limit=100';
+          
+          // Update stats
+          this.refreshDuplicateStats().then(function() {
+            if (self.duplicateStats) {
+              document.getElementById('statTotal').textContent = self.duplicateStats.total_groups;
+              document.getElementById('statPending').textContent = self.duplicateStats.pending;
+              document.getElementById('statMerged').textContent = self.duplicateStats.merged;
+              document.getElementById('statIgnored').textContent = self.duplicateStats.ignored;
+            }
+          });
+
+          // Fetch groups
+          return fetch(url)
+            .then(function(res) {
+              if (res.ok) return res.json();
+              throw new Error('Failed to fetch duplicates');
+            })
+            .then(function(data) {
+              self.duplicateGroups = data.groups || [];
+              self.renderDuplicateGroups();
+            })
+            .catch(function(e) {
+              console.error("❌ Failed to fetch duplicates:", e);
+              self.showAlert('❌ Failed to load duplicates', 'error');
+            });
+        },
+
+        filterDuplicates: function() {
+          this.refreshDuplicates();
+        },
+
+        renderDuplicateGroups: function() {
+          const container = document.getElementById('duplicatesContent');
+          const emptyDiv = document.getElementById('emptyDuplicates');
+          
+          if (this.duplicateGroups.length === 0) {
+            container.innerHTML = '';
+            emptyDiv.classList.remove('hidden');
+            return;
+          }
+
+          emptyDiv.classList.add('hidden');
+          const html = this.duplicateGroups.map(function(group) {
+            const statusBadgeMap = {
+              'pending': '<span class="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full text-xs font-semibold">⏳ Pending</span>',
+              'merged': '<span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-xs font-semibold">✅ Merged</span>',
+              'ignored': '<span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 rounded-full text-xs font-semibold">🚫 Ignored</span>'
+            };
+            const statusBadge = statusBadgeMap[group.status] || '';
+
+            const typeIcon = group.duplicate_type === 'exact' 
+              ? '<span class="text-red-500">🎯</span>' 
+              : '<span class="text-orange-500">🔍</span>';
+
+            const actionButtons = group.status === 'pending' ? `
+              <div class="flex gap-2 mt-3">
+                <button onclick="app.mergeGroup(${group.group_id})" 
+                  class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105">
+                  🔀 Merge
+                </button>
+                <button onclick="app.ignoreGroup(${group.group_id})" 
+                  class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105">
+                  🚫 Ignore
+                </button>
+              </div>
+            ` : '';
+
+            return `
+              <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-5 shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-start justify-between mb-4">
+                  <div>
+                    <div class="flex items-center space-x-3 mb-2">
+                      ${typeIcon}
+                      <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Group #${group.group_id}</h3>
+                      ${statusBadge}
+                    </div>
+                    <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span>Type: <strong class="text-gray-800 dark:text-gray-200">${group.duplicate_type}</strong></span>
+                      <span>Similarity: <strong class="text-${group.similarity_score === 100 ? 'red' : 'orange'}-600">${group.similarity_score}%</strong></span>
+                      <span>Duplicates: <strong class="text-gray-800 dark:text-gray-200">${group.duplicate_count}</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                  <!-- Master Record -->
+                  <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div class="flex items-center space-x-2 mb-3">
+                      <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      <span class="font-semibold text-blue-800 dark:text-blue-300">Master Record</span>
+                    </div>
+                    ${group.master_record ? `
+                      <div class="space-y-1 text-sm">
+                        <p class="text-gray-700 dark:text-gray-300"><strong>Hospital:</strong> ${group.master_record.hospital_id}</p>
+                        <p class="text-gray-700 dark:text-gray-300"><strong>Diagnosis:</strong> ${group.master_record.diagnosis}</p>
+                        <p class="text-gray-700 dark:text-gray-300"><strong>Tindakan:</strong> ${group.master_record.tindakan}</p>
+                        <p class="text-gray-700 dark:text-gray-300"><strong>Date:</strong> ${group.master_record.tanggal_masuk}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">ID: ${group.master_record.id.substring(0, 8)}...</p>
+                      </div>
+                    ` : '<p class="text-gray-500">No data</p>'}
+                  </div>
+
+                  <!-- Duplicate Records -->
+                  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex items-center space-x-2 mb-3">
+                      <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      <span class="font-semibold text-red-800 dark:text-red-300">Duplicate Record(s)</span>
+                    </div>
+                    ${group.duplicate_records && group.duplicate_records.length > 0 ? 
+                      group.duplicate_records.map(function(dup) {
+                        return `
+                          <div class="space-y-1 text-sm mb-3 pb-3 border-b border-red-200 dark:border-red-800 last:border-0">
+                            <p class="text-gray-700 dark:text-gray-300"><strong>Hospital:</strong> ${dup.hospital_id}</p>
+                            <p class="text-gray-700 dark:text-gray-300"><strong>Diagnosis:</strong> ${dup.diagnosis}</p>
+                            <p class="text-gray-700 dark:text-gray-300"><strong>Tindakan:</strong> ${dup.tindakan}</p>
+                            <p class="text-gray-700 dark:text-gray-300"><strong>Date:</strong> ${dup.tanggal_masuk}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">ID: ${dup.id.substring(0, 8)}...</p>
+                          </div>
+                        `;
+                      }).join('')
+                    : '<p class="text-gray-500">No duplicates</p>'}
+                  </div>
+                </div>
+
+                ${actionButtons}
+              </div>
+            `;
+          }).join('');
+          
+          container.innerHTML = html;
+        },
+
+        mergeGroup: function(groupId) {
+          if (!confirm('🔀 Merge this duplicate group? The duplicate record(s) will be removed and only the master record will remain.')) {
+            return;
+          }
+
+          const self = this;
+          fetch('/monitor/duplicates/' + groupId + '/merge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keep_master: true })
+          })
+          .then(function(res) {
+            if (!res.ok) {
+              return res.text().then(function(text) {
+                throw new Error(text);
+              });
+            }
+            return res.json();
+          })
+          .then(function(data) {
+            self.showAlert('✅ ' + data.message, 'success');
+            self.refreshDuplicates();
+            self.refreshDuplicateStats();
+          })
+          .catch(function(err) {
+            console.error(err);
+            self.showAlert('❌ Merge failed: ' + err.message, 'error');
+          });
+        },
+
+        ignoreGroup: function(groupId) {
+          const reason = prompt('🚫 Why ignore this duplicate group? (Optional)', 'False positive - Not actually duplicate');
+          if (reason === null) return; // User cancelled
+
+          const self = this;
+          fetch('/monitor/duplicates/' + groupId + '/ignore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason || 'No reason provided' })
+          })
+          .then(function(res) {
+            if (!res.ok) {
+              return res.text().then(function(text) {
+                throw new Error(text);
+              });
+            }
+            return res.json();
+          })
+          .then(function(data) {
+            self.showAlert('✅ ' + data.message, 'success');
+            self.refreshDuplicates();
+            self.refreshDuplicateStats();
+          })
+          .catch(function(err) {
+            console.error(err);
+            self.showAlert('❌ Ignore failed: ' + err.message, 'error');
+          });
+        }
+      };
+
+      // Initialize app when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          window.app.init();
+        });
+      } else {
+        window.app.init();
+      }
+    })();
+  </script>
+
+</body>
+</html>

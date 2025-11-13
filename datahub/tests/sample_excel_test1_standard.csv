@@ -1,0 +1,4 @@
+diagnosis,tindakan,jenis_rawat,tanggal_masuk,lama_rawat,gejala,riwayat,obat,nama_pasien,nik
+Diabetes Mellitus,Terapi Insulin,Rawat Inap,2024-10-27,3,Lemas dan sering haus,Hipertensi,Insulin,Budi Santoso,3201234567890123
+Pneumonia,Antibiotik IV,Rawat Inap,2024-10-26,5,Batuk berdahak kuning,Asma,Ceftriaxone,Siti Aminah,3301234567890124
+Gastritis,Observasi,Rawat Jalan,2024-10-25,0,Nyeri ulu hati,DM Tipe 2,Omeprazole,Ahmad Rizki,3401234567890125

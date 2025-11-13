@@ -1,0 +1,4 @@
+diagnosa,tindakan_medis,nama,NO. KTP,tgl_masuk,lama_hari,keluhan,riwayat_penyakit,obat_diberikan,jenis_perawatan
+DM tipe 2,Pemeriksaan Gula Darah,Andi Wijaya,3501234567890126,27/10/2024,2,Gula darah tinggi,Hipertensi,Metformin,RI
+Hipertensi,Pengukuran Tekanan Darah,Dewi Sartika,3601234567890127,26-10-2024,1,Pusing dan mual,Tidak ada,Amlodipine,RAWAT INAP
+Migrain,Terapi Analgesik,Eko Prasetyo,3701234567890128,20241025,0,Sakit kepala hebat,Migrain kronis,Paracetamol,rawat jalan

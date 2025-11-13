@@ -1,0 +1,35 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pandas
+openpyxl
+pydantic
+httpx
+alembic
+python-multipart
+Flask
+pytest
+pytest-cov
+loguru
+
+# FASE 1: Duplicate Detection & Anonymizer
+rapidfuzz>=3.0.0
+python-dotenv
+
+# FASE 1: AI Integration
+celery>=5.3.0
+redis>=5.0.0
+openai>=1.0.0
+
+# FASE 2: Export Manager
+fpdf2>=2.7.0
+reportlab>=4.0.0
+
+# FASE 2: User Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart
+
+# Optional: Monitoring & Error Tracking
+sentry-sdk[fastapi]>=1.40.0

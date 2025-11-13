@@ -2048,3 +2048,29 @@ WHERE users.id = %(pk_1)s]
 =======
 >>>>>>> 39b44efd587295e33e99d75b1128947634e96e3b
 2025-10-27 02:13:45,284 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-30 04:25:20,670 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-30 04:25:47,028 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-30 04:25:47,411 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-30 04:25:52,600 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-30T04:25:52.599916', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'}
+2025-10-31 09:08:34,627 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:09:17,294 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:09:17.294447', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.6899'}
+2025-10-31 09:15:25,059 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-31 09:15:25,385 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-31 09:15:28,977 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:15:28.977231', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 09:21:13,109 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:21:13.108794', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 09:21:29,737 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:21:29.737408', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 09:21:31,935 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:21:31.935362', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 09:23:26,413 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:25:12,251 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:25:31,574 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T09:25:31.574603', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 09:35:22,475 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:41:41,233 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:44:36,311 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:50:37,877 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 09:58:55,689 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 11:34:31,395 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-10-31 11:34:33,494 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-31 11:34:33,728 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-10-31 11:34:37,422 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-10-31T11:34:37.422696', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0'}
+2025-10-31 11:50:13,531 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-10-31 11:50:13,811 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
