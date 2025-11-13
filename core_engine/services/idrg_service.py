@@ -1,9 +1,12 @@
 import os, json
 from datetime import date
 from openai import OpenAI
+from dotenv import load_dotenv
 from .rules_loader import load_rules_multilayer
 from .field_rule_mapping import FIELD_RULE_MAP, match_field_alias
 
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -237,5 +240,25 @@ def predict_idrg(payload: dict) -> dict:
     """
     mode = (payload or {}).get("mode", "single")
     if mode == "combo":
-        return predict_combo_idrg(payload)
-    return predict_single_idrg(payload)
+        result = predict_combo_idrg(payload)
+    else:
+        result = predict_single_idrg(payload)
+
+    # 🔧 Tambahkan wrapper ini
+    print("[CORE_ENGINE DEBUG] Final IDRG payload:", json.dumps(result, indent=2, ensure_ascii=False))
+
+    return {
+        "status": "success",
+        "idrg_prediction": result.get("data", result),  # <--- penting
+        "mode": result.get("mode", mode),
+        "engine_version": result.get("engine_version", "idrg_service@local")
+    }
+
+    print("[CORE_ENGINE DEBUG] Returned to web:", json.dumps({
+        "status": "success",
+        "idrg_prediction": result.get("data", result),
+        "mode": result.get("mode", mode)
+    }, indent=2, ensure_ascii=False))
+
+# ============================================================
+# 🔹 END OF FILE

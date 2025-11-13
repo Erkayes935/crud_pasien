@@ -1,9 +1,11 @@
 import datetime
 import os
 from typing import Dict, Any
-from openai import OpenAI  # ✅ NEW IMPORT
+from openai import OpenAI
+from dotenv import load_dotenv
 
-# ✅ INIT CLIENT DENGAN SYNTAX BARU
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def process_resume_medis(data: dict, mode: str = "list", settings: dict = None) -> dict:

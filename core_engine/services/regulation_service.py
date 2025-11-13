@@ -57,13 +57,21 @@ FIELD_REGULATION_MAP = {
     "kode": ["INA-CBG resmi"],
     "deskripsi": ["INA-CBG resmi"],
     "tarif": ["INA-CBG Casemix"],
+
+    # ASPEK LAINNYA
+    "program_nasional": ["PNPK", "INA-CBG"],
+    "kewenangan_dokter": ["PNPK", "INA-CBG"],
+    "pelaporan_wajib": ["PNPK", "INA-CBG"],
     
     # Detail Prosedur
     "icd9_code": ["ICD-9-CM resmi"],
     "icd9_desc": ["ICD-9-CM resmi"],
-    "validitas": [],  # tidak perlu regulasi
     "faskes": ["Permenkes RS"],  # faskes_proc di frontend
     "rawat_inap": ["PNPK", "INA-CBG"],  # rawat_inap_proc di frontend
+    "kewenangan_pelaksana": ["SKDI", "Permenkes"],
+    "syarat_fasilitas": ["Permenkes 14/2021", "PPK RS"],
+    "kombinasi_eksklusi": ["Panduan Casemix", "BPJS"],
+
     
     # i-DRG
     "group_idrg": ["i-DRG", "INA-CBG"],
@@ -109,6 +117,8 @@ def normalize_field_name(field_name):
     field_mapping = {
         # Rawat Inap
         "lama_rawat": "rawat_inap.lama_rawat",
+        "indikasi": "indikasi_rawat_inap",
+        "kriteria": "kriteria_rawat_inap",
         # Tindakan
         "status": "status_tindakan",
         "status_tindakan": "status_tindakan",
@@ -117,12 +127,17 @@ def normalize_field_name(field_name):
         "syarat_klinis_tindakan": "syarat_klinis_tindakan",
         # Faskes
         "tingkat": "faskes_tingkat",
-        "justifikasi_faskes": "faskes.justifikasi",
+        "justifikasi": "faskes_justifikasi",
+        "kompetensi": "faskes_kompetensi",
         # Rujukan
-        "kriteria_rujukan": "rujukan.kriteria",
-        "tujuan": "rujukan.tujuan",
-        "indikasi_rujukan": "rujukan.indikasi",
-        "indikasi": "indikasi_rujukan",
+        "indikasi_rujukan": "rujukan_indikasi",
+        "kriteria_rujukan": "rujukan_kriteria",
+        "tujuan": "rujukan_tujuan",
+        "tujuan_rujukan": "rujukan_tujuan",
+        # INA-CBG
+        "kode": "kode_inacbg",
+        "tarif": "tarif_inacbg",
+        "deskripsi": "deskripsi_inacbg",
         # ICD-10 fields
         "struktur_icd10": "icd10.struktur", 
         "kode_ganda": "icd10.kode_ganda",
@@ -144,10 +159,13 @@ def get_field_aliases(field_name):
     
     # 1. Tambahkan field asli
     aliases.add(field_name)
+    print(f"[ALIAS] Step 1: Added original field '{field_name}'")
     
     # 2. Alias langsung dari FIELD_NAME_ALIAS
     if field_name in FIELD_NAME_ALIAS:
-        aliases.update(FIELD_NAME_ALIAS[field_name])
+        from_mapping = FIELD_NAME_ALIAS[field_name]
+        aliases.update(from_mapping)
+        print(f"[ALIAS] Step 2: Found {len(from_mapping)} aliases in FIELD_NAME_ALIAS: {from_mapping}")
     
     # 3. Normalized field name
     normalized = normalize_field_name(field_name)
@@ -176,22 +194,9 @@ def get_field_aliases(field_name):
             # indikasi_rujukan -> rujukan.indikasi
             aliases.add(f"{parts[1]}.{parts[0]}")
     
-    # 7. Tambahkan kasus khusus
-    special_mapping = {
-        "indikasi_rujukan": ["rujukan.indikasi", "indikasi", "rujukan_indikasi", "alasan"],
-        "kriteria_rujukan": ["rujukan.kriteria", "kriteria", "rujukan_kriteria", "syarat"],
-        "tujuan_rujukan": ["rujukan.tujuan", "tujuan", "rujukan_tujuan", "destinasi"],
-        "lama_rawat": ["rawat_inap.lama_rawat", "rawat.lama", "los", "length_of_stay"],
-        "status_tindakan": ["tindakan.status", "status", "status_prosedur"],
-        "icd9_code": ["icd9.kode", "tindakan.kode", "procedure_code"]
-    }
-    
-    if field_name in special_mapping:
-        aliases.update(special_mapping[field_name])
-    
-    # Remove None values
-    if None in aliases:
-        aliases.remove(None)
+    # Remove None values and empty strings
+    aliases.discard(None)
+    aliases.discard("")
         
     return list(aliases)
 
@@ -234,32 +239,71 @@ def collect_regulations_for_field(payload: dict, field: str):
         procedure_name = payload.get("procedure_name") or payload.get("procedure") or None
         rs_id = payload.get("rs_id")
         region_id = payload.get("region_id")
-        scope = payload.get("scope") or ("tindakan" if procedure_name else "diagnosis")
+        scope = payload.get("scope") or (
+            "tindakan" if procedure_name else 
+            ("lainnya" if field in ["program_nasional", "kewenangan_dokter", "pelaporan_wajib",
+                                    "kebijakan_pembiayaan", "ketentuan_rujukan", "catatan_admin",
+                                    "risiko_fraud", "kebijakan_rs"] else "diagnosis")
+        )
+
+
+        print(f"\n[REGULATION] 🔍 ===== collect_regulations_for_field =====")
+        print(f"[REGULATION] 🔍 Payload: {payload}")
+        print(f"[REGULATION] 🔍 Field: {field}")
+        print(f"[REGULATION] 🔍 Diagnosis: {diagnosis_name}")
+        print(f"[REGULATION] 🔍 Procedure: {procedure_name}")
+        print(f"[REGULATION] 🔍 Scope: {scope}")
 
         db = SessionLocal()
 
          # 🔹 Ambil rules berdasarkan kombinasi diagnosis + procedure jika ada
         if procedure_name:
             print(f"[REGULATION] Looking for combined rule: {diagnosis_name} + {procedure_name}")
+            print(f"[REGULATION] 🔍 Scope: {scope}, Field: {field}")
+            
+            # Get field aliases untuk matching yang lebih baik
+            field_aliases = get_field_aliases(field)
+            print(f"[REGULATION] 🔍 Field aliases: {field_aliases}")
+            
+            # Query dengan field aliases
+            field_conditions = [RulesMaster.field == alias for alias in field_aliases]
             rules = db.query(RulesMaster).filter(
                 RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
                 RulesMaster.procedure.ilike(f"%{procedure_name}%"),
-                RulesMaster.field.ilike(f"%{field}%"),
+                or_(*field_conditions),
+                RulesMaster.scope == scope,  # ✅ Filter scope!
                 RulesMaster.status.in_(["official", "active"])
             ).all()
+            
+            print(f"[REGULATION] 🔍 Found {len(rules)} rules with procedure filter")
+            if rules:
+                for r in rules[:3]:
+                    print(f"[REGULATION]   - {r.layer}: {r.procedure} | {r.field}")
 
-            # fallback ke diagnosis-only kalau kosong
+            # fallback ke procedure-only (tanpa diagnosis) kalau kosong
             if not rules:
-                print(f"[REGULATION] No combined rule found, fallback to diagnosis-only")
+                print(f"[REGULATION] No combined rule found, trying procedure-only")
                 rules = db.query(RulesMaster).filter(
-                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
-                    RulesMaster.procedure.is_(None),
-                    RulesMaster.field.ilike(f"%{field}%"),
+                    RulesMaster.procedure.ilike(f"%{procedure_name}%"),
+                    or_(*field_conditions),  # ✅ Pakai field aliases juga!
+                    RulesMaster.scope == scope,  # ✅ Filter scope!
                     RulesMaster.status.in_(["official", "active"])
                 ).all()
+                print(f"[REGULATION] 🔍 Found {len(rules)} rules with procedure-only")
+                if rules:
+                    for r in rules[:3]:
+                        print(f"[REGULATION]   - {r.layer}: {r.procedure} | {r.field}")
         else:
             # 🔹 Mode diagnosis-only
             field_aliases = get_field_aliases(field)
+            print(f"\n[REGULATION] 🔍 ===== SEARCHING FOR FIELD =====")
+            print(f"[REGULATION] 🔍 Field requested: '{field}'")
+            print(f"[REGULATION] 🔍 Diagnosis: '{diagnosis_name}'")
+            print(f"[REGULATION] 🔍 Scope: '{scope}'")
+            print(f"[REGULATION] 🔍 Total aliases generated: {len(field_aliases)}")
+            print(f"[REGULATION] 🔍 Aliases: {field_aliases}")
+            print(f"[REGULATION] 🔍 Is 'kriteria_rawat_inap' in aliases? {'kriteria_rawat_inap' in field_aliases}")
+            
             field_conditions = [RulesMaster.field == alias for alias in field_aliases]
 
             rules = db.query(RulesMaster).filter(
@@ -268,6 +312,46 @@ def collect_regulations_for_field(payload: dict, field: str):
                 RulesMaster.scope == scope,  # ⬅️ penting: filter sesuai scope
                 RulesMaster.status.in_(["official", "active"])
             ).all()
+            
+            print(f"[REGULATION] 🔍 Found {len(rules)} rules with exact OR match")
+            if rules:
+                for r in rules[:3]:  # Show first 3
+                    print(f"[REGULATION] 🔍   - Rule: field={r.field}, layer={r.layer}, diagnosis={r.diagnosis}")
+            
+            # 🔹 DEBUG: Test query langsung ke database
+            if not rules and field == "kriteria":
+                # Test 1: Query dengan scope
+                test_rules_with_scope = db.query(RulesMaster).filter(
+                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                    RulesMaster.field == "kriteria_rawat_inap",
+                    RulesMaster.scope == "diagnosis",
+                    RulesMaster.status.in_(["official", "active"])
+                ).all()
+                print(f"[REGULATION] 🔍 DEBUG: Query 'kriteria_rawat_inap' WITH scope filter found {len(test_rules_with_scope)} rules")
+                
+                # Test 2: Query tanpa scope
+                test_rules_no_scope = db.query(RulesMaster).filter(
+                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                    RulesMaster.field == "kriteria_rawat_inap",
+                    RulesMaster.status.in_(["official", "active"])
+                ).all()
+                print(f"[REGULATION] 🔍 DEBUG: Query 'kriteria_rawat_inap' WITHOUT scope filter found {len(test_rules_no_scope)} rules")
+                
+                if test_rules_no_scope:
+                    for tr in test_rules_no_scope[:3]:
+                        print(f"[REGULATION] 🔍 DEBUG:   - field={tr.field}, scope={tr.scope}, layer={tr.layer}, status={tr.status}")
+            
+            # 🔹 Fallback: Coba LIKE query jika exact match tidak ada
+            if not rules:
+                print(f"[REGULATION] 🔍 Trying LIKE query for field aliases...")
+                like_conditions = [RulesMaster.field.ilike(f"%{alias}%") for alias in field_aliases]
+                rules = db.query(RulesMaster).filter(
+                    RulesMaster.diagnosis.ilike(f"%{diagnosis_name}%"),
+                    or_(*like_conditions),
+                    RulesMaster.scope == scope,
+                    RulesMaster.status.in_(["official", "active"])
+                ).all()
+                print(f"[REGULATION] 🔍 Found {len(rules)} rules with LIKE query")
 
             if not rules and field.startswith("syarat_klinis"):
                 # Fallback hanya untuk diagnosis
@@ -305,6 +389,7 @@ def collect_regulations_for_field(payload: dict, field: str):
             diagnosis_label = (
                 f"{diagnosis_name} + {procedure_name}" if procedure_name else diagnosis_name
             )
+            field_aliases_str = ', '.join(get_field_aliases(field))
             formatted = [{
                 "layer": "default",
                 "sumber": f"Aturan umum untuk field '{field}'",
@@ -312,11 +397,45 @@ def collect_regulations_for_field(payload: dict, field: str):
                 "isi": (
                     f"Tidak ada regulasi spesifik untuk field '{field}' dan diagnosis '{diagnosis_label}'.\n\n"
                     f"Field yang dicari: {field}\n"
-                    f"Alias yang dicoba: {', '.join(['faskes', 'faskes.tipe_rs', 'faskes.kewenangan'])}"
+                    f"Alias yang dicoba: {field_aliases_str}\n"
+                    f"Scope: {scope}"
                 ),
                 "status": "Default",
                 "color": "#9ca3af"
             }]
+
+        # 🔹 Fallback untuk field dinamis tapi tetap coba LIKE query global
+        if not formatted or (len(formatted) == 1 and formatted[0]["layer"] == "default"):
+            print(f"[REGULATION] ⚠️ No exact rule for '{field}', trying global LIKE search before fallback.")
+            db = SessionLocal()
+            like_conditions = [RulesMaster.field.ilike(f"%{field}%")]
+            global_rules = db.query(RulesMaster).filter(
+                or_(*like_conditions),
+                RulesMaster.status.in_(["official", "active"])
+            ).limit(3).all()
+            db.close()
+
+            if global_rules:
+                formatted = [{
+                    "layer": r.layer,
+                    "sumber": r.sumber or f"Aturan {r.layer.upper()}",
+                    "judul_regulasi": f"{r.layer.upper()} {r.field}",
+                    "isi": r.isi,
+                    "status": r.status.capitalize(),
+                    "color": get_layer_color(r.layer),
+                } for r in global_rules]
+            else:
+                formatted = [{
+                    "layer": "default",
+                    "sumber": "AI / Dinamis",
+                    "judul_regulasi": f"Regulasi Dinamis: {field}",
+                    "isi": (
+                        f"Tidak ditemukan aturan spesifik untuk '{field}'. "
+                        f"Sistem akan menampilkan referensi multilayer umum yang relevan."
+                    ),
+                    "status": "Dinamis",
+                    "color": "#9ca3af"
+                }]
 
         return formatted
 
@@ -422,7 +541,6 @@ def get_general_regulations_for_field(field: str):
 # ---------------------------
 def process_regulation_detail(payload: dict, field: str):
     """
-<<<<<<< HEAD
     Ambil aturan multilayer sesuai field yang ditekan user.
     Filter berdasarkan diagnosis (kategori), RS, dan region.
     Urutan prioritas layer: RS > Regional > Nasional > Lainnya.
@@ -430,6 +548,7 @@ def process_regulation_detail(payload: dict, field: str):
     try:
         claim_id   = payload.get("claim_id")
         kategori   = payload.get("kategori") or payload.get("diagnosis") or ""
+        procedure_name = payload.get("procedure_name") or payload.get("procedure") or ""
         rs_id      = payload.get("rs_id")
         region_id  = payload.get("region_id")
 
@@ -450,7 +569,7 @@ def process_regulation_detail(payload: dict, field: str):
         print(f"  • Original field: {field}")
         print(f"  • Normalized field: {normalized_field}")
         print(f"  • Field aliases: {field_aliases}")
-        print(f"  • Diagnosis: {kategori}, RS: {rs_id}, Region: {region_id}")
+        print(f"  • Diagnosis: {kategori}, Procedure: {procedure_name}, RS: {rs_id}, Region: {region_id}")
 
         # Skip trying to use load_rules_multilayer if kategori is "Regulasi Umum"
         if kategori == "Regulasi Umum":
@@ -503,6 +622,17 @@ def process_regulation_detail(payload: dict, field: str):
             # --- Diagnosis filter (optional) ---
             if kategori:
                 q = q.filter(RulesMaster.diagnosis.ilike(f"%{kategori}%"))
+            
+            # --- Procedure filter (optional) ---
+            if procedure_name:
+                q = q.filter(RulesMaster.procedure.ilike(f"%{procedure_name}%"))
+                print(f"[CORE_ENGINE] 🔍 Filtering by procedure: {procedure_name}")
+            
+            # --- Scope filter (important!) ---
+            scope = payload.get("scope")
+            if scope:
+                q = q.filter(RulesMaster.scope == scope)
+                print(f"[CORE_ENGINE] 🔍 Filtering by scope: {scope}")
 
             # --- Ambil semua dan pisahkan per layer ---
             results = []
@@ -520,7 +650,7 @@ def process_regulation_detail(payload: dict, field: str):
                 results.append({
                     "layer": rule.layer,
                     "sumber": rule.sumber or f"Aturan {rule.layer.upper()}",
-                    "dasar_hukum": rule.pdf_file or rule.diagnosis or "-",
+                    "judul_regulasi": rule.pdf_file or f"{rule.layer.upper()} - {rule.diagnosis}" or "-",
                     "isi": rule.isi,
                     "update": rule.updated_at.strftime("%Y-%m-%d") if rule.updated_at else "-",
                     "status": rule.status.capitalize() if rule.status else "Unverified",

@@ -1066,19 +1066,39 @@ def get_simulations_for_verificator(db: Session, claim_id: int):
                 "verified_by": sim.coder_verified_by,
                 "verified_at": sim.coder_verified_at.isoformat() if sim.coder_verified_at else None
             })
-    
+    # 🔄 Normalisasi struktur agar cocok dengan claim_right.html
+    normalized_stages = {}
+    for stage, items in stages_data.items():
+        normalized_stages[stage] = {
+            "diagnosis": [],
+            "procedure": [],
+        }
+
+        # Gabungkan utama + sekunder diagnosis
+        if items.get("utama_diagnosis"):
+            normalized_stages[stage]["diagnosis"].append(items["utama_diagnosis"])
+        normalized_stages[stage]["diagnosis"].extend(items.get("sekunder_diagnosis", []))
+
+        # Gabungkan utama + sekunder tindakan
+        if items.get("utama_tindakan"):
+            normalized_stages[stage]["procedure"].append(items["utama_tindakan"])
+        normalized_stages[stage]["procedure"].extend(items.get("sekunder_tindakan", []))
+
     # Format output untuk generate_claim_combos endpoint
     result = {
         "primary_claim": list(primary_claims)[0] if primary_claims else "",
         "secondary_claims": list(secondary_claims),
         "primary_action": list(primary_actions)[0] if primary_actions else "",
         "secondary_actions": list(secondary_actions),
-        "stages": stages_data,
+        "stages": normalized_stages,
         "total_approved": len(approved_sims),
         "message": f"Found {len(approved_sims)} approved simulations across {len(stages_data)} stages"
     }
     
     print(f"[VERIFICATOR] Loaded approved mappings: {result['message']}")
+    # 🩵 Tambahkan ini persis di sini
+    import json
+    print("[VERIFIKATOR DEBUG]", json.dumps(result, indent=2, ensure_ascii=False))
     return result
 
 

@@ -5,7 +5,10 @@ import random
 from datetime import date
 from typing import Any, Dict, List
 from openai import OpenAI
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ---------- helpers ----------

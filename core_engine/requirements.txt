@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 pydantic
-httpx
+httpx[http2]
 python-dotenv
 OpenAI
 sqlalchemy
 psycopg2-binary
+rapidfuzz==3.10.1
+orjson

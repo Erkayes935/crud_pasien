@@ -221,6 +221,7 @@ window.alternatifDropdown = function ({ claimId }) {
       return;
     }
 
+    const evalId = data.id || data.procedure_evaluation_id || window.claimState?.procedure_eval_id || null;
     // 🧠 PATCH: auto-wrap kalau bukan array
     const rows = Array.isArray(data) ? data : [data];
 
@@ -238,9 +239,9 @@ window.alternatifDropdown = function ({ claimId }) {
     target.innerHTML = `
       <h3 class="font-bold text-lg mb-2 text-yellow-500">Evaluasi Kombinasi Tindakan</h3>
       <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
-        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2">${listify(wajib)}</td></tr>
+        <tr><th class="border px-4 py-2 w-[30%] bg-gray-50 dark:bg-gray-800">Tindakan Wajib</th><td class="border px-4 py-2"><span class="cursor-pointer" onclick="openRegulationDetailModal('tindakan_wajib', ${evalId})">${listify(wajib)}</span></td></tr>
         <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Validasi</th><td class="border px-4 py-2">${listify(validasi)}</td></tr>
-        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2">${listify(dampak)}</td></tr>
+        <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Dampak / Tarif</th><td class="border px-4 py-2"><span class="cursor-pointer" onclick="openRegulationDetailModal('dampak', ${evalId})">${listify(dampak)}</span></td></tr>
         <tr><th class="border px-4 py-2 bg-gray-50 dark:bg-gray-800">Konflik / Catatan</th><td class="border px-4 py-2">${listify(konflik)}</td></tr>
       </table>
     `;
@@ -258,7 +259,7 @@ window.alternatifDropdown = function ({ claimId }) {
 
     target.innerHTML = `
       <div x-data="{ open: false }" class="border rounded shadow overflow-hidden mb-3">
-        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-900 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-bold cursor-pointer"
+        <div class="accordion-header flex items-center justify-between bg-white dark:bg-gray-900 text-yellow-600 dark:text-yellow-500 text-lg px-3 py-2 font-semibold cursor-pointer"
             @click="open = !open">
           <span>Prediksi i-DRG</span>
           <span class="text-xs text-gray-500 dark:text-gray-300">(klik untuk lihat detail)</span>
@@ -328,10 +329,17 @@ window.alternatifDropdown = function ({ claimId }) {
     target.innerHTML = "";
 
     const claimId = document.getElementById("claimRoot")?.dataset.claimId || 0;
+    const initialData = Array.isArray(items) ? items : [];
+
+    // 👉 Convert JSON ke string aman (replace tanda kutip ganda)
+    const safeJson = JSON.stringify(initialData)
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
 
     target.innerHTML = `
     <div class="mb-5 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden"
-        x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })">
+        x-data="alternatifDropdown({ claimId: ${Number(claimId) || 0} })"
+        x-init="alternatives = ${safeJson}; open = false;">
       <!-- header -->
       <div class="flex items-center justify-between bg-yellow-400 text-gray-900 dark:bg-yellow-600 dark:text-white px-4 py-2 font-semibold text-[15px] cursor-pointer"
           @click="toggleDropdown()">
@@ -392,12 +400,63 @@ window.alternatifDropdown = function ({ claimId }) {
     if (window.Alpine && Alpine.initTree) Alpine.initTree(target);
   }
 
+  // ============================================================
+  // 🩺 RENDER ASPEK LAINNYA
+  // ============================================================
+  function renderAspekLainnya(data) {
+    const aspek = data?.aspek_lainnya ? data.aspek_lainnya : data;
+    const target = document.getElementById("aspek-lainnya");
+    if (!target) return;
+
+    if (!aspek || Object.keys(aspek).length === 0) {
+      target.innerHTML = `<div class="p-3 italic text-gray-400 bg-slate-800/40 rounded">Tidak ada aspek lainnya</div>`;
+      return;
+    }
+
+    let items = "";
+    for (const [key, val] of Object.entries(aspek)) {
+      const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()); // kapitalisasi dinamis
+      items += `
+        <div class="grid grid-cols-2 gap-3 border-b border-slate-700/40 py-2">
+          <div class="font-semibold text-slate-200">${label}</div>
+          <div
+            class="text-sm leading-snug text-slate-300 cursor-pointer hover:text-blue-400 underline-offset-2 hover:underline transition-all duration-200"
+            title="Klik untuk lihat regulasi ${label}"
+            onclick="window.openRegulationDetailModal('${key}', null, null, 'lainnya')"
+          >
+            ${val}
+          </div>
+        </div>
+      `;
+    }
+
+    target.innerHTML = `
+      <div x-data="{ open: false }" class="mt-4 border border-slate-700/70 rounded-lg overflow-hidden font-semibold text-[15px]">
+        <button type="button"
+                @click="open = !open"
+                class="w-full bg-gradient-to-r from-blue-700 to-blue-600 text-white font-semibold px-4 py-2 flex justify-between items-center hover:from-blue-600 hover:to-blue-500 transition-all duration-200">
+          <span class="tracking-wide italic opacity-90">Aspek Lainnya</span>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="italic opacity-90">(klik untuk lihat detail)</span>
+            <span x-show="loading" class="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+            <span x-text="open ? '▲' : '▼'"></span>
+          </div>
+        </button>
+        <div x-show="open" x-transition class="bg-white dark:bg-slate-800/70 p-4 space-y-2 text-sm text-gray-900 dark:text-slate-100 border border-gray-200 dark:border-slate-700 rounded-b-lg">
+          ${items}
+        </div>
+      </div>`;
+  }
+
+
+
+
   // Expose renderer (nama sama persis dg versi lama)
   window.renderEvaluasiDiagnosis = renderEvaluasiDiagnosis;
   window.renderEvaluasiProcedure = renderEvaluasiProcedure;
   window.renderEvaluasiIDRGSummary = renderEvaluasiIDRGSummary;
   window.renderAlternatifKombinasi = renderAlternatifKombinasi;
-
+  window.renderAspekLainnya = renderAspekLainnya;
 
   // Format utilities
   window.formatRupiah = function(number) {

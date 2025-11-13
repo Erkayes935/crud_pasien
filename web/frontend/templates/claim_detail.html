@@ -130,9 +130,24 @@
         </div>
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Kode ICD 10</p>
-          <span class="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">
-            {{ claim.diagnoses.kode_icd or '-' }}
-          </span>
+          <div class="space-y-1">
+            {% if claim.diagnoses and claim.diagnoses|length > 0 %}
+              <div class="flex flex-col gap-2">
+                {% for d in claim.diagnoses %}
+                  {% if d.icd10_code %}
+                    <span class="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {{ d.icd10_code }} — {{ d.diagnosis_text }}
+                      {% if d.diagnosis_type %}
+                        <span class="ml-1 text-xs text-slate-600">({{ d.diagnosis_type|capitalize }})</span>
+                      {% endif %}
+                    </span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-slate-500 italic">Tidak ada diagnosis</span>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>
@@ -148,9 +163,22 @@
         <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Tindakan</p>
         <p class="text-slate-800 dark:text-slate-100 mb-3">{{ claim.medical_record.tindakan or '-' }}</p>
         <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Kode ICD 9</p>
-        <span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-          {{ claim.procedures.icd9_code or '-' }}
-        </span>
+        <div class="space-y-1">
+          {% if claim.procedures and claim.procedures|length > 0 %}
+            <div class="flex flex-col gap-2">
+              {% for p in claim.procedures %}
+                {% set icd9 = p.icd9_code_detail or p.icd9_code %}
+                {% if icd9 %}
+                  <span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {{ icd9 }} — {{ p.procedure_text or '-' }}
+                  </span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <span class="text-slate-500 italic">Tidak ada tindakan</span>
+          {% endif %}
+        </div>
       </div>
       <div>
         <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Obat</p>

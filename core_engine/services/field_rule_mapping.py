@@ -55,11 +55,11 @@ FIELD_RULE_MAP = {
             "source": "Hybrid", "layers": [2, 4, 5], "type": "hybrid",
             "desc": "Durasi rawat berdasarkan CP nasional + kebijakan RS."
         },
-        "indikasi": {
+        "indikasi_rawat_inap": {
             "source": "Rule", "layers": [2, 3], "type": "rule",
             "desc": "Indikasi medis rawat inap."
         },
-        "kriteria": {
+        "kriteria_rawat_inap": {
             "source": "Rule", "layers": [4, 5], "type": "rule",
             "desc": "Kriteria klinis rawat inap."
         },
@@ -73,10 +73,18 @@ FIELD_RULE_MAP = {
             "source": "AI", "layers": [], "type": "ai",
             "desc": "Penjelasan AI mengapa perlu di faskes tertentu."
         },
+        "faskes_kompetensi": {
+            "source": "AI", "layers": [1], "type": "rule",
+            "desc": "Penjelasan AI mengapa perlu di faskes tertentu."
+        },
 
         # --- Rujukan ---
+        "rujukan_indikasi": {
+            "source": "Rule", "layers": [1, 2, 4, 5], "type": "rule",
+            "desc": "Syarat rujukan ke faskes lebih tinggi."
+        },
         "rujukan_kriteria": {
-            "source": "Rule", "layers": [2, 4, 5], "type": "rule",
+            "source": "Rule", "layers": [1, 2, 4, 5], "type": "rule",
             "desc": "Syarat rujukan ke faskes lebih tinggi."
         },
         "rujukan_tujuan": {
@@ -103,6 +111,18 @@ FIELD_RULE_MAP = {
             "source": "Rule", "layers": [8], "type": "rule",
             "desc": "Kebijakan sementara (masa transisi, pandemi, dll)."
         },
+
+        # --- Aspek Lainnya ---
+        "lainnya": {
+            "program_nasional": {"source": "Rule", "layers": [1, 2, 3], "type": "rule", "desc": "Program nasional (TB, HIV, Imunisasi, dll)"},
+            "kewenangan_dokter": {"source": "Rule", "layers": [1, 2, 5], "type": "rule", "desc": "Kewenangan dokter sesuai regulasi profesi"},
+            "pelaporan_wajib": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Pelaporan wajib penyakit tertentu"},
+            "kebijakan_pembiayaan": {"source": "Rule", "layers": [2, 4, 8], "type": "rule", "desc": "Kebijakan pembiayaan & tanggungan"},
+            "ketentuan_rujukan": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Ketentuan rujukan antar faskes"},
+            "catatan_admin": {"source": "AI", "layers": [5, 8], "type": "ai", "desc": "Catatan administratif rumah sakit"},
+            "risiko_fraud": {"source": "Rule", "layers": [7], "type": "rule", "desc": "Risiko fraud / klaim tidak sesuai"},
+            "kebijakan_rs": {"source": "Rule", "layers": [5, 8], "type": "rule", "desc": "Kebijakan lokal RS atau SOP internal"},
+        },
     },
 
 
@@ -117,10 +137,6 @@ FIELD_RULE_MAP = {
         "deskripsi_icd9": {
             "source": "Rule", "layers": [2], "type": "rule",
             "desc": "Deskripsi lengkap kode ICD-9-CM."
-        },
-        "validitas": {
-            "source": "Hybrid", "layers": [2, 3], "type": "hybrid",
-            "desc": "Validasi relevansi tindakan terhadap diagnosis (AI + Rule)."
         },
         "status_tindakan": {
             "source": "Rule", "layers": [2, 3, 5], "type": "rule",
@@ -157,6 +173,19 @@ FIELD_RULE_MAP = {
         "policy_note": {
             "source": "Rule", "layers": [8], "type": "rule",
             "desc": "Kebijakan sementara terkait tarif i-DRG atau uji coba."
+        },
+        "lainnya": {
+            "program_nasional": {"source": "Rule", "layers": [1, 2, 3], "type": "rule", "desc": "Program nasional (TB, HIV, Imunisasi, dll)"},
+            "kewenangan_dokter": {"source": "Rule", "layers": [1, 2, 5], "type": "rule", "desc": "Kewenangan dokter sesuai regulasi profesi"},
+            "pelaporan_wajib": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Pelaporan wajib penyakit tertentu"},
+            "kebijakan_pembiayaan": {"source": "Rule", "layers": [2, 4, 8], "type": "rule", "desc": "Kebijakan pembiayaan & tanggungan"},
+            "ketentuan_rujukan": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Ketentuan rujukan antar faskes"},
+            "catatan_admin": {"source": "AI", "layers": [5, 8], "type": "ai", "desc": "Catatan administratif rumah sakit"},
+            "risiko_fraud": {"source": "Rule", "layers": [7], "type": "rule", "desc": "Risiko fraud / klaim tidak sesuai"},
+            "kebijakan_rs": {"source": "Rule", "layers": [5, 8], "type": "rule", "desc": "Kebijakan lokal RS atau SOP internal"},
+            "kewenangan_pelaksana": {"source": "Rule", "layers": [2, 5], "type": "rule", "desc": "Kewenangan pelaksana tindakan sesuai regulasi profesi"},
+            "syarat_fasilitas": {"source": "Rule", "layers": [2, 5], "type": "rule", "desc": "Syarat fasilitas tindakan sesuai regulasi profesi"},
+            "kombinasi_eksklusi": {"source": "Rule", "layers": [2, 5], "type": "rule", "desc": "Kombinasi ekslusif tindakan sesuai regulasi profesi"},
         },
     },
 
@@ -269,6 +298,20 @@ FIELD_RULE_MAP = {
             "source": "AI", "layers": [], "type": "ai",
             "desc": "Rekomendasi singkat AI untuk verifikator (flag success / warning / info)."
         },
+
+        # ---------------------
+        # Aspek Lainnya (Evaluasi)
+        # ---------------------
+        "lainnya": {
+            "program_nasional": {"source": "Rule", "layers": [1, 2, 3], "type": "rule", "desc": "Program nasional (TB, HIV, Imunisasi, dll)"},
+            "kewenangan_dokter": {"source": "Rule", "layers": [1, 2, 5], "type": "rule", "desc": "Kewenangan dokter sesuai regulasi profesi"},
+            "pelaporan_wajib": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Pelaporan wajib penyakit tertentu"},
+            "kebijakan_pembiayaan": {"source": "Rule", "layers": [2, 4, 8], "type": "rule", "desc": "Kebijakan pembiayaan & tanggungan"},
+            "ketentuan_rujukan": {"source": "Rule", "layers": [1, 2, 4], "type": "rule", "desc": "Ketentuan rujukan antar faskes"},
+            "catatan_admin": {"source": "AI", "layers": [5, 8], "type": "ai", "desc": "Catatan administratif rumah sakit"},
+            "risiko_fraud": {"source": "Rule", "layers": [7], "type": "rule", "desc": "Risiko fraud / klaim tidak sesuai"},
+            "kebijakan_rs": {"source": "Rule", "layers": [5, 8], "type": "rule", "desc": "Kebijakan lokal RS atau SOP internal"},
+        },
     },
 
     # ==============================================================
@@ -352,15 +395,15 @@ FIELD_NAME_ALIAS = {
     # ======================================================
     # 🩺 DIAGNOSIS
     # ======================================================
-    "justifikasi": ["justifikasi", "diagnosis.justifikasi", "diagnosis.terapi", "diagnosis.validitas"],
-    "syarat_klinis": ["syarat_klinis", "diagnosis.syarat_klinis", "pemeriksaan.laboratorium", "pemeriksaan.ct_scan"],
+    "justifikasi": ["justifikasi", "justifikasi_klinis", "diagnosis.justifikasi", "diagnosis.terapi", "diagnosis.validitas"],
+    "syarat_klinis": ["syarat_klinis", "syarat_klinis_tindakan", "diagnosis.syarat_klinis", "pemeriksaan.laboratorium", "pemeriksaan.ct_scan"],
     "bukti_klinis": ["bukti_klinis", "diagnosis.bukti_klinis", "diagnosis.pemeriksaan", "pemeriksaan.radiologi", "pemeriksaan.penunjang", "bukti"],
     # ICD-10
-    "kode_icd": ["utama", "who", "kode", "icd10_kode"],
+    "kode_icd": ["kode_icd10", "utama", "who", "kode", "icd10_kode"],
     "struktur_icd10": ["struktur", "nama", "desc", "deskripsi"],
-    "kode_ganda": ["kode_tambahan", "komorbid", "secondary"],
-    "z_code": ["z_codes", "z"],
-    "kode_bpjs_khusus": ["bpjs", "khusus", "kode_bpjs"],
+    "kode_ganda": ["kode_ganda","kode_tambahan", "komorbid", "secondary"],
+    "z_code": ["z_code","z_codes", "z"],
+    "kode_bpjs_khusus": ["kode_bpjs_khusus","bpjs", "khusus", "kode_bpjs"],
     # Rawat Inap
     "lama_rawat": [
         "lama_rawat", 
@@ -372,18 +415,30 @@ FIELD_NAME_ALIAS = {
         "days",
         "rawat.lama"  # Additional possible path
     ],
-    "indikasi": ["indikasi", "rawat_inap.indikasi"],
-    "kriteria": ["kriteria", "rawat_inap.kriteria", "rawat_inap.monitoring"],
+    # Rawat Inap fields (shared names)
+    "indikasi": ["indikasi", "indikasi_rawat_inap", "rawat_inap.indikasi", "indikasi_rujukan", "alasan", "sebab"],
+    "kriteria": ["kriteria_rawat_inap", "kriteria", "rawat_inap.kriteria", "rawat_inap.monitoring", "rujukan_kriteria", "kriteria_rujukan", "syarat", "indikasi_rujuk"],
     # Faskes
-    "faskes_tingkat": ["faskes_tingkat", "faskes.tipe_rs", "faskes.kewenangan"],
-    "faskes_justifikasi": ["faskes_justifikasi", "faskes.kesesuaian"],
+    "tingkat": ["tingkat", "faskes_tingkat", "faskes.tipe_rs", "faskes.kewenangan", "level"],
+    "justifikasi": ["faskes_justifikasi", "justifikasi_faskes", "faskes.kesesuaian", "alasan_faskes", "penjelasan_faskes"],
+    "kompetensi": ["kompetensi", "faskes_kompetensi", "kompetensi_faskes", "faskes.kualifikasi"],
     # Rujukan
-    "rujukan_kriteria": ["kriteria", "syarat", "indikasi_rujuk"],
-    "rujukan_tujuan": ["tujuan", "kelayakan", "destinasi"],
-    "indikasi_rujukan": ["indikasi", "alasan", "sebab"],
+    "rujukan_indikasi": ["rujukan_indikasi", "indikasi_rujukan", "rujukan.indikasi", "indikasi", "alasan_rujukan", "sebab_rujukan"],
+    "rujukan_kriteria": ["rujukan_kriteria", "kriteria_rujukan", "rujukan.kriteria", "kriteria", "syarat_rujukan", "indikasi_rujuk"],
+    "rujukan_tujuan": ["rujukan_tujuan", "tujuan_rujukan", "tujuan", "rujukan.tujuan", "kelayakan", "destinasi"],
     # INA-CBG / Tarif
-    "ina_cbg_kode": ["ina_cbg_kode", "ina_cbg.kode", "grouper.kode"],
-    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "kode": ["kode", "kode_inacbg", "ina_cbg_kode", "ina_cbg.kode", "grouper.kode"],
+    "tarif": ["tarif", "tarif_inacbg", "ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "deskripsi": ["deskripsi", "desc", "nama", "ina_cbg.deskripsi"],
+    # Aspek Lainnya
+    "program_nasional": ["program_nasional", "program", "program.kesehatan", "program_tb", "program_hiv", "program_imunisasi", "national_program", "health_program", "tb_program", "hiv_program", "immunization_program", "tb", "hiv", "immunization", "imunisasi", "nasional_program"],
+    "kewenangan_dokter": ["kewenangan_dokter", "kewenangan", "dokter.kewenangan", "kompetensi_dokter", "dokter.kompetensi", "dokter_kewenangan", "dokter_kompetensi", "physician_authority", "physician.competency", "doctor_authority", "doctor.competency", "medical_authority", "medical.competency"],
+    "pelaporan_wajib": ["pelaporan_wajib", "pelaporan", "wajib.pelaporan", "pelaporan.penyakit", "wajib", "pelaporan_penyakit", "wajib_pelaporan", "pelaporan_wajib_penyakit", "wajib_pelaporan_penyakit", "reporting_mandatory", "mandatory_reporting", "disease_reporting", "mandatory_disease_reporting", "disease_mandatory_reporting", "reporting_disease_mandatory", "reporting_disease", "disease_reporting_mandatory", "reporting_mandatory_disease", "wajib_lapor", "laporan_wajib"],
+    "kebijakan_pembiayaan": ["kebijakan_pembiayaan", "pembiayaan", "kebijakan.biaya", "tanggungan", "biaya.tanggungan", "pembiayaan.kebijakan", "tanggungan.biaya", "biaya", "kebijakan", "biaya_kebijakan", "pembiayaan_kebijakan"],
+    "ketentuan_rujukan": ["ketentuan_rujukan", "ketentuan", "rujukan.ketentuan", "aturan.rujukan", "prosedur.rujukan", "rujukan.prosedur", "rujukan.aturan", "rujukan_ketentuan"],
+    "catatan_admin": ["catatan_admin", "catatan.administratif", "admin.catatan", "administratif.catatan", "catatan_rs", "catatan_rumah_sakit", "rs.catatan", "rumah_sakit.catatan", "admin_notes", "administrative_notes", "hospital_notes", "hospital.administrative_notes", "hospital.admin_notes", "hospital.rumah_sakit.catatan", "hospital.rumah_sakit.administrative_notes", "hospital.rumah_sakit.admin_notes", "notes_admin", "notes_administrative", "notes_hospital", "notes_hospital_administrative", "notes_hospital_admin", "notes_rumah_sakit", "notes_rumah_sakit_administrative", "notes_rumah_sakit_admin", "rs_notes", "rs_administrative_notes", "rs_admin_notes", "rumah_sakit_notes", "rumah_sakit_administrative_notes", "rumah_sakit_admin_notes", "rumah_sakit_notes_admin", "rumah_sakit_notes_administrative", "admin_note", "rumah_sakit_admin_notes_admin", "rumah_sakit_notes_administrative", "rumah_sakit_admin_notes_administrative", "administratif"],
+    "risiko_fraud": ["risiko_fraud", "fraud.risiko", "fraud.risk", "fraud_risk", "validasi.fraud", "validasi.risiko", "fraud_detection", "fraud.detection", "fraud_detection.risk", "fraud_detection.risks"],
+    "kebijakan_rs": ["kebijakan_rs", "kebijakan", "rs.kebijakan", "sop.internal", "sop.rs", "internal.sop", "sop", "sop_rs", "sop_internal", "rs_policy", "rs.policies", "sop.rs", "sop_rs", "sop_internal", "rs.kebijakan", "hospital_policy", "hospital.policies", "hospital.policies.rs", "hospital.sop", "hospital.sop.rs", "hospital.sop_internal", "hospital_internal_sop", "hospital_internal_sop.rs", "hospital_internal_policy", "hospital_internal_policy.rs", "hospital_internal_policies", "hospital_internal_policies.rs"],
     # Fraud & Temporary
     "fraud_alert": ["fraud_alert", "fraud.los_anomaly", "validasi.anomali", "fraud.pattern_detection"],
     "temporary_policy": ["temporary_policy", "temporary.emergency_extension", "temporary.pandemic_protocol"],
@@ -391,21 +446,26 @@ FIELD_NAME_ALIAS = {
     # ======================================================
     # 💊 TINDAKAN / PROCEDURE
     # ======================================================
-    "kode_icd9": ["kode_icd9", "tindakan.kode_icd9", "teknis.kode_icd"],
-    "deskripsi_icd9": ["deskripsi_icd9", "tindakan.deskripsi", "deskripsi"],
+    "kode_icd9": ["kode_icd9", "icd9_code", "tindakan.kode_icd9", "teknis.kode_icd"],
+    "deskripsi_icd9": ["deskripsi_icd9", "icd9_desc", "tindakan.deskripsi", "deskripsi"],
     "validitas": ["validitas", "tindakan.validitas", "pemeriksaan.kultur"],
     "status_tindakan": ["status_tindakan", "tindakan.status", "terapi.standar"],
     "syarat_klinis_tindakan": [
-        "syarat_klinis_tindakan", 
+        "syarat_klinis_tindakan",
+        "syarat_klinis",  # ✅ Tambahkan alias ini!
         "rawat_inap.lama_rawat", 
         "tindakan.syarat_klinis", 
         "pemeriksaan.kultur"
     ],
-    "faskes": ["faskes", "faskes.tipe_rs", "faskes.kewenangan"],
-    "rawat_inap": ["rawat_inap", "rawat_inap.indikasi", "rawat_inap.lama_rawat"],
-    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif.ina_cbg", "tarif.idrg"],
+    "faskes": ["faskes", "faskes.tipe_rs", "faskes.kewenangan", "evaluasi_faskes", "evaluasi.faskes"],
+    "rawat_inap": ["rawat_inap", "indikasi", "kriteria", "lama_rawat", "rawat_inap.indikasi", "rawat_inap.lama_rawat"],
+    "ina_cbg_tarif": ["ina_cbg_tarif", "tarif", "ina_cbg", "tarif.ina_cbg", "tarif.idrg"],
     "ai_reason": ["ai_reason", "ai.reasoning", "alasan_ai"],
     "ai_confidence": ["ai_confidence", "confidence_ai"],
+    # Aspek Lainnya
+    "kewenangan_pelaksana": ["kewenangan_pelaksana", "pelaksana", "kompetensi_pelaksana", "operator"],
+    "syarat_fasilitas": ["syarat_fasilitas", "fasilitas", "izin_operasional", "peralatan"],
+    "kombinasi_eksklusi": ["kombinasi_eksklusi", "eksklusi", "kombinasi", "overlap_tindakan"],
     "fraud_check": ["fraud_check", "fraud.los_anomaly", "validasi.anomali"],
     "policy_note": ["policy_note", "temporary.idrg_transition", "temporary.pandemic_protocol"],
 
@@ -471,3 +531,18 @@ def match_field_alias(field_name: str, db_field: str) -> bool:
     """Cek apakah nama field backend cocok dengan salah satu alias di database."""
     aliases = FIELD_NAME_ALIAS.get(field_name, [field_name])
     return any(db_field.endswith(alias) or db_field == alias for alias in aliases)
+
+# ============================================================
+# 🧠 Fallback untuk Field Dinamis (MNT)
+# ============================================================
+def get_dynamic_field_mapping(field_name: str):
+    """
+    Kalau field belum terdaftar di FIELD_RULE_MAP,
+    sistem kasih mapping default biar tetap bisa ditarik regulasinya.
+    """
+    return {
+        "source": "Rule",
+        "layers": [1, 2, 3, 4, 5, 8],   # semua layer aman
+        "type": "rule",
+        "desc": f"Aspek dinamis hasil AI: {field_name}. Regulasi dicari secara umum berdasarkan kata kunci.",
+    }

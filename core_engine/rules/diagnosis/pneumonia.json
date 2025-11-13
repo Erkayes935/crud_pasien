@@ -62,8 +62,8 @@
     "kelayakan": "Rujuk ke RS tipe B/A"
   },
   "ina_cbg": {
-    "kode": "D-4-12",
-    "deskripsi": "Pneumonia sedang",
+    "kode": "J-4-16-II",
+    "deskripsi": "Simple Pneumonia & Whooping Cough (Sedang)",
     "tarif": "Rp 5.200.000"
   }
 }

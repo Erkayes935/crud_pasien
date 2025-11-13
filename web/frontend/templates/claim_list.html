@@ -24,7 +24,7 @@
 
       <!-- Quick Actions -->
       <div class="flex flex-wrap gap-2">
-        <button type="button" onclick="exportToExcel()"
+        <button type="button" onclick="exportToExcel(event)"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -796,24 +796,46 @@ function loadColumnSettings() {
     }
 }
 
-function exportToExcel() {
-    const form = document.querySelector('form[action="/claims"]');
-    const formData = new FormData(form);
-    const params = new URLSearchParams(formData);
+async function exportToExcel() {
+  const form = document.querySelector('form[action="/claims"]');
+  const formData = new FormData(form);
+  const params = new URLSearchParams(formData);
+  const button = event.target.closest('button');
+  const originalText = button.innerHTML;
 
-    const button = event.target.closest('button');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<svg class="w-4 h-4 animate-spin inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Exporting...';
-    button.disabled = true;
+  button.innerHTML = `
+    <svg class="w-4 h-4 animate-spin inline-block mr-1 text-white" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291
+              A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824
+              3 7.938l3-2.647z"></path>
+    </svg> Menyiapkan...`;
+  button.disabled = true;
 
-    const url = `/claims/export/excel?${params.toString()}`;
-    window.location.href = url;
+  console.time("export_excel_total");
 
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }, 2000);
+  try {
+    const response = await fetch(`/claims/export/excel?${params.toString()}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan_klaim_${new Date().toISOString().slice(0,19).replace(/[-:T]/g,'')}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(`Gagal export Excel: ${err.message}`);
+    console.error(err);
+  } finally {
+    console.timeEnd("export_excel_total");
+    button.innerHTML = originalText;
+    button.disabled = false;
+  }
 }
+
 
 function exportToPDF() {
     const form = document.querySelector('form[action="/claims"]');
