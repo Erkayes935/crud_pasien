@@ -12,7 +12,7 @@ Note: Web AI Claim has its own separate database.
       This API only provides data, doesn't share database.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import Optional, List
@@ -264,4 +264,29 @@ async def health_check():
         "status": "healthy",
         "service": "Data Hub API",
         "timestamp": datetime.utcnow().isoformat()
+    }
+
+@router.get("/user/current")
+def get_current_user_info(request: Request):
+    """
+    Get current logged-in user information.
+    
+    TODO: Implement proper authentication
+    This is a placeholder that should be replaced with your auth system.
+    """
+    # For now, return mock data
+    # In production, get from:
+    # - Session: request.session.get('user')
+    # - JWT: decode token from headers
+    # - OAuth: get from provider
+    
+    return {
+        "status": "success",
+        "user": {
+            "id": 1,
+            "name": "Admin RS Notopuro",
+            "email": "admin@rsnotopuro.com",
+            "hospital_id": "RS001",  # This is what we need!
+            "role": "admin_rs"
+        }
     }

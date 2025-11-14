@@ -6,6 +6,7 @@ pandas
 openpyxl
 pydantic
 httpx
+requests
 alembic
 python-multipart
 Flask
@@ -16,6 +17,10 @@ loguru
 # FASE 1: Duplicate Detection & Anonymizer
 rapidfuzz>=3.0.0
 python-dotenv
+
+# FASE 3: Excel Column Mapping Enhancement
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.21.0
 
 # FASE 1: AI Integration
 celery>=5.3.0

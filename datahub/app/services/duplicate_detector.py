@@ -36,12 +36,18 @@ class DuplicateDetector:
         """
         Check apakah new_record adalah duplicate.
         
+        FASE 2.6 UPDATE: Selalu return similarity info, even if < threshold!
+        - >= 85%: Duplicate detected, create group
+        - < 85%: NOT duplicate, tapi tetap record similarity info
+        
         Returns:
-            None jika tidak duplicate
-            Dict jika duplicate: {
-                "type": "exact" atau "fuzzy",
-                "match": DataHubRecord yang match,
-                "score": similarity score (100 untuk exact, 85-99 untuk fuzzy)
+            None jika tidak ada record untuk dicompare
+            Dict dengan similarity info: {
+                "type": "exact" atau "fuzzy" atau "no_duplicate",
+                "match": DataHubRecord yang paling mirip (or None),
+                "score": similarity score (0-100),
+                "confidence": confidence level or None,
+                "is_duplicate": True/False (based on threshold)
             }
         """
         # Step 1: Check exact duplicate via content_hash
@@ -51,7 +57,9 @@ class DuplicateDetector:
                 return {
                     "type": "exact",
                     "match": exact_match,
-                    "score": 100
+                    "score": 100,
+                    "confidence": "exact",
+                    "is_duplicate": True  # Always duplicate
                 }
         
         # Step 2: Check fuzzy duplicate via similarity_fingerprint
@@ -113,18 +121,53 @@ class DuplicateDetector:
                 candidate.similarity_fingerprint
             )
             
-            if score >= self.similarity_threshold and score > best_score:
+            # Track best match (even if < threshold)
+            if score > best_score:
                 best_score = score
                 best_match = candidate
         
+        # FASE 2.6: Return similarity info even if < threshold
         if best_match:
+            is_duplicate = best_score >= self.similarity_threshold
+            confidence = self.classify_confidence(best_score) if is_duplicate else None
+            
             return {
                 "type": "fuzzy",
                 "match": best_match,
-                "score": best_score
+                "score": best_score,
+                "confidence": confidence,
+                "is_duplicate": is_duplicate  # True if >= threshold
             }
         
         return None
+    
+    def classify_confidence(self, score: float) -> str:
+        """
+        Classify duplicate confidence level berdasarkan similarity score.
+        
+        Classification:
+        - exact (100%): Hash collision atau identical text
+        - very_high (98-99%): Hampir pasti duplicate (auto-merge recommended)
+        - high (93-97%): Kemungkinan besar duplicate (auto-merge safe)
+        - medium (88-92%): Perlu review manual (flagging)
+        - low (85-87%): Suspicious tapi tidak yakin (manual verification required)
+        
+        Args:
+            score: Similarity score dari RapidFuzz (0-100)
+            
+        Returns:
+            Confidence level string
+        """
+        if score == 100:
+            return "exact"
+        elif score >= 98:
+            return "very_high"
+        elif score >= 93:
+            return "high"
+        elif score >= 88:
+            return "medium"
+        else:
+            return "low"
     
     def create_duplicate_group(
         self, 

@@ -75,38 +75,140 @@ def ingest_manual(
     db.add(rec)
     db.flush()  # Get ID first before checking duplicates
     
-    # FASE 1.1: Check for duplicates
+    # FASE 1.1 + 2.6: Check for duplicates with confidence-based decision
     detector = DuplicateDetector(db)
     duplicate_check = detector.check_duplicate(rec)
     
     duplicate_warning = None
+    
+    # FASE 2.6: ALWAYS store similarity info (even if < 85%)
     if duplicate_check:
-        # Mark as duplicate
-        detector.mark_as_duplicate(rec, duplicate_check["type"])
-        
-        # Create duplicate group
-        detector.create_duplicate_group(
-            master_record_id=duplicate_check["match"].record_id,
-            duplicate_record_ids=[rec.record_id],
-            similarity_score=duplicate_check["score"],
-            duplicate_type=duplicate_check["type"]
-        )
-        
-        duplicate_warning = {
-            "duplicate_detected": True,
-            "duplicate_type": duplicate_check["type"],
-            "similarity_score": duplicate_check["score"],
-            "existing_record_id": duplicate_check["match"].record_id,
-            "message": f"⚠️ {duplicate_check['type'].upper()} duplicate detected ({duplicate_check['score']}% similarity)"
+        rec.similarity_info = {
+            "checked": True,
+            "max_score": duplicate_check["score"],
+            "closest_record": duplicate_check["match"].record_id if duplicate_check["match"] else None,
+            "confidence": duplicate_check.get("confidence"),
+            "is_duplicate": duplicate_check.get("is_duplicate", False)
         }
+    else:
+        rec.similarity_info = {
+            "checked": True,
+            "max_score": 0,
+            "closest_record": None,
+            "confidence": None,
+            "is_duplicate": False
+        }
+    
+    # Only process as duplicate if >= threshold (is_duplicate = True)
+    if duplicate_check and duplicate_check.get("is_duplicate", False):
+        confidence = duplicate_check.get("confidence", "low")
         
-        log_event(
-            db, 
-            rec.record_id, 
-            "manual", 
-            "duplicate",
-            f"{duplicate_check['type']} duplicate: {duplicate_check['score']}% similarity with {duplicate_check['match'].record_id}"
-        )
+        # FASE 2.1: Auto-merge decision based on confidence level
+        if confidence in ["exact", "very_high", "high"]:  # ≥93% similarity
+            # HIGH CONFIDENCE → Auto-merge
+            group = detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[rec.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            
+            # Auto-merge immediately
+            detector.merge_duplicates(group.id)
+            
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "auto_merged",
+                "existing_record_id": duplicate_check["match"].record_id,
+                "message": f"✅ AUTO-MERGED: {confidence.upper()} confidence duplicate ({duplicate_check['score']}%)"
+            }
+            
+            log_event(
+                db, 
+                rec.record_id, 
+                "manual", 
+                "info",
+                f"Auto-merged ({confidence}): {duplicate_check['score']}% similarity with {duplicate_check['match'].record_id}"
+            )
+            
+        elif confidence == "medium":  # 88-92% similarity
+            # MEDIUM CONFIDENCE → Flag for manual review
+            rec.status = "possible_duplicate"
+            
+            detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[rec.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "flagged_for_review",
+                "existing_record_id": duplicate_check["match"].record_id,
+                "message": f"⚠️ REVIEW REQUIRED: Medium confidence duplicate ({duplicate_check['score']}%) - Manual verification needed"
+            }
+            
+            log_event(
+                db, 
+                rec.record_id, 
+                "manual", 
+                "duplicate",
+                f"Medium confidence duplicate ({duplicate_check['score']}%) - flagged for review"
+            )
+            
+        else:  # low confidence (85-87%)
+            # LOW CONFIDENCE → Just warning, don't block
+            rec.status = "duplicate_flagged"
+            
+            detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[rec.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "suspicious_flagged",
+                "existing_record_id": duplicate_check["match"].record_id,
+                "message": f"🚩 SUSPICIOUS: Low confidence duplicate ({duplicate_check['score']}%) - Proceed with caution"
+            }
+            
+            log_event(
+                db, 
+                rec.record_id, 
+                "manual", 
+                "info",
+                f"Low confidence duplicate ({duplicate_check['score']}%) - flagged as suspicious"
+            )
+    else:
+        # FASE 2.6: Log similarity info even if < 85% (not duplicate)
+        if duplicate_check:
+            log_event(
+                db, 
+                rec.record_id, 
+                "manual", 
+                "info",
+                f"Similarity check: {duplicate_check['score']:.1f}% with {duplicate_check['match'].record_id} (below threshold, not duplicate)"
+            )
+        else:
+            log_event(
+                db, 
+                rec.record_id, 
+                "manual", 
+                "info",
+                "Similarity check: No matching records found (unique data)"
+            )
     
     db.commit()
     log_event(db, rec.record_id, "manual", "info", "Record berhasil ditambahkan")
@@ -229,24 +331,77 @@ def ingest_excel(
         db.add(record)
         db.flush()
         
-        # FASE 1.1: Check for duplicates
+        # FASE 1.1 & 2.1 & 2.6: Check for duplicates with confidence-based decision
         duplicate_check = detector.check_duplicate(record)
+        
+        # FASE 2.6: ALWAYS store similarity info (even if < 85%)
         if duplicate_check:
-            detector.mark_as_duplicate(record, duplicate_check["type"])
-            detector.create_duplicate_group(
-                master_record_id=duplicate_check["match"].record_id,
-                duplicate_record_ids=[record.record_id],
-                similarity_score=duplicate_check["score"],
-                duplicate_type=duplicate_check["type"]
-            )
+            record.similarity_info = {
+                "checked": True,
+                "max_score": duplicate_check["score"],
+                "closest_record": duplicate_check["match"].record_id if duplicate_check["match"] else None,
+                "confidence": duplicate_check.get("confidence"),
+                "is_duplicate": duplicate_check.get("is_duplicate", False)
+            }
+        else:
+            record.similarity_info = {
+                "checked": True,
+                "max_score": 0,
+                "closest_record": None,
+                "confidence": None,
+                "is_duplicate": False
+            }
+        
+        # Only process as duplicate if >= threshold
+        if duplicate_check and duplicate_check.get("is_duplicate", False):
+            confidence = duplicate_check.get("confidence", "low")
+            
+            # Auto-merge decision based on confidence
+            if confidence in ["exact", "very_high", "high"]:  # ≥93%
+                # HIGH CONFIDENCE → Auto-merge
+                group = detector.create_duplicate_group(
+                    master_record_id=duplicate_check["match"].record_id,
+                    duplicate_record_ids=[record.record_id],
+                    similarity_score=duplicate_check["score"],
+                    duplicate_type=duplicate_check["type"]
+                )
+                detector.merge_duplicates(group.id)
+                log_event(db, record.record_id, "import_excel", "info",
+                    f"Auto-merged ({confidence}): {duplicate_check['score']}% with {duplicate_check['match'].record_id}")
+                    
+            elif confidence == "medium":  # 88-92%
+                # MEDIUM CONFIDENCE → Flag for review
+                record.status = "possible_duplicate"
+                detector.create_duplicate_group(
+                    master_record_id=duplicate_check["match"].record_id,
+                    duplicate_record_ids=[record.record_id],
+                    similarity_score=duplicate_check["score"],
+                    duplicate_type=duplicate_check["type"]
+                )
+                log_event(db, record.record_id, "import_excel", "duplicate",
+                    f"Medium confidence ({duplicate_check['score']}%) - flagged for review")
+                    
+            else:  # low (85-87%)
+                # LOW CONFIDENCE → Just flag
+                record.status = "duplicate_flagged"
+                detector.create_duplicate_group(
+                    master_record_id=duplicate_check["match"].record_id,
+                    duplicate_record_ids=[record.record_id],
+                    similarity_score=duplicate_check["score"],
+                    duplicate_type=duplicate_check["type"]
+                )
+                log_event(db, record.record_id, "import_excel", "info",
+                    f"Low confidence ({duplicate_check['score']}%) - flagged as suspicious")
+            
             duplicates_detected += 1
-            log_event(
-                db,
-                record.record_id,
-                "import_excel",
-                "duplicate",
-                f"{duplicate_check['type']} duplicate: {duplicate_check['score']}%"
-            )
+        else:
+            # FASE 2.6: Log similarity info even if < 85% (not duplicate)
+            if duplicate_check:
+                log_event(db, record.record_id, "import_excel", "info",
+                    f"Similarity check: {duplicate_check['score']:.1f}% with {duplicate_check['match'].record_id} (below threshold, not duplicate)")
+            else:
+                log_event(db, record.record_id, "import_excel", "info",
+                    "Similarity check: No matching records found (unique data)")
         
         saved += 1
 
@@ -260,6 +415,260 @@ def ingest_excel(
         "duplicates_detected": duplicates_detected,
         "message": f"✅ {saved} records imported" + (f", ⚠️ {duplicates_detected} duplicates detected" if duplicates_detected > 0 else "")
     }
+
+
+# ========== 2️⃣B FASE 3: Excel Preview (Column Analysis) ==========
+@router.post("/excel/preview")
+def preview_excel_columns(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_session)
+):
+    """
+    FASE 3: Preview Excel columns and suggest mappings.
+    
+    NO DATABASE INSERT! Just analyze structure.
+    
+    Returns:
+        ColumnAnalysis with exact/fuzzy matches, missing fields, extra columns
+    """
+    from ..services.excel_mapper import analyze_excel_columns
+    from ..schemas.unified import ColumnAnalysis, ColumnMatch
+    
+    # Validate file type
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".xlsx", ".xls", ".csv")):
+        raise HTTPException(status_code=400, detail="File harus Excel (.xlsx/.xls) atau CSV (.csv)")
+    
+    # Read Excel into DataFrame
+    try:
+        contents = file.file.read()
+        if filename_lower.endswith(".csv"):
+            df = pd.read_csv(BytesIO(contents))
+        else:
+            df = pd.read_excel(BytesIO(contents))
+    except Exception as e:
+        logger.error(f"Failed to read Excel file: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    
+    # Analyze columns
+    analysis = analyze_excel_columns(df, threshold=75)
+    
+    # Convert to Pydantic models
+    exact_matches = [ColumnMatch(**m) for m in analysis["exact_matches"]]
+    fuzzy_matches = [ColumnMatch(**m) for m in analysis["fuzzy_matches"]]
+    
+    result = ColumnAnalysis(
+        total_rows=analysis["total_rows"],
+        total_columns=analysis["total_columns"],
+        exact_matches=exact_matches,
+        fuzzy_matches=fuzzy_matches,
+        missing_fields=analysis["missing_fields"],
+        extra_columns=analysis["extra_columns"],
+        preview_data=analysis["preview_data"]
+    )
+    
+    logger.info(f"Preview Excel: {len(df)} rows, {len(df.columns)} columns, {len(exact_matches)} exact, {len(fuzzy_matches)} fuzzy")
+    
+    return result
+
+
+# ========== 2️⃣C FASE 3: Excel Import with User-Confirmed Mapping ==========
+@router.post("/excel/import-with-mapping")
+def import_excel_with_mapping(
+    file: UploadFile = File(...),
+    mapping_json: str = Form(...),
+    hospital_id: str = Form("unknown"),
+    db: Session = Depends(get_session)
+):
+    """
+    FASE 3: Import Excel with user-confirmed column mapping.
+    
+    Flow:
+    1. User confirms mapping from /excel/preview
+    2. Apply mapping to DataFrame
+    3. Process rows (same as /import_excel)
+    4. Insert to database
+    
+    Args:
+        file: Excel file
+        mapping_json: JSON string of ColumnMappingRequest
+        hospital_id: Hospital ID
+    
+    Returns:
+        ImportResult with success/failed counts
+    """
+    from ..services.excel_mapper import apply_column_mapping
+    from ..schemas.unified import ColumnMappingRequest, ImportResult
+    import json
+    
+    # Parse mapping JSON
+    try:
+        mapping_dict = json.loads(mapping_json)
+        mapping = ColumnMappingRequest(**mapping_dict)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid mapping JSON: {str(e)}")
+    
+    # Validate file type
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".xlsx", ".xls", ".csv")):
+        raise HTTPException(status_code=400, detail="File harus Excel (.xlsx/.xls) atau CSV (.csv)")
+    
+    # Read Excel or CSV
+    try:
+        contents = file.file.read()
+        if filename_lower.endswith(".csv"):
+            df = pd.read_csv(BytesIO(contents))
+        else:
+            df = pd.read_excel(BytesIO(contents))
+    except Exception as e:
+        logger.error(f"Failed to read Excel: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    
+    # Apply user-confirmed mapping
+    df_mapped = apply_column_mapping(
+        df,
+        column_mapping=mapping.column_mapping,
+        extra_column_action=mapping.extra_column_action,
+        missing_field_values=mapping.missing_field_values
+    )
+    
+    # Create source
+    src = DataHubSource(type="import_excel", filename=file.filename, uploader="system")
+    db.add(src)
+    db.flush()
+    
+    # Process rows (SAME LOGIC AS /import_excel)
+    saved = 0
+    failed = 0
+    errors = []
+    duplicates_detected = 0
+    detector = DuplicateDetector(db)
+    
+    for idx, row in df_mapped.iterrows():
+        try:
+            # Clean NaN values (pandas NaN -> None for JSON compatibility)
+            row_dict = row.to_dict()
+            row_dict = {k: (None if pd.isna(v) else v) for k, v in row_dict.items()}
+            
+            # Map columns
+            data = map_excel_columns(row_dict)
+            data["hospital_id"] = hospital_id
+            data["source"] = "import_excel"
+            
+            # Validate
+            validator.validate_fields(data)
+            
+            # Standardize
+            data = standardizer.run(data)
+            
+            # Generate hashes
+            hashes = generate_hashes(data)
+            
+            # Create record first
+            record = DataHubRecord(
+                record_id=data.get("record_id") or f"REC_{uuid.uuid4().hex[:8].upper()}",
+                hospital_id=data["hospital_id"],
+                source_id=src.id,
+                json_data=data,
+                content_hash=hashes["content_hash"],
+                similarity_fingerprint=hashes["similarity_fingerprint"]
+            )
+            db.add(record)
+            db.flush()
+            
+            # Check duplicate with record object
+            duplicate_check = detector.check_duplicate(record)
+            
+            # Store similarity info (serialize match object to record_id)
+            if duplicate_check:
+                record.similarity_info = {
+                    "checked": True,
+                    "type": duplicate_check["type"],
+                    "max_score": duplicate_check["score"],
+                    "closest_record": duplicate_check["match"].record_id if duplicate_check.get("match") else None,
+                    "confidence": duplicate_check.get("confidence"),
+                    "is_duplicate": duplicate_check.get("is_duplicate", False)
+                }
+            else:
+                record.similarity_info = {
+                    "checked": True,
+                    "max_score": 0.0,
+                    "closest_record": None,
+                    "confidence": None,
+                    "is_duplicate": False
+                }
+            
+            # Handle duplicates (same logic)
+            if duplicate_check and duplicate_check.get("is_duplicate", False):
+                confidence = duplicate_check.get("confidence", "low")
+                
+                if confidence in ["exact", "very_high", "high"]:
+                    group = detector.create_duplicate_group(
+                        master_record_id=duplicate_check["match"].record_id,
+                        duplicate_record_ids=[record.record_id],
+                        similarity_score=duplicate_check["score"],
+                        duplicate_type=duplicate_check["type"]
+                    )
+                    detector.merge_duplicates(group.id)
+                    log_event(db, record.record_id, "import_excel", "info",
+                        f"Auto-merged ({confidence}): {duplicate_check['score']}%")
+                elif confidence == "medium":
+                    record.status = "possible_duplicate"
+                    detector.create_duplicate_group(
+                        master_record_id=duplicate_check["match"].record_id,
+                        duplicate_record_ids=[record.record_id],
+                        similarity_score=duplicate_check["score"],
+                        duplicate_type=duplicate_check["type"]
+                    )
+                    log_event(db, record.record_id, "import_excel", "duplicate",
+                        f"Medium confidence - flagged for review")
+                else:
+                    record.status = "duplicate_flagged"
+                    detector.create_duplicate_group(
+                        master_record_id=duplicate_check["match"].record_id,
+                        duplicate_record_ids=[record.record_id],
+                        similarity_score=duplicate_check["score"],
+                        duplicate_type=duplicate_check["type"]
+                    )
+                
+                duplicates_detected += 1
+            else:
+                if duplicate_check:
+                    log_event(db, record.record_id, "import_excel", "info",
+                        f"Similarity: {duplicate_check['score']:.1f}% (below threshold)")
+            
+            # ✅ NEW: Auto-split to structured tables (Patient, Visit, MedicalRecord)
+            try:
+                from ..services.record_processor import split_to_structured_tables
+                split_result = split_to_structured_tables(record, db)
+                log_event(db, record.record_id, "import_excel", "info",
+                    f"Split to tables: Patient {split_result['patient'].patient_uuid}, Visit {split_result['visit'].visit_uuid}")
+            except Exception as split_error:
+                logger.warning(f"Failed to split record {record.record_id} to tables: {split_error}")
+                # Continue anyway - record still in data_hub_records
+            
+            saved += 1
+            
+        except Exception as e:
+            failed += 1
+            error_msg = f"Row {idx + 1}: {str(e)}"
+            errors.append(error_msg)
+            logger.warning(error_msg)
+    
+    db.commit()
+    log_event(db, src.id, "import_excel", "info", 
+        f"Imported {saved} records, {failed} failed, {duplicates_detected} duplicates")
+    
+    logger.info(f"Excel import with mapping: {saved} success, {failed} failed")
+    
+    return ImportResult(
+        source_id=src.id,
+        records_imported=saved,
+        records_failed=failed,
+        duplicates_found=duplicates_detected,
+        errors=errors
+    )
+
 
 # ========== 3️⃣ Bridging Gateway ==========
 @router.post("/gateway")
@@ -314,32 +723,103 @@ def ingest_gateway(
     db.add(record)
     db.flush()
     
-    # FASE 1.1: Check for duplicates
+    # FASE 1.1 & 2.1 & 2.6: Check for duplicates with confidence-based decision
     detector = DuplicateDetector(db)
     duplicate_check = detector.check_duplicate(record)
     
     duplicate_warning = None
+    
+    # FASE 2.6: ALWAYS store similarity info (even if < 85%)
     if duplicate_check:
-        detector.mark_as_duplicate(record, duplicate_check["type"])
-        detector.create_duplicate_group(
-            master_record_id=duplicate_check["match"].record_id,
-            duplicate_record_ids=[record.record_id],
-            similarity_score=duplicate_check["score"],
-            duplicate_type=duplicate_check["type"]
-        )
-        duplicate_warning = {
-            "duplicate_detected": True,
-            "duplicate_type": duplicate_check["type"],
-            "similarity_score": duplicate_check["score"],
-            "existing_record_id": duplicate_check["match"].record_id
+        record.similarity_info = {
+            "checked": True,
+            "max_score": duplicate_check["score"],
+            "closest_record": duplicate_check["match"].record_id if duplicate_check["match"] else None,
+            "confidence": duplicate_check.get("confidence"),
+            "is_duplicate": duplicate_check.get("is_duplicate", False)
         }
-        log_event(
-            db,
-            record.record_id,
-            "gateway",
-            "duplicate",
-            f"{duplicate_check['type']} duplicate: {duplicate_check['score']}%"
-        )
+    else:
+        record.similarity_info = {
+            "checked": True,
+            "max_score": 0,
+            "closest_record": None,
+            "confidence": None,
+            "is_duplicate": False
+        }
+    
+    # Only process as duplicate if >= threshold
+    if duplicate_check and duplicate_check.get("is_duplicate", False):
+        confidence = duplicate_check.get("confidence", "low")
+        
+        # Auto-merge decision based on confidence
+        if confidence in ["exact", "very_high", "high"]:  # ≥93%
+            # HIGH CONFIDENCE → Auto-merge
+            group = detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[record.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            detector.merge_duplicates(group.id)
+            
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "auto_merged",
+                "existing_record_id": duplicate_check["match"].record_id
+            }
+            log_event(db, record.record_id, "gateway", "info",
+                f"Auto-merged ({confidence}): {duplicate_check['score']}%")
+                
+        elif confidence == "medium":  # 88-92%
+            # MEDIUM CONFIDENCE → Flag for review
+            record.status = "possible_duplicate"
+            detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[record.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "flagged_for_review",
+                "existing_record_id": duplicate_check["match"].record_id
+            }
+            log_event(db, record.record_id, "gateway", "duplicate",
+                f"Medium confidence ({duplicate_check['score']}%) - flagged for review")
+                
+        else:  # low (85-87%)
+            # LOW CONFIDENCE → Just flag
+            record.status = "duplicate_flagged"
+            detector.create_duplicate_group(
+                master_record_id=duplicate_check["match"].record_id,
+                duplicate_record_ids=[record.record_id],
+                similarity_score=duplicate_check["score"],
+                duplicate_type=duplicate_check["type"]
+            )
+            duplicate_warning = {
+                "duplicate_detected": True,
+                "duplicate_type": duplicate_check["type"],
+                "similarity_score": duplicate_check["score"],
+                "confidence": confidence,
+                "action": "suspicious_flagged",
+                "existing_record_id": duplicate_check["match"].record_id
+            }
+            log_event(db, record.record_id, "gateway", "info",
+                f"Low confidence ({duplicate_check['score']}%) - flagged as suspicious")
+    else:
+        # FASE 2.6: Log similarity info even if < 85% (not duplicate)
+        if duplicate_check:
+            log_event(db, record.record_id, "gateway", "info",
+                f"Similarity check: {duplicate_check['score']:.1f}% with {duplicate_check['match'].record_id} (below threshold, not duplicate)")
+        else:
+            log_event(db, record.record_id, "gateway", "info",
+                "Similarity check: No matching records found (unique data)")
     
     db.commit()
     log_event(db, record.record_id, "gateway", "info", "Record berhasil ditambahkan")

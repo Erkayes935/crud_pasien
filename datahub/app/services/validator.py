@@ -44,16 +44,21 @@ def validate_date_format(date_str, field_name="tanggal") -> bool:
     Example:
         validate_date_format("2024-10-27", "tanggal_masuk")  # OK
         validate_date_format("27/10/2024", "tanggal_masuk")  # ValueError!
+        validate_date_format("TBD", "tanggal_masuk")  # OK (will use default)
     """
     if not date_str:
         return True  # Allow None/empty (optional fields)
     
     date_str = str(date_str).strip()
     
+    # Allow sentinel values (will be handled by processor with defaults)
+    if date_str.upper() in ('TBD', '__DEFAULT__', '__BLOCK__'):
+        return True
+    
     # Check format: YYYY-MM-DD
     if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
         raise ValueError(
-            f"{field_name} harus format YYYY-MM-DD (contoh: 2024-10-27). "
+            f"{field_name} harus format YYYY-MM-DD (contoh: 2024-10-27) atau 'TBD' untuk tanggal default. "
             f"Nilai sekarang: '{date_str}'"
         )
     

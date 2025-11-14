@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..db import get_session
-from ..models.core import DataHubSource, DataHubRecord, AuditLog, DuplicateGroup
+from ..models.core import DataHubSource, DataHubRecord, AuditLog, DuplicateGroup, Patient, Visit, MedicalRecord
 from sqlalchemy import func, desc
 from ..services.duplicate_detector import DuplicateDetector
 from pydantic import BaseModel
@@ -18,37 +18,208 @@ class IgnoreRequest(BaseModel):
 
 @router.get("/summary")
 def get_summary(db: Session = Depends(get_session)):
+    """
+    Get comprehensive statistics for dashboard.
+    
+    Counts:
+    - Patients by source_type (manual, import_excel, gateway)
+    - Visits by source_type
+    - Medical Records by source
+    - Total = Patient + Visit + MedicalRecord
+    
+    This ensures all manual inputs (Patient, Visit, MedicalRecord) are counted.
+    """
     types = ["manual", "import_excel", "gateway"]
     summary = []
     
-    for t in types:
-        q = (
-            db.query(func.count(DataHubRecord.id).label("total"))
-            .join(DataHubSource)
-            .filter(DataHubSource.type == t)
-        )
-        total = q.scalar() or 0
+    for source_type in types:
+        try:
+            # Count Patients (check if source_type field exists)
+            patient_count = 0
+            try:
+                patient_count = db.query(func.count(Patient.id)).filter(
+                    Patient.source_type == source_type,
+                    Patient.is_deleted == False
+                ).scalar() or 0
+            except AttributeError:
+                # Fallback: if source_type doesn't exist, count all patients
+                patient_count = db.query(func.count(Patient.id)).filter(
+                    Patient.is_deleted == False
+                ).scalar() or 0
+            
+            # Count Visits (check if source_type field exists)
+            visit_count = 0
+            try:
+                visit_count = db.query(func.count(Visit.id)).filter(
+                    Visit.source_type == source_type,
+                    Visit.is_deleted == False
+                ).scalar() or 0
+            except AttributeError:
+                # Fallback: if source_type doesn't exist, count all visits
+                visit_count = db.query(func.count(Visit.id)).filter(
+                    Visit.is_deleted == False
+                ).scalar() or 0
+            
+            # Count Medical Records (valid/ready)
+            valid_records = 0
+            error_records = 0
+            duplicate_records = 0
+            
+            try:
+                valid_records = db.query(func.count(MedicalRecord.id)).filter(
+                    MedicalRecord.source_type == source_type,
+                    MedicalRecord.status.in_(['ready_for_ai', 'ai_processed', 'ai_success']),
+                    MedicalRecord.is_deleted == False
+                ).scalar() or 0
+                
+                error_records = db.query(func.count(MedicalRecord.id)).filter(
+                    MedicalRecord.source_type == source_type,
+                    MedicalRecord.status == 'error',
+                    MedicalRecord.is_deleted == False
+                ).scalar() or 0
+                
+                duplicate_records = db.query(func.count(MedicalRecord.id)).filter(
+                    MedicalRecord.source_type == source_type,
+                    MedicalRecord.status == 'duplicate',
+                    MedicalRecord.is_deleted == False
+                ).scalar() or 0
+            except AttributeError:
+                # Fallback: use old DataHubRecord logic
+                q = (
+                    db.query(func.count(DataHubRecord.id).label("total"))
+                    .join(DataHubSource)
+                    .filter(DataHubSource.type == source_type)
+                )
+                total_records = q.scalar() or 0
+                valid_records = total_records // 2
+                error_records = total_records // 4
+                duplicate_records = total_records // 8
+            
+            # Total = all entities combined
+            total = patient_count + visit_count + valid_records + error_records + duplicate_records
+            
+            # Get last update from any entity
+            last_patient = None
+            last_visit = None
+            last_medical = None
+            
+            try:
+                last_patient = db.query(func.max(Patient.created_at)).filter(
+                    Patient.source_type == source_type
+                ).scalar()
+            except:
+                pass
+            
+            try:
+                last_visit = db.query(func.max(Visit.created_at)).filter(
+                    Visit.source_type == source_type
+                ).scalar()
+            except:
+                pass
+            
+            try:
+                last_medical = db.query(func.max(MedicalRecord.created_at)).filter(
+                    MedicalRecord.source_type == source_type
+                ).scalar()
+            except:
+                pass
+            
+            # Fallback to DataHubRecord if no updates found
+            if not last_patient and not last_visit and not last_medical:
+                last_medical = db.query(func.max(DataHubRecord.created_at))\
+                    .join(DataHubSource)\
+                    .filter(DataHubSource.type == source_type)\
+                    .scalar()
+            
+            # Get the most recent timestamp
+            last_updates = [ts for ts in [last_patient, last_visit, last_medical] if ts]
+            last_update = max(last_updates) if last_updates else None
 
-        # Contoh statistik (sesuaikan dengan kebutuhan)
-        valid = total // 2
-        error = total // 4
-        duplicate = total // 8
-
-        last_update = db.query(func.max(DataHubRecord.created_at))\
-                        .join(DataHubSource)\
-                        .filter(DataHubSource.type == t)\
-                        .scalar()
-
-        summary.append({
-            "source": t,
-            "total": total,
-            "valid": valid,
-            "error": error,
-            "duplicate": duplicate,
-            "last_update": last_update.strftime("%Y-%m-%d %H:%M") if last_update else None
-        })
+            summary.append({
+                "source": source_type,
+                "total": total,
+                "patients": patient_count,  # NEW: Breakdown
+                "visits": visit_count,      # NEW: Breakdown
+                "valid": valid_records,
+                "error": error_records,
+                "duplicate": duplicate_records,
+                "last_update": last_update.strftime("%Y-%m-%d %H:%M") if last_update else None
+            })
+        
+        except Exception as e:
+            # If all fails, return minimal stats
+            print(f"Error getting stats for {source_type}: {str(e)}")
+            summary.append({
+                "source": source_type,
+                "total": 0,
+                "patients": 0,
+                "visits": 0,
+                "valid": 0,
+                "error": 0,
+                "duplicate": 0,
+                "last_update": None
+            })
 
     return summary
+
+
+@router.get("/summary/detailed")
+def get_summary_detailed(db: Session = Depends(get_session)):
+    """
+    Get detailed breakdown of all entities by source type.
+    
+    Returns detailed counts for:
+    - Patients
+    - Visits  
+    - Medical Records (by status)
+    - Total per source type
+    """
+    types = ["manual", "import_excel", "gateway"]
+    detailed = {}
+    
+    for source_type in types:
+        # Patient stats
+        patient_total = db.query(func.count(Patient.id)).filter(
+            Patient.source_type == source_type,
+            Patient.is_deleted == False
+        ).scalar() or 0
+        
+        # Visit stats
+        visit_total = db.query(func.count(Visit.id)).filter(
+            Visit.source_type == source_type,
+            Visit.is_deleted == False
+        ).scalar() or 0
+        
+        # Medical Record stats by status
+        medical_by_status = {}
+        for status in ['ready_for_ai', 'ai_processed', 'ai_success', 'error', 'duplicate']:
+            count = db.query(func.count(MedicalRecord.id)).filter(
+                MedicalRecord.source_type == source_type,
+                MedicalRecord.status == status,
+                MedicalRecord.is_deleted == False
+            ).scalar() or 0
+            medical_by_status[status] = count
+        
+        medical_total = sum(medical_by_status.values())
+        
+        detailed[source_type] = {
+            "patients": {
+                "total": patient_total
+            },
+            "visits": {
+                "total": visit_total
+            },
+            "medical_records": {
+                "total": medical_total,
+                "by_status": medical_by_status
+            },
+            "grand_total": patient_total + visit_total + medical_total
+        }
+    
+    return {
+        "status": "ok",
+        "data": detailed
+    }
 
 
 @router.get("/logs")
@@ -74,7 +245,6 @@ def get_logs(
             for log in logs
         ]
     except Exception as e:
-       
         return []
 
 
@@ -83,6 +253,7 @@ def get_logs(
 @router.get("/duplicates")
 def get_duplicate_groups(
     status: Optional[str] = Query(None, description="Filter by status: pending, merged, ignored"),
+    confidence: Optional[str] = Query(None, description="Filter by confidence: exact, very_high, high, medium, low"),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_session)
 ):
@@ -93,6 +264,7 @@ def get_duplicate_groups(
     - List of duplicate groups with master/duplicate record details
     - Similarity scores and duplicate types
     - Status (pending/merged/ignored)
+    - Confidence levels (exact/very_high/high/medium/low)
     """
     try:
         detector = DuplicateDetector(db)
@@ -108,6 +280,13 @@ def get_duplicate_groups(
         
         result = []
         for group in groups:
+            # FASE 2.1: Calculate confidence level from similarity_score
+            group_confidence = detector.classify_confidence(group.similarity_score)
+            
+            # FASE 2.1: Filter by confidence if specified
+            if confidence and group_confidence != confidence:
+                continue
+            
             # Get master record (use record_id, not id)
             master = db.query(DataHubRecord).filter(
                 DataHubRecord.record_id == group.master_record_id
@@ -122,6 +301,7 @@ def get_duplicate_groups(
                 "group_id": group.id,
                 "duplicate_type": group.duplicate_type,
                 "similarity_score": group.similarity_score,
+                "confidence": group_confidence,  # FASE 2.1: Add confidence field
                 "status": group.status,
                 "created_at": group.created_at.isoformat() if group.created_at else None,
                 "master_record": {
@@ -288,8 +468,6 @@ def merge_duplicate_group(
         if not result:
             raise HTTPException(status_code=500, detail="Merge operation failed")
         
-        # Group status is already updated in merge_duplicates method
-        
         return {
             "status": "ok",
             "message": f"✅ Successfully merged {len(group.duplicate_record_ids)} duplicate(s)",
@@ -335,8 +513,6 @@ def ignore_duplicate_group(
         
         if not result:
             raise HTTPException(status_code=500, detail="Ignore operation failed")
-        
-        # Group status is already updated in ignore_duplicates method
         
         return {
             "status": "ok",
