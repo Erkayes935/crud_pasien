@@ -13346,3 +13346,9 @@ starlette.requests.ClientDisconnect
 2025-11-14 02:56:57,856 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
 2025-11-14 02:56:58,139 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
 2025-11-14 02:57:01,715 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T02:57:01.715373', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 04:09:48,568 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 04:14:14,947 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 04:17:35,504 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 04:19:45,759 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 04:22:46,732 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 04:42:52,734 - backend.error_handlers - INFO - Error handlers registered successfully

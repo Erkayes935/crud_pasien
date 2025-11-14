@@ -7,6 +7,10 @@ Configures the SQLAlchemy Engine, `SessionLocal` factory, and declarative
 `DATABASE_URL` environment variable (use `.env` locally). Keep this module
 lightweight to avoid side-effects; importing it will create the engine which
 may attempt to connect to the database depending on driver behavior.
+
+DUAL DATABASE SETUP:
+- ai_claim_db (port 5434): Web application + Claims data
+- datahub_db (port 5433): Data Hub standardization & ingestion
 """
 import os
 from dotenv import load_dotenv
@@ -18,7 +22,9 @@ from sqlalchemy.pool import NullPool
 # Load .env for local development (no-op if no .env present)
 load_dotenv()
 
-# Read DB URL from environment; fallback to a sensible default for local dev
+# ============================================================
+# AI CLAIM DATABASE (Web + Claims)
+# ============================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create engine and session factory
@@ -32,10 +38,39 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
 # ---------------------------
-# DB dependency
+# DB dependency for AI Claim
 # ---------------------------
 def get_db():
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ============================================================
+# DATA HUB DATABASE (Standardization & Ingestion)
+# ============================================================
+DATABASE_URL_DATAHUB = os.getenv(
+    "DATABASE_URL_DATAHUB",
+    "postgresql://datahub_user:pass@103.179.56.158:5433/datahub_db"
+)
+
+# Create datahub engine and session factory
+engine_datahub = create_engine(
+    DATABASE_URL_DATAHUB,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    poolclass=NullPool,
+)
+SessionLocalDataHub = sessionmaker(bind=engine_datahub, autoflush=False, autocommit=False)
+BaseDataHub = declarative_base()
+
+# ---------------------------
+# DB dependency for Data Hub
+# ---------------------------
+def get_datahub_session():
+    db = SessionLocalDataHub()
     try:
         yield db
     finally:

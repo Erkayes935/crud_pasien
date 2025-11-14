@@ -7,15 +7,16 @@ services:
       - "8001:8001"
     environment:
       DATABASE_URL: postgresql://postgres:user@103.179.56.158:5434/patients
+      DATABASE_URL_DATAHUB: postgresql://datahub_user:pass@103.179.56.158:5433/datahub_db
       CORE_ENGINE_URL: http://core_engine:8002
-      DATAHUB_URL: http://datahub:8000
+      REDIS_URL: redis://redis:6379/0
     env_file:
       - .env
     working_dir: /app/web
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8001
     depends_on:
       - core_engine
-      - datahub
+      - redis
     networks:
       - crud_pasien_network
 
@@ -30,41 +31,23 @@ services:
     networks:
       - crud_pasien_network
 
-  datahub:
-    build: ./datahub
-    container_name: crud_pasien-datahub
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./datahub/.env
+  celery:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: crud_pasien-celery
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - CORE_ENGINE_URL=http://core_engine:8002
+      DATABASE_URL: postgresql://postgres:user@103.179.56.158:5434/patients
+      DATABASE_URL_DATAHUB: postgresql://datahub_user:pass@103.179.56.158:5433/datahub_db
+      CORE_ENGINE_URL: http://core_engine:8002
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - .env
+    working_dir: /app/web
     depends_on:
       - redis
       - core_engine
-    volumes:
-      - ./datahub/app:/app/app
-      - ./datahub/alembic:/app/alembic
-      - ./datahub/scripts:/app/scripts
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - crud_pasien_network
-
-  celery:
-    build: ./datahub
-    container_name: crud_pasien-celery
-    env_file:
-      - ./datahub/.env
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - CORE_ENGINE_URL=http://core_engine:8002
-    depends_on:
-      - redis
-      - datahub
-    volumes:
-      - ./datahub/app:/app/app
-    command: celery -A app.celery_app worker --loglevel=info
+    command: celery -A backend.celery_app.celery_app worker --loglevel=info
     networks:
       - crud_pasien_network
 

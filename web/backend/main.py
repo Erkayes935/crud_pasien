@@ -11,8 +11,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import config
 from .database import engine, Base
 from .routers import (
-
-
     dashboard_router,
     auth_router,
     patient_router,
@@ -23,7 +21,18 @@ from .routers import (
     resume_router,
     ai_meta_router,
     export_router,
-    datahub_router,
+)
+
+# Data Hub routers (8 routers untuk datahub functionality)
+from .routers.datahub import (
+    ui_router,
+    ingestion_router,
+    monitor_router,
+    export_router as datahub_export_router,
+    api_router as datahub_api_router,
+    hybrid_sync_router,
+    manual_input_router,
+    test_celery_router,
 )
 
 from .routers.claim import (
@@ -102,7 +111,16 @@ app.include_router(visit_router.router, tags=["visits"])
 app.include_router(resume_router.router, tags=["resumes"])
 app.include_router(ai_meta_router.router, tags=["ai-meta"])
 app.include_router(export_router.router, tags=["export"])
-app.include_router(datahub_router.router, tags=["datahub"])
+
+# 📊 Data Hub routers (8 routers untuk data standardization & ingestion)
+app.include_router(ui_router.router, tags=["datahub-ui"])
+app.include_router(ingestion_router.router, prefix="/datahub/ingestion", tags=["datahub-ingestion"])
+app.include_router(monitor_router.router, prefix="/datahub/monitor", tags=["datahub-monitor"])
+app.include_router(datahub_export_router.router, prefix="/datahub/export", tags=["datahub-export"])
+app.include_router(datahub_api_router.router, prefix="/datahub/api", tags=["datahub-api"])
+app.include_router(hybrid_sync_router.router, prefix="/datahub/hybrid-sync", tags=["datahub-hybrid"])
+app.include_router(manual_input_router.router, prefix="/datahub/manual-input", tags=["datahub-manual"])
+app.include_router(test_celery_router.router, prefix="/datahub/test", tags=["datahub-test"])
 
 # ======================================================
 # Global Error Handlers
