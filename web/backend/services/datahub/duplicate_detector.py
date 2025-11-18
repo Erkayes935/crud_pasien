@@ -6,8 +6,8 @@ from typing import Optional, Dict, List
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz
 from backend.models.datahub.core import DataHubRecord, DuplicateGroup
-from ..services.hasher import generate_content_hash, generate_fingerprint
-from ..services.logger import log_event
+from backend.services.datahub.hasher import generate_content_hash, generate_fingerprint
+from backend.services.datahub.logger import log_event
 
 
 class DuplicateDetector:

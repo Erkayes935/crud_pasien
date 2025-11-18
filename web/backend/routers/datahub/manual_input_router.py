@@ -18,8 +18,8 @@ from backend.services.datahub.anonymizer import Anonymizer
 from backend.services.datahub.logger import log_event
 from backend.services.datahub.manual_duplicate_detector import ManualDuplicateDetector
 
-router = APIRouter(prefix="/manual", tags=["Manual Input"])
-templates = Jinja2Templates(directory="app/templates")
+router = APIRouter(tags=["Manual Input"])
+templates = Jinja2Templates(directory="web/frontend/templates")
 
 
 # =====================================================================
@@ -138,7 +138,7 @@ async def manual_input_page(request: Request):
     """
     Render halaman manual input dengan tab system.
     """
-    return templates.TemplateResponse("manual_input.html", {
+    return templates.TemplateResponse("datahub/manual_input.html", {
         "request": request,
         "page_title": "Manual Input - AI CLAIM Data Hub"
     })

@@ -19,8 +19,8 @@ from typing import Optional, List
 from datetime import datetime
 import logging
 
-from app.db import get_datahub_session
-from app.models.core import DataHubRecord
+from backend.database import get_datahub_session
+from backend.models.datahub.core import DataHubRecord
 from pydantic import BaseModel
 
 

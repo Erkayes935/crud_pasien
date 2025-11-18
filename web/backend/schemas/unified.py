@@ -59,6 +59,7 @@ class ColumnAnalysis(BaseModel):
     missing_fields: dict[str, str]  # {field: priority_level}
     extra_columns: list[str]
     preview_data: list[dict]  # First 10 rows
+    available_fields: Optional[list[str]] = []  # All standard fields for dropdown
 
 
 class ColumnMappingRequest(BaseModel):

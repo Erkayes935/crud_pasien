@@ -432,8 +432,8 @@ def preview_excel_columns(
     Returns:
         ColumnAnalysis with exact/fuzzy matches, missing fields, extra columns
     """
-    from ..services.excel_mapper import analyze_excel_columns
-    from ..schemas.unified import ColumnAnalysis, ColumnMatch
+    from backend.services.datahub.excel_mapper import analyze_excel_columns
+    from backend.schemas.unified import ColumnAnalysis, ColumnMatch
     
     # Validate file type
     filename_lower = file.filename.lower()
@@ -498,8 +498,8 @@ def import_excel_with_mapping(
     Returns:
         ImportResult with success/failed counts
     """
-    from ..services.excel_mapper import apply_column_mapping
-    from ..schemas.unified import ColumnMappingRequest, ImportResult
+    from backend.services.datahub.excel_mapper import apply_column_mapping
+    from backend.schemas.unified import ColumnMappingRequest, ImportResult
     import json
     
     # Parse mapping JSON
@@ -640,7 +640,7 @@ def import_excel_with_mapping(
             
             # ✅ NEW: Auto-split to structured tables (Patient, Visit, MedicalRecord)
             try:
-                from ..services.record_processor import split_to_structured_tables
+                from backend.services.datahub.record_processor import split_to_structured_tables
                 split_result = split_to_structured_tables(record, db)
                 log_event(db, record.record_id, "import_excel", "info",
                     f"Split to tables: Patient {split_result['patient'].patient_uuid}, Visit {split_result['visit'].visit_uuid}")

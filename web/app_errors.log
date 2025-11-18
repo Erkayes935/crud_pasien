@@ -13352,3 +13352,885 @@ starlette.requests.ClientDisconnect
 2025-11-14 04:19:45,759 - backend.error_handlers - INFO - Error handlers registered successfully
 2025-11-14 04:22:46,732 - backend.error_handlers - INFO - Error handlers registered successfully
 2025-11-14 04:42:52,734 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:05:35,601 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:06:12,996 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:17:26,939 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:17:26.939612', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/admin-rs/datahub', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7019'}
+2025-11-14 06:22:56,645 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:22:56.645203', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:22:56,804 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:22:56.804666', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:26:20,761 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:26:20.761145', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/ingestion/excel/preview', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:32:28,958 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:32:28.958113', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:32:29,128 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:32:29.128292', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:33:44,965 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:33:44.964984', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:33:45,032 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:33:45.032838', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:40:42,089 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:46:38,975 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:47:27,547 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:47:27.547645', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/datahub/api/logs', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7019'}
+2025-11-14 06:48:08,846 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /admin-rs/dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/user_router.py", line 382, in admin_rs_dashboard
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+                                                     ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-14 06:48:24,233 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:48:24.233568', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/datahub/monitor', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:49:49,179 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:49:49.179666', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/admin-rs', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:50:24,870 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /admin-rs/dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/user_router.py", line 382, in admin_rs_dashboard
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+                                                     ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-14 06:55:01,063 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:56:15,125 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 06:56:59,617 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:56:59.617751', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:56:59,690 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:56:59.690269', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:57:10,203 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /admin-rs/dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/user_router.py", line 382, in admin_rs_dashboard
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+                                                     ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-14 06:57:19,512 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:57:19.512224', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:57:19,613 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:57:19.613785', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:57:20,756 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:57:20.756551', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/ingestion/gateway', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:57:24,699 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:57:24.699894', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:57:24,803 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T06:57:24.803136', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates?limit=100&status=pending', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 06:59:25,337 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /admin-rs/dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/user_router.py", line 382, in admin_rs_dashboard
+    ).order_by(models.RulesMaster.created_at.desc()).all()
+                                                     ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column rules_master.is_deleted does not exist
+LINE 1: ...les_master.updated_at AS rules_master_updated_at, rules_mast...
+                                                             ^
+
+[SQL: SELECT rules_master.id AS rules_master_id, rules_master.diagnosis AS rules_master_diagnosis, rules_master.field AS rules_master_field, rules_master.layer AS rules_master_layer, rules_master.isi AS rules_master_isi, rules_master.sumber AS rules_master_sumber, rules_master.pdf_file AS rules_master_pdf_file, rules_master.rs_id AS rules_master_rs_id, rules_master.region_id AS rules_master_region_id, rules_master.status AS rules_master_status, rules_master.created_by AS rules_master_created_by, rules_master.approved_by AS rules_master_approved_by, rules_master.approved_date AS rules_master_approved_date, rules_master.review_notes AS rules_master_review_notes, rules_master.feedback AS rules_master_feedback, rules_master.feedback_by AS rules_master_feedback_by, rules_master.feedback_date AS rules_master_feedback_date, rules_master.created_at AS rules_master_created_at, rules_master.updated_at AS rules_master_updated_at, rules_master.is_deleted AS rules_master_is_deleted, rules_master.is_dummy AS rules_master_is_dummy 
+FROM rules_master 
+WHERE rules_master.rs_id = %(rs_id_1)s AND rules_master.layer IN (%(layer_1_1)s, %(layer_1_2)s) ORDER BY rules_master.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2', 'layer_1_1': 'ppk', 'layer_1_2': 'rs'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-14 07:04:40,203 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T07:04:40.203627', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/admin-rs/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7019'}
+2025-11-14 07:06:18,495 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:07:16,565 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column regional_reports.is_deleted does not exist
+LINE 1: ...eports.updated_at AS regional_reports_updated_at, regional_r...
+                                                             ^
+
+[SQL: SELECT regional_reports.id AS regional_reports_id, regional_reports.title AS regional_reports_title, regional_reports.description AS regional_reports_description, regional_reports.se_file AS regional_reports_se_file, regional_reports.region_id AS regional_reports_region_id, regional_reports.rs_id AS regional_reports_rs_id, regional_reports.status AS regional_reports_status, regional_reports.reported_by AS regional_reports_reported_by, regional_reports.reviewed_by AS regional_reports_reviewed_by, regional_reports.reviewed_date AS regional_reports_reviewed_date, regional_reports.review_notes AS regional_reports_review_notes, regional_reports.converted_rules_count AS regional_reports_converted_rules_count, regional_reports.created_at AS regional_reports_created_at, regional_reports.updated_at AS regional_reports_updated_at, regional_reports.is_deleted AS regional_reports_is_deleted, regional_reports.is_dummy AS regional_reports_is_dummy 
+FROM regional_reports 
+WHERE regional_reports.rs_id = %(rs_id_1)s ORDER BY regional_reports.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /admin-rs/dashboard
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column regional_reports.is_deleted does not exist
+LINE 1: ...eports.updated_at AS regional_reports_updated_at, regional_r...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/user_router.py", line 395, in admin_rs_dashboard
+    ).order_by(models.RegionalReports.created_at.desc()).all()
+                                                         ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column regional_reports.is_deleted does not exist
+LINE 1: ...eports.updated_at AS regional_reports_updated_at, regional_r...
+                                                             ^
+
+[SQL: SELECT regional_reports.id AS regional_reports_id, regional_reports.title AS regional_reports_title, regional_reports.description AS regional_reports_description, regional_reports.se_file AS regional_reports_se_file, regional_reports.region_id AS regional_reports_region_id, regional_reports.rs_id AS regional_reports_rs_id, regional_reports.status AS regional_reports_status, regional_reports.reported_by AS regional_reports_reported_by, regional_reports.reviewed_by AS regional_reports_reviewed_by, regional_reports.reviewed_date AS regional_reports_reviewed_date, regional_reports.review_notes AS regional_reports_review_notes, regional_reports.converted_rules_count AS regional_reports_converted_rules_count, regional_reports.created_at AS regional_reports_created_at, regional_reports.updated_at AS regional_reports_updated_at, regional_reports.is_deleted AS regional_reports_is_deleted, regional_reports.is_dummy AS regional_reports_is_dummy 
+FROM regional_reports 
+WHERE regional_reports.rs_id = %(rs_id_1)s ORDER BY regional_reports.created_at DESC]
+[parameters: {'rs_id_1': 'rs_2'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2025-11-14 07:07:25,172 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T07:07:25.172730', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/api/logs?limit=50', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 07:07:25,198 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T07:07:25.198298', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/monitor/duplicates/statistics', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 07:23:17,443 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:24:27,954 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:26:58,187 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ModuleNotFoundError - No module named 'backend.routers.services'
+Path: /datahub/ingestion/excel/preview
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/datahub/ingestion_router.py", line 435, in preview_excel_columns
+    from ..services.excel_mapper import analyze_excel_columns
+ModuleNotFoundError: No module named 'backend.routers.services'
+
+2025-11-14 07:27:05,929 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ModuleNotFoundError - No module named 'backend.routers.services'
+Path: /datahub/ingestion/excel/preview
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/datahub/ingestion_router.py", line 435, in preview_excel_columns
+    from ..services.excel_mapper import analyze_excel_columns
+ModuleNotFoundError: No module named 'backend.routers.services'
+
+2025-11-14 07:27:16,433 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ModuleNotFoundError - No module named 'backend.routers.services'
+Path: /datahub/ingestion/excel/preview
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/datahub/ingestion_router.py", line 435, in preview_excel_columns
+    from ..services.excel_mapper import analyze_excel_columns
+ModuleNotFoundError: No module named 'backend.routers.services'
+
+2025-11-14 07:27:21,257 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ModuleNotFoundError - No module named 'backend.routers.services'
+Path: /datahub/ingestion/excel/preview
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/datahub/ingestion_router.py", line 435, in preview_excel_columns
+    from ..services.excel_mapper import analyze_excel_columns
+ModuleNotFoundError: No module named 'backend.routers.services'
+
+2025-11-14 07:27:26,730 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ModuleNotFoundError - No module named 'backend.routers.services'
+Path: /datahub/ingestion/excel/preview
+Method: POST
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/datahub/ingestion_router.py", line 435, in preview_excel_columns
+    from ..services.excel_mapper import analyze_excel_columns
+ModuleNotFoundError: No module named 'backend.routers.services'
+
+2025-11-14 07:29:15,448 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:29:43,596 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:34:34,728 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:34:49,723 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:35:08,275 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:35:30,237 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:38:25,060 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 07:38:35,382 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 07:39:35,855 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:40:47,909 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 07:48:06,639 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 58 columns, 56 exact, 2 fuzzy
+2025-11-14 07:48:16,454 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 58 columns, 56 exact, 2 fuzzy
+2025-11-14 07:55:26,999 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:56:33,916 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 07:56:53,334 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 07:57:03,924 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T07:57:03.923902', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:00:58,239 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 08:01:05,874 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 58 columns, 56 exact, 2 fuzzy
+2025-11-14 08:03:49,109 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 08:04:00,126 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:04:00.126524', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:04:08,256 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 08:04:20,673 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 4 rows, 59 columns, 52 exact, 3 fuzzy
+2025-11-14 08:07:18,416 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 08:08:01,488 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 08:08:06,680 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:08:06.680058', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:08:12,723 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 08:08:55,047 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:23:13,022 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:23:13.020796', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:23:26,850 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:26:21,715 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:26:21.714418', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:26:30,471 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:29:22,705 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 08:30:12,470 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:30:12.470329', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:30:29,917 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:50:35,426 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-14 08:51:09,814 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:51:09.814013', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:51:19,208 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:54:18,347 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:54:18.347080', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-14 08:54:19,042 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:54:19.042453', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-14 08:54:24,419 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:54:24.419157', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-14 08:55:19,376 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:55:19.376272', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:55:26,391 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:55:26.389234', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:55:30,483 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:55:30.483101', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:55:30,573 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:55:30.573414', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0'}
+2025-11-14 08:55:54,739 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-14 08:55:55,110 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-14 08:56:14,587 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 59 columns, 57 exact, 2 fuzzy
+2025-11-14 08:56:26,077 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 08:56:50,712 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-14T08:56:50.712500', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-14 08:56:59,233 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 09:09:20,434 - backend.routers.datahub.ingestion_router - INFO - Preview Excel: 5 rows, 11 columns, 1 exact, 10 fuzzy
+2025-11-14 09:18:23,518 - backend.error_handlers - INFO - Error handlers registered successfully

@@ -248,7 +248,7 @@
   </div>
 
   <!-- Excel Column Mapping Modal -->
-  <div id="columnMappingModal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div id="columnMappingModal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
     <div class="bg-white dark:bg-gray-800 rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
       
       <!-- Header -->
@@ -537,7 +537,7 @@
         },
 
         refreshSummary: function() {
-          return fetch('/monitor/summary')
+          return fetch('/datahub/monitor/summary')
             .then(function(res) {
               if (res.ok) return res.json();
               throw new Error('Failed to fetch summary');
@@ -553,7 +553,7 @@
 
         refreshLogs: function() {
           const self = this;
-          return fetch('/api/logs?limit=50')
+          return fetch('/datahub/api/logs?limit=50')
             .then(function(res) {
               if (res.ok) {
                 return res.json();
@@ -617,6 +617,11 @@
             alertBox.classList.add('hidden');
           }, timeout);
         },
+        
+        hideAlert: function() {
+          const alertBox = document.getElementById('alertBox');
+          alertBox.classList.add('hidden');
+        },
 
         uploadExcel: async function(e) {
           const file = e.target.files[0];
@@ -632,7 +637,7 @@
             const formData = new FormData();
             formData.append('file', file);
             
-            const response = await fetch('/ingestion/excel/preview', {
+            const response = await fetch('/datahub/ingestion/excel/preview', {
               method: 'POST',
               body: formData
             });
@@ -652,6 +657,8 @@
             );
             
             if (needsMapping) {
+              // Hide analyzing notification before showing modal
+              self.hideAlert();
               // Show mapping modal for user confirmation
               self.showColumnMappingModal(file, analysis);
             } else {
@@ -676,7 +683,7 @@
           formData.append('hospital_id', 'RS_UPLOAD');
           
           try {
-            const response = await fetch('/ingestion/import_excel', {
+            const response = await fetch('/datahub/ingestion/import_excel', {
               method: 'POST',
               body: formData
             });
@@ -715,7 +722,7 @@
             status: "ready_for_ai"
           };
 
-          fetch('/ingestion/gateway', {
+          fetch('/datahub/ingestion/gateway', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -745,16 +752,19 @@
         showColumnMappingModal: function(file, analysis) {
           const self = this;
           
-          // Store current file and analysis
-          self.currentFile = file;
-          self.currentAnalysis = analysis;
+          console.log('[MODAL DEBUG] Opening modal with analysis:', analysis);
           
-          // Update stats
-          document.getElementById('modalTotalRows').textContent = analysis.total_rows;
-          document.getElementById('modalExactMatches').textContent = analysis.exact_matches.length;
-          document.getElementById('modalFuzzyMatches').textContent = analysis.fuzzy_matches.length;
-          document.getElementById('modalMissingFields').textContent = Object.keys(analysis.missing_fields).length;
-          document.getElementById('importRowCount').textContent = analysis.total_rows + ' rows';
+          try {
+            // Store current file and analysis
+            self.currentFile = file;
+            self.currentAnalysis = analysis;
+            
+            // Update stats
+            document.getElementById('modalTotalRows').textContent = analysis.total_rows || 0;
+            document.getElementById('modalExactMatches').textContent = (analysis.exact_matches || []).length;
+            document.getElementById('modalFuzzyMatches').textContent = (analysis.fuzzy_matches || []).length;
+            document.getElementById('modalMissingFields').textContent = Object.keys(analysis.missing_fields || {}).length;
+            document.getElementById('importRowCount').textContent = (analysis.total_rows || 0) + ' rows';
           
           // Render mapping table
           self.renderColumnMappingTable(analysis);
@@ -776,7 +786,16 @@
           }
           
           // Show modal
-          document.getElementById('columnMappingModal').classList.remove('hidden');
+          console.log('[MODAL DEBUG] About to show modal...');
+          const modal = document.getElementById('columnMappingModal');
+          modal.classList.remove('hidden');
+          modal.style.display = 'flex';
+          console.log('[MODAL DEBUG] Modal shown successfully!');
+          
+          } catch (error) {
+            console.error('[MODAL ERROR]', error);
+            self.showAlert('❌ Failed to open mapping modal: ' + error.message, 'error');
+          }
         },
 
         renderColumnMappingTable: function(analysis) {
@@ -988,7 +1007,7 @@
             self.showAlert('⏳ Importing with custom mapping...', 'success', 5000);
             self.closeColumnMappingModal();
             
-            const response = await fetch('/ingestion/excel/import-with-mapping', {
+            const response = await fetch('/datahub/ingestion/excel/import-with-mapping', {
               method: 'POST',
               body: formData
             });
@@ -1029,7 +1048,7 @@
 
         refreshDuplicateStats: function() {
           const self = this;
-          return fetch('/monitor/duplicates/statistics')
+          return fetch('/datahub/monitor/duplicates/statistics')
             .then(function(res) {
               if (res.ok) return res.json();
               throw new Error('Failed to fetch duplicate stats');
@@ -1076,7 +1095,7 @@
           const confidence = document.getElementById('filterConfidence').value;
           
           // Build URL with filters
-          let url = '/monitor/duplicates?limit=100';
+          let url = '/datahub/monitor/duplicates?limit=100';
           if (status) {
             url += '&status=' + status;
           }
@@ -1237,7 +1256,7 @@
           }
 
           const self = this;
-          fetch('/monitor/duplicates/' + groupId + '/merge', {
+          fetch('/datahub/monitor/duplicates/' + groupId + '/merge', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ keep_master: true })
@@ -1266,7 +1285,7 @@
           if (reason === null) return;
 
           const self = this;
-          fetch('/monitor/duplicates/' + groupId + '/ignore', {
+          fetch('/datahub/monitor/duplicates/' + groupId + '/ignore', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason: reason || 'No reason provided' })

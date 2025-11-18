@@ -3,9 +3,9 @@ Test Celery Router
 Endpoint untuk testing Celery & Redis connection
 """
 from fastapi import APIRouter
-from ..tasks.ai_tasks import test_task
+from backend.tasks.ai_tasks import test_task
 from celery.result import AsyncResult
-from ..celery_app import celery_app
+from backend.celery_app import celery_app
 
 router = APIRouter()
 

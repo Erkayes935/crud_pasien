@@ -113,14 +113,14 @@ app.include_router(ai_meta_router.router, tags=["ai-meta"])
 app.include_router(export_router.router, tags=["export"])
 
 # 📊 Data Hub routers (8 routers untuk data standardization & ingestion)
-app.include_router(ui_router.router, tags=["datahub-ui"])
-app.include_router(ingestion_router.router, prefix="/datahub/ingestion", tags=["datahub-ingestion"])
-app.include_router(monitor_router.router, prefix="/datahub/monitor", tags=["datahub-monitor"])
-app.include_router(datahub_export_router.router, prefix="/datahub/export", tags=["datahub-export"])
-app.include_router(datahub_api_router.router, prefix="/datahub/api", tags=["datahub-api"])
-app.include_router(hybrid_sync_router.router, prefix="/datahub/hybrid-sync", tags=["datahub-hybrid"])
-app.include_router(manual_input_router.router, prefix="/datahub/manual-input", tags=["datahub-manual"])
-app.include_router(test_celery_router.router, prefix="/datahub/test", tags=["datahub-test"])
+app.include_router(ui_router, tags=["datahub-ui"])
+app.include_router(ingestion_router, prefix="/datahub/ingestion", tags=["datahub-ingestion"])
+app.include_router(monitor_router, prefix="/datahub/monitor", tags=["datahub-monitor"])
+app.include_router(datahub_export_router, prefix="/datahub/export", tags=["datahub-export"])
+app.include_router(datahub_api_router, prefix="/datahub/api", tags=["datahub-api"])
+app.include_router(hybrid_sync_router, prefix="/datahub/sync", tags=["datahub-hybrid"])
+app.include_router(manual_input_router, prefix="/datahub/manual", tags=["datahub-manual"])
+app.include_router(test_celery_router, prefix="/datahub/test", tags=["datahub-test"])
 
 # ======================================================
 # Global Error Handlers

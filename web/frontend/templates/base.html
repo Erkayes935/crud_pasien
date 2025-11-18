@@ -342,9 +342,16 @@
 
             <a href="/admin-rs/dashboard" 
                class="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors
-                      {% if '/admin-rs' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+                      {% if '/admin-rs/dashboard' in request.url.path %}bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
               <span class="text-lg">🏥</span>
               <span class="font-medium">Admin RS Dashboard</span>
+            </a>
+
+            <a href="/admin-rs/datahub" 
+               class="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-colors
+                      {% if '/admin-rs/datahub' in request.url.path or '/datahub' in request.url.path %}bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400{% else %}text-gray-700 dark:text-gray-300{% endif %}">
+              <span class="text-lg">📊</span>
+              <span class="font-medium">Data Hub</span>
             </a>
           </div>
 

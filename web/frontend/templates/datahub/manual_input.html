@@ -653,7 +653,7 @@
     if (hospitalId) return hospitalId;
 
     try {
-      const res = await fetch('/api/user/current');
+      const res = await fetch('/datahub/api/user/current');
       const user = await res.json();
       return user.hospital_id || 'RS001';
     } catch (err) {
@@ -784,7 +784,7 @@
     const data = Object.fromEntries(formData.entries());
     
     try {
-      const res = await fetch('/manual/patient', {
+      const res = await fetch('/datahub/manual/patient', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -813,7 +813,7 @@
     if (data.visit_no) data.visit_no = parseInt(data.visit_no);
     
     try {
-      const res = await fetch('/manual/visit', {
+      const res = await fetch('/datahub/manual/visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -841,7 +841,7 @@
     if (data.patient_id) data.patient_id = parseInt(data.patient_id);
     
     try {
-      const res = await fetch('/manual/medical_record', {
+      const res = await fetch('/datahub/manual/medical_record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

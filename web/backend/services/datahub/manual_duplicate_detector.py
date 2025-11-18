@@ -12,7 +12,7 @@ from typing import Optional, Dict, Tuple
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 from backend.models.datahub.core import Patient, Visit, MedicalRecord
-from ..services.logger import log_event
+from backend.services.datahub.logger import log_event
 
 
 class ManualDuplicateDetector:

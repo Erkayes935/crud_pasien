@@ -15,7 +15,7 @@ from backend.models.datahub.core import PatientUUIDMap
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sync", tags=["Hybrid Sync"])
+router = APIRouter(tags=["Hybrid Sync"])
 
 class PatientUUIDSyncRequest(BaseModel):
     """Schema untuk sync request dari Gateway."""
