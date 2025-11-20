@@ -62,7 +62,7 @@ class ClaimProcedureEvaluation(Base, HousekeepingMixin):
 # =========================================
 # COMBO EVALUATION
 # =========================================
-class ClaimComboEvaluation(Base):
+class ClaimComboEvaluation(Base, HousekeepingMixin):
     __tablename__ = "claim_combo_evaluations"
     id = Column(Integer, primary_key=True)
     claim_id = Column(Integer, ForeignKey("claims.id"), nullable=False)

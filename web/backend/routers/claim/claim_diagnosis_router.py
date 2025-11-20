@@ -131,6 +131,11 @@ async def get_stored_diagnosis_detail(
                     ),
                     "deskripsi": tariff.description if tariff else "-",
                 },
+                "aspek_lainnya": (
+                    json.dumps(diagnosis.aspek_lainnya, ensure_ascii=False, indent=2)
+                    if isinstance(diagnosis.aspek_lainnya, (dict, list))
+                    else (diagnosis.aspek_lainnya or "-")
+                ),
             },
         }
 

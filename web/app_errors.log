@@ -13341,3 +13341,170 @@ starlette.requests.ClientDisconnect
 2025-11-12 08:06:19,257 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
 2025-11-12 08:06:28,015 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
 2025-11-12 08:23:41,889 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T08:23:41.889126', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 09:09:08,080 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-12 09:09:08,303 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-12 09:09:56,828 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-12 09:09:57,065 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-12 09:11:02,705 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-12 09:11:25,535 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:11:25,853 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:11:36,778 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 09:12:00,586 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-12 09:12:53,736 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-12 09:14:10,205 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 09:14:18,158 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-12 09:23:27,911 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-12 09:23:58,888 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-12 09:24:47,089 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:24:47,622 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:24:48,253 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:24:52,495 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:24:52,676 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-12 09:27:51,683 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-12 09:27:51,880 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-12 09:32:06,600 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-12 09:32:06,815 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-12 09:33:47,588 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 09:35:23,215 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 09:43:20,677 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 09:47:06,328 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-12 09:47:25,670 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-12T09:47:25.670669', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-12 16:47:07,155 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-12 16:47:07,234 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: OperationalError - (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Path: /claims/176/stored-diagnosis-detail/Pneumonia
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1127, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 699, in do_rollback
+    dbapi_connection.rollback()
+psycopg2.OperationalError: SSL SYSCALL error: EOF detected
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/web/backend/database.py", line 40, in get_db
+    yield db
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1127, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 699, in do_rollback
+    dbapi_connection.rollback()
+psycopg2.OperationalError: SSL SYSCALL error: EOF detected
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 14, in __call__
+    async with AsyncExitStack() as stack:
+  File "/usr/local/lib/python3.11/contextlib.py", line 745, in __aexit__
+    raise exc_details[1]
+  File "/usr/local/lib/python3.11/contextlib.py", line 728, in __aexit__
+    cb_suppress = await cb(*exc_details)
+                  ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/contextlib.py", line 231, in __aexit__
+    await self.gen.athrow(typ, value, traceback)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/concurrency.py", line 31, in contextmanager_in_threadpool
+    await anyio.to_thread.run_sync(
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/app/web/backend/database.py", line 42, in get_db
+    db.close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2518, in close
+    self._close_impl(invalidate=False)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2587, in _close_impl
+    transaction.close(invalidate)
+  File "<string>", line 2, in close
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1419, in close
+    transaction.close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2588, in close
+    self._do_close()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2726, in _do_close
+    self._close_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2712, in _close_impl
+    self._connection_rollback_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2704, in _connection_rollback_impl
+    self.connection._rollback_impl()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1129, in _rollback_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1127, in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 699, in do_rollback
+    dbapi_connection.rollback()
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL SYSCALL error: EOF detected
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+2025-11-13 04:18:14,363 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T04:18:14.361159', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-13 04:18:34,578 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 500 Internal Server Error"
+2025-11-13 04:19:22,603 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-13 04:19:38,611 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 04:20:06,303 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-13 04:29:35,702 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:30:53,530 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:33:38,894 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:33:55,308 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:45:05,504 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:45:42,154 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:46:35,483 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 04:47:29,034 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T04:47:29.034188', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-13 04:48:01,197 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-13 04:48:19,150 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-13 04:48:26,361 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 04:48:29,887 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 04:53:23,101 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2025-11-13 06:19:49,883 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 06:20:25,633 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 06:23:04,445 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 06:23:08,469 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T06:23:08.469394', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-13 06:23:34,109 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-13 06:23:46,784 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-13 06:26:55,463 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 06:29:11,031 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-13 06:29:16,153 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T06:29:16.153325', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-13 06:29:39,449 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2025-11-13 06:29:54,164 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-13 06:31:15,057 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 06:31:19,450 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 06:31:23,427 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 06:35:46,771 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-13 06:35:47,004 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-13 06:40:15,918 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-13 06:41:51,076 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 06:41:51,398 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-13 06:42:13,962 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-13 07:38:46,602 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 500 Internal Server Error"
+2025-11-13 07:38:46,943 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-13T07:38:46.934772', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_procedure', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-13 07:42:19,079 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T07:42:19.079161', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-20 07:39:34,602 - backend.error_handlers - INFO - Error handlers registered successfully

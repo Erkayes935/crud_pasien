@@ -24,6 +24,18 @@ def normalize_str(value: str | None) -> str | None:
     value = value.strip()
     return value or None
 
+def safe_str(v):
+    """
+    Konversi aman ke string untuk penyimpanan DB:
+    - None -> "-"
+    - list/dict -> gabung jadi teks, hindari "[]"/"{}"
+    - lainnya -> str(v)
+    """
+    if v is None:
+        return "-"
+    if isinstance(v, (dict, list)):
+        return ", ".join(map(str, v)) if v else "-"
+    return str(v)
 
 def parse_int(value: str | None) -> int | None:
     """Ubah string ke int dengan aman"""

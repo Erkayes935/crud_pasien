@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Dict, Any
 from ... import models
 from backend.services.claim_helper import parse_number
+from backend.utils.claim_utils import safe_str
 import orjson
 
 # ==================================================
@@ -191,7 +192,7 @@ def store_ai_recommendations(
 
             lama_rawat_inap = rawat_data.get("lama_rawat")
             kriteria_rawat_inap = rawat_data.get("kriteria")
-            indikasi_rawat_inap = rawat_data.get("indikasi")
+            indikasi_rawat_inap = safe_str(rawat_data.get("indikasi"))
 
             tingkat_faskes = faskes_data.get("tingkat")
             justifikasi_faskes = faskes_data.get("justifikasi")
@@ -602,9 +603,9 @@ def _store_nested_analysis_results(db, claim_id: int, result: dict, stage: str =
                 claim_id=claim_id,
                 group_idrg=idrg_data.get("group_idrg") or idrg_data.get("code"),
                 severity_index=idrg_data.get("severity_index") or idrg_data.get("severity"),
-                checklist=idrg_data.get("checklist"),
+                checklist=safe_str(idrg_data.get("checklist")),
                 ungroupable_alert=idrg_data.get("ungroupable_alert"),
-                faktor_severity=idrg_data.get("faktor_severity"),
+                faktor_severity=safe_str(idrg_data.get("faktor_severity")),
                 simulasi_tarif=idrg_data.get("simulasi_tarif"),
                 gap_analysis=idrg_data.get("gap_analysis"),
                 created_at=datetime.utcnow(),
@@ -640,8 +641,8 @@ def store_aspek_lainnya(db, claim_id: int, aspek_data: dict, stage: str):
     try:
         print(f"[AI] 💾 Storing aspek_lainnya for claim {claim_id}, stage {stage}")
 
-        aspek_json = orjson.dumps(aspek_data if isinstance(aspek_data, dict) else {}).decode('utf-8')
-
+        aspek_json = safe_str(aspek_data)
+        
         # ===============================================
         # 🩺 Diagnosis — update semua diagnosis aktif di klaim
         # ===============================================
@@ -820,7 +821,7 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
             syarat_klinis=alt.get("syarat_klinis") or alt.get("syarat"),
             faskes=alt.get("faskes"),
             rawat_inap=alt.get("rawat_inap"),
-            tindakan_wajib=alt.get("tindakan_wajib") or orjson.dumps(alt.get("tindakan") or []),
+            tindakan_wajib = safe_str(alt.get("tindakan_wajib") or alt.get("tindakan")),
             is_dummy=False,
             is_deleted=False,
             created_at=datetime.utcnow(),
@@ -843,8 +844,8 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
                 claim_id=claim_id,
                 group_idrg_kombinasi=idrg_summary.get("group_idrg_kombinasi") or idrg_summary.get("group_idrg"),
                 severity_kombinasi=idrg_summary.get("severity_kombinasi") or idrg_summary.get("severity"),
-                checklist_kombinasi=orjson.dumps(idrg_summary.get("checklist_kombinasi") or []),
-                faktor_severity=orjson.dumps(idrg_summary.get("faktor_severity_kombinasi") or []),
+                checklist_kombinasi=safe_str(idrg_summary.get("checklist_kombinasi")),
+                faktor_severity=safe_str(idrg_summary.get("faktor_severity_kombinasi")),
                 risiko_ungroupable=idrg_summary.get("risiko_ungroupable"),
                 estimasi_tarif=idrg_summary.get("estimasi_tarif"),
                 gap_inacbg_vs_idrg=idrg_summary.get("gap_vs_cbg") or idrg_summary.get("gap_analysis"),
@@ -860,6 +861,35 @@ def store_ai_evaluations(db: Session, claim_id: int, evaluasi: dict):
 
     except Exception as e:
         print(f"[AI STORAGE] ❌ Error storing ClaimIDRGSummary: {e}")
+
+    # ======================================================
+    # 💙 Tambahan: Buat record ClaimComboEvaluation (sekali saja)
+    # ======================================================
+    try:
+        aspek_data = evaluasi.get("aspek_lainnya") or evaluasi.get("data", {}).get("aspek_lainnya")
+        if aspek_data:
+            aspek_json = safe_str(aspek_data)
+            existing_combo = db.query(models.ClaimComboEvaluation).filter_by(claim_id=claim_id).first()
+            if not existing_combo:
+                new_combo = models.ClaimComboEvaluation(
+                    claim_id=claim_id,
+                    aspek_lainnya=aspek_json,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=False
+                )
+                db.add(new_combo)
+                db.commit()
+                print(f"[AI STORAGE] 🆕 Created ClaimComboEvaluation for claim {claim_id}")
+            else:
+                existing_combo.aspek_lainnya = aspek_json
+                existing_combo.updated_at = datetime.utcnow()
+                db.commit()
+                print(f"[AI STORAGE] 🔄 Updated aspek_lainnya for claim {claim_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[AI STORAGE] ⚠️ Failed to store ClaimComboEvaluation: {e}")
 
 
     db.commit()
@@ -962,8 +992,8 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
                     claim_id=claim_id,
                     group_idrg_kombinasi=idrg_summary.get("group_idrg_kombinasi"),
                     severity_kombinasi=idrg_summary.get("severity_kombinasi"),
-                    checklist_kombinasi=orjson.dumps(idrg_summary.get("checklist_kombinasi") or []),
-                    faktor_severity=orjson.dumps(idrg_summary.get("faktor_severity_kombinasi") or []),
+                    checklist_kombinasi=safe_str(idrg_summary.get("checklist_kombinasi")),
+                    faktor_severity=safe_str(idrg_summary.get("faktor_severity_kombinasi")),
                     risiko_ungroupable=idrg_summary.get("risiko_ungroupable"),
                     estimasi_tarif=idrg_summary.get("estimasi_tarif"),
                     gap_inacbg_vs_idrg=idrg_summary.get("gap_inacbg_vs_idrg"),
@@ -972,6 +1002,35 @@ def bulk_store_ai_results_from_core(db: Session, claim_id: int, result: dict) ->
                 stored_items["idrg_summary"] = 1
         except Exception as e:
             print(f"[AI STORAGE] Error storing iDRG summary: {str(e)}")
+        
+        # ======================================================
+        # 💙 Tambahan: Buat record ClaimComboEvaluation (sekali saja)
+        # ======================================================
+        try:
+            aspek_data = result.get("aspek_lainnya") or result.get("data", {}).get("aspek_lainnya")
+            aspek_json = safe_str(aspek_data)
+            existing_combo = db.query(models.ClaimComboEvaluation).filter_by(claim_id=claim_id).first()
+            if not existing_combo:
+                new_combo = models.ClaimComboEvaluation(
+                    claim_id=claim_id,
+                    aspek_lainnya=aspek_json,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                    is_deleted=False,
+                    is_dummy=False
+                )
+                db.add(new_combo)
+                db.commit()
+                print(f"[AI STORAGE] 🆕 Created ClaimComboEvaluation for claim {claim_id}")
+            else:
+                existing_combo.aspek_lainnya = aspek_json
+                existing_combo.updated_at = datetime.utcnow()
+                db.commit()
+                print(f"[AI STORAGE] 🔄 Updated aspek_lainnya for claim {claim_id}")
+        except Exception as e:
+            db.rollback()
+            print(f"[AI STORAGE] ⚠️ Failed to store ClaimComboEvaluation: {e}")
+
         # Commit changes and log results
         db.commit()
         print(f"[AI STORAGE] Successfully stored AI results:")

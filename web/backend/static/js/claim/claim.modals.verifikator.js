@@ -263,9 +263,7 @@ export function renderDiagnosisDetailReadOnly(data) {
         ${fieldRow("Tarif", inacbg.tarif)}
       `)}
 
-      ${section("ASPEK LAINNYA", `
-        ${fieldRow("Aspek Lainnya", detail.aspek_lainnya || "-")}
-      `)}
+      ${fieldRow("Aspek Lainnya", typeof detail.aspek_lainnya === "object" ? JSON.stringify(detail.aspek_lainnya, null, 2) : detail.aspek_lainnya || "-")}
 
       ${idrg && Object.keys(idrg).length ? section("i-DRG", `
         ${fieldRow("Group i-DRG", idrg.group_idrg)}
