@@ -2,7 +2,7 @@ services:
   web:
     volumes:
       - ./web:/app/web
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8011 --reload
 
   core_engine:
     volumes:
