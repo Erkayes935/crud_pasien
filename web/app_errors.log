@@ -13508,3 +13508,185 @@ sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL SYSCALL error: 
 2025-11-13 07:38:46,943 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2025-11-13T07:38:46.934772', 'client_ip': '172.18.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/118/analyze_procedure', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
 2025-11-13 07:42:19,079 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-13T07:42:19.079161', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
 2025-11-20 07:39:34,602 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-20 07:42:07,964 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-20 08:03:57,386 - backend.error_handlers - INFO - Error handlers registered successfully
+2025-11-20 09:15:16,960 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-20T09:15:16.960022', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-20 09:15:39,538 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-20 09:35:59,139 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2025-11-20 09:36:20,992 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:36:21,749 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:36:37,188 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2025-11-20 09:36:57,114 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2025-11-20 09:37:13,938 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:37:14,453 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:37:29,062 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:37:29,455 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2025-11-20 09:39:26,680 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-20 09:39:26,913 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-20 09:41:06,049 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-20 09:41:06,325 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-20 09:41:22,176 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-20 09:41:22,386 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-20 09:42:03,519 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2025-11-20T09:42:03.519710', 'client_ip': '172.18.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/175/coder', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'}
+2025-11-20 09:42:59,546 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-20 09:42:59,776 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2025-11-20 09:45:25,852 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2025-11-20 09:45:26,097 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 02:10:15,730 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 02:10:51,388 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T02:10:51.388140', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 02:10:51,887 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T02:10:51.887230', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 02:34:05,787 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 02:34:06,095 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 02:37:33,692 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 500 Internal Server Error"
+2026-01-20 02:37:33,789 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-20T02:37:33.789504', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/177/predict_ddx', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 02:37:58,274 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 500 Internal Server Error"
+2026-01-20 02:37:58,337 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-20T02:37:58.336923', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/177/predict_ddx', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 02:39:00,815 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 500 Internal Server Error"
+2026-01-20 02:39:00,892 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-20T02:39:00.892521', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8001/claims/177/predict_ddx', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 02:49:56,630 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 02:50:58,943 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 02:51:25,901 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2026-01-20 02:51:53,053 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-20 02:52:26,238 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-20 02:52:26,753 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-20 02:54:08,826 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-20 02:54:31,852 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-20 02:55:17,082 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2026-01-20 02:55:24,457 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2026-01-20 02:56:25,245 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2026-01-20 02:56:29,890 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2026-01-20 03:01:32,272 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 03:01:32,474 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 03:01:33,779 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: IntegrityError - (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(coderbaru@gmail.com) already exists.
+
+[SQL: INSERT INTO users (auth0_sub, email, name, jabatan, sip_number, hospital_id, role) VALUES (%(auth0_sub)s, %(email)s, %(name)s, %(jabatan)s, %(sip_number)s, %(hospital_id)s, %(role)s) RETURNING users.id, users.is_active, users.created_at, users.updated_at, users.is_deleted, users.is_dummy]
+[parameters: {'auth0_sub': 'auth0|696eef51ed85f3ec8a872e40', 'email': 'coderbaru@gmail.com', 'name': 'coderbaru@gmail.com', 'jabatan': None, 'sip_number': None, 'hospital_id': None, 'role': 'doctor'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Path: /callback
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(coderbaru@gmail.com) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 190, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/auth_router.py", line 77, in callback
+    db.commit()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2028, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4352, in flush
+    self._flush(objects)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4487, in _flush
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4448, in _flush
+    flush_context.execute()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(coderbaru@gmail.com) already exists.
+
+[SQL: INSERT INTO users (auth0_sub, email, name, jabatan, sip_number, hospital_id, role) VALUES (%(auth0_sub)s, %(email)s, %(name)s, %(jabatan)s, %(sip_number)s, %(hospital_id)s, %(role)s) RETURNING users.id, users.is_active, users.created_at, users.updated_at, users.is_deleted, users.is_dummy]
+[parameters: {'auth0_sub': 'auth0|696eef51ed85f3ec8a872e40', 'email': 'coderbaru@gmail.com', 'name': 'coderbaru@gmail.com', 'jabatan': None, 'sip_number': None, 'hospital_id': None, 'role': 'doctor'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+2026-01-20 03:02:07,830 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:02:07.830277', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:02:11,130 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:02:11.130663', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:11:37,454 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 03:11:37,667 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 03:11:57,497 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:11:57.497085', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=J18&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:11:57,858 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:11:57.858460', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=J18.&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:11:58,397 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:11:58.397387', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=J18.9&version=icd10', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:01,399 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:12:01.399462', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=66&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:02,192 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:12:02.192865', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=66.&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:02,846 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:12:02.846653', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=66.21&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:05,010 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:12:05.010393', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=99&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:05,746 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:12:05.745988', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/claims/api/search/icd?q=99.21&version=icd9', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:12:30,114 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 03:12:30,312 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 03:13:03,541 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2026-01-20 03:14:16,235 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_diagnosis "HTTP/1.1 200 OK"
+2026-01-20 03:14:52,202 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-20 03:15:05,766 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-20 03:15:17,341 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_idrg "HTTP/1.1 200 OK"
+2026-01-20 03:24:02,857 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 03:24:03,244 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 03:24:05,249 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:24:05.248849', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/.well-known/appspecific/com.chrome.devtools.json', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:40:10,220 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 03:40:58,962 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 03:41:15,900 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:41:15.900154', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 03:41:20,295 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T03:41:20.295829', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8001/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
