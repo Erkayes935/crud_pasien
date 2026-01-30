@@ -13703,3 +13703,250 @@ DETAIL:  Key (email)=(coderbaru@gmail.com) already exists.
 2026-01-20 04:19:16,292 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T04:19:16.292739', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
 2026-01-20 04:20:04,496 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
 2026-01-20 04:20:04,702 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 04:22:01,530 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T04:22:01.530322', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 04:27:33,255 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 04:27:33,494 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-20 04:33:05,705 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-20 04:39:54,957 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-20T04:39:54.957811', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'}
+2026-01-20 04:41:58,729 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2026-01-20 06:52:39,645 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-20 06:52:39,850 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-30 02:49:17,887 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-30 02:49:25,817 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-30 02:50:22,554 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T02:50:22.554581', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/dashboard', 'status_code': 401, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 02:50:23,045 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T02:50:23.045453', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/favicon.ico', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 02:50:57,372 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-30 02:50:57,633 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-30 03:43:59,405 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2026-01-30 03:47:38,436 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T03:47:38.435627', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/178/notes?stage=admission&field_key=primary_diagnosis&item_id=1', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 03:47:39,584 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T03:47:39.584072', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/178/notes?stage=admission&field_key=primary_diagnosis&item_id=1', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 03:49:58,888 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - type object 'ClaimGroup' has no attribute 'created_at'
+Path: /claims/manage
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim/claim_management_router.py", line 49, in manage_claims_page
+    .order_by(models.ClaimGroup.created_at.desc())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'ClaimGroup' has no attribute 'created_at'
+
+2026-01-30 03:50:04,338 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: AttributeError - type object 'ClaimGroup' has no attribute 'created_at'
+Path: /claims/manage
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim/claim_management_router.py", line 49, in manage_claims_page
+    .order_by(models.ClaimGroup.created_at.desc())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'ClaimGroup' has no attribute 'created_at'
+
+2026-01-30 03:56:15,308 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-30 03:56:27,042 - backend.error_handlers - CRITICAL - UNHANDLED EXCEPTION: ProgrammingError - (psycopg2.errors.UndefinedColumn) column claim_groups.is_deleted does not exist
+LINE 1: ...aim_groups.updated_at AS claim_groups_updated_at, claim_grou...
+                                                             ^
+
+[SQL: SELECT claim_groups.id AS claim_groups_id, claim_groups.uuid AS claim_groups_uuid, claim_groups.kode_group AS claim_groups_kode_group, claim_groups.nama_group AS claim_groups_nama_group, claim_groups.deskripsi AS claim_groups_deskripsi, claim_groups.tanggal_mulai AS claim_groups_tanggal_mulai, claim_groups.tanggal_selesai AS claim_groups_tanggal_selesai, claim_groups.patient_id AS claim_groups_patient_id, claim_groups.hospital_id AS claim_groups_hospital_id, claim_groups.created_by AS claim_groups_created_by, claim_groups.created_at AS claim_groups_created_at, claim_groups.updated_at AS claim_groups_updated_at, claim_groups.is_deleted AS claim_groups_is_deleted, claim_groups.is_dummy AS claim_groups_is_dummy, hospitals_1.id AS hospitals_1_id, hospitals_1.uuid AS hospitals_1_uuid, hospitals_1.kode_hospital AS hospitals_1_kode_hospital, hospitals_1.nama AS hospitals_1_nama, hospitals_1.tipe_hospital AS hospitals_1_tipe_hospital, hospitals_1.jenis_hospital AS hospitals_1_jenis_hospital, hospitals_1.alamat AS hospitals_1_alamat, hospitals_1.telepon AS hospitals_1_telepon, hospitals_1.email AS hospitals_1_email, hospitals_1.status_akreditasi AS hospitals_1_status_akreditasi, hospitals_1.status_bridging AS hospitals_1_status_bridging, hospitals_1.jumlah_tempat_tidur AS hospitals_1_jumlah_tempat_tidur, hospitals_1.admin_id AS hospitals_1_admin_id, hospitals_1.created_at AS hospitals_1_created_at, hospitals_1.updated_at AS hospitals_1_updated_at, hospitals_1.is_deleted AS hospitals_1_is_deleted, hospitals_1.is_dummy AS hospitals_1_is_dummy, visits_1.id AS visits_1_id, visits_1.uuid AS visits_1_uuid, visits_1.patient_id AS visits_1_patient_id, visits_1.hospital_id AS visits_1_hospital_id, visits_1.doctor_id AS visits_1_doctor_id, visits_1.eksternal_id AS visits_1_eksternal_id, visits_1.sumber AS visits_1_sumber, visits_1.tanggal_kunjungan AS visits_1_tanggal_kunjungan, visits_1.jenis_kunjungan AS visits_1_jenis_kunjungan, visits_1.poli AS visits_1_poli, visits_1.doctor_name AS visits_1_doctor_name, visits_1.created_at AS visits_1_created_at, visits_1.updated_at AS visits_1_updated_at, visits_1.is_deleted AS visits_1_is_deleted, visits_1.is_dummy AS visits_1_is_dummy, claim_visit_links_1.id AS claim_visit_links_1_id, claim_visit_links_1.claim_id AS claim_visit_links_1_claim_id, claim_visit_links_1.external_visit_id AS claim_visit_links_1_external_visit_id, claim_visit_links_1.hospital_id AS claim_visit_links_1_hospital_id, claim_visit_links_1.is_primary AS claim_visit_links_1_is_primary, claim_visit_links_1.note AS claim_visit_links_1_note, claim_visit_links_1.created_at AS claim_visit_links_1_created_at, claim_visit_links_1.updated_at AS claim_visit_links_1_updated_at, claim_visit_links_1.is_deleted AS claim_visit_links_1_is_deleted, claim_visit_links_1.is_dummy AS claim_visit_links_1_is_dummy, claims_1.id AS claims_1_id, claims_1.uuid AS claims_1_uuid, claims_1.claim_date AS claims_1_claim_date, claims_1.patient_id AS claims_1_patient_id, claims_1.visit_id AS claims_1_visit_id, claims_1.hospital_id AS claims_1_hospital_id, claims_1.medical_record_id AS claims_1_medical_record_id, claims_1.status AS claims_1_status, claims_1.workflow_status AS claims_1_workflow_status, claims_1.is_final AS claims_1_is_final, claims_1.doctor_id AS claims_1_doctor_id, claims_1.doctor_name AS claims_1_doctor_name, claims_1.doctor_submitted_by AS claims_1_doctor_submitted_by, claims_1.doctor_submitted_at AS claims_1_doctor_submitted_at, claims_1.coder_verified_by AS claims_1_coder_verified_by, claims_1.coder_verified_at AS claims_1_coder_verified_at, claims_1.finalized_by AS claims_1_finalized_by, claims_1.finalized_at AS claims_1_finalized_at, claims_1.ai_medical_resume AS claims_1_ai_medical_resume, claims_1.group_id AS claims_1_group_id, claims_1.created_at AS claims_1_created_at, claims_1.updated_at AS claims_1_updated_at, claims_1.is_deleted AS claims_1_is_deleted, claims_1.is_dummy AS claims_1_is_dummy 
+FROM claim_groups LEFT OUTER JOIN claims AS claims_1 ON claim_groups.id = claims_1.group_id LEFT OUTER JOIN visits AS visits_1 ON visits_1.id = claims_1.visit_id LEFT OUTER JOIN hospitals AS hospitals_1 ON hospitals_1.id = visits_1.hospital_id LEFT OUTER JOIN claim_visit_links AS claim_visit_links_1 ON claims_1.id = claim_visit_links_1.claim_id 
+WHERE claim_groups.patient_id = %(patient_id_1)s ORDER BY claim_groups.created_at DESC]
+[parameters: {'patient_id_1': 102}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+Path: /claims/manage
+Method: GET
+Traceback: Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedColumn: column claim_groups.is_deleted does not exist
+LINE 1: ...aim_groups.updated_at AS claim_groups_updated_at, claim_grou...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 162, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 83, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/sessions.py", line 86, in __call__
+    await self.app(scope, receive, send_wrapper)
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 79, in __call__
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 68, in __call__
+    await self.app(scope, receive, sender)
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 20, in __call__
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py", line 17, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 718, in __call__
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 66, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 273, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 192, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/starlette/concurrency.py", line 41, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/web/backend/routers/claim/claim_management_router.py", line 50, in manage_claims_page
+    .all()
+     ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2673, in all
+    return self._iter().all()  # type: ignore
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/query.py", line 2827, in _iter
+    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+                                                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2362, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2247, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 305, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column claim_groups.is_deleted does not exist
+LINE 1: ...aim_groups.updated_at AS claim_groups_updated_at, claim_grou...
+                                                             ^
+
+[SQL: SELECT claim_groups.id AS claim_groups_id, claim_groups.uuid AS claim_groups_uuid, claim_groups.kode_group AS claim_groups_kode_group, claim_groups.nama_group AS claim_groups_nama_group, claim_groups.deskripsi AS claim_groups_deskripsi, claim_groups.tanggal_mulai AS claim_groups_tanggal_mulai, claim_groups.tanggal_selesai AS claim_groups_tanggal_selesai, claim_groups.patient_id AS claim_groups_patient_id, claim_groups.hospital_id AS claim_groups_hospital_id, claim_groups.created_by AS claim_groups_created_by, claim_groups.created_at AS claim_groups_created_at, claim_groups.updated_at AS claim_groups_updated_at, claim_groups.is_deleted AS claim_groups_is_deleted, claim_groups.is_dummy AS claim_groups_is_dummy, hospitals_1.id AS hospitals_1_id, hospitals_1.uuid AS hospitals_1_uuid, hospitals_1.kode_hospital AS hospitals_1_kode_hospital, hospitals_1.nama AS hospitals_1_nama, hospitals_1.tipe_hospital AS hospitals_1_tipe_hospital, hospitals_1.jenis_hospital AS hospitals_1_jenis_hospital, hospitals_1.alamat AS hospitals_1_alamat, hospitals_1.telepon AS hospitals_1_telepon, hospitals_1.email AS hospitals_1_email, hospitals_1.status_akreditasi AS hospitals_1_status_akreditasi, hospitals_1.status_bridging AS hospitals_1_status_bridging, hospitals_1.jumlah_tempat_tidur AS hospitals_1_jumlah_tempat_tidur, hospitals_1.admin_id AS hospitals_1_admin_id, hospitals_1.created_at AS hospitals_1_created_at, hospitals_1.updated_at AS hospitals_1_updated_at, hospitals_1.is_deleted AS hospitals_1_is_deleted, hospitals_1.is_dummy AS hospitals_1_is_dummy, visits_1.id AS visits_1_id, visits_1.uuid AS visits_1_uuid, visits_1.patient_id AS visits_1_patient_id, visits_1.hospital_id AS visits_1_hospital_id, visits_1.doctor_id AS visits_1_doctor_id, visits_1.eksternal_id AS visits_1_eksternal_id, visits_1.sumber AS visits_1_sumber, visits_1.tanggal_kunjungan AS visits_1_tanggal_kunjungan, visits_1.jenis_kunjungan AS visits_1_jenis_kunjungan, visits_1.poli AS visits_1_poli, visits_1.doctor_name AS visits_1_doctor_name, visits_1.created_at AS visits_1_created_at, visits_1.updated_at AS visits_1_updated_at, visits_1.is_deleted AS visits_1_is_deleted, visits_1.is_dummy AS visits_1_is_dummy, claim_visit_links_1.id AS claim_visit_links_1_id, claim_visit_links_1.claim_id AS claim_visit_links_1_claim_id, claim_visit_links_1.external_visit_id AS claim_visit_links_1_external_visit_id, claim_visit_links_1.hospital_id AS claim_visit_links_1_hospital_id, claim_visit_links_1.is_primary AS claim_visit_links_1_is_primary, claim_visit_links_1.note AS claim_visit_links_1_note, claim_visit_links_1.created_at AS claim_visit_links_1_created_at, claim_visit_links_1.updated_at AS claim_visit_links_1_updated_at, claim_visit_links_1.is_deleted AS claim_visit_links_1_is_deleted, claim_visit_links_1.is_dummy AS claim_visit_links_1_is_dummy, claims_1.id AS claims_1_id, claims_1.uuid AS claims_1_uuid, claims_1.claim_date AS claims_1_claim_date, claims_1.patient_id AS claims_1_patient_id, claims_1.visit_id AS claims_1_visit_id, claims_1.hospital_id AS claims_1_hospital_id, claims_1.medical_record_id AS claims_1_medical_record_id, claims_1.status AS claims_1_status, claims_1.workflow_status AS claims_1_workflow_status, claims_1.is_final AS claims_1_is_final, claims_1.doctor_id AS claims_1_doctor_id, claims_1.doctor_name AS claims_1_doctor_name, claims_1.doctor_submitted_by AS claims_1_doctor_submitted_by, claims_1.doctor_submitted_at AS claims_1_doctor_submitted_at, claims_1.coder_verified_by AS claims_1_coder_verified_by, claims_1.coder_verified_at AS claims_1_coder_verified_at, claims_1.finalized_by AS claims_1_finalized_by, claims_1.finalized_at AS claims_1_finalized_at, claims_1.ai_medical_resume AS claims_1_ai_medical_resume, claims_1.group_id AS claims_1_group_id, claims_1.created_at AS claims_1_created_at, claims_1.updated_at AS claims_1_updated_at, claims_1.is_deleted AS claims_1_is_deleted, claims_1.is_dummy AS claims_1_is_dummy 
+FROM claim_groups LEFT OUTER JOIN claims AS claims_1 ON claim_groups.id = claims_1.group_id LEFT OUTER JOIN visits AS visits_1 ON visits_1.id = claims_1.visit_id LEFT OUTER JOIN hospitals AS hospitals_1 ON hospitals_1.id = visits_1.hospital_id LEFT OUTER JOIN claim_visit_links AS claim_visit_links_1 ON claims_1.id = claim_visit_links_1.claim_id 
+WHERE claim_groups.patient_id = %(patient_id_1)s ORDER BY claim_groups.created_at DESC]
+[parameters: {'patient_id_1': 102}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+
+2026-01-30 03:59:30,940 - backend.error_handlers - INFO - Error handlers registered successfully
+2026-01-30 04:00:10,622 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T04:00:10.622842', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8011/claims/177/move-to-group', 'status_code': 403, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:00:59,187 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T04:00:59.187221', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8011/claims/178/move-to-group', 'status_code': 403, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:01:05,243 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T04:01:05.243010', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/178/visits', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:01:07,888 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T04:01:07.888005', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/178/visits', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:01:10,888 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T04:01:10.888021', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/177/visits', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:01:31,869 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T04:01:31.869204', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/177/visits', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:04:04,300 - backend.error_handlers - ERROR - Server Error: {'timestamp': '2026-01-30T04:04:04.300022', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/claims/118/visits', 'status_code': 500, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:04:13,359 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T04:04:13.359719', 'client_ip': '172.19.0.1', 'method': 'POST', 'url': 'http://localhost:8011/claims/move-visit', 'status_code': 403, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:12:01,986 - backend.error_handlers - WARNING - Client Error: {'timestamp': '2026-01-30T04:12:01.986193', 'client_ip': '172.19.0.1', 'method': 'GET', 'url': 'http://localhost:8011/visits/3008/detail', 'status_code': 404, 'error_type': 'HTTPException', 'error_message': '', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'}
+2026-01-30 04:19:19,329 - httpx - INFO - HTTP Request: POST http://core_engine:8002/predict_ddx "HTTP/1.1 200 OK"
+2026-01-30 04:25:39,472 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-30 04:25:39,817 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-30 04:39:04,822 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-30 04:39:07,978 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-30 04:39:08,490 - httpx - INFO - HTTP Request: POST http://core_engine:8002/regulation_detail "HTTP/1.1 200 OK"
+2026-01-30 04:40:25,569 - httpx - INFO - HTTP Request: POST http://core_engine:8002/analyze_procedure "HTTP/1.1 200 OK"
+2026-01-30 04:49:07,326 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-30 04:49:07,607 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"
+2026-01-30 06:55:48,158 - httpx - INFO - HTTP Request: POST http://core_engine:8002/generate_claim_combos "HTTP/1.1 200 OK"
+2026-01-30 06:59:38,665 - httpx - INFO - HTTP Request: POST https://login.healthclaim.my.id/oauth/token "HTTP/1.1 200 OK"
+2026-01-30 06:59:38,924 - httpx - INFO - HTTP Request: GET https://login.healthclaim.my.id/userinfo "HTTP/1.1 200 OK"

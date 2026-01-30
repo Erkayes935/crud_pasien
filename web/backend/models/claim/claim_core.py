@@ -129,7 +129,7 @@ class ClaimVisitLink(Base, HousekeepingMixin):
 # =========================================
 # CLAIM GROUP
 # =========================================
-class ClaimGroup(Base):
+class ClaimGroup(Base, HousekeepingMixin):
     __tablename__ = "claim_groups"
 
     id = Column(Integer, primary_key=True, index=True)
